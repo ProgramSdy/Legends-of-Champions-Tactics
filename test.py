@@ -1,6 +1,8 @@
 import pygame
 import sys
 
+# This is for test only
+
 class BlitTest:
 
     def __init__(self, width=400, height=400):
