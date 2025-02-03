@@ -46,7 +46,7 @@ def main():
         hero.is_player_controlled = False
     '''
     Player_1 = Mage_Comprehensiveness(sys_init, "Andonidas", "Group_A", True)
-    Player_2 = Mage_Comprehensiveness(sys_init, "Guldan", "Group_A", True)
+    Player_2 = Paladin_Comprehensiveness(sys_init, "Guldan", "Group_A", True)
     player_heroes = [Player_1, Player_2]
 
     

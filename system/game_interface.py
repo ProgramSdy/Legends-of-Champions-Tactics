@@ -70,26 +70,128 @@ class GameInterface:
         self.static_surface.blit(log_text, (self.log_rect.width // 2 - 50, self.log_rect.y + 10))
 
     def draw_game_log(self):
-        # Fill the static surface with black
-        #self.log_surface.fill((0, 0, 0))
+        """Draws game logs with automatic text wrapping, scrolling, and color recognition."""
+        # Clear only the text area while keeping the border intact
+        pygame.draw.rect(
+            self.log_surface, 
+            (0, 0, 0),  # Black background
+            (self.log_rect.x + 1, self.log_rect.y + 1, self.log_rect.width - 2, self.log_rect.height - 2)
+        )
+
         gap = 10
         line_height = 25
-        x, y = self.log_rect.x + gap, self.log_rect.y + 4 * gap
-        y_offset = 10
-        for log in self.game_log:
-            log_text = self.font.render(log, True, WHITE)
-            self.log_surface.blit(log_text, (x, y + y_offset))
+        log_text_x = self.log_rect.x + gap
+        log_text_y = self.log_rect.y + 1 * gap  # Adjusted for spacing
+
+        max_width = self.log_rect.width - 2 * gap  # Max width inside log box
+
+        visible_logs = []
+
+        # **Processing Log Messages with Colors**
+        for log_entry in self.game_log[-15:]:  
+            if isinstance(log_entry, tuple):  
+                log_text, color = log_entry  # Extract text and color
+            else:
+                log_text = str(log_entry)  
+                color = (255, 255, 255)  # Default white
+
+            # **Handling Wrapped Text**
+            words = log_text.split(" ")
+            wrapped_line = ""
+            for word in words:
+                test_line = wrapped_line + " " + word if wrapped_line else word
+                if self.font.size(test_line)[0] < max_width:  
+                    wrapped_line = test_line
+                else:
+                    visible_logs.append((wrapped_line, color))  # Store with color
+                    wrapped_line = word  
+            if wrapped_line:
+                visible_logs.append((wrapped_line, color))
+
+        # Keep only the visible logs
+        max_lines = self.log_rect.height // line_height - 1
+        visible_logs = visible_logs[-max_lines:]  
+
+        # **Rendering the Text with Colors**
+        y_offset = 5
+        for log_text, color in visible_logs:  # Now each log has its correct color
+            log_rendered = self.font.render(log_text, True, color)
+            self.log_surface.blit(log_rendered, (log_text_x, log_text_y + y_offset))
             y_offset += line_height
+
+        # Redraw the log box border
+        pygame.draw.rect(self.log_surface, (255, 255, 255), self.log_rect, 1)  
+
+        # Update screen with new logs
         self.screen.blit(self.log_surface, (0, 0))
         pygame.display.flip()
-        
+
+
+
+
+
     def add_log(self, entry):
-        """添加新日志条目"""
-        # 最大日志条数，防止文本框内容过多
-        max_log_entries = 15
-        self.game_log.append(entry)
+        """Add a new log entry and process multiple color markers for display."""
+        max_log_entries = 15  # Maximum log count to prevent overflow
+        
+        # Define color mappings
+        color_map = {
+            "{RED}": (255, 0, 0),
+            "{GREEN}": (0, 255, 0),
+            "{BLUE}": (0, 0, 255),
+            "{YELLOW}": (255, 255, 0),
+            "{CYAN}": (0, 255, 255),
+            "{MAGENTA}": (255, 0, 255),
+            "{WHITE}": (255, 255, 255),
+            "{RESET}": (255, 255, 255)  # Default back to white
+        }
+
+        current_color = (255, 255, 255)  # Default color
+        segments = []
+        text_buffer = ""
+
+        # Process text to extract color-coded sections
+        words = entry.split(" ")  # Split by space to process each word separately
+        for word in words:
+            if word in color_map:  # Color change detected
+                if text_buffer:
+                    segments.append((text_buffer, current_color))  # Store previous text with its color
+                    text_buffer = ""  # Reset buffer
+                current_color = color_map[word]  # Update current color
+            else:
+                text_buffer += word + " "  # Append word to the buffer
+
+        if text_buffer:
+            segments.append((text_buffer.strip(), current_color))  # Store final segment
+        
+        # Store log entry as a list of text-color pairs
+        self.game_log.append(segments)
+
+        # Maintain max log limit
         if len(self.game_log) > max_log_entries:
-            self.game_log.pop(0)  # 移除最旧的日志条目
+            self.game_log.pop(0)
+
+    def convert_ansi_to_color(self, text):
+        """Extracts ANSI color codes from text and converts them to Pygame colors."""
+        ANSI_COLOR_MAP = {
+        "\033[38;5;208m": (255, 165, 0),  # ORANGE
+        "\033[91m": (255, 0, 0),  # RED
+        "\033[92m": (0, 255, 0),  # GREEN
+        "\033[93m": (255, 255, 0),  # YELLOW
+        "\033[94m": (0, 0, 255),  # BLUE
+        "\033[95m": (255, 0, 255),  # MAGENTA
+        "\033[96m": (0, 255, 255),  # CYAN
+        "\033[0m": None  # RESET (Ignore)
+        }
+
+        detected_color = None
+        for ansi_code, color in ANSI_COLOR_MAP.items():
+            if ansi_code in text:
+                detected_color = color
+                text = text.replace(ansi_code, "")  # Remove ANSI code from text
+
+        return text, detected_color
+
 
     def draw_dynamic_elements(self, game_state):
         """Draw dynamic UI elements on the dynamic surface."""
@@ -320,6 +422,7 @@ class GameInterface:
         """Update the entire display."""
         self.screen.blit(self.static_surface, (0, 0))  # Draw static elements first
         self.draw_dynamic_elements(game_state)
+        self.draw_game_log()  # Ensure the game log is drawn every frame
         self.screen.blit(self.dynamic_surface, (0, 0))  # Overlay dynamic elements
         pygame.display.flip()
 
