@@ -145,6 +145,7 @@ class Game:
             if self.mode =="manual":
               time.sleep(delay)
               print(line)
+              #print(f"DEBUG: line = {line}, type = {type(line)}")  # Add this line to inspect the type
               for observer in self.observers:
                 observer.add_log(line)
                 observer.draw_game_log()

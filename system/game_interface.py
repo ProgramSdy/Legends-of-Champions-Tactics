@@ -1,5 +1,6 @@
 import pygame
 import sys
+import re
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
@@ -87,34 +88,36 @@ class GameInterface:
 
         visible_logs = []
 
-        # **Processing Log Messages with Colors**
-        for log_entry in self.game_log[-15:]:  
-            if isinstance(log_entry, tuple):  
-                log_text, color = log_entry  # Extract text and color
+        # **Process the last 15 logs from game_log**
+        for log_entry in self.game_log[-15:]:
+            if isinstance(log_entry, list):  # Expecting a list of (text, color) pairs
+                for text, color in log_entry:
+                    # Text Wrapping: Break long lines into multiple lines
+                    words = text.split(" ")
+                    wrapped_line = ""
+
+                    for word in words:
+                        test_line = wrapped_line + " " + word if wrapped_line else word
+                        if self.font.size(test_line)[0] < max_width:  
+                            wrapped_line = test_line
+                        else:
+                            visible_logs.append((wrapped_line, color))  # Store wrapped line with color
+                            wrapped_line = word  # Start a new line
+                    
+                    if wrapped_line:
+                        visible_logs.append((wrapped_line, color))  # Add the last wrapped line
+
             else:
-                log_text = str(log_entry)  
-                color = (255, 255, 255)  # Default white
+                # In case log_entry is not a list of (text, color) pairs (Fallback)
+                visible_logs.append((str(log_entry), (255, 255, 255)))
 
-            # **Handling Wrapped Text**
-            words = log_text.split(" ")
-            wrapped_line = ""
-            for word in words:
-                test_line = wrapped_line + " " + word if wrapped_line else word
-                if self.font.size(test_line)[0] < max_width:  
-                    wrapped_line = test_line
-                else:
-                    visible_logs.append((wrapped_line, color))  # Store with color
-                    wrapped_line = word  
-            if wrapped_line:
-                visible_logs.append((wrapped_line, color))
-
-        # Keep only the visible logs
+        # **Limit logs to fit within the box**
         max_lines = self.log_rect.height // line_height - 1
         visible_logs = visible_logs[-max_lines:]  
 
-        # **Rendering the Text with Colors**
+        # **Render the wrapped text with color**
         y_offset = 5
-        for log_text, color in visible_logs:  # Now each log has its correct color
+        for log_text, color in visible_logs:
             log_rendered = self.font.render(log_text, True, color)
             self.log_surface.blit(log_rendered, (log_text_x, log_text_y + y_offset))
             y_offset += line_height
@@ -128,43 +131,54 @@ class GameInterface:
 
 
 
-
-
     def add_log(self, entry):
         """Add a new log entry and process multiple color markers for display."""
-        max_log_entries = 15  # Maximum log count to prevent overflow
-        
-        # Define color mappings
-        color_map = {
-            "{RED}": (255, 0, 0),
-            "{GREEN}": (0, 255, 0),
-            "{BLUE}": (0, 0, 255),
-            "{YELLOW}": (255, 255, 0),
-            "{CYAN}": (0, 255, 255),
-            "{MAGENTA}": (255, 0, 255),
-            "{WHITE}": (255, 255, 255),
-            "{RESET}": (255, 255, 255)  # Default back to white
+        max_log_entries = 15  # Limit log size
+
+        # Define ANSI to RGB color map
+        ANSI_COLOR_MAP = {
+            "\033[91m": (255, 0, 0),   # RED
+            "\033[92m": (0, 255, 0),   # GREEN
+            "\033[93m": (255, 255, 0), # YELLOW
+            "\033[94m": (0, 0, 255),   # BLUE
+            "\033[95m": (255, 0, 255), # MAGENTA
+            "\033[96m": (0, 255, 255), # CYAN
+            "\033[38;5;208m": (255, 165, 0), # ORANGE
+            "\033[0m": (255, 255, 255), # RESET (White)
         }
 
-        current_color = (255, 255, 255)  # Default color
-        segments = []
-        text_buffer = ""
+        current_color = (255, 255, 255)  # Default color is white
+        segments = []  # Stores (text, color) tuples
 
-        # Process text to extract color-coded sections
-        words = entry.split(" ")  # Split by space to process each word separately
-        for word in words:
-            if word in color_map:  # Color change detected
-                if text_buffer:
-                    segments.append((text_buffer, current_color))  # Store previous text with its color
-                    text_buffer = ""  # Reset buffer
-                current_color = color_map[word]  # Update current color
-            else:
-                text_buffer += word + " "  # Append word to the buffer
+        # Use regex to match ANSI codes and text
+        pattern = re.compile(r'(\033\[[0-9;]*m)|([^ \033]+)')
+        matches = pattern.findall(entry)
+
+        text_buffer = ""  # Temporary storage for text
+
+        for match in matches:
+            ansi_code, text_part = match  # Regex returns tuples (ansi_code, text)
+
+            if ansi_code:  # If we found an ANSI code
+                if text_buffer:  # Save any existing text with previous color
+                    segments.append((text_buffer, current_color))
+                    text_buffer = ""
+
+                # Update current color if ANSI code exists in our map
+                current_color = ANSI_COLOR_MAP.get(ansi_code, current_color)
+
+            elif text_part:  # If we found regular text
+                text_buffer += text_part + " "  # Append the word
 
         if text_buffer:
-            segments.append((text_buffer.strip(), current_color))  # Store final segment
-        
-        # Store log entry as a list of text-color pairs
+            segments.append((text_buffer.strip(), current_color))  # Store final text
+
+        # 🔴 **Debug Print Output**
+        print("\nDEBUG: Parsed Log Segments:")
+        for segment in segments:
+            print(segment)  # Print each (text, color) pair
+
+        # Store log entry as a list of (text, color) pairs
         self.game_log.append(segments)
 
         # Maintain max log limit

@@ -45,8 +45,8 @@ def main():
       if hero.name == 'Player 3':
         hero.is_player_controlled = False
     '''
-    Player_1 = Mage_Comprehensiveness(sys_init, "Andonidas", "Group_A", True)
-    Player_2 = Paladin_Comprehensiveness(sys_init, "Guldan", "Group_A", True)
+    Player_1 = Priest_Shadow(sys_init, "Andonidas", "Group_A", True)
+    Player_2 = Warlock_Affliction(sys_init, "Guldan", "Group_A", True)
     player_heroes = [Player_1, Player_2]
 
     
@@ -56,8 +56,8 @@ def main():
     generator_ai = HeroGenerator(sys_init)
     opponent_heroes = generator_ai.generate_heroes("Group_B", 2)
     '''
-    Galahad = Rogue_Comprehensiveness(sys_init, "Galahad", "Group_B", False)
-    Vanishan = Necromancer_Comprehensiveness(sys_init,"Vanishan", "Group_B", False)
+    Galahad = Mage_Comprehensiveness(sys_init, "Galahad", "Group_B", False)
+    Vanishan = Paladin_Comprehensiveness(sys_init,"Vanishan", "Group_B", False)
     opponent_heroes = [Galahad, Vanishan]
     
     # Display heroes from both sides__________________________________________
