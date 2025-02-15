@@ -173,11 +173,6 @@ class GameInterface:
         if text_buffer:
             segments.append((text_buffer.strip(), current_color))  # Store final text
 
-        # 🔴 **Debug Print Output**
-        print("\nDEBUG: Parsed Log Segments:")
-        for segment in segments:
-            print(segment)  # Print each (text, color) pair
-
         # Store log entry as a list of (text, color) pairs
         self.game_log.append(segments)
 
