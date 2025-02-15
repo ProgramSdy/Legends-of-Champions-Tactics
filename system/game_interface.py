@@ -9,10 +9,11 @@ class GameInterface:
 
     def __init__(self, width=800, height=600):
         """Initialize the game interface with a fixed window size."""
+        pygame.init()
         self.width = width
         self.height = height
         self.screen = None
-        self.font = None
+        self.font = pygame.font.SysFont("Consolas", 20, bold=True)  # Enable bold
         self.static_surface = None  # Surface for static elements
         self.dynamic_surface = None  # Surface for dynamic elements
         self.manual_target_selection = None # Manual for target selection
@@ -21,11 +22,10 @@ class GameInterface:
 
     def initialize_window(self):
         """Set up the Pygame window and static/dynamic surfaces."""
-        pygame.init()
         print(self.width, self.height)
         self.screen = pygame.display.set_mode((self.width, self.height))
         pygame.display.set_caption("Legends of Champions Tactics")
-        self.font = pygame.font.SysFont("Courier", 20)
+        #self.font = pygame.font.SysFont("Courier", 20)
 
         # Create separate surfaces for static and dynamic elements
         self.static_surface = pygame.Surface((self.width, self.height))
@@ -140,7 +140,7 @@ class GameInterface:
             "\033[91m": (255, 0, 0),   # RED
             "\033[92m": (0, 255, 0),   # GREEN
             "\033[93m": (255, 255, 0), # YELLOW
-            "\033[94m": (0, 0, 255),   # BLUE
+            "\033[94m": (0, 112, 221),  # Brighter and more vivid terminal-style blue
             "\033[95m": (255, 0, 255), # MAGENTA
             "\033[96m": (0, 255, 255), # CYAN
             "\033[38;5;208m": (255, 165, 0), # ORANGE
@@ -172,6 +172,14 @@ class GameInterface:
 
         if text_buffer:
             segments.append((text_buffer.strip(), current_color))  # Store final text
+
+        """
+        # 🔴 **Debug Print Output**
+        print("\nDEBUG: Parsed Log Segments:")
+        for segment in segments:
+            print(segment)  # Print each (text, color) pair
+        print("\n")
+        """
 
         # Store log entry as a list of (text, color) pairs
         self.game_log.append(segments)

@@ -123,10 +123,12 @@ class Game:
         elif self.mode == "simulation":
           pass
 
-    def display_manual_curses(self, message, delay = 1):
-        self.output_buffer.append(message)
+    def display_manual_log(self, message, delay = 1):
         if self.mode =="manual":
           time.sleep(delay)
+          for observer in self.observers:
+                observer.add_log(message)
+                observer.draw_game_log()
         elif self.mode == "simulation":
           pass
 
@@ -158,6 +160,9 @@ class Game:
         if self.mode =="manual":
           time.sleep(delay)
           print(message)
+          for observer in self.observers:
+                observer.add_log(message)
+                observer.draw_game_log()
         elif self.mode == "simulation":
           pass
 
@@ -181,7 +186,8 @@ class Game:
         self.game_state = "round_start"
 
     def start_round(self): # Display Round count, HP, skill cool down, status information
-        self.display_manual(f"{MAGENTA}---------------------------------------------------ROUND {self.round_counter} ----------------------------------------------------{RESET}")
+        self.display_manual(f"{MAGENTA}---------------------------------------------------ROUND {self.round_counter}----------------------------------------------------{RESET}")
+        self.display_manual_log(f"{MAGENTA} ---------------------------------------------------ROUND {self.round_counter}------------------------------------------------- {RESET}")
         player_heroes_info = []  # Initialize player heroes info as a list
         opponent_heroes_info = []  # Initialize opponent heroes info as a list
 

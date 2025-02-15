@@ -38,11 +38,11 @@ class Paladin_Comprehensiveness(Paladin):
         if self.status['shield_of_righteous'] == True and self.shield_of_righteous_stacks == 1:
           extra_holy_damage = random.randint(3, 5)
           damage_dealt += extra_holy_damage
-          self.game.display_battle_info(f"{self.name} uses Hammer of Anger on {other_hero.name}, due to Shield of Righteous, this attack causes extra {YELLOW}{extra_holy_damage}{RESET} holy damage.")
+          self.game.display_battle_info(f"{self.name} uses Hammer of Anger on {other_hero.name}, due to Shield of Righteous, this attack causes extra {extra_holy_damage} holy damage.")
         elif self.status['shield_of_righteous'] == True and self.shield_of_righteous_stacks == 2:
           extra_holy_damage = random.randint(6, 8)
           damage_dealt += extra_holy_damage
-          self.game.display_battle_info(f"{self.name} uses Hammer of Anger on {other_hero.name}, due to Shield of Righteous, this attack causes extra {YELLOW}{extra_holy_damage}{RESET} holy damage.")
+          self.game.display_battle_info(f"{self.name} uses Hammer of Anger on {other_hero.name}, due to Shield of Righteous, this attack causes extra {extra_holy_damage} holy damage.")
         else:
           self.game.display_battle_info(f"{self.name} uses Hammer of Anger on {other_hero.name}.")
         return other_hero.take_damage(damage_dealt)
@@ -86,11 +86,11 @@ class Paladin_Comprehensiveness(Paladin):
         if self.status['shield_of_righteous'] == True and self.shield_of_righteous_stacks == 1:
           extra_healing = random.randint(5, 7)
           healing_amount = healing_amount_base + extra_healing
-          self.game.display_battle_info(f"{self.name} casts Flash of Light on {other_hero.name}, due to Shield of Righteous, this spell gains an additional {YELLOW}{extra_healing}{RESET} healing.")
+          self.game.display_battle_info(f"{self.name} casts Flash of Light on {other_hero.name}, due to Shield of Righteous, this spell gains an additional {extra_healing} healing.")
         elif self.status['shield_of_righteous'] == True and self.shield_of_righteous_stacks == 2:
           extra_healing = random.randint(11, 13)
           healing_amount = healing_amount_base + extra_healing
-          self.game.display_battle_info(f"{self.name} casts Flash of Light on {other_hero.name}, due to Shield of Righteous, this spell gains an additional {YELLOW}{extra_healing}{RESET} healing.")
+          self.game.display_battle_info(f"{self.name} casts Flash of Light on {other_hero.name}, due to Shield of Righteous, this spell gains an additional {extra_healing} healing.")
         else:
           self.game.display_battle_info(f"{self.name} casts Flash of Light on {other_hero.name}.")
         return other_hero.take_healing(healing_amount)
