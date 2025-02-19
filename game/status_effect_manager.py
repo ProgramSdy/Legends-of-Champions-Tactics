@@ -372,3 +372,41 @@ class StatusEffectManager:
               hero.holy_infusion_cooldown -= 1
               if hero.status['holy_infusion']:
                 self.game.display_status_updates(f"{BLUE}{hero.name} is in Holy Infusion Status, their next Powerful Healing becomes instant.{RESET}")
+
+            # Frost Fever Duration
+            if hero.status['frost_fever'] and hero.hp > 0:
+                for debuff in hero.debuffs:
+                  if debuff.name == "Frost Fever":
+                      debuff.duration -= 1
+                      if debuff.duration > 0:
+                        basic_damage = round((debuff.initiator.original_damage - hero.frost_resistance) * 1/3)
+                        variation = random.randint(-1, 1)
+                        actual_damage = max(1, basic_damage + variation)
+                        hero.frost_fever_continuous_damage = round(actual_damage * debuff.effect)
+                        self.game.display_status_updates(f"{BLUE}{hero.name}'s Frost Fever duration is {debuff.duration} rounds. {hero.take_damage(hero.frost_fever_continuous_damage)}{RESET}")
+
+                      elif buff.duration == 0:
+                          hero.status['frost_fever'] = False
+                          hero.frost_fever_continuous_damage = 0
+                          hero.agility = hero.agility + hero.agility_reduced_amount_by_frost_fever  # Restore original agility
+                          hero.agility_reduced_amount_by_frost_fever = 0 
+                          hero.debuffs.remove(debuff)
+                          hero.buffs_debuffs_recycle_pool.append(debuff)
+                          self.game.display_status_updates(f"{BLUE}{hero.name}'s Frost Fever has disappeared. {hero.name}'s agility has returned to {hero.agility}{RESET}")
+
+            # Icy Squall Duration
+            if hero.status['icy_squall'] and hero.hp > 0:
+                for debuff in hero.debuffs:
+                  if debuff.name == "Icy Squall":
+                      debuff.duration -= 1
+                      if debuff.duration > 0:
+                         self.game.display_status_updates(f"{BLUE}{hero.name} is vulnerable towards frost attack. {hero.name}'s Icy Squall debuff duration is {debuff.duration} rounds.{RESET}")
+                      elif debuff.duration == 0:
+                          hero.status['icy_squall'] = False
+                          hero.frost_resistance = hero.frost_resistance + hero.frost_resistance_reduced_amount_by_icy_squall
+                          hero.frost_resistance_reduced_amount_by_icy_squall = 0
+                          hero.debuffs.remove(debuff)
+                          hero.buffs_debuffs_recycle_pool.append(debuff)
+                          self.game.display_status_updates(f"{BLUE}{hero.name} is no longer vulnerable towards frost attack. {hero.name}'s frost resistance has returned to {hero.frost_resistance}.{RESET}")
+
+                

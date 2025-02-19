@@ -52,11 +52,14 @@ class Hero:
         'immolate': False,
         'void_connection': False,
         'holy_infusion': False,
-        'hell_flame': False
+        'hell_flame': False,
+        'frost_fever': False,
+        'icy_squall': False
     }
     list_status_debuff_magic = ['shadow_word_pain', 'poisoned_dagger', 'cold', 'holy_word_punishment', \
                                 'shadow_word_insanity', 'unholy_frenzy', 'curse_of_agony', 'fear', 'shadow_bolt', \
-                                'corrosion','soul_siphon', 'immolate']
+                                'corrosion','soul_siphon', 'immolate', 'icy_squall']
+    list_status_debuff_disease = ['frost_fever']
     list_status_debuff_physical  = ['armor_breaker', 'bleeding_slash','bleeding_sharp_blade']
     list_status_debuff_bleeding = ['bleeding_slash','bleeding_sharp_blade']
     list_status_buff_magic = ['shield_of_righteous','holy_word_shell','holy_word_redemption', 'holy_fire', 'unholy_frenzy', 'holy_infusion', 'hell_flame']
@@ -169,6 +172,9 @@ class Hero:
         self.soul_siphon_healing_amount = 0 # Track the healing amount of Soul Siphon
         self.damage_reduced_amount_by_immolate = 0 # Track the amount of damage reduced by Immolate
         self.immolate_continuous_damage = 0 # Track the continuous damage of Immolate
+        self.frost_fever_continuous_damage = 0 # Track the continuous damage of Frost Fever
+        self.agility_reduced_amount_by_frost_fever = 0 # Track the amount of agility reduced by frost fever
+        self.frost_resistance_reduced_amount_by_icy_squall = 0 #Track the amount of frost resistance reduced by icy squall
 
 
     @classmethod

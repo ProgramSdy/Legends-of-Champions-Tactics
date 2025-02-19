@@ -65,28 +65,57 @@ class Death_Knight_Frost(Death_Knight):
         if not isinstance(other_heros, list):
           other_heros = [other_heros]
         results = []
-        variation = random.randint(-3, 3)
-        actual_damage = self.damage + variation
+        for skill in self.skills:
+            if skill.name == "Icy Squall":
+              skill.if_cooldown = True
+              skill.cooldown = 2
+        variation = random.randint(-2, 2)
         selected_opponents = other_heros
         for opponent in selected_opponents:
-            damage_dealt = math.ceil((actual_damage - opponent.arcane_resistance) * 2/3)
-            self.game.display_battle_info(f"{self.name} casts Arcane Missiles at {opponent.name}.")
-            results.append(opponent.take_damage(damage_dealt))
+            basic_damage = round((self.damage - opponent.frost_resistance) * 2/3)
+            actual_damage = max(1, basic_damage + variation)
+            if opponent.status['frost_fever'] == True:
+                if opponent.status['icy_squall'] == False:
+                    opponent.status['icy_squall'] = True
+                    frost_resistance_before_reducing = opponent.frost_resistance
+                    opponent.frost_resistance_reduced_amount_by_icy_squall = round(opponent.original_frost_resistance * 0.20)  # Reduce target's frost resistance by 20%
+                    opponent.frost_resistance = opponent.frost_resistance - opponent.frost_resistance_reduced_amount_by_icy_squall
+                    for debuff in opponent.buffs_debuffs_recycle_pool:
+                        if debuff.name == "Icy Squall" and debuff.initiator == self:
+                            opponent.buffs_debuffs_recycle_pool.remove(debuff)
+                            debuff.duration = 3 
+                            opponent.add_debuff(debuff)
+                            self.game.display_battle_info(f"{self.name} casts Icy Squall at {opponent.name}. Due to Frost Fever, {opponent.name}'s frost resistance has been reduced from {frost_resistance_before_reducing} to {opponent.frost_resistance}. ")
+                            results.append(opponent.take_damage(actual_damage))
+                            break
+                    else:
+                        debuff = Debuff(
+                            name='Icy Squall',
+                            duration = 3, # icy squall lasts for 2 rounds
+                            initiator = self,
+                            #effect = 0.8
+                            )
+                        opponent.add_debuff(debuff)
+                        self.game.display_battle_info(f"{self.name} casts Icy Squall at {opponent.name}. Due to Frost Fever, {opponent.name}'s frost resistance has been reduced from {frost_resistance_before_reducing} to {opponent.frost_resistance}. ")
+                        results.append(opponent.take_damage(actual_damage))
+                else:
+                    self.game.display_battle_info(f"{self.name} casts Icy Squall at {opponent.name}.")
+                    results.append(opponent.take_damage(actual_damage))
+            else:
+                self.game.display_battle_info(f"{self.name} casts Icy Squall at {opponent.name}.")
+                results.append(opponent.take_damage(actual_damage))
         return "\n".join(results)
 
     def winty_strike(self, other_hero):
-        if other_hero.status['cold'] == False:
-          agility_before_reducing = other_hero.agility
-          other_hero.agility_reduced_amount_by_frost_bolt = math.ceil(other_hero.original_agility * 0.70)  # Reduce target's agility by 70%
-          other_hero.agility = other_hero.agility - other_hero.agility_reduced_amount_by_frost_bolt
-          other_hero.status['cold'] = True
-          other_hero.status['normal'] = False
-          other_hero.cold_duration = 2
-          self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Frost Bolt, {other_hero.name} is feeling cold and their agility is reduced from {agility_before_reducing} to {other_hero.agility}.")
-        else:
-            self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Frost Bolt")
         variation = random.randint(-2, 2)
-        actual_damage = self.damage + variation
-        damage_dealt = math.ceil((actual_damage - other_hero.frost_resistance) * 4/5)
-        damage_dealt = max(damage_dealt, 0)
-        return other_hero.take_damage(damage_dealt)
+        basic_damage_weapon = round((self.damage - other_hero.defense) * 1/2)
+        basic_damage_frost = round((self.damage - other_hero.frost_resistance) * 1/2)
+        basic_damage = basic_damage_weapon + basic_damage_frost
+        actual_damage = max(1, basic_damage + variation)
+        if other_hero.status['frost_fever'] == True:
+          extra_frost_damage = random.randint(3, 5)
+          actual_damage += extra_frost_damage
+          self.game.display_battle_info(f"{self.name} uses Winty Strike on {other_hero.name}, due to {other_hero.name} is infected by Frost Fever, this attack causes extra {extra_frost_damage} frost damage.")
+        else:
+          self.game.display_battle_info(f"{self.name} uses Winty Strike on {other_hero.name}.")
+        return other_hero.take_damage(actual_damage)
