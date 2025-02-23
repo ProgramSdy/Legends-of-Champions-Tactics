@@ -1,0 +1,4 @@
+1. Bug fix: multi target skill when there is only one enemy left, select one enemy, the game still ask for a second target.
+   --check hero.py--> player action: print(f"{RED} Debug Info: Multi target skill with only one enemy {RESET}")
+
+2. Bug fix: summoned unit doesn't action in the same round get summoned.

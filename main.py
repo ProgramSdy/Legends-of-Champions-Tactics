@@ -45,8 +45,8 @@ def main():
       if hero.name == 'Player 3':
         hero.is_player_controlled = False
     '''
-    Player_1 = Priest_Shadow(sys_init, "Andonidas", "Group_A", True)
-    Player_2 = Warlock_Comprehensiveness(sys_init, "Guldan", "Group_A", True)
+    Player_1 = Death_Knight_Frost(sys_init, "Arthas", "Group_A", True)
+    Player_2 = Death_Knight_Plague(sys_init, "Shadow_eye", "Group_A", True)
     player_heroes = [Player_1, Player_2]
 
     
@@ -56,9 +56,9 @@ def main():
     generator_ai = HeroGenerator(sys_init)
     opponent_heroes = generator_ai.generate_heroes("Group_B", 2)
     '''
-    Galahad = Mage_Comprehensiveness(sys_init, "Bors", "Group_B", False)
-    Vanishan = Rogue_Comprehensiveness(sys_init,"Vanishan", "Group_B", False)
-    opponent_heroes = [Galahad, Vanishan]
+    Galahad = Warrior_Comprehensiveness(sys_init, "Bors", "Group_B", False)
+    Deepseer = Priest_Discipline(sys_init,"Deepseer", "Group_B", False)
+    opponent_heroes = [Galahad, Deepseer]
     
     # Display heroes from both sides__________________________________________
     '''
@@ -84,34 +84,6 @@ def main():
 
     running = True
     while running:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_q:
-                    running = False
-                elif event.key == pygame.K_UP:
-                    if game.game_state == "hero_action":
-                        if game.selected_skill_index > 0:
-                            game.selected_skill_index -= 1
-                elif event.key == pygame.K_DOWN:
-                    if game.game_state == "hero_action":
-                        if game.selected_skill_index < len(game.current_action_hero.skills) - 1:
-                            game.selected_skill_index += 1
-                elif event.key == pygame.K_RIGHT:
-                    if game.game_state == "hero_action" and game.valid_targets:
-                        if game.selected_target_index < len(game.valid_targets) - 1:
-                            game.selected_target_index += 1
-                elif event.key == pygame.K_LEFT:
-                    if game.game_state == "hero_action" and game.valid_targets:
-                        if game.selected_target_index > 0:
-                            game.selected_target_index -= 1
-                elif event.key == pygame.K_RETURN:  # Confirm action
-                    if game.game_state == "hero_action":
-                        selected_skill = game.current_action_hero.skills[game.selected_skill_index]
-                        selected_target = game.valid_targets[game.selected_target_index]
-                        #game.execute_action(selected_skill, selected_target)
-                        #game.game_state = "round_end"  # Move to the next state
 
         # Incrementally process the game state
         if game.game_state == "game_initialization":

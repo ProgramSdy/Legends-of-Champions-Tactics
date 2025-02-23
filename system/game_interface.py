@@ -378,6 +378,8 @@ class GameInterface:
         """
         selected_targets = []
         selected_index = 0
+        num_targets = min(num_targets, len(available_targets))
+
         while len(selected_targets) < num_targets:
             self.manual_target_selection.fill((0, 0, 0, 0))  # Clear the surface
 

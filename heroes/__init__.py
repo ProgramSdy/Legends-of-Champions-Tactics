@@ -6,6 +6,7 @@ from .priest import Priest, Priest_Comprehensiveness, Priest_Shelter, Priest_Dis
 from .rogue import Rogue, Rogue_Comprehensiveness
 from .necromancer import Necromancer, Necromancer_Comprehensiveness
 from .warlock import Warlock, Warlock_Comprehensiveness, Warlock_Affliction, Warlock_Destruction
+from .death_knight import Death_Knight, Death_Knight_Frost, Death_Knight_Plague
 from .summon_unit import Summonable, SummonableWarrior, SkeletonWarrior, VoidRambler
 
 

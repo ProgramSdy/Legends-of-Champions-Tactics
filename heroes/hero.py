@@ -54,12 +54,13 @@ class Hero:
         'holy_infusion': False,
         'hell_flame': False,
         'frost_fever': False,
-        'icy_squall': False
+        'icy_squall': False,
+        'necrotic_decay': False
     }
     list_status_debuff_magic = ['shadow_word_pain', 'poisoned_dagger', 'cold', 'holy_word_punishment', \
                                 'shadow_word_insanity', 'unholy_frenzy', 'curse_of_agony', 'fear', 'shadow_bolt', \
                                 'corrosion','soul_siphon', 'immolate', 'icy_squall']
-    list_status_debuff_disease = ['frost_fever']
+    list_status_debuff_disease = ['frost_fever', 'necrotic_decay']
     list_status_debuff_physical  = ['armor_breaker', 'bleeding_slash','bleeding_sharp_blade']
     list_status_debuff_bleeding = ['bleeding_slash','bleeding_sharp_blade']
     list_status_buff_magic = ['shield_of_righteous','holy_word_shell','holy_word_redemption', 'holy_fire', 'unholy_frenzy', 'holy_infusion', 'hell_flame']
@@ -110,6 +111,7 @@ class Hero:
         self.buffs_debuffs_recycle_pool = []
         self.casting_magic = None
         self.casting_magic_target = None
+        self.healing_reduction_effects = {}
 
         # Status buff and debuff
         self.status = self.status.copy() # Copy the status dictionary for individual management
@@ -175,6 +177,7 @@ class Hero:
         self.frost_fever_continuous_damage = 0 # Track the continuous damage of Frost Fever
         self.agility_reduced_amount_by_frost_fever = 0 # Track the amount of agility reduced by frost fever
         self.frost_resistance_reduced_amount_by_icy_squall = 0 #Track the amount of frost resistance reduced by icy squall
+        self.healing_reduction_by_necrotic_decay = 0 #Track the amount of healing reduction by necrotic decay
 
 
     @classmethod
@@ -455,6 +458,20 @@ class Hero:
                 self.status['soul_siphon'] = False
                 self.debuffs.remove(debuff)
                 self.buffs_debuffs_recycle_pool.append(debuff)
+          if self.status['necrotic_decay']:
+            possible_targets = [ally for ally in self.allies if not ally.status['necrotic_decay']]
+            if possible_targets:
+                spread_target = random.choice(possible_targets)
+                if random.randint(1, 100) <= 100:  # 25% chance
+                    spread_target.status['necrotic_decay'] = True
+                    new_debuff = Debuff(
+                        name='Necrotic Decay',
+                        duration=4,
+                        initiator=self,
+                        effect=0.8
+                    )
+                    spread_target.add_debuff(new_debuff)
+                    results.append(f"{spread_target.name} is infected with Necrotic Decay as {self.name} falls in battle!")
           return "\n".join(results)
         else:
           results = "0"
@@ -632,8 +649,11 @@ class Hero:
         self.debuffs.append(debuff)
 
     def take_healing(self, healing_amount):
-        self.hp = min(self.hp_max, self.hp + healing_amount)
-        return f"{self.name} takes {healing_amount} healing and has {self.hp} HP left."
+      total_reduction = sum(self.healing_reduction_effects.values())  # Sum all healing reductions
+      total_reduction = min(total_reduction, 1)  # Cap reduction at 100% (prevents over-reduction)
+      final_healing = round(healing_amount * (1 - total_reduction))
+      self.hp = min(self.hp_max, self.hp + final_healing)
+      return f"{self.name} takes {final_healing} healing and has {self.hp} HP left."
 
     def take_healing_coefficient(self, num_allies):
         if num_allies == 1:
@@ -857,7 +877,7 @@ class Hero:
         # If there are auto-selected targets, return them immediately
         if auto_selected_targets:
             return auto_selected_targets
-
+        
         # Call the game interface to let the player select targets
         return self.interface.select_target(self, available_targets, num_targets)
         

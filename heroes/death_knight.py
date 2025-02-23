@@ -31,7 +31,7 @@ class Death_Knight_Frost(Death_Knight):
         self.add_skill(Skill(self, "Winty Strike", self.winty_strike, target_type = "single", skill_type= "damage"))
 
     def frost_fever(self, other_hero):
-        basic_damage = round((self.damage - other_hero.frost_resistance) * 1/3)
+        basic_damage = round((self.damage - other_hero.frost_resistance) * 1/5)
         variation = random.randint(-1, 1)
         actual_damage = max(1, basic_damage + variation)
         if other_hero.status['frost_fever'] == False:
@@ -93,7 +93,7 @@ class Death_Knight_Frost(Death_Knight):
                             name='Icy Squall',
                             duration = 3, # icy squall lasts for 2 rounds
                             initiator = self,
-                            #effect = 0.8
+                            effect = 0.8
                             )
                         opponent.add_debuff(debuff)
                         self.game.display_battle_info(f"{self.name} casts Icy Squall at {opponent.name}. Due to Frost Fever, {opponent.name}'s frost resistance has been reduced from {frost_resistance_before_reducing} to {opponent.frost_resistance}. ")
@@ -118,4 +118,46 @@ class Death_Knight_Frost(Death_Knight):
           self.game.display_battle_info(f"{self.name} uses Winty Strike on {other_hero.name}, due to {other_hero.name} is infected by Frost Fever, this attack causes extra {extra_frost_damage} frost damage.")
         else:
           self.game.display_battle_info(f"{self.name} uses Winty Strike on {other_hero.name}.")
+        return other_hero.take_damage(actual_damage)
+    
+
+class Death_Knight_Plague(Death_Knight):
+
+    major = "Plague"
+
+    def __init__(self, sys_init, name, group, is_player_controlled):
+        super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major)
+        self.add_skill(Skill(self, "Necrotic Decay", self.necrotic_decay, target_type = "single", skill_type= "damage"))
+        #self.add_skill(Skill(self, "Virulent Infection", self.virulent_infection, target_type = "single", skill_type= "damage"))
+        #self.add_skill(Skill(self, "Pestilence", self.pestilence, target_type = "single", skill_type= "damage"))
+
+    def necrotic_decay(self, other_hero):
+        basic_damage = round((self.damage - other_hero.death_resistance) * 1/5)
+        variation = random.randint(-1, 1)
+        actual_damage = max(1, basic_damage + variation)
+        
+        if not other_hero.status['necrotic_decay']:
+            other_hero.status['necrotic_decay'] = True
+            other_hero.healing_reduction_effects['necrotic_decay'] = 0.3 
+            for debuff in other_hero.buffs_debuffs_recycle_pool:
+                if debuff.name == "Necrotic Decay" and debuff.initiator == self:
+                    other_hero.buffs_debuffs_recycle_pool.remove(debuff)
+                    debuff.duration = 4
+                    other_hero.add_debuff(debuff)
+                    other_hero.necrotic_decay_continuous_damage = round(actual_damage * debuff.effect)
+                    self.game.display_battle_info(f"{self.name} casts Necrotic Decay on {other_hero.name}. Their healing is reduced and they take continuous damage.")
+                    return other_hero.take_damage(actual_damage)
+            
+            debuff = Debuff(
+                name='Necrotic Decay',
+                duration=4,
+                initiator=self,
+                effect=0.8
+            )
+            other_hero.add_debuff(debuff)
+            other_hero.necrotic_decay_continuous_damage = round(actual_damage * debuff.effect)
+            self.game.display_battle_info(f"{self.name} casts Necrotic Decay on {other_hero.name}. Their healing is reduced and they take continuous damage.")
+            return other_hero.take_damage(actual_damage)
+        else:
+            self.game.display_battle_info(f"{self.name} casts Necrotic Decay on {other_hero.name}.")
         return other_hero.take_damage(actual_damage)

@@ -379,20 +379,40 @@ class StatusEffectManager:
                   if debuff.name == "Frost Fever":
                       debuff.duration -= 1
                       if debuff.duration > 0:
-                        basic_damage = round((debuff.initiator.original_damage - hero.frost_resistance) * 1/3)
+                        basic_damage = round((debuff.initiator.original_damage - hero.frost_resistance) * 1/5)
                         variation = random.randint(-1, 1)
                         actual_damage = max(1, basic_damage + variation)
                         hero.frost_fever_continuous_damage = round(actual_damage * debuff.effect)
                         self.game.display_status_updates(f"{BLUE}{hero.name}'s Frost Fever duration is {debuff.duration} rounds. {hero.take_damage(hero.frost_fever_continuous_damage)}{RESET}")
 
-                      elif buff.duration == 0:
+                      elif debuff.duration == 0:
                           hero.status['frost_fever'] = False
                           hero.frost_fever_continuous_damage = 0
                           hero.agility = hero.agility + hero.agility_reduced_amount_by_frost_fever  # Restore original agility
                           hero.agility_reduced_amount_by_frost_fever = 0 
                           hero.debuffs.remove(debuff)
                           hero.buffs_debuffs_recycle_pool.append(debuff)
-                          self.game.display_status_updates(f"{BLUE}{hero.name}'s Frost Fever has disappeared. {hero.name}'s agility has returned to {hero.agility}{RESET}")
+                          self.game.display_status_updates(f"{BLUE}{hero.name}'s Frost Fever has disappeared. {hero.name}'s agility has returned to {hero.agility}.{RESET}")
+                          if random.randint(1, 100) <= 30:  # 30% chance infect another target
+                            possible_targets = [ally for ally in hero.allies if not ally.status['frost_fever'] and ally is not hero]
+                            if possible_targets:
+                                spread_target = random.choice(possible_targets)
+                                spread_target.status['frost_fever'] = True
+                                agility_before_reducing = spread_target.agility
+                                spread_target.agility_reduced_amount_by_frost_fever = round(spread_target.original_agility * 0.30)  # Reduce target's agility by 30%
+                                spread_target.agility = spread_target.agility - spread_target.agility_reduced_amount_by_frost_fever
+                                new_debuff = Debuff(
+                                    name='Frost Fever',
+                                    duration = 4, # frost fever lasts for 3 rounds
+                                    initiator = debuff.initiator,
+                                    effect = 0.8
+                                    )
+                                spread_target.add_debuff(new_debuff)
+                                basic_damage = round((debuff.initiator.original_damage - spread_target.frost_resistance) * 1/5)
+                                variation = random.randint(-1, 1)
+                                actual_damage = max(1, basic_damage + variation)
+                                spread_target.frost_fever_continuous_damage = round(actual_damage * new_debuff.effect)
+                                self.game.display_status_updates(f"{BLUE}{spread_target.name} is infected with Frost Fever! Their agility is reduced from {agility_before_reducing} to {spread_target.agility}.{RESET}")
 
             # Icy Squall Duration
             if hero.status['icy_squall'] and hero.hp > 0:
@@ -408,5 +428,25 @@ class StatusEffectManager:
                           hero.debuffs.remove(debuff)
                           hero.buffs_debuffs_recycle_pool.append(debuff)
                           self.game.display_status_updates(f"{BLUE}{hero.name} is no longer vulnerable towards frost attack. {hero.name}'s frost resistance has returned to {hero.frost_resistance}.{RESET}")
+
+            # Handle Necrotic Decay Debuff
+            if hero.status['necrotic_decay'] and hero.hp > 0:
+                for debuff in hero.debuffs:
+                    if debuff.name == "Necrotic Decay":
+                        debuff.duration -= 1
+                        if debuff.duration > 0:
+                            basic_damage = round((debuff.initiator.original_damage - hero.death_resistance) * 1/5)
+                            variation = random.randint(-1, 1)
+                            actual_damage = max(1, basic_damage + variation)
+                            hero.necrotic_decay_continuous_damage = round(actual_damage * debuff.effect)
+                            self.game.display_status_updates(f"{BLUE}{hero.name}'s Necrotic Decay duration is {debuff.duration} rounds. {hero.take_damage(hero.necrotic_decay_continuous_damage)}.{RESET}")
+                        elif debuff.duration == 0:
+                            hero.status['necrotic_decay'] = False
+                            hero.necrotic_decay_continuous_damage = 0
+                            if 'necrotic_decay' in hero.healing_reduction_effects:  # Ensure it is removed when expired
+                              del hero.healing_reduction_effects['necrotic_decay']
+                            hero.debuffs.remove(debuff)
+                            hero.buffs_debuffs_recycle_pool.append(debuff)
+                            self.game.display_status_updates(f"{BLUE}{hero.name} has recovered from Necrotic Decay.{RESET}")
 
                 
