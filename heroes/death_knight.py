@@ -128,8 +128,8 @@ class Death_Knight_Plague(Death_Knight):
     def __init__(self, sys_init, name, group, is_player_controlled):
         super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major)
         self.add_skill(Skill(self, "Necrotic Decay", self.necrotic_decay, target_type = "single", skill_type= "damage"))
-        #self.add_skill(Skill(self, "Virulent Infection", self.virulent_infection, target_type = "single", skill_type= "damage"))
-        #self.add_skill(Skill(self, "Pestilence", self.pestilence, target_type = "single", skill_type= "damage"))
+        self.add_skill(Skill(self, "Plague Strike", self.plague_strike, target_type = "single", skill_type= "damage"))
+        self.add_skill(Skill(self, "Pestilence", self.pestilence, target_type = "single", skill_type= "damage"))
 
     def necrotic_decay(self, other_hero):
         basic_damage = round((self.damage - other_hero.death_resistance) * 1/5)
@@ -161,3 +161,140 @@ class Death_Knight_Plague(Death_Knight):
         else:
             self.game.display_battle_info(f"{self.name} casts Necrotic Decay on {other_hero.name}.")
         return other_hero.take_damage(actual_damage)
+    
+    def plague_strike(self, other_hero):
+        basic_damage = round((self.damage - other_hero.defense) * 1/2)
+        variation = random.randint(-1, 1)
+        poison_bonus = 0
+        if other_hero.status['poisoned_dagger'] or other_hero.status['virulent_infection']:
+            poison_bonus = round((self.damage - other_hero.poison_resistance) * 1/2)  # Extra poison damage if already infected
+        total_damage = basic_damage + poison_bonus
+        actual_damage = max(1, total_damage + variation)
+
+        # Apply Virulent Infection if not already present
+        if not other_hero.status['virulent_infection']:
+            other_hero.status['virulent_infection'] = True
+            for debuff in other_hero.buffs_debuffs_recycle_pool:
+                if debuff.name == "Virulent Infection" and debuff.initiator == self:
+                    other_hero.buffs_debuffs_recycle_pool.remove(debuff)
+                    debuff.duration = 4  # Reset duration
+                    other_hero.add_debuff(debuff)
+                    other_hero.virulent_infection_continuous_damage = round((self.damage - other_hero.poison_resistance) * debuff.effect)
+                    break
+            # Apply new debuff
+            else:
+                debuff = Debuff(
+                    name='Virulent Infection',
+                    duration=4,
+                    initiator=self,
+                    effect=0.25  
+                )
+                other_hero.add_debuff(debuff)
+                other_hero.virulent_infection_continuous_damage = round((self.damage - other_hero.poison_resistance) * debuff.effect)
+            if poison_bonus == 0:
+                self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Plague Strike, infecting them with Virulent Infection!")
+                return other_hero.take_damage(actual_damage)
+            elif poison_bonus > 0:
+                self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Plague Strike, infecting them with Virulent Infection! This attack cause extra {poison_bonus} poison damage due to {other_hero.name} is in poison status")
+                return other_hero.take_damage(actual_damage)
+        else:
+            self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Plague Strike, this attack cause extra {poison_bonus} poison damage due to {other_hero.name} is in poison status")
+        return other_hero.take_damage(actual_damage)
+
+    def pestilence(self, other_hero):
+        # Calculate total continuous damage from existing diseases
+        total_continuous_damage = sum([
+            getattr(other_hero, "frost_fever_continuous_damage", 0),
+            getattr(other_hero, "necrotic_decay_continuous_damage", 0),
+            getattr(other_hero, "virulent_infection_continuous_damage", 0),
+            getattr(other_hero, "blood_plague_continuous_damage", 0)  # Placeholder for future design
+        ])
+
+        # Shadow damage calculation based on disease damage
+        coefficient = 1.0  # Balance coefficient
+        actual_damage = round(total_continuous_damage * coefficient)
+        actual_damage = max(1, actual_damage + random.randint(-2, 2))  # Small variation
+
+        results = []
+
+        # add cool down
+        for skill in self.skills:
+            if skill.name == "Pestilence":
+              skill.if_cooldown = True
+              skill.cooldown = 2
+
+        results.append((f"{self.name} unleashes Pestilence on {other_hero.name}, and spreads their diseases!"))
+        results.append(other_hero.take_damage(actual_damage))
+
+        # List of diseases and their corresponding resistance types
+        disease_resistance_map = {
+            "Frost Fever": "frost_resistance",
+            "Necrotic Decay": "death_resistance",
+            "Virulent Infection": "poison_resistance",
+            "Blood Plague": "shadow_resistance"
+        }
+
+        # Disease Spread Mechanic
+        for disease_name, resistance_type in disease_resistance_map.items():
+            if disease_name in [debuff.name for debuff in other_hero.debuffs]:  # If the target has this disease
+                for enemy_ally in other_hero.allies_self_excluded:
+                    if disease_name not in [debuff.name for debuff in enemy_ally.debuffs]:  # Avoid duplicate spreading
+                        # Spread chance based on target's resistance
+                        spread_success_rate = max(50, 90 - getattr(enemy_ally, resistance_type) / 2)
+
+                        if random.randint(1, 100) <= spread_success_rate:
+                            enemy_ally.status[disease_name.lower().replace(" ", "_")] = True
+                            if disease_name == "Frost Fever":
+                                new_debuff = Debuff(
+                                    name='Frost Fever',
+                                    duration = 4, 
+                                    initiator = self,
+                                    effect = 0.8
+                                )
+                                enemy_ally.add_debuff(new_debuff)
+                                agility_before_reducing = enemy_ally.agility
+                                enemy_ally.agility_reduced_amount_by_frost_fever = round(enemy_ally.original_agility * 0.30)  # Reduce target's agility by 30%
+                                enemy_ally.agility = enemy_ally.agility - enemy_ally.agility_reduced_amount_by_frost_fever
+                                basic_damage = round((self.damage - enemy_ally.frost_resistance) * 1/5)
+                                variation = random.randint(-1, 1)
+                                actual_damage = max(1, basic_damage + variation)
+                                enemy_ally.frost_fever_continuous_damage = round(actual_damage * new_debuff.effect)
+                                results.append((f"{enemy_ally.name} is infected with {disease_name}! {enemy_ally.name}'s agility is reduced from {agility_before_reducing} to {enemy_ally.agility}"))
+
+                            elif disease_name == "Necrotic Decay":
+                                new_debuff = Debuff(
+                                    name='Necrotic Decay',
+                                    duration=4,
+                                    initiator=self,
+                                    effect=0.8
+                                )
+                                enemy_ally.add_debuff(new_debuff)
+                                enemy_ally.healing_reduction_effects['necrotic_decay'] = 0.3
+                                basic_damage = round((self.damage - enemy_ally.death_resistance) * 1/5)
+                                variation = random.randint(-1, 1)
+                                actual_damage = max(1, basic_damage + variation)
+                                enemy_ally.necrotic_decay_continuous_damage = round(actual_damage * new_debuff.effect)
+                                results.append((f"{enemy_ally.name} is infected with {disease_name}! Their healing is reduced and they take continuous damage."))
+
+                            elif disease_name == "Virulent Infection":
+                                new_debuff = Debuff(
+                                    name='Virulent Infection',
+                                    duration=4,
+                                    initiator=self,
+                                    effect=0.25  
+                                )
+                                enemy_ally.add_debuff(new_debuff)
+                                variation = random.randint(-1, 1)
+                                other_hero.virulent_infection_continuous_damage = round((self.damage - other_hero.poison_resistance + variation) * new_debuff.effect)
+
+                                results.append((f"{enemy_ally.name} is infected with {disease_name}!"))
+
+                            elif disease_name == "Blood Plague":
+                                new_debuff = Debuff(
+                                    name=disease_name,
+                                    duration=4,
+                                    initiator=self,
+                                    effect=0.8 
+                                )
+                            
+        return "\n".join(results)

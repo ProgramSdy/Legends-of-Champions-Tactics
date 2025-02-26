@@ -187,7 +187,7 @@ class Game:
 
     def start_round(self): # Display Round count, HP, skill cool down, status information
         self.display_manual(f"{MAGENTA}---------------------------------------------------ROUND {self.round_counter}----------------------------------------------------{RESET}")
-        self.display_manual_log(f"{MAGENTA} ---------------------------------------------------ROUND {self.round_counter}------------------------------------------------- {RESET}")
+        self.display_manual_log(f"{MAGENTA} ---------------------------------------------------ROUND {self.round_counter}------------------------------------------------{RESET}")
         player_heroes_info = []  # Initialize player heroes info as a list
         opponent_heroes_info = []  # Initialize opponent heroes info as a list
 

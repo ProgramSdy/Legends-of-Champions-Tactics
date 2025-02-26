@@ -449,4 +449,40 @@ class StatusEffectManager:
                             hero.buffs_debuffs_recycle_pool.append(debuff)
                             self.game.display_status_updates(f"{BLUE}{hero.name} has recovered from Necrotic Decay.{RESET}")
 
-                
+            # Handle Virulent Infection Debuff
+            if hero.status['virulent_infection'] and hero.hp > 0:
+                for debuff in hero.debuffs:
+                    if debuff.name == "Virulent Infection":
+                        debuff.duration -= 1
+                        if debuff.duration > 0:
+                            # Apply continuous poison damage
+                            basic_damage = round((debuff.initiator.original_damage - hero.poison_resistance) * debuff.effect)
+                            variation = random.randint(-1, 1)
+                            hero.virulent_infection_continuous_damage = max(1, basic_damage + variation)
+                            self.game.display_status_updates(f"{BLUE}{hero.name}'s Virulent Infection is {debuff.duration} rounds. {hero.take_damage(hero.virulent_infection_continuous_damage)}.{RESET}")
+
+                            # Spread Mechanic (Every Other Round)
+                            if debuff.duration % 2 == 0:  # Spread occurs on even rounds
+                                possible_targets = [ally for ally in hero.allies if not ally.status['virulent_infection'] and ally is not hero]
+                                
+                                if possible_targets:
+                                    spread_target = min(possible_targets, key=lambda e: e.poison_resistance)  # Find lowest poison resistance enemy
+                                    spread_chance = round(min(1, 10/(spread_target.poison_resistance + 0.01)) * 100)  # Prevent division by zero
+                                    print(f"{RED}Debug: spread chance = {spread_chance}{RESET}")
+                                    if random.random() * 100 <= spread_chance:  # Convert to percentage chance
+                                        spread_target.status['virulent_infection'] = True
+                                        new_debuff = Debuff(
+                                            name='Virulent Infection',
+                                            duration=4,
+                                            initiator=debuff.initiator,
+                                            effect=0.4
+                                        )
+                                        spread_target.add_debuff(new_debuff)
+                                        spread_target.virulent_infection_continuous_damage = hero.virulent_infection_continuous_damage
+                                        self.game.display_status_updates(f"{spread_target.name} is infected with Virulent Infection as it spreads!")
+                        elif debuff.duration == 0:
+                            hero.status['virulent_infection'] = False
+                            hero.virulent_infection_continuous_damage = 0
+                            hero.debuffs.remove(debuff)
+                            hero.buffs_debuffs_recycle_pool.append(debuff)
+                            self.game.display_status_updates(f"{BLUE}{hero.name} has recovered from Virulent Infection.{RESET}")                

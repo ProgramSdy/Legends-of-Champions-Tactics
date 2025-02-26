@@ -55,12 +55,13 @@ class Hero:
         'hell_flame': False,
         'frost_fever': False,
         'icy_squall': False,
-        'necrotic_decay': False
+        'necrotic_decay': False,
+        'virulent_infection': False
     }
     list_status_debuff_magic = ['shadow_word_pain', 'poisoned_dagger', 'cold', 'holy_word_punishment', \
                                 'shadow_word_insanity', 'unholy_frenzy', 'curse_of_agony', 'fear', 'shadow_bolt', \
                                 'corrosion','soul_siphon', 'immolate', 'icy_squall']
-    list_status_debuff_disease = ['frost_fever', 'necrotic_decay']
+    list_status_debuff_disease = ['frost_fever', 'necrotic_decay', 'virulent_infection']
     list_status_debuff_physical  = ['armor_breaker', 'bleeding_slash','bleeding_sharp_blade']
     list_status_debuff_bleeding = ['bleeding_slash','bleeding_sharp_blade']
     list_status_buff_magic = ['shield_of_righteous','holy_word_shell','holy_word_redemption', 'holy_fire', 'unholy_frenzy', 'holy_infusion', 'hell_flame']
@@ -178,6 +179,8 @@ class Hero:
         self.agility_reduced_amount_by_frost_fever = 0 # Track the amount of agility reduced by frost fever
         self.frost_resistance_reduced_amount_by_icy_squall = 0 #Track the amount of frost resistance reduced by icy squall
         self.healing_reduction_by_necrotic_decay = 0 #Track the amount of healing reduction by necrotic decay
+        self.necrotic_decay_continuous_damage = 0
+        self.virulent_infection_continuous_damage = 0
 
 
     @classmethod
@@ -459,6 +462,9 @@ class Hero:
                 self.debuffs.remove(debuff)
                 self.buffs_debuffs_recycle_pool.append(debuff)
           if self.status['necrotic_decay']:
+            for debuff in self.debuffs:
+              if debuff.name == "Necrotic Decay":
+                 damage = debuff.initiator.damage
             possible_targets = [ally for ally in self.allies if not ally.status['necrotic_decay']]
             if possible_targets:
                 spread_target = random.choice(possible_targets)
@@ -471,6 +477,11 @@ class Hero:
                         effect=0.8
                     )
                     spread_target.add_debuff(new_debuff)
+                    spread_target.healing_reduction_effects['necrotic_decay'] = 0.3 
+                    basic_damage = round((damage - spread_target.death_resistance) * 1/5)
+                    variation = random.randint(-1, 1)
+                    actual_damage = max(1, basic_damage + variation)
+                    spread_target.necrotic_decay_continuous_damage = round(actual_damage * debuff.effect)
                     results.append(f"{spread_target.name} is infected with Necrotic Decay as {self.name} falls in battle!")
           return "\n".join(results)
         else:

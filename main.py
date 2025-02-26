@@ -45,21 +45,25 @@ def main():
       if hero.name == 'Player 3':
         hero.is_player_controlled = False
     '''
+    #'''
     Player_1 = Death_Knight_Frost(sys_init, "Arthas", "Group_A", True)
     Player_2 = Death_Knight_Plague(sys_init, "Shadow_eye", "Group_A", True)
-    player_heroes = [Player_1, Player_2]
-
+    Player_3 = Priest_Comprehensiveness(sys_init, "Silver Hand", "Group_A", False)
+    player_heroes = [Player_1, Player_2, Player_3]
+    #'''
     
 
     # Opponent hero generator__________________________________________
-    '''
+    #'''
     generator_ai = HeroGenerator(sys_init)
-    opponent_heroes = generator_ai.generate_heroes("Group_B", 2)
+    opponent_heroes = generator_ai.generate_heroes("Group_B", 3)
+    #'''
     '''
-    Galahad = Warrior_Comprehensiveness(sys_init, "Bors", "Group_B", False)
-    Deepseer = Priest_Discipline(sys_init,"Deepseer", "Group_B", False)
-    opponent_heroes = [Galahad, Deepseer]
-    
+    Galahad = Mage_Comprehensiveness(sys_init, "Galahad", "Group_B", False)
+    Deep_Seer = Priest_Shadow(sys_init,"Aldric", "Group_B", False)
+    Rohan = Warlock_Comprehensiveness(sys_init, "Draximus", "Group_B", False)
+    opponent_heroes = [Galahad, Deep_Seer, Rohan]
+    '''
     # Display heroes from both sides__________________________________________
     '''
     for player_hero in player_heroes:

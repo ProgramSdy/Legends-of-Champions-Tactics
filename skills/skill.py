@@ -94,6 +94,9 @@ class Skill:
                     if self.name == "Shadow Word Insanity" or self.name == "Curse of Fear":
                       self.if_cooldown = True
                       self.cooldown = 3
+                    elif self.name == "Pestilence":
+                      self.if_cooldown = True
+                      self.cooldown = 2
                       return f"{self.initiator.name} tries to use {self.name} on {opponents.name}, but {opponents.name} evades the attack."
                     else:
                       return f"{self.initiator.name} tries to use {self.name} on {opponents.name}, but {opponents.name} evades the attack."
@@ -115,6 +118,9 @@ class Skill:
                   #print(f"{self.initiator.name} use {self.name} on {target_names}.")
                   return self.skill_action(target_hit)
                 elif not target_hit: # all targets miss
+                  if self.name == "Icy Squall":
+                      self.if_cooldown = True
+                      self.cooldown = 2
                   target_names = ', '.join([target.name for target in target_evaded])
                   return f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} evades the attack."
                 else:

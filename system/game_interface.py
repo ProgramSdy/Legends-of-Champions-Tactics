@@ -234,6 +234,7 @@ class GameInterface:
         """Draw player or opponent hero info."""
         gap = 10
         line_height = 25
+        gap_between_hero = 50
         x, y = rect.x + gap, rect.y + 4 * gap
 
         for hero in heroes:
@@ -254,7 +255,7 @@ class GameInterface:
             # HP text
             hp_text = self.font.render(f"{hero.hp}/{hero.hp_max}", True, (255, 255, 255))
             self.dynamic_surface.blit(hp_text, (x + hp_bar_width + 5, y))
-            y += line_height
+            y += gap_between_hero
 
             # Buffs
             '''

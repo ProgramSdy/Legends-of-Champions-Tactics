@@ -12,8 +12,9 @@ class HeroGenerator:
       self.priset_names_list = ["Lioren", "Seraphina", "Aldric"]
       self.paladin_names_list = ["Galahad", "Percival", "Bors"]
       self.rogue_names_list = ["Vanishan", "Nighthawk", "Venombane"]
-      self.necromancer_names_list = ["Mortis Darkwood", "Lysander shadowgrave", "Vespera Nightshade"]
+      self.necromancer_names_list = ["Mortis Darkwood", "Lysander Shadowgrave", "Vespera Nightshade"]
       self.warlock_names_list = ["Draximus", "Morvina", "Thalrok"]
+      self.death_knight_names_list = ["Mordrath the Fallen","Varkul Dreadbane","Xal'Thazar the Unyielding"  ]
       self.sys_init = sys_init
 
       self.hero_classes = {
@@ -36,7 +37,10 @@ class HeroGenerator:
             # Warlock
             Warlock_Comprehensiveness: self.warlock_names_list,
             Warlock_Affliction: self.warlock_names_list,
-            Warlock_Destruction: self.warlock_names_list
+            Warlock_Destruction: self.warlock_names_list,
+            # Death Knight
+            Death_Knight_Frost: self.death_knight_names_list,
+            Death_Knight_Plague: self.death_knight_names_list
             }
       self.hero_classes_list = list(self.hero_classes.keys())
       self.used_names = set()

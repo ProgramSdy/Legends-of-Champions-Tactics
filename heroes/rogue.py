@@ -52,7 +52,7 @@ class Rogue_Comprehensiveness(Rogue):
         # Apply damage to the other hero's HP
         return other_hero.take_damage(damage_dealt)
 
-    def poisoned_dagger(self, other_hero): #poisoned dagger debuff can stack twice, and continuous damage from poison is a magial damage
+    def poisoned_dagger(self, other_hero): #poisoned dagger debuff can stack twice, and continuous damage is a poison damage
         variation = random.randint(-2, 2)
         actual_damage = self.damage + variation
         damage_dealt = int((actual_damage - other_hero.defense)/2)
