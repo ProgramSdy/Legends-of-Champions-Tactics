@@ -53,6 +53,7 @@ class Death_Knight_Frost(Death_Knight):
                 initiator = self,
                 effect = 0.8
                 )
+            debuff.type = ['Disease']
             other_hero.add_debuff(debuff)
             other_hero.frost_fever_continuous_damage = round(actual_damage * debuff.effect)
             self.game.display_battle_info(f"{self.name} casts Frost Fever on {other_hero.name}. {other_hero.name} is feeling cold and their agility is reduced from {agility_before_reducing} to {other_hero.agility}.")
@@ -154,6 +155,7 @@ class Death_Knight_Plague(Death_Knight):
                 initiator=self,
                 effect=0.8
             )
+            debuff.type = ['Disease']
             other_hero.add_debuff(debuff)
             other_hero.necrotic_decay_continuous_damage = round(actual_damage * debuff.effect)
             self.game.display_battle_info(f"{self.name} casts Necrotic Decay on {other_hero.name}. Their healing is reduced and they take continuous damage.")
@@ -189,6 +191,7 @@ class Death_Knight_Plague(Death_Knight):
                     initiator=self,
                     effect=0.25  
                 )
+                debuff.type = ['Disease']
                 other_hero.add_debuff(debuff)
                 other_hero.virulent_infection_continuous_damage = round((self.damage - other_hero.poison_resistance) * debuff.effect)
             if poison_bonus == 0:
@@ -297,4 +300,54 @@ class Death_Knight_Plague(Death_Knight):
                                     effect=0.8 
                                 )
                             
+        return "\n".join(results)
+    
+class Death_Knight_Blood(Death_Knight):
+
+    major = "Blood"
+
+    def __init__(self, sys_init, name, group, is_player_controlled):
+        super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major)
+        self.add_skill(Skill(self, "Blood Plague", self.blood_plague, target_type = "single", skill_type= "damage"))
+        #self.add_skill(Skill(self, "Crimson Cleave", self.icy_squall, target_type = "single", skill_type= "damage"))
+        #self.add_skill(Skill(self, "Cumbrous Axe", self.winty_strike, target_type = "single", skill_type= "damage"))
+
+    def blood_plague(self, other_hero):
+        basic_damage = round((self.damage - other_hero.shadow_resistance) * 1/5)
+        variation = random.randint(-1, 1)
+        actual_damage = max(1, basic_damage + variation)
+        blood_drain = round(actual_damage * 0.8)
+        results = []
+        
+        if not other_hero.status['blood_plague']:
+            other_hero.status['blood_plague'] = True
+            for debuff in other_hero.buffs_debuffs_recycle_pool:
+                if debuff.name == "Blood Plague" and debuff.initiator == self:
+                    other_hero.buffs_debuffs_recycle_pool.remove(debuff)
+                    debuff.duration = 4
+                    other_hero.add_debuff(debuff)
+                    other_hero.blood_plague_continuous_damage = round(actual_damage * debuff.effect)
+                    other_hero.blood_plague_blood_drain = other_hero.blood_plague_continuous_damage * debuff.effect
+                    results.append(f"{self.name} casts Blood Plague on {other_hero.name}. {other_hero.name} is taking continuous damage.")
+                    results.append(other_hero.take_damage(actual_damage))
+                    results.append(f"{self.name} is draining blood. {self.take_healing(blood_drain)}")
+            
+            debuff = Debuff(
+                name='Blood Plague',
+                duration=4,
+                initiator=self,
+                effect=0.8
+            )
+            debuff.type = ['Disease']
+            other_hero.add_debuff(debuff)
+            other_hero.blood_plague_continuous_damage = round(actual_damage * debuff.effect)
+            other_hero.blood_plague_blood_drain = other_hero.blood_plague_continuous_damage * debuff.effect
+            results.append(f"{self.name} casts Blood Plague on {other_hero.name}. {other_hero.name} is taking continuous damage.")
+            results.append(other_hero.take_damage(actual_damage))
+            results.append(f"{self.name} is draining blood. {self.take_healing(blood_drain)}")
+        else:
+            results.append(f"{self.name} casts Blood Plague on {other_hero.name}.")
+            results.append(other_hero.take_damage(actual_damage))
+            results.append(f"{self.name} is draining blood. {self.take_healing(blood_drain)}")
+    
         return "\n".join(results)

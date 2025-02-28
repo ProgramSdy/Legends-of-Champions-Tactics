@@ -56,14 +56,16 @@ class Hero:
         'frost_fever': False,
         'icy_squall': False,
         'necrotic_decay': False,
-        'virulent_infection': False
+        'virulent_infection': False,
+        'blood_plague': False,
+        'bleeding_crimson_cleave': False
     }
     list_status_debuff_magic = ['shadow_word_pain', 'poisoned_dagger', 'cold', 'holy_word_punishment', \
                                 'shadow_word_insanity', 'unholy_frenzy', 'curse_of_agony', 'fear', 'shadow_bolt', \
                                 'corrosion','soul_siphon', 'immolate', 'icy_squall']
-    list_status_debuff_disease = ['frost_fever', 'necrotic_decay', 'virulent_infection']
+    list_status_debuff_disease = ['frost_fever', 'necrotic_decay', 'virulent_infection', 'blood_plague']
     list_status_debuff_physical  = ['armor_breaker', 'bleeding_slash','bleeding_sharp_blade']
-    list_status_debuff_bleeding = ['bleeding_slash','bleeding_sharp_blade']
+    list_status_debuff_bleeding = ['bleeding_slash','bleeding_sharp_blade', 'bleeding_crimson_cleave']
     list_status_buff_magic = ['shield_of_righteous','holy_word_shell','holy_word_redemption', 'holy_fire', 'unholy_frenzy', 'holy_infusion', 'hell_flame']
     list_status_buff_physical = []
 
@@ -181,6 +183,8 @@ class Hero:
         self.healing_reduction_by_necrotic_decay = 0 #Track the amount of healing reduction by necrotic decay
         self.necrotic_decay_continuous_damage = 0
         self.virulent_infection_continuous_damage = 0
+        self.blood_plague_continuous_damage = 0
+        self.blood_plague_blood_drain = 0
 
 
     @classmethod

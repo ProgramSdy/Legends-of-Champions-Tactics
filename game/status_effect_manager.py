@@ -485,4 +485,61 @@ class StatusEffectManager:
                             hero.virulent_infection_continuous_damage = 0
                             hero.debuffs.remove(debuff)
                             hero.buffs_debuffs_recycle_pool.append(debuff)
-                            self.game.display_status_updates(f"{BLUE}{hero.name} has recovered from Virulent Infection.{RESET}")                
+                            self.game.display_status_updates(f"{BLUE}{hero.name} has recovered from Virulent Infection.{RESET}")
+
+            # Handle Blood Plague Debuff
+            if hero.status['blood_plague'] and hero.hp > 0:
+                for debuff in hero.debuffs:
+                    if debuff.name == "Blood Plague":
+                        debuff.duration -= 1
+                        if debuff.duration > 0:
+                            # Apply continuous damage
+                            basic_damage = round((debuff.initiator.damage - hero.shadow_resistance) * 1/5)
+                            variation = random.randint(-1, 1)
+                            actual_damage = max(1, basic_damage + variation)
+                            hero.blood_plague_continuous_damage = round(actual_damage * debuff.effect)
+                            hero.blood_plague_blood_drain = hero.blood_plague_continuous_damage * debuff.effect
+                            self.game.display_status_updates(f"{BLUE}{hero.name}'s Blood Plague is {debuff.duration} rounds. {hero.take_damage(hero.blood_plague_continuous_damage)}.{RESET}")
+                            self.game.display_status_updates(f"{debuff.initiator.name} is draining blood. {debuff.initiator.take_healing(hero.blood_plague_blood_drain)}")
+
+                            # Spread Mechanic (odd rounds)
+                            if debuff.duration == 3 or debuff.duration == 1:  # Spread occurs on odd rounds
+                                possible_targets = [ally for ally in hero.allies if not ally.status['blood_plague'] and ally is not hero]
+                                definite_targets = [ally for ally in possible_targets if ally.status['bleeding_slash'] or ally.status['bleeding_sharp_blade'] or ally.status['bleeding_crimson_cleave'] ]
+                                
+                                if definite_targets:
+                                   spread_target = random.choice(definite_targets)
+                                   spread_target.status['blood_plague'] = True
+                                   new_debuff = Debuff(
+                                     name='Blood Plague',
+                                     duration=4,
+                                     initiator=debuff.initiator,
+                                     effect=0.8
+                                   )
+                                   spread_target.add_debuff(new_debuff)
+                                   spread_target.blood_plague_continuous_damage = hero.blood_plague_continuous_damage
+                                   spread_target.blood_plague_blood_drain = spread_target.blood_plague_continuous_damage * debuff.effect
+                                   self.game.display_status_updates(f"{spread_target.name} is infected with Blood Plague due to their bleeding!")
+                                elif possible_targets:
+                                    spread_target = min(possible_targets, key=lambda e: e.shadow_resistance)  # Find lowest shadow resistance enemy
+                                    spread_chance = round(min(1, 10/(spread_target.shadow_resistance + 0.01)) * 100)  # Prevent division by zero
+                                    print(f"{RED}Debug: spread chance = {spread_chance}{RESET}")
+                                    if random.random() * 100 <= spread_chance:  # Convert to percentage chance
+                                        spread_target.status['blood_plague'] = True
+                                        new_debuff = Debuff(
+                                            name='Blood Plague',
+                                            duration=4,
+                                            initiator=debuff.initiator,
+                                            effect=0.8
+                                        )
+                                        spread_target.add_debuff(new_debuff)
+                                        spread_target.blood_plague_continuous_damage = hero.blood_plague_continuous_damage
+                                        spread_target.blood_plague_blood_drain = spread_target.blood_plague_continuous_damage * debuff.effect
+                                        self.game.display_status_updates(f"{spread_target.name} is infected with Blood Plague as it is spreading!")
+                        elif debuff.duration == 0:
+                            hero.status['blood_plague'] = False
+                            hero.blood_plague_continuous_damage = 0
+                            hero.blood_plague_blood_drain = 0
+                            hero.debuffs.remove(debuff)
+                            hero.buffs_debuffs_recycle_pool.append(debuff)
+                            self.game.display_status_updates(f"{BLUE}{hero.name} has recovered from Blood Plague.{RESET}")                      

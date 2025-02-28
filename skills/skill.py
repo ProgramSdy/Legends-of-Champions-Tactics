@@ -214,6 +214,7 @@ class Buff:
         self.duration = duration
         self.initiator = initiator
         self.effect = effect
+        self.type = ['none']
 
 class Debuff:
   def __init__(self, name, duration, initiator, effect):
@@ -221,3 +222,4 @@ class Debuff:
         self.duration = duration
         self.initiator = initiator
         self.effect = effect
+        self.type = ['none']

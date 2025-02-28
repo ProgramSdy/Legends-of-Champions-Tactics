@@ -47,8 +47,8 @@ def main():
     '''
     #'''
     Player_1 = Death_Knight_Frost(sys_init, "Arthas", "Group_A", True)
-    Player_2 = Death_Knight_Plague(sys_init, "Shadow_eye", "Group_A", True)
-    Player_3 = Priest_Comprehensiveness(sys_init, "Silver Hand", "Group_A", False)
+    Player_2 = Death_Knight_Blood(sys_init, "Shadow_eye", "Group_A", True)
+    Player_3 = Rogue_Comprehensiveness(sys_init, "Silver Hand", "Group_A", True)
     player_heroes = [Player_1, Player_2, Player_3]
     #'''
     
