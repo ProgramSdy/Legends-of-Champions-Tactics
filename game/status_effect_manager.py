@@ -58,7 +58,7 @@ class StatusEffectManager:
                 elif hero.bleeding_slash_duration == 0:
                     hero.bleeding_slash_continuous_damage = 0
                     hero.status['bleeding_slash'] = False
-                    self.game.display_status_updates(f"{BLUE}{hero.name} has stopped bleeding.{RESET}")
+                    self.game.display_status_updates(f"{BLUE}{hero.name} has stopped bleeding. Their wound from Slash has recovered.{RESET}")
 
             # Handle Shield of Righteous Buff
             if hero.status['shield_of_righteous'] and hero.hp > 0:
@@ -103,7 +103,7 @@ class StatusEffectManager:
                 elif hero.sharp_blade_debuff_duration == 0:
                     hero.sharp_blade_continuous_damage = 0 # Reset shadow word pain continuous_damage
                     hero.status['bleeding_sharp_blade'] = False
-                    self.game.display_status_updates(f"{BLUE}{hero.name} is no longer bleeding.{RESET}")
+                    self.game.display_status_updates(f"{BLUE}{hero.name} is no longer bleeding. Their wound from Sharp Blade has recovered.{RESET}")
 
             # Shadow Evasion Buff Duration
             if hero.status['shadow_evasion'] and hero.hp > 0:
@@ -500,7 +500,8 @@ class StatusEffectManager:
                             hero.blood_plague_continuous_damage = round(actual_damage * debuff.effect)
                             hero.blood_plague_blood_drain = hero.blood_plague_continuous_damage * debuff.effect
                             self.game.display_status_updates(f"{BLUE}{hero.name}'s Blood Plague is {debuff.duration} rounds. {hero.take_damage(hero.blood_plague_continuous_damage)}.{RESET}")
-                            self.game.display_status_updates(f"{debuff.initiator.name} is draining blood. {debuff.initiator.take_healing(hero.blood_plague_blood_drain)}")
+                            if debuff.initiator.hp > 0:
+                              self.game.display_status_updates(f"{BLUE}{debuff.initiator.name} is draining blood. {debuff.initiator.take_healing(hero.blood_plague_blood_drain)}{RESET}")
 
                             # Spread Mechanic (odd rounds)
                             if debuff.duration == 3 or debuff.duration == 1:  # Spread occurs on odd rounds
@@ -519,7 +520,7 @@ class StatusEffectManager:
                                    spread_target.add_debuff(new_debuff)
                                    spread_target.blood_plague_continuous_damage = hero.blood_plague_continuous_damage
                                    spread_target.blood_plague_blood_drain = spread_target.blood_plague_continuous_damage * debuff.effect
-                                   self.game.display_status_updates(f"{spread_target.name} is infected with Blood Plague due to their bleeding!")
+                                   self.game.display_status_updates(f"{BLUE}{spread_target.name} is infected with Blood Plague due to their bleeding!{RESET}")
                                 elif possible_targets:
                                     spread_target = min(possible_targets, key=lambda e: e.shadow_resistance)  # Find lowest shadow resistance enemy
                                     spread_chance = round(min(1, 10/(spread_target.shadow_resistance + 0.01)) * 100)  # Prevent division by zero
@@ -535,11 +536,51 @@ class StatusEffectManager:
                                         spread_target.add_debuff(new_debuff)
                                         spread_target.blood_plague_continuous_damage = hero.blood_plague_continuous_damage
                                         spread_target.blood_plague_blood_drain = spread_target.blood_plague_continuous_damage * debuff.effect
-                                        self.game.display_status_updates(f"{spread_target.name} is infected with Blood Plague as it is spreading!")
+                                        self.game.display_status_updates(f"{BLUE}{spread_target.name} is infected with Blood Plague as it is spreading!{RESET}")
                         elif debuff.duration == 0:
                             hero.status['blood_plague'] = False
                             hero.blood_plague_continuous_damage = 0
                             hero.blood_plague_blood_drain = 0
                             hero.debuffs.remove(debuff)
                             hero.buffs_debuffs_recycle_pool.append(debuff)
-                            self.game.display_status_updates(f"{BLUE}{hero.name} has recovered from Blood Plague.{RESET}")                      
+                            self.game.display_status_updates(f"{BLUE}{hero.name} has recovered from Blood Plague.{RESET}")   
+
+            # Handle Bleeding_Crimson_Cleave
+            if hero.status['bleeding_crimson_cleave'] and hero.hp > 0:
+                hero.bleeding_crimson_cleave_duration -=1
+                if hero.bleeding_crimson_cleave_duration > 0:
+                    variation = random.randint(-2, 2)
+                    self.game.display_status_updates(f"{BLUE}{hero.name}'s bleeding effect from Crimson Cleave is {hero.bleeding_crimson_cleave_duration} rounds. {hero.take_damage(hero.bleeding_crimson_cleave_continuous_damage + variation)}{RESET}")
+                elif hero.bleeding_crimson_cleave_duration == 0:
+                    hero.bleeding_slash_continuous_damage = 0
+                    hero.status['bleeding_crimson_cleave'] = False
+                    self.game.display_status_updates(f"{BLUE}{hero.name} has stopped bleeding. Their wound from Crimson Cleave has recovered.{RESET}")     
+
+            # Handle Cumbrous Axe Buff
+            if hero.status['cumbrous_axe'] and hero.hp > 0:
+                for buff in hero.buffs:
+                    if buff.name == "Cumbrous Axe":
+                        buff.duration -= 1
+                        if buff.duration > 0:
+                            self.game.display_status_updates(f"{BLUE}{hero.name}'s Cumbrous Axe duration is {buff.duration} rounds. The healing {hero.name} receives is boost.{RESET}")
+                        elif buff.duration == 0:
+                            hero.status['cumbrous_axe'] = False
+                            if 'cumbrous_axe' in hero.healing_boost_effects:  # Ensure it is removed when expired
+                              del hero.healing_boost_effects['cumbrous_axe']
+                            hero.buffs.remove(buff)
+                            hero.buffs_debuffs_recycle_pool.append(buff)
+                            self.game.display_status_updates(f"{BLUE}{hero.name}'s Cumbrous Axe effect has disappeared. {hero.name} has stopped receiving boost healing.{RESET}")    
+
+            # Handle Scoff debuff
+            for debuff in hero.debuffs:
+                if debuff.name == "Scoff":
+                  if debuff.duration == 1 and hero.hp > 0:
+                      if hero.status['scoff']:
+                        self.game.display_status_updates(f"{RED}{hero.name} is in an scoff state, {hero.name} has a deep hatred toward {debuff.initiator.name}.{RESET}")
+                        print(f"Debuff Duration = {debuff.duration}")
+                      else:
+                          debuff.duration -=1
+                          hero.debuffs.remove(debuff)
+                          hero.buffs_debuffs_recycle_pool.append(debuff)
+                          self.game.display_status_updates(f"{RED}{hero.name} has recovered from scoff.{RESET}")    
+    

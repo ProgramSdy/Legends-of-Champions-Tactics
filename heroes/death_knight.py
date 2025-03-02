@@ -214,8 +214,8 @@ class Death_Knight_Plague(Death_Knight):
         ])
 
         # Shadow damage calculation based on disease damage
-        coefficient = 1.0  # Balance coefficient
-        actual_damage = round(total_continuous_damage * coefficient)
+        coefficient = 4  # Balance coefficient
+        actual_damage = round(total_continuous_damage * coefficient - other_hero.death_resistance)
         actual_damage = max(1, actual_damage + random.randint(-2, 2))  # Small variation
 
         results = []
@@ -309,8 +309,8 @@ class Death_Knight_Blood(Death_Knight):
     def __init__(self, sys_init, name, group, is_player_controlled):
         super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major)
         self.add_skill(Skill(self, "Blood Plague", self.blood_plague, target_type = "single", skill_type= "damage"))
-        #self.add_skill(Skill(self, "Crimson Cleave", self.icy_squall, target_type = "single", skill_type= "damage"))
-        #self.add_skill(Skill(self, "Cumbrous Axe", self.winty_strike, target_type = "single", skill_type= "damage"))
+        self.add_skill(Skill(self, "Crimson Cleave", self.crimson_cleave, target_type = "single", skill_type= "damage"))
+        self.add_skill(Skill(self, "Cumbrous Axe", self.cumbrous_axe, target_type = "single", skill_type= "damage"))
 
     def blood_plague(self, other_hero):
         basic_damage = round((self.damage - other_hero.shadow_resistance) * 1/5)
@@ -351,3 +351,87 @@ class Death_Knight_Blood(Death_Knight):
             results.append(f"{self.name} is draining blood. {self.take_healing(blood_drain)}")
     
         return "\n".join(results)
+    
+    def crimson_cleave(self, other_hero):
+        variation = random.randint(-2, 2)
+        basic_damage_weapon = round((self.damage - other_hero.defense) * 1/3)
+        basic_damage_frost = round((self.damage - other_hero.shadow_resistance) * 1/3)
+        basic_damage = basic_damage_weapon + basic_damage_frost
+        actual_damage = max(1, basic_damage + variation)
+        if other_hero.status['blood_plague'] == True:
+          extra_shadow_damage = random.randint(3, 5)
+          actual_damage += extra_shadow_damage
+          accuracy = 100  # Bleeding effect has a 50% chance to succeed
+          roll = random.randint(1, 100)  # Simulate a roll of 100-sided dice
+          if roll <= accuracy and other_hero.status['bleeding_crimson_cleave'] == False:
+            other_hero.status['bleeding_crimson_cleave'] = True
+            other_hero.status['normal'] = False
+            other_hero.bleeding_crimson_cleave_duration = 3
+            other_hero.bleeding_crimson_cleave_continuous_damage = random.randint(5, 10)
+            self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Crimson Cleave, {other_hero.name} is bleeding. This attack causes extra {extra_shadow_damage} shadow damage because {other_hero.name} is infected by Blood Plague.")
+          else:
+            self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Crimson Cleave. This attack causes extra {extra_shadow_damage} shadow damage because {other_hero.name} is infected by Blood Plague.")
+        else:
+          accuracy = 100  # Bleeding effect has a 50% chance to succeed
+          roll = random.randint(1, 100)  # Simulate a roll of 100-sided dice
+          if roll <= accuracy and other_hero.status['bleeding_crimson_cleave'] == False:
+            other_hero.status['bleeding_crimson_cleave'] = True
+            other_hero.status['normal'] = False
+            other_hero.bleeding_crimson_cleave_duration = 3
+            other_hero.bleeding_crimson_cleave_continuous_damage = random.randint(5, 10)
+            self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Crimson Cleave, {other_hero.name} is bleeding.")
+          else:
+            self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Crimson Cleave.")
+
+        return other_hero.take_damage(actual_damage)
+    
+    def cumbrous_axe(self, other_hero):
+        other_hero.status['scoff'] = True
+        self.status['cumbrous_axe'] = True
+        self.healing_boost_effects['cumbrous_axe'] = 1.0
+        basic_damage = round((self.damage - other_hero.defense) * 1/2)
+        variation = random.randint(-1, 1)
+        actual_damage = max(1, basic_damage + variation)
+        for debuff in other_hero.buffs_debuffs_recycle_pool:
+                if debuff.name == "Scoff" and debuff.initiator == self:
+                    other_hero.buffs_debuffs_recycle_pool.remove(debuff)
+                    debuff.duration = 1
+                    other_hero.add_debuff(debuff)   
+        else:
+            debuff = Debuff(
+                name='Scoff',
+                duration=1,
+                initiator=self,
+                effect=1
+            )
+            other_hero.add_debuff(debuff)
+
+        for buff in self.buffs_debuffs_recycle_pool:
+                if buff.name == "Cumbrous Axe" and buff.initiator == self:
+                    self.buffs_debuffs_recycle_pool.remove(buff)
+                    buff.duration = 2
+                    self.add_buff(buff)   
+        else:
+            buff = Buff(
+                name='Cumbrous Axe',
+                duration=2,
+                initiator=self,
+                effect=1
+            )
+            self.add_buff(buff)
+
+        if other_hero.status['magic_casting'] == True:
+          result = self.interrupt_magic_casting(other_hero)
+          other_hero.scoff_cumbrous_axe_duration = 2
+          for skill in self.skills:
+            if skill.name == "Cumbrous Axe":
+              skill.if_cooldown = True
+              skill.cooldown = 3
+          return f"{self.name} casts Cumbrous Axe on {other_hero.name}. {other_hero.take_damage(actual_damage)}. The healing {self.name} receives is boost. {other_hero.name} developed a deep hatred toward {self.name}. {result}"
+        else:
+          other_hero.scoff_cumbrous_axe_duration = 2
+          for skill in self.skills:
+            if skill.name == "Cumbrous Axe":
+              skill.if_cooldown = True
+              skill.cooldown = 3
+          return f"{self.name} casts Cumbrous Axe on {other_hero.name}. {other_hero.take_damage(actual_damage)}. The healing {self.name} receives is boost. {other_hero.name} developed a deep hatred toward {self.name}."

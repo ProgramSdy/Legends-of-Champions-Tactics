@@ -58,7 +58,9 @@ class Hero:
         'necrotic_decay': False,
         'virulent_infection': False,
         'blood_plague': False,
-        'bleeding_crimson_cleave': False
+        'bleeding_crimson_cleave': False,
+        'cumbrous_axe': False,
+        'scoff': False
     }
     list_status_debuff_magic = ['shadow_word_pain', 'poisoned_dagger', 'cold', 'holy_word_punishment', \
                                 'shadow_word_insanity', 'unholy_frenzy', 'curse_of_agony', 'fear', 'shadow_bolt', \
@@ -66,7 +68,7 @@ class Hero:
     list_status_debuff_disease = ['frost_fever', 'necrotic_decay', 'virulent_infection', 'blood_plague']
     list_status_debuff_physical  = ['armor_breaker', 'bleeding_slash','bleeding_sharp_blade']
     list_status_debuff_bleeding = ['bleeding_slash','bleeding_sharp_blade', 'bleeding_crimson_cleave']
-    list_status_buff_magic = ['shield_of_righteous','holy_word_shell','holy_word_redemption', 'holy_fire', 'unholy_frenzy', 'holy_infusion', 'hell_flame']
+    list_status_buff_magic = ['shield_of_righteous','holy_word_shell','holy_word_redemption', 'holy_fire', 'unholy_frenzy', 'holy_infusion', 'hell_flame', 'cumbrous_axe']
     list_status_buff_physical = []
 
 
@@ -115,6 +117,7 @@ class Hero:
         self.casting_magic = None
         self.casting_magic_target = None
         self.healing_reduction_effects = {}
+        self.healing_boost_effects = {}
 
         # Status buff and debuff
         self.status = self.status.copy() # Copy the status dictionary for individual management
@@ -153,6 +156,7 @@ class Hero:
         self.soul_siphon_duration = 0
         self.holy_infusion_cooldown = 0
         self.hell_flame_cooldown = 0
+        self.bleeding_crimson_cleave_duration = 0
 
         self.armor_breaker_stacks = 0 # Track number of Armor Breaker applications
         self.bleeding_slash_continuous_damage = 0 # Track the continuous damage of Bleeding Slash
@@ -185,6 +189,7 @@ class Hero:
         self.virulent_infection_continuous_damage = 0
         self.blood_plague_continuous_damage = 0
         self.blood_plague_blood_drain = 0
+        self.bleeding_crimson_cleave_continuous_damage = 0
 
 
     @classmethod
@@ -664,9 +669,12 @@ class Hero:
         self.debuffs.append(debuff)
 
     def take_healing(self, healing_amount):
+      total_boost = sum(self.healing_boost_effects.values())  # Sum all healing boosts
       total_reduction = sum(self.healing_reduction_effects.values())  # Sum all healing reductions
-      total_reduction = min(total_reduction, 1)  # Cap reduction at 100% (prevents over-reduction)
-      final_healing = round(healing_amount * (1 - total_reduction))
+      total_reduction = min(total_reduction, 1)  # Cap reduction at 100% to avoid negative healing
+      net_modifier = 1 + total_boost - total_reduction
+      net_modifier = max(0, net_modifier)  # Ensure healing is not negative
+      final_healing = round(healing_amount * net_modifier)
       self.hp = min(self.hp_max, self.hp + final_healing)
       return f"{self.name} takes {final_healing} healing and has {self.hp} HP left."
 
@@ -937,20 +945,28 @@ class Hero:
 
         if self.status['stunned'] == False:
           if self.status['fear'] == False:
-            if self.status['magic_casting'] == False:
-              if self.skills:
-                  chosen_skill = self.ai_choose_skill(opponents, allies)
-                  chosen_target = self.ai_choose_target(chosen_skill, opponents, allies)
-                  if opponents:
-                      return chosen_skill.execute(chosen_target)
-                  else:
-                      return f"{self.name} tries to use {chosen_skill}, but it's not implemented or no valid opponents."
-              else:
-                  return f"{self.name} has no skills to use."
-            elif self.status['magic_casting'] == True and self.magic_casting_duration == 0:
-              return self.casting_magic.execute(self.casting_magic_target)
-            elif self.status['magic_casting'] == True and self.magic_casting_duration > 0:
-              return f"{self.name} is casting {self.casting_magic.name}."
+            if self.status['scoff'] == False:
+              if self.status['magic_casting'] == False:
+                if self.skills:
+                    chosen_skill = self.ai_choose_skill(opponents, allies)
+                    chosen_target = self.ai_choose_target(chosen_skill, opponents, allies)
+                    if opponents:
+                        return chosen_skill.execute(chosen_target)
+                    else:
+                        return f"{self.name} tries to use {chosen_skill}, but it's not implemented or no valid opponents."
+                else:
+                    return f"{self.name} has no skills to use."
+              elif self.status['magic_casting'] == True and self.magic_casting_duration == 0:
+                return self.casting_magic.execute(self.casting_magic_target)
+              elif self.status['magic_casting'] == True and self.magic_casting_duration > 0:
+                return f"{self.name} is casting {self.casting_magic.name}."
+            else:
+               for debuff in self.debuffs:
+                if debuff.name == "Scoff":
+                   damage_skills = [skill for skill in self.skills if skill.target_type == "single" and skill.skill_type in ["damage", "damage_healing"]]
+                   chosen_skill = random.choice(damage_skills) if damage_skills else None
+                   chosen_target = debuff.initiator
+                   return chosen_skill.execute(chosen_target)
           else:
             return f"{self.name} is running in fear."
         else:

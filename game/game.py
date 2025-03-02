@@ -260,6 +260,17 @@ class Game:
             if len(self.check_groups_status()) == 1 or len(self.check_groups_status()) == 0:
               self.game_state = "game_over"
               return
+        elif hero.status['scoff'] == True:
+          for debuff in hero.debuffs:
+            if debuff.name == "Scoff":
+              self.display_battle_info(f"{hero.name} has a deep hatred towards {debuff.initiator.name} and launches an all-out attack against them.")
+              result = hero.ai_action(hero.opponents, hero.allies)
+              hero.status['scoff'] = False
+              if result is not None:
+                self.display_battle_info(result)
+              if len(self.check_groups_status()) == 1 or len(self.check_groups_status()) == 0:
+                self.game_state = "game_over"
+                return
         else:
           if hero.is_player_controlled:
               self.skill_selection_active = True  # Activate skill selection

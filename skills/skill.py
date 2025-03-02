@@ -73,20 +73,6 @@ class Skill:
                     self.initiator.game.display_battle_info(f"{self.initiator.name} tries to use {self.name} on {target_evaded_names}, but {target_evaded_names} evades the attack.")
                     return self.skill_action(target_hit_alive)
 
-
-                if not target_evaded:  # all targets hit
-                  target_names = ', '.join([target.name for target in target_hit])
-                  #print(f"{self.initiator.name} use {self.name} on {target_names}.")
-                  return self.skill_action(target_hit)
-                elif not target_hit: # all targets miss
-                  target_names = ', '.join([target.name for target in target_evaded])
-                  self.initiator.status['magic_casting'] = False
-                  return f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} evades the attack."
-                else:
-                  target_names = ', '.join([target.name for target in target_evaded])
-                  self.initiator.game.display_battle_info(f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} evades the attack.")
-                  return self.skill_action(target_hit)
-
               elif self.target_type == "single":
                   if not self.evasion_check(opponents):
                       return self.skill_action(opponents)
@@ -94,6 +80,7 @@ class Skill:
                     if self.name == "Shadow Word Insanity" or self.name == "Curse of Fear":
                       self.if_cooldown = True
                       self.cooldown = 3
+                      return f"{self.initiator.name} tries to use {self.name} on {opponents.name}, but {opponents.name} evades the attack."
                     elif self.name == "Pestilence":
                       self.if_cooldown = True
                       self.cooldown = 2
@@ -157,6 +144,29 @@ class Skill:
                     self.if_cooldown = True
                     self.cooldown = 3
                     return f"{self.initiator.name} tries to use {self.name} on {opponents.name}, but {opponents.name} evades the attack."
+                  if self.name == "Pestilence":
+                    self.if_cooldown = True
+                    self.cooldown = 2
+                    return f"{self.initiator.name} tries to use {self.name} on {opponents.name}, but {opponents.name} evades the attack."
+                  if self.name == "Cumbrous Axe":
+                    self.if_cooldown = True
+                    self.cooldown = 3
+                    self.status['cumbrous_axe'] = True
+                    self.healing_boost_effects['cumbrous_axe'] = 1.0
+                    for buff in self.buffs_debuffs_recycle_pool:
+                      if buff.name == "Cumbrous Axe" and buff.initiator == self:
+                          self.buffs_debuffs_recycle_pool.remove(buff)
+                          buff.duration = 2
+                          self.add_buff(buff)   
+                    else:
+                        buff = Buff(
+                            name='Cumbrous Axe',
+                            duration=2,
+                            initiator=self,
+                            effect=1
+                        )
+                        self.add_buff(buff)
+                    return f"{self.initiator.name} tries to use {self.name} on {opponents.name}, but {opponents.name} evades the attack. The healing {self.initiator.name} receives is boost."
                   else:
                     return f"{self.initiator.name} tries to use {self.name} on {opponents.name}, but {opponents.name} evades the attack."
         # Manage damage healing skill

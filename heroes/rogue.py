@@ -40,7 +40,7 @@ class Rogue_Comprehensiveness(Rogue):
             other_hero.status['bleeding_sharp_blade'] = True
             other_hero.status['normal'] = False
             other_hero.sharp_blade_debuff_duration = 3
-            if damage_dealt > 0:
+            if damage_dealt > 20:
               other_hero.sharp_blade_continuous_damage = random.randint(8, 14)
             else:
               other_hero.sharp_blade_continuous_damage = random.randint(5, 10)

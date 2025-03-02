@@ -46,10 +46,10 @@ def main():
         hero.is_player_controlled = False
     '''
     #'''
-    Player_1 = Death_Knight_Frost(sys_init, "Arthas", "Group_A", True)
-    Player_2 = Death_Knight_Blood(sys_init, "Shadow_eye", "Group_A", True)
-    Player_3 = Rogue_Comprehensiveness(sys_init, "Silver Hand", "Group_A", True)
-    player_heroes = [Player_1, Player_2, Player_3]
+    Player_1 = Priest_Devine(sys_init, "Arthas", "Group_A", True)
+    Player_2 = Death_Knight_Frost(sys_init, "Heart of Plague", "Group_A", True)
+    Player_3 = Death_Knight_Plague(sys_init, "Pale K", "Group_A", True)
+    player_heroes = [Player_1,Player_2, Player_3]
     #'''
     
 
@@ -59,10 +59,10 @@ def main():
     opponent_heroes = generator_ai.generate_heroes("Group_B", 3)
     #'''
     '''
-    Galahad = Mage_Comprehensiveness(sys_init, "Galahad", "Group_B", False)
-    Deep_Seer = Priest_Shadow(sys_init,"Aldric", "Group_B", False)
+    Galahad = Mage_Comprehensiveness(sys_init, "Galahad", "Group_B", True)
+    Deep_Seer = Warlock_Destruction(sys_init,"Aldric", "Group_B", True)
     Rohan = Warlock_Comprehensiveness(sys_init, "Draximus", "Group_B", False)
-    opponent_heroes = [Galahad, Deep_Seer, Rohan]
+    opponent_heroes = [Galahad, Deep_Seer]
     '''
     # Display heroes from both sides__________________________________________
     '''
