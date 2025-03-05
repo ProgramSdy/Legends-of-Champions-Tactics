@@ -151,13 +151,13 @@ class Skill:
                   if self.name == "Cumbrous Axe":
                     self.if_cooldown = True
                     self.cooldown = 3
-                    self.status['cumbrous_axe'] = True
-                    self.healing_boost_effects['cumbrous_axe'] = 1.0
-                    for buff in self.buffs_debuffs_recycle_pool:
+                    self.initiator.status['cumbrous_axe'] = True
+                    self.initiator.healing_boost_effects['cumbrous_axe'] = 1.0
+                    for buff in self.initiator.buffs_debuffs_recycle_pool:
                       if buff.name == "Cumbrous Axe" and buff.initiator == self:
-                          self.buffs_debuffs_recycle_pool.remove(buff)
+                          self.initiator.buffs_debuffs_recycle_pool.remove(buff)
                           buff.duration = 2
-                          self.add_buff(buff)   
+                          self.initiator.add_buff(buff)   
                     else:
                         buff = Buff(
                             name='Cumbrous Axe',
@@ -165,7 +165,7 @@ class Skill:
                             initiator=self,
                             effect=1
                         )
-                        self.add_buff(buff)
+                        self.initiator.add_buff(buff)
                     return f"{self.initiator.name} tries to use {self.name} on {opponents.name}, but {opponents.name} evades the attack. The healing {self.initiator.name} receives is boost."
                   else:
                     return f"{self.initiator.name} tries to use {self.name} on {opponents.name}, but {opponents.name} evades the attack."
