@@ -19,6 +19,7 @@ class GameInterface:
         self.manual_target_selection = None # Manual for target selection
         self.log_rect = None #Log box
         self.game_log = [] #Game log
+        self.game_state = None
 
     def initialize_window(self):
         """Set up the Pygame window and static/dynamic surfaces."""
@@ -126,6 +127,7 @@ class GameInterface:
         pygame.draw.rect(self.log_surface, (255, 255, 255), self.log_rect, 1)  
 
         # Update screen with new logs
+        self.draw_dynamic_elements(self.game_state)
         self.screen.blit(self.log_surface, (0, 0))
         pygame.display.flip()
 
@@ -353,8 +355,9 @@ class GameInterface:
 
             # Update only the modified portion of the screen
             #self.screen.blit(self.static_surface, (0, 0))  # Redraw static elements
-            self.screen.blit(dynamic_surface_snapshot, (0, 0))  # Restore the dynamic elements
+            #self.screen.blit(dynamic_surface_snapshot, (0, 0))  # Restore the dynamic elements
             self.screen.blit(self.dynamic_surface, (0, 0))  # Draw the updated skill selection
+            #self.update_display(self.game_state)
             pygame.display.flip()
 
             # Handle player input
@@ -440,6 +443,7 @@ class GameInterface:
     
     def update_display(self, game_state):
         """Update the entire display."""
+        self.game_state = game_state
         self.screen.blit(self.static_surface, (0, 0))  # Draw static elements first
         self.draw_dynamic_elements(game_state)
         self.draw_game_log()  # Ensure the game log is drawn every frame

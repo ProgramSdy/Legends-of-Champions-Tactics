@@ -48,7 +48,7 @@ def main():
     #'''
     Player_1 = Priest_Devine(sys_init, "Arthas", "Group_A", True)
     Player_2 = Death_Knight_Frost(sys_init, "Heart of Plague", "Group_A", True)
-    Player_3 = Death_Knight_Plague(sys_init, "Pale K", "Group_A", True)
+    Player_3 = Death_Knight_Blood(sys_init, "Pale K", "Group_A", True)
     player_heroes = [Player_1,Player_2, Player_3]
     #'''
     

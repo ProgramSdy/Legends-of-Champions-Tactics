@@ -65,6 +65,7 @@ class HeroGenerator:
         for _ in range(count):
             random_list = list(self.hero_classes.keys())
             random.shuffle(random_list)
+            random.shuffle(random_list)
             hero_class = random.choice(random_list)  # Select a random hero class
             heroes.append(self.generate_hero(group, hero_class))
         return heroes
