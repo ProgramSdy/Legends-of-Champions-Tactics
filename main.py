@@ -46,9 +46,9 @@ def main():
         hero.is_player_controlled = False
     '''
     #'''
-    Player_1 = Priest_Devine(sys_init, "Arthas", "Group_A", True)
-    Player_2 = Death_Knight_Frost(sys_init, "Heart of Plague", "Group_A", True)
-    Player_3 = Death_Knight_Blood(sys_init, "Pale K", "Group_A", True)
+    Player_1 = Death_Knight_Blood(sys_init, "Arthas", "Group_A", True)
+    Player_2 = Priest_Shadow(sys_init, "Black Heart", "Group_A", True)
+    Player_3 = Warlock_Destruction(sys_init, "Guldan", "Group_A", True)
     player_heroes = [Player_1,Player_2, Player_3]
     #'''
     

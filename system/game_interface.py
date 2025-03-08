@@ -43,33 +43,36 @@ class GameInterface:
         self.static_surface.fill((0, 0, 0))
 
         # Dimensions
-        top_height = self.height // 2
-        bottom_height = self.height // 2
-        section_width = self.width // 3
+        horizontal_gap = 5
+        vertical_gap = 5
+        upper_rect_width = (self.width - 4 * horizontal_gap)/3
+        rect_height = (self.height - 3* vertical_gap)/2
+        lower_rect_width = self.width - 2 * horizontal_gap
 
         # Upper left: Player Heroes
-        player_rect = pygame.Rect(0, 0, section_width, top_height)
+        player_rect = pygame.Rect(horizontal_gap, vertical_gap, upper_rect_width, rect_height)
         pygame.draw.rect(self.static_surface, (255, 255, 255), player_rect, 1)  # White border
         player_text = self.font.render("Player Heroes", True, (255, 255, 255))
         self.static_surface.blit(player_text, (player_rect.x + 10, player_rect.y + 10))
 
         # Upper middle
-        middle_rect = pygame.Rect(section_width, 0, section_width, top_height)
+        middle_rect = pygame.Rect(2 * horizontal_gap + upper_rect_width, vertical_gap, upper_rect_width, rect_height)
         pygame.draw.rect(self.static_surface, (255, 255, 255), middle_rect, 1)
         middle_text = self.font.render("Round Info", True, (255, 255, 255))
         self.static_surface.blit(middle_text, (middle_rect.x + 10, middle_rect.y + 10))
 
         # Upper right: Opponent Heroes
-        opponent_rect = pygame.Rect(section_width * 2, 0, section_width, top_height)
+        opponent_rect = pygame.Rect(3 * horizontal_gap + 2 * upper_rect_width, vertical_gap, upper_rect_width, rect_height)
         pygame.draw.rect(self.static_surface, (255, 255, 255), opponent_rect, 1)
         opponent_text = self.font.render("Opponent Heroes", True, (255, 255, 255))
         self.static_surface.blit(opponent_text, (opponent_rect.x + 10, opponent_rect.y + 10))
 
         # Bottom: Game Log
-        self.log_rect = pygame.Rect(0, top_height, self.width, bottom_height)
+        self.log_rect = pygame.Rect(horizontal_gap, 2 * vertical_gap + rect_height, lower_rect_width, rect_height)
         pygame.draw.rect(self.static_surface, (255, 255, 255), self.log_rect, 1)
         log_text = self.font.render("Game Log", True, (255, 255, 255))
         self.static_surface.blit(log_text, (self.log_rect.width // 2 - 50, self.log_rect.y + 10))
+
 
     def draw_game_log(self):
         """Draws game logs with automatic text wrapping, scrolling, and color recognition."""
