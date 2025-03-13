@@ -183,6 +183,8 @@ class Warlock_Affliction(Warlock):
             for skill in self.skills:
                       if skill.name == "Curse of Fear":
                         skill.is_available = False
+                        skill.if_cooldown = True
+                        skill.cooldown = 3
             return f"{self.name} casts Curse of Fear on {other_hero.name}, {other_hero.name} feels a deep sense of fear. {result}"
           else:
             other_hero.status['fear'] = True
