@@ -12,6 +12,8 @@ class GameInterface:
         pygame.init()
         self.width = width
         self.height = height
+        self.horizontal_gap = 5
+        self.vertical_gap = 5
         self.screen = None
         self.font = pygame.font.SysFont("Consolas", 20, bold=True)  # Enable bold
         self.static_surface = None  # Surface for static elements
@@ -43,32 +45,30 @@ class GameInterface:
         self.static_surface.fill((0, 0, 0))
 
         # Dimensions
-        horizontal_gap = 5
-        vertical_gap = 5
-        upper_rect_width = (self.width - 4 * horizontal_gap)/3
-        rect_height = (self.height - 3* vertical_gap)/2
-        lower_rect_width = self.width - 2 * horizontal_gap
+        upper_rect_width = (self.width - 4 * self.horizontal_gap)/3
+        rect_height = (self.height - 3* self.vertical_gap)/2
+        lower_rect_width = self.width - 2 * self.horizontal_gap
 
         # Upper left: Player Heroes
-        player_rect = pygame.Rect(horizontal_gap, vertical_gap, upper_rect_width, rect_height)
+        player_rect = pygame.Rect(self.horizontal_gap, self.vertical_gap, upper_rect_width, rect_height)
         pygame.draw.rect(self.static_surface, (255, 255, 255), player_rect, 1)  # White border
         player_text = self.font.render("Player Heroes", True, (255, 255, 255))
         self.static_surface.blit(player_text, (player_rect.x + 10, player_rect.y + 10))
 
         # Upper middle
-        middle_rect = pygame.Rect(2 * horizontal_gap + upper_rect_width, vertical_gap, upper_rect_width, rect_height)
+        middle_rect = pygame.Rect(2 * self.horizontal_gap + upper_rect_width, self.vertical_gap, upper_rect_width, rect_height)
         pygame.draw.rect(self.static_surface, (255, 255, 255), middle_rect, 1)
         middle_text = self.font.render("Round Info", True, (255, 255, 255))
         self.static_surface.blit(middle_text, (middle_rect.x + 10, middle_rect.y + 10))
 
         # Upper right: Opponent Heroes
-        opponent_rect = pygame.Rect(3 * horizontal_gap + 2 * upper_rect_width, vertical_gap, upper_rect_width, rect_height)
+        opponent_rect = pygame.Rect(3 * self.horizontal_gap + 2 * upper_rect_width, self.vertical_gap, upper_rect_width, rect_height)
         pygame.draw.rect(self.static_surface, (255, 255, 255), opponent_rect, 1)
         opponent_text = self.font.render("Opponent Heroes", True, (255, 255, 255))
         self.static_surface.blit(opponent_text, (opponent_rect.x + 10, opponent_rect.y + 10))
 
         # Bottom: Game Log
-        self.log_rect = pygame.Rect(horizontal_gap, 2 * vertical_gap + rect_height, lower_rect_width, rect_height)
+        self.log_rect = pygame.Rect(self.horizontal_gap, 2 * self.vertical_gap + rect_height, lower_rect_width, rect_height)
         pygame.draw.rect(self.static_surface, (255, 255, 255), self.log_rect, 1)
         log_text = self.font.render("Game Log", True, (255, 255, 255))
         self.static_surface.blit(log_text, (self.log_rect.width // 2 - 50, self.log_rect.y + 10))
@@ -331,12 +331,14 @@ class GameInterface:
         selected_index = 0
 
         # Define the area for skill selection
-        skill_selection_x = self.width // 3
+        relativev_x_reduction_to_middle_box = 5
+        skill_selection_x = 2 * self.horizontal_gap + (self.width - 4 * self.horizontal_gap)/3 + relativev_x_reduction_to_middle_box
         skill_selection_y = 200 
-        skill_selection_width = self.width // 3
+        skill_selection_width = (self.width - 4 * self.horizontal_gap)/3 - 2*relativev_x_reduction_to_middle_box
         skill_selection_height = 150
 
         while True:
+            self.dynamic_surface.fill((0, 0, 0, 0))
             # Preserve the dynamic surface for other elements
             dynamic_surface_snapshot = self.dynamic_surface.copy()
 
@@ -388,7 +390,7 @@ class GameInterface:
         num_targets = min(num_targets, len(available_targets))
 
         while len(selected_targets) < num_targets:
-            self.manual_target_selection.fill((0, 0, 0, 0))  # Clear the surface
+            #self.manual_target_selection.fill((0, 0, 0, 0))  # Clear the surface
 
             # Draw the selection box
             box_x, box_y = self.width // 3, 150
