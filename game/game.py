@@ -123,12 +123,25 @@ class Game:
         elif self.mode == "simulation":
           pass
 
+    def display_ending(self, message, delay = 1):
+        self.output_buffer.append(message)
+        if self.mode =="manual":
+          time.sleep(delay)
+          print(message)
+          for observer in self.observers:
+                observer.add_log(message)
+                #observer.draw_game_log()
+                observer.update_all_display(self)
+        elif self.mode == "simulation":
+          pass
+
     def display_manual_log(self, message, delay = 1):
         if self.mode =="manual":
           time.sleep(delay)
           for observer in self.observers:
                 observer.add_log(message)
-                observer.draw_game_log()
+                #observer.draw_game_log()
+                observer.update_all_display(self)
         elif self.mode == "simulation":
           pass
 
@@ -150,7 +163,8 @@ class Game:
               #print(f"DEBUG: line = {line}, type = {type(line)}")  # Add this line to inspect the type
               for observer in self.observers:
                 observer.add_log(line)
-                observer.draw_game_log()
+                #observer.draw_game_log()
+                observer.update_all_display(self)
               #self.notify_observers()
             elif self.mode == "simulation":
               pass
@@ -162,7 +176,8 @@ class Game:
           print(message)
           for observer in self.observers:
                 observer.add_log(message)
-                observer.draw_game_log()
+                #observer.draw_game_log()
+                observer.update_all_display(self)
         elif self.mode == "simulation":
           pass
 
@@ -187,7 +202,7 @@ class Game:
 
     def start_round(self): # Display Round count, HP, skill cool down, status information
         self.display_manual(f"{MAGENTA}---------------------------------------------------ROUND {self.round_counter}----------------------------------------------------{RESET}")
-        self.display_manual_log(f"{MAGENTA} ---------------------------------------------------ROUND {self.round_counter}------------------------------------------------{RESET}")
+        self.display_manual_log(f"{MAGENTA} ---------------------------------------------------ROUND {self.round_counter}-----------------------------------------------{RESET}")
         player_heroes_info = []  # Initialize player heroes info as a list
         opponent_heroes_info = []  # Initialize opponent heroes info as a list
 
@@ -302,19 +317,19 @@ class Game:
 
     def game_over(self):
         if self.round_counter == self.round_counter_max and len(self.check_groups_status()) > 1:
-            self.display_manual(f"{MAGENTA}Max allowed round reached. Game Over! {RESET}")
+            self.display_ending(f"{MAGENTA}Max allowed round reached. Game Over! {RESET}")
         elif len(self.check_groups_status()) == 1:
             surviving_group = next(iter(self.check_groups_status()))
-            self.display_manual(f"{MAGENTA}\nThe game is over. The winning group is: {surviving_group}{RESET}")
+            self.display_ending(f"{MAGENTA}\nThe game is over. The winning group is: {surviving_group}{RESET}")
             surviving_heroes = [hero for hero in self.heroes if hero.hp > 0]
             if surviving_heroes:
-                self.display_manual(f"{MAGENTA}The winning heroes are:{RESET}")
+                self.display_ending(f"{MAGENTA}The winning heroes are:{RESET}")
                 for hero in surviving_heroes:
-                    self.display_manual(f"{MAGENTA}{hero.name} with {hero.hp} HP left!{RESET}")
+                    self.display_ending(f"{MAGENTA}{hero.name} with {hero.hp} HP left!{RESET}")
             else:
-                self.display_manual("No heroes survived.")
+                self.display_ending("No heroes survived.")
         elif len(self.check_groups_status()) == 0:
-            self.display_manual(f"{MAGENTA}\nThe game is over. Draw game! No heroes survived.{RESET}")
+            self.display_ending(f"{MAGENTA}\nThe game is over. Draw game! No heroes survived.{RESET}")
     '''
     def play_game(self):
         self.clear_screen()

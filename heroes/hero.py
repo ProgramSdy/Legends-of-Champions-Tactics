@@ -963,7 +963,7 @@ class Hero:
             else:
                for debuff in self.debuffs:
                 if debuff.name == "Scoff":
-                   damage_skills = [skill for skill in self.skills if skill.target_type == "single" and skill.skill_type in ["damage", "damage_healing"]]
+                   damage_skills = [skill for skill in self.skills if skill.target_type == "single" and skill.skill_type in ["damage", "damage_healing"] and skill.if_cooldown == False]
                    chosen_skill = random.choice(damage_skills) if damage_skills else None
                    chosen_target = debuff.initiator
                    return chosen_skill.execute(chosen_target)

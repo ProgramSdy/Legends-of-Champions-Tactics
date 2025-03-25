@@ -72,6 +72,7 @@ class GameInterface:
         pygame.draw.rect(self.static_surface, (255, 255, 255), self.log_rect, 1)
         log_text = self.font.render("Game Log", True, (255, 255, 255))
         self.static_surface.blit(log_text, (self.log_rect.width // 2 - 50, self.log_rect.y + 10))
+        self.screen.blit(self.static_surface, (0, 0))
 
 
     def draw_game_log(self):
@@ -130,9 +131,7 @@ class GameInterface:
         pygame.draw.rect(self.log_surface, (255, 255, 255), self.log_rect, 1)  
 
         # Update screen with new logs
-        self.draw_dynamic_elements(self.game_state)
         self.screen.blit(self.log_surface, (0, 0))
-        pygame.display.flip()
 
 
 
@@ -234,6 +233,8 @@ class GameInterface:
 
         # Draw round and skill info
         self.draw_middle_section(game_state)
+
+        self.screen.blit(self.dynamic_surface, (0, 0))
 
     def draw_player_heroes(self, heroes, rect):
         """Draw player or opponent hero info."""
@@ -444,6 +445,25 @@ class GameInterface:
 
         return selected_targets
     
+    def update_static_area(self):
+        self.draw_static_elements
+        self.screen.blit(self.static_surface, (0, 0))  # Draw static elements first
+
+    
+    def update_dynamic_area(self, game_state):
+        self.draw_dynamic_elements(game_state)
+        #self.draw_game_log()  # Ensure the game log is drawn every frame
+    
+    def update_log_area(self):
+        self.draw_game_log()
+    
+    def update_all_display(self, game_state):
+        self.game_state = game_state
+        self.update_static_area()
+        self.update_dynamic_area(game_state)
+        self.update_log_area()
+        pygame.display.flip()
+
     def update_display(self, game_state):
         """Update the entire display."""
         self.game_state = game_state

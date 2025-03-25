@@ -47,8 +47,8 @@ def main():
     '''
     #'''
     Player_1 = Death_Knight_Blood(sys_init, "Arthas", "Group_A", True)
-    Player_2 = Priest_Shadow(sys_init, "Black Heart", "Group_A", True)
-    Player_3 = Warlock_Destruction(sys_init, "Guldan", "Group_A", True)
+    Player_2 = Paladin_Comprehensiveness(sys_init, "Black Heart", "Group_A", True)
+    Player_3 = Warrior_Comprehensiveness(sys_init, "Guldan", "Group_A", True)
     player_heroes = [Player_1,Player_2, Player_3]
     #'''
     
@@ -102,7 +102,7 @@ def main():
             game.game_over()
             running = False
 
-        interface.update_display(game)
+        interface.update_all_display(game)
         pygame.time.Clock().tick(60)  # Limit the frame rate
 
 
