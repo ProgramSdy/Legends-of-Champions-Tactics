@@ -48,14 +48,6 @@ class BlitTest:
         # Update display
         pygame.display.flip()
 
-        log = 'Test! Test!'
-        text_surface = self.font.render(log, True, BLACK)
-        red_surface.blit(text_surface, (10, 10))
-        self.screen.blit(red_surface, (60, 60))
-        pygame.display.flip()
-
-
-
         # Event loop to keep the window open
         running = True
         while running:
