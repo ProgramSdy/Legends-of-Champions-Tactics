@@ -36,6 +36,18 @@ class GameInterface:
         self.manual_target_selection = pygame.Surface((self.width, self.height//2), pygame.SRCALPHA)  # Allows transparency
         self.log_surface = pygame.Surface((self.width, self.height), pygame.SRCALPHA)  # Allows transparency
 
+        image_Death_Knight = pygame.image.load(r"images\icons_profession\icon_death_knight_2.webp").convert_alpha()
+        image_Death_Knight = pygame.transform.scale(image_Death_Knight, (150, 150))  # Resize here
+        image_Paladin = pygame.image.load(r"images\icons_profession\icon_paladin.webp").convert_alpha()
+        image_Paladin = pygame.transform.scale(image_Paladin, (150, 150))  # Resize here
+        image_Warrior = pygame.image.load(r"images\icons_profession\icon_warrior.webp").convert_alpha()
+        image_Warrior = pygame.transform.scale(image_Warrior, (150, 150))  # Resize here
+        self.hero_images = {
+            "Death Knight": image_Death_Knight,
+            "Paladin": image_Paladin,
+            "Warrior": image_Warrior
+        }
+
         # Draw static elements once
         self.draw_static_elements()
 
@@ -281,7 +293,6 @@ class GameInterface:
         if not hero:
             return  # No action hero; skip drawing
         current_round = game_state.round_counter
-        profession_icon = "⚔"  # Placeholder for profession icon
         hero_name = "Daoyu [Warrior]"  # Placeholder, dynamically update as needed
         special_events = ["Some event..."]  # Replace with game_state's special events
         skills = ["Skill 1", "Skill 2"]  # Replace with game_state's current hero skills
@@ -292,8 +303,10 @@ class GameInterface:
         self.dynamic_surface.blit(round_text, (self.width // 2 - round_text.get_width() // 2, 10))
 
         # Draw profession icon and hero name
-        icon_text = self.font.render(profession_icon, True, (255, 255, 255))
-        self.dynamic_surface.blit(icon_text, (self.width // 2 - icon_text.get_width() // 2, 50))
+        if hero.faculty in self.hero_images:
+            image = self.hero_images[hero.faculty]
+            image_rect = image.get_rect(center=(self.width // 2, 100))
+            self.dynamic_surface.blit(image, image_rect)
 
         hero_name_text = self.font.render(f"Hero: {hero.name} [{hero.faculty}]", True, (255, 255, 255))
         self.dynamic_surface.blit(hero_name_text, (self.width // 2 - hero_name_text.get_width() // 2, 90))
@@ -350,7 +363,8 @@ class GameInterface:
             # Display hero name and prompt
             hero_text = self.font.render(f"{hero.name} - Select a Skill", True, (255, 255, 255))
             self.dynamic_surface.blit(hero_text, (skill_selection_x + 10, skill_selection_y + 10))
-
+            pygame.display.flip()
+            
             # Display available skills
             y_position = skill_selection_y + 40
             for i, skill in enumerate(available_skills):
