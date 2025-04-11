@@ -1,4 +1,9 @@
 *.pyc
+*.pyo
+*.pyd
+*.log
+*.sqlite3
+*.DS_Store
 __pycache__/
 venv/
 codespace-venv/
