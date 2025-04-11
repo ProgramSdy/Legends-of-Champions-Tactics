@@ -2,3 +2,11 @@
    --check hero.py--> player action: print(f"{RED} Debug Info: Multi target skill with only one enemy {RESET}")
 
 2. Bug fix: summoned unit doesn't action in the same round get summoned.
+
+Before making changes, always run:
+git pull origin main
+
+After making changes, do:
+git add .
+git commit -m "Your message"
+git push origin main
