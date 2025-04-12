@@ -1,6 +1,7 @@
 import pygame
 import sys
 import re
+import os
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
@@ -36,11 +37,14 @@ class GameInterface:
         self.manual_target_selection = pygame.Surface((self.width, self.height//2), pygame.SRCALPHA)  # Allows transparency
         self.log_surface = pygame.Surface((self.width, self.height), pygame.SRCALPHA)  # Allows transparency
 
-        image_Death_Knight = pygame.image.load(r"images\icons_profession\icon_death_knight_2.webp").convert_alpha()
+        image_path_Death_Knight = os.path.join("images", "icons_profession", "icon_death_knight_2.webp")
+        image_Death_Knight = pygame.image.load(image_path).convert_alpha()
         image_Death_Knight = pygame.transform.scale(image_Death_Knight, (150, 150))  # Resize here
-        image_Paladin = pygame.image.load(r"images\icons_profession\icon_paladin.webp").convert_alpha()
+        image_path_Paladin = os.path.join("images", "icons_profession", "icon_paladin.webp")
+        image_Paladin = pygame.image.load(image_path).convert_alpha()
         image_Paladin = pygame.transform.scale(image_Paladin, (150, 150))  # Resize here
-        image_Warrior = pygame.image.load(r"images\icons_profession\icon_warrior.webp").convert_alpha()
+        image_path_Warrior = os.path.join("images", "icons_profession", "icon_warrior.webp")
+        image_Warrior = pygame.image.load(image_path).convert_alpha()
         image_Warrior = pygame.transform.scale(image_Warrior, (150, 150))  # Resize here
         self.hero_images = {
             "Death Knight": image_Death_Knight,
