@@ -256,6 +256,7 @@ class Game:
         if hero.hp <= 0:
            return
         self.current_action_hero = hero
+        self.interface.update_all_display(self)
         self.selected_skill_index = 0
         self.valid_targets = hero.opponents  # Default to opponents
         self.selected_target_index = 0

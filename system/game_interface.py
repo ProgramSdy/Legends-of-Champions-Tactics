@@ -309,19 +309,21 @@ class GameInterface:
         # Draw profession icon and hero name
         if hero.faculty in self.hero_images:
             image = self.hero_images[hero.faculty]
-            image_rect = image.get_rect(center=(self.width // 2, 100))
+            image_rect = image.get_rect(center=(self.width // 2, 130))
             self.dynamic_surface.blit(image, image_rect)
 
         hero_name_text = self.font.render(f"Hero: {hero.name} [{hero.faculty}]", True, (255, 255, 255))
-        self.dynamic_surface.blit(hero_name_text, (self.width // 2 - hero_name_text.get_width() // 2, 90))
+        self.dynamic_surface.blit(hero_name_text, (self.width // 2 - hero_name_text.get_width() // 2, 30))
 
 
         # Draw special events
+        """
         y_position = 140
         for event in special_events:
             event_text = self.font.render(event, True, (255, 255, 255))
             self.dynamic_surface.blit(event_text, (self.width // 2 - event_text.get_width() // 2, y_position))
             y_position += 30
+        """
 
     def select_target_manual_disappear(self):
 
