@@ -192,7 +192,7 @@ class Paladin_Protection(Paladin):
             self.add_skill(Skill(self, "Flash of Light", self.flash_of_light, "single", skill_type= "healing"))
 
     def hammer_of_revenge(self, other_hero):
-        variation = random.randint(-2, 2)
+        variation = random.randint(-4, -1)
         actual_damage = self.damage + variation
         damage_dealt = actual_damage - other_hero.defense
         damage_dealt = max(damage_dealt, 0)
@@ -202,13 +202,13 @@ class Paladin_Protection(Paladin):
           extra_holy_damage = 0
         elif len(self.buffs) == 1:
           extra_holy_damage = random.randint(3, 5)
-          self.game.display_battle_info(f"{self.name} is furying due to the debuff they suffered, Hammer of revenge will have a higher damage.")
+          self.game.display_battle_info(f"{self.name} is furying due to the debuff they suffered, Hammer of Revenge will have a higher damage.")
         elif len(self.buffs) == 2:
           extra_holy_damage = random.randint(6, 8)
-          self.game.display_battle_info(f"{self.name} is furying due to the debuff they suffered, Hammer of revenge will have a higher damage.")
+          self.game.display_battle_info(f"{self.name} is furying due to the debuff they suffered, Hammer of Revenge will have a higher damage.")
         elif len(self.buffs) >= 3:
           extra_holy_damage = random.randint(9, 11)
-          self.game.display_battle_info(f"{self.name} is furying due to the debuff they suffered, Hammer of revenge will have a higher damage.")
+          self.game.display_battle_info(f"{self.name} is furying due to the debuff they suffered, Hammer of Revenge will have a higher damage.")
         damage_dealt += extra_holy_damage 
 
         if self.status['shield_of_righteous'] == True and other_hero.status['hammer_of_revenge'] == False:
@@ -217,9 +217,9 @@ class Paladin_Protection(Paladin):
           damage_before_reducing = other_hero.damage
           other_hero.damage_reduced_amount_by_hammer_of_revenge = round(other_hero.original_damage * 0.2)  # Reduce target's damage by 20%
           other_hero.damage = other_hero.damage - other_hero.damage_reduced_amount_by_hammer_of_revenge
-          self.game.display_battle_info(f"{self.name} uses Hammer of Anger on {other_hero.name}, due to Shield of Righteous, {other_hero.name}'s damage is reduced from {damage_before_reducing} to {other_hero.damage}.")
+          self.game.display_battle_info(f"{self.name} uses Hammer of Revenge on {other_hero.name}, due to Shield of Righteous, {other_hero.name}'s damage is reduced from {damage_before_reducing} to {other_hero.damage}.")
         else:
-          self.game.display_battle_info(f"{self.name} uses Hammer of Anger on {other_hero.name}.")
+          self.game.display_battle_info(f"{self.name} uses Hammer of Revenge on {other_hero.name}.")
         return other_hero.take_damage(damage_dealt)
 
     def shield_of_righteous(self, other_hero):
@@ -254,24 +254,48 @@ class Paladin_Protection(Paladin):
         damage_dealt = basic_damage + variation
         return other_hero.take_damage(damage_dealt)
 
-    def flash_of_light(self, other_hero):
-        variation = random.randint(0, 2)
-        healing_amount_base = 19
-        healing_amount = healing_amount_base + variation
-        if self.status['shield_of_righteous'] == True and self.shield_of_righteous_stacks == 1:
-          extra_healing = random.randint(5, 7)
-          healing_amount = healing_amount_base + extra_healing
-          self.game.display_battle_info(f"{self.name} casts Flash of Light on {other_hero.name}, due to Shield of Righteous, this spell gains an additional {extra_healing} healing.")
-        elif self.status['shield_of_righteous'] == True and self.shield_of_righteous_stacks == 2:
-          extra_healing = random.randint(11, 13)
-          healing_amount = healing_amount_base + extra_healing
-          self.game.display_battle_info(f"{self.name} casts Flash of Light on {other_hero.name}, due to Shield of Righteous, this spell gains an additional {extra_healing} healing.")
+def heroric_charge(self, other_hero):
+        other_hero.status['scoff'] = True
+        basic_damage = round((self.damage - other_hero.defense) * 1)
+        variation = random.randint(-1, 1)
+        actual_damage = max(1, basic_damage + variation)
+        basic_healing_heroric_charge = 22
+        variation = random.randint(-2, 2)
+        actual_healing = basic_healing_heroric_charge + variation
+        for debuff in other_hero.debuffs:
+          if debuff.name == "Scoff":
+            other_hero.debuffs.remove(debuff)
+            other_hero.buffs_debuffs_recycle_pool.add(debuff)
+        for debuff in other_hero.buffs_debuffs_recycle_pool:
+          if debuff.name == "Scoff" and debuff.initiator == self:
+              other_hero.buffs_debuffs_recycle_pool.remove(debuff)
+              debuff.duration = 1
+              other_hero.add_debuff(debuff)   
         else:
-          self.game.display_battle_info(f"{self.name} casts Flash of Light on {other_hero.name}.")
-        return other_hero.take_healing(healing_amount)
+            debuff = Debuff(
+                name='Scoff',
+                duration=1,
+                initiator=self,
+                effect=1
+            )
+            other_hero.add_debuff(debuff)
+
+        if other_hero.status['magic_casting'] == True:
+          result = self.interrupt_magic_casting(other_hero)
+          for skill in self.skills:
+            if skill.name == "Heroric Charge":
+              skill.if_cooldown = True
+              skill.cooldown = 3
+          return f"Holy light showers {self.name}. {self.take_healing(actual_healing)}. {self.name} casts Heroric Charge on {other_hero.name}. {other_hero.name}'s magic casting has been interupted. {other_hero.take_damage(actual_damage)}. {other_hero.name} developed a deep hatred toward {self.name}."
+        else:
+          for skill in self.skills:
+            if skill.name == "Cumbrous Axe":
+              skill.if_cooldown = True
+              skill.cooldown = 3
+          return f"Holy light showers {self.name}. {self.take_healing(actual_healing)}. {self.name} casts Heroric Charge on {other_hero.name}. {other_hero.take_damage(actual_damage)}. {other_hero.name} developed a deep hatred toward {self.name}."
 
 # Battling Strategy_________________________________________________________
-
+'''
     def strategy_0(self):
       self.probability_hammer_of_anger = 0.3
       self.probability_shield_of_righteous = 0.4

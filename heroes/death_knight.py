@@ -392,6 +392,10 @@ class Death_Knight_Blood(Death_Knight):
         basic_damage = round((self.damage - other_hero.defense) * 1/2)
         variation = random.randint(-1, 1)
         actual_damage = max(1, basic_damage + variation)
+        for debuff in other_hero.debuffs:
+          if debuff.name == "Scoff":
+            other_hero.debuffs.remove(debuff)
+            other_hero.buffs_debuffs_recycle_pool.add(debuff)
         for debuff in other_hero.buffs_debuffs_recycle_pool:
                 if debuff.name == "Scoff" and debuff.initiator == self:
                     other_hero.buffs_debuffs_recycle_pool.remove(debuff)
@@ -427,7 +431,7 @@ class Death_Knight_Blood(Death_Knight):
             if skill.name == "Cumbrous Axe":
               skill.if_cooldown = True
               skill.cooldown = 3
-          return f"{self.name} casts Cumbrous Axe on {other_hero.name}. {other_hero.take_damage(actual_damage)}. The healing {self.name} receives is boost. {other_hero.name} developed a deep hatred toward {self.name}. {result}"
+          return f"{self.name} casts Cumbrous Axe on {other_hero.name}. {other_hero.name}'s magic casting has been interupted. {other_hero.take_damage(actual_damage)}. The healing {self.name} receives is boost. {other_hero.name} developed a deep hatred toward {self.name}. {result}"
         else:
           other_hero.scoff_cumbrous_axe_duration = 2
           for skill in self.skills:

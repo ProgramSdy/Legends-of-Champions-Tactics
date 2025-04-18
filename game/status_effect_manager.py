@@ -582,5 +582,16 @@ class StatusEffectManager:
                           debuff.duration -=1
                           hero.debuffs.remove(debuff)
                           hero.buffs_debuffs_recycle_pool.append(debuff)
-                          self.game.display_status_updates(f"{RED}{hero.name} has recovered from scoff.{RESET}")    
+                          self.game.display_status_updates(f"{RED}{hero.name} has recovered from scoff.{RESET}")  
+
+            # Handle Hammer of Revenge Debuff Duration
+            if hero.status['hammer_of_revenge'] and hero.hp > 0:
+                hero.hammer_of_revenge_duration -=1
+                if hero.hammer_of_revenge_duration > 0:
+                    self.game.display_status_updates(f"{BLUE}{hero.name} feels powerless. {hero.name}'s Hammer of Revenge debuff duration is {hero.hammer_of_revenge_duration} rounds{RESET}")
+                elif hero.hammer_of_revenge_duration == 0:
+                    hero.damage = hero.damage + hero.damage_reduced_amount_by_hammer_of_revenge
+                    hero.damage_reduced_amount_by_hammer_of_revenge = 0
+                    hero.status['hammer_of_revenge'] = False
+                    self.game.display_status_updates(f"{BLUE}{hero.name} is no longer feeling powerless. {hero.name}'s damage has returned to {hero.damage}.{RESET}")  
     
