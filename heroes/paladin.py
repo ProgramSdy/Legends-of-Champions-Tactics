@@ -187,9 +187,9 @@ class Paladin_Protection(Paladin):
 
     def __init__(self, sys_init, name, group, is_player_controlled):
             super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major)
-            self.add_skill(Skill(self, "Hammer of Anger", self.hammer_of_anger, target_type = "single", skill_type= "damage"))
+            self.add_skill(Skill(self, "Hammer of Revenge", self.hammer_of_revenge, target_type = "single", skill_type= "damage"))
             self.add_skill(Skill(self, "Shield of Righteous", self.shield_of_righteous, target_type = "single", skill_type= "damage"))
-            self.add_skill(Skill(self, "Flash of Light", self.flash_of_light, "single", skill_type= "healing"))
+            self.add_skill(Skill(self, "Heroric Charge", self.heroric_charge, "single", skill_type= "damage"))
 
     def hammer_of_revenge(self, other_hero):
         variation = random.randint(-4, -1)
@@ -213,7 +213,7 @@ class Paladin_Protection(Paladin):
 
         if self.status['shield_of_righteous'] == True and other_hero.status['hammer_of_revenge'] == False:
           other_hero.status['hammer_of_revenge'] = True
-          other_hero.hammer_of_anger_duration = 3   # Effect lasts for 2 rounds
+          other_hero.hammer_of_revenge_duration = 3   # Effect lasts for 2 rounds
           damage_before_reducing = other_hero.damage
           other_hero.damage_reduced_amount_by_hammer_of_revenge = round(other_hero.original_damage * 0.2)  # Reduce target's damage by 20%
           other_hero.damage = other_hero.damage - other_hero.damage_reduced_amount_by_hammer_of_revenge
