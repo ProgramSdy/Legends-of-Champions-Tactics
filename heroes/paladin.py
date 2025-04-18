@@ -189,7 +189,7 @@ class Paladin_Protection(Paladin):
             super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major)
             self.add_skill(Skill(self, "Hammer of Revenge", self.hammer_of_revenge, target_type = "single", skill_type= "damage"))
             self.add_skill(Skill(self, "Shield of Righteous", self.shield_of_righteous, target_type = "single", skill_type= "damage"))
-            self.add_skill(Skill(self, "Heroric Charge", self.heroric_charge, "single", skill_type= "damage"))
+            self.add_skill(Skill(self, "Heroric Charge", self.heroric_charge, target_type = "single", skill_type= "damage"))
 
     def hammer_of_revenge(self, other_hero):
         variation = random.randint(-4, -1)
