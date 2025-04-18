@@ -254,7 +254,7 @@ class Paladin_Protection(Paladin):
         damage_dealt = basic_damage + variation
         return other_hero.take_damage(damage_dealt)
 
-def heroric_charge(self, other_hero):
+    def heroric_charge(self, other_hero):
         other_hero.status['scoff'] = True
         basic_damage = round((self.damage - other_hero.defense) * 1)
         variation = random.randint(-1, 1)
