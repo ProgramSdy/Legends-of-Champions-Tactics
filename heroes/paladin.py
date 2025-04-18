@@ -379,3 +379,4 @@ def heroric_charge(self, other_hero):
     def ai_choose_target(self, chosen_skill, opponents, allies):
           chosen_opponent = self.preset_target
           return chosen_opponent
+'''
