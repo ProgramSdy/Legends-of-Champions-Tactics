@@ -265,7 +265,7 @@ class Paladin_Protection(Paladin):
         for debuff in other_hero.debuffs:
           if debuff.name == "Scoff":
             other_hero.debuffs.remove(debuff)
-            other_hero.buffs_debuffs_recycle_pool.add(debuff)
+            other_hero.buffs_debuffs_recycle_pool.append(debuff)
         for debuff in other_hero.buffs_debuffs_recycle_pool:
           if debuff.name == "Scoff" and debuff.initiator == self:
               other_hero.buffs_debuffs_recycle_pool.remove(debuff)
@@ -289,7 +289,7 @@ class Paladin_Protection(Paladin):
           return f"Holy light showers {self.name}. {self.take_healing(actual_healing)}. {self.name} casts Heroric Charge on {other_hero.name}. {other_hero.name}'s magic casting has been interupted. {other_hero.take_damage(actual_damage)}. {other_hero.name} developed a deep hatred toward {self.name}."
         else:
           for skill in self.skills:
-            if skill.name == "Cumbrous Axe":
+            if skill.name == "Heroric Charge":
               skill.if_cooldown = True
               skill.cooldown = 3
           return f"Holy light showers {self.name}. {self.take_healing(actual_healing)}. {self.name} casts Heroric Charge on {other_hero.name}. {other_hero.take_damage(actual_damage)}. {other_hero.name} developed a deep hatred toward {self.name}."
