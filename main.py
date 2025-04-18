@@ -46,17 +46,17 @@ def main():
         hero.is_player_controlled = False
     '''
     #'''
-    Player_1 = Death_Knight_Blood(sys_init, "Arthas", "Group_A", True)
+    Player_1 = Paladin_Protection(sys_init, "Arthas", "Group_A", True)
     Player_2 = Paladin_Comprehensiveness(sys_init, "Black Heart", "Group_A", True)
     Player_3 = Warrior_Comprehensiveness(sys_init, "Guldan", "Group_A", True)
-    player_heroes = [Player_1,Player_2, Player_3]
+    player_heroes = [Player_1]
     #'''
     
 
     # Opponent hero generator__________________________________________
     #'''
     generator_ai = HeroGenerator(sys_init)
-    opponent_heroes = generator_ai.generate_heroes("Group_B", 3)
+    opponent_heroes = generator_ai.generate_heroes("Group_B", 1)
     #'''
     '''
     Galahad = Mage_Comprehensiveness(sys_init, "Galahad", "Group_B", True)
