@@ -60,13 +60,14 @@ class Hero:
         'blood_plague': False,
         'bleeding_crimson_cleave': False,
         'cumbrous_axe': False,
-        'scoff': False
+        'scoff': False,
+        'hammer_of_revenge': False
     }
     list_status_debuff_magic = ['shadow_word_pain', 'poisoned_dagger', 'cold', 'holy_word_punishment', \
                                 'shadow_word_insanity', 'unholy_frenzy', 'curse_of_agony', 'fear', 'shadow_bolt', \
                                 'corrosion','soul_siphon', 'immolate', 'icy_squall']
     list_status_debuff_disease = ['frost_fever', 'necrotic_decay', 'virulent_infection', 'blood_plague']
-    list_status_debuff_physical  = ['armor_breaker', 'bleeding_slash','bleeding_sharp_blade']
+    list_status_debuff_physical  = ['armor_breaker', 'bleeding_slash','bleeding_sharp_blade', 'hammer_of_revenge']
     list_status_debuff_bleeding = ['bleeding_slash','bleeding_sharp_blade', 'bleeding_crimson_cleave']
     list_status_buff_magic = ['shield_of_righteous','holy_word_shell','holy_word_redemption', 'holy_fire', 'unholy_frenzy', 'holy_infusion', 'hell_flame', 'cumbrous_axe']
     list_status_buff_physical = []
@@ -157,6 +158,7 @@ class Hero:
         self.holy_infusion_cooldown = 0
         self.hell_flame_cooldown = 0
         self.bleeding_crimson_cleave_duration = 0
+        self.hammer_of_anger_duration = 0
 
         self.armor_breaker_stacks = 0 # Track number of Armor Breaker applications
         self.bleeding_slash_continuous_damage = 0 # Track the continuous damage of Bleeding Slash
@@ -190,6 +192,7 @@ class Hero:
         self.blood_plague_continuous_damage = 0
         self.blood_plague_blood_drain = 0
         self.bleeding_crimson_cleave_continuous_damage = 0
+        self.damage_reduced_amount_by_hammer_of_revenge = 0
 
 
     @classmethod
