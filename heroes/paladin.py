@@ -198,7 +198,7 @@ class Paladin_Protection(Paladin):
         damage_dealt = max(damage_dealt, 0)
 
         # Check if there is debuff on self
-        hero_status_activated = [key for key, value in hero.status.items() if value == True]
+        hero_status_activated = [key for key, value in other_hero.status.items() if value == True]
         set_comb = set(self.list_status_debuff_magic) | set(self.list_status_debuff_bleeding) | set(self.list_status_debuff_disease) | set(self.list_status_debuff_physical)
         equal_status = set(hero_status_activated) & set_comb
         status_list_for_action = list(equal_status)
