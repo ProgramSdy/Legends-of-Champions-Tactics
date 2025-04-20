@@ -48,8 +48,8 @@ def main():
     #'''
     Player_1 = Paladin_Protection(sys_init, "Arthas", "Group_A", True)
     Player_2 = Death_Knight_Frost(sys_init, "Black Heart", "Group_A", True)
-    Player_3 = Warrior_Comprehensiveness(sys_init, "Guldan", "Group_A", True)
-    player_heroes = [Player_1]
+    Player_3 = Warlock_Destruction(sys_init, "Guldan", "Group_A", True)
+    player_heroes = [Player_1, Player_2, Player_3]
     #'''
     
 

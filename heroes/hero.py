@@ -61,15 +61,16 @@ class Hero:
         'bleeding_crimson_cleave': False,
         'cumbrous_axe': False,
         'scoff': False,
-        'hammer_of_revenge': False
+        'hammer_of_revenge': False,
+        'wrath_of_crusader': False
     }
     list_status_debuff_magic = ['shadow_word_pain', 'poisoned_dagger', 'cold', 'holy_word_punishment', \
                                 'shadow_word_insanity', 'unholy_frenzy', 'curse_of_agony', 'fear', 'shadow_bolt', \
                                 'corrosion','soul_siphon', 'immolate', 'icy_squall']
     list_status_debuff_disease = ['frost_fever', 'necrotic_decay', 'virulent_infection', 'blood_plague']
-    list_status_debuff_physical  = ['armor_breaker', 'bleeding_slash','bleeding_sharp_blade', 'hammer_of_revenge']
+    list_status_debuff_physical  = ['armor_breaker', 'hammer_of_revenge']
     list_status_debuff_bleeding = ['bleeding_slash','bleeding_sharp_blade', 'bleeding_crimson_cleave']
-    list_status_buff_magic = ['shield_of_righteous','holy_word_shell','holy_word_redemption', 'holy_fire', 'unholy_frenzy', 'holy_infusion', 'hell_flame', 'cumbrous_axe']
+    list_status_buff_magic = ['shield_of_righteous','wrath_of_crusader','holy_word_shell','holy_word_redemption', 'holy_fire', 'unholy_frenzy', 'holy_infusion', 'hell_flame', 'cumbrous_axe']
     list_status_buff_physical = []
 
 
@@ -141,6 +142,7 @@ class Hero:
 
         self.armor_breaker_duration = 0
         self.shield_of_righteous_duration = 0
+        self.wrath_of_crusader_duration = 0
         self.bleeding_slash_duration = 0
         self.shadow_word_pain_debuff_duration = 0
         self.poisoned_dagger_debuff_duration = 0
@@ -158,13 +160,15 @@ class Hero:
         self.holy_infusion_cooldown = 0
         self.hell_flame_cooldown = 0
         self.bleeding_crimson_cleave_duration = 0
-        self.hammer_of_anger_duration = 0
+        self.hammer_of_revenge_duration = 0
 
         self.armor_breaker_stacks = 0 # Track number of Armor Breaker applications
         self.bleeding_slash_continuous_damage = 0 # Track the continuous damage of Bleeding Slash
         self.defense_reduced_amount_by_armor_breaker = 0 # Track the amount of armor breaker
         self.shield_of_righteous_stacks = 0 # Track number of Shield of Righteous applications
+        self.wrath_of_crusader_stacks = 0 # Track numberr of wrath of Crusader applications
         self.defense_increased_amount_by_shield_of_righteous = 0 # Track the amount of Shield of Righteous
+        self.agility_increased_amount_by_wrath_of_crusader = 0 # Track the amount of agility increase by wrath of cursader
         self.agility_reduced_amount_by_frost_bolt = 0 # Track the amount of Frost Bolt
         self.shadow_word_pain_continuous_damage = 0 # Track the continuous damage of Shadow Word Pain
         self.poisoned_dagger_continuous_damage = 0 # Track the continuous damage of Poisoned Dagger

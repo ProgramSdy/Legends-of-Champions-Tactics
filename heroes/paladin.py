@@ -27,7 +27,7 @@ class Paladin_Comprehensiveness(Paladin):
     def __init__(self, sys_init, name, group, is_player_controlled):
             super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major)
             self.add_skill(Skill(self, "Hammer of Anger", self.hammer_of_anger, target_type = "single", skill_type= "damage"))
-            self.add_skill(Skill(self, "Shield of Righteous", self.shield_of_righteous, target_type = "single", skill_type= "damage"))
+            self.add_skill(Skill(self, "Crusader Strike", self.crusader_strike, target_type = "single", skill_type= "damage"))
             self.add_skill(Skill(self, "Flash of Light", self.flash_of_light, "single", skill_type= "healing"))
 
     def hammer_of_anger(self, other_hero):
@@ -47,33 +47,33 @@ class Paladin_Comprehensiveness(Paladin):
           self.game.display_battle_info(f"{self.name} uses Hammer of Anger on {other_hero.name}.")
         return other_hero.take_damage(damage_dealt)
 
-    def shield_of_righteous(self, other_hero):
-        accuracy = 100  # Shield of Righteous has a 100% chance to activate the defense increasing effect
+    def crusader_strike(self, other_hero):
+        accuracy = 100  # Crusader strike has 100% chance to activate the wrath of crusader effect
         roll = random.randint(1, 100)  # Simulate a roll of 100-sided dice
         if roll <= accuracy:
-          if self.status['shield_of_righteous'] == False:
-            self.status['shield_of_righteous'] = True
-            defense_before_increasing = self.defense
-            defense_increased_amount_by_shield_of_righteous_single = math.ceil(self.original_defense * 0.15)  # Increase hero's defense by 15%
-            self.defense_increased_amount_by_shield_of_righteous = self.defense_increased_amount_by_shield_of_righteous + defense_increased_amount_by_shield_of_righteous_single  # Defense increase accumulated
-            self.defense = self.defense + defense_increased_amount_by_shield_of_righteous_single
-            self.shield_of_righteous_stacks += 1
-            self.shield_of_righteous_duration = 3  # Effect lasts for 2 rounds
-            self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Shield of Righteous, defense of {self.name} has increased from {defense_before_increasing} to {self.defense}.")
+          if self.status['wrath_of_crusader'] == False:
+            self.status['wrath_of_crusader'] = True
+            agility_before_increasing = self.agility
+            agility_increased_amount_by_wrath_of_crusader_single = math.ceil(self.original_agility * 0.75)  # Increase hero's agility by 75%
+            self.agility_increased_amount_by_wrath_of_crusader = self.agility_increased_amount_by_wrath_of_crusader + agility_increased_amount_by_wrath_of_crusader_single  # Defense increase accumulated
+            self.agility = self.agility + agility_increased_amount_by_wrath_of_crusader_single
+            self.wrath_of_crusader_stacks += 1
+            self.wrath_of_crusader_duration = 3  # Effect lasts for 2 rounds
+            self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Crusader Strike, agility of {self.name} has increased from {agility_before_increasing} to {self.agility}.")
           else:
-            if self.shield_of_righteous_stacks < 2: #shield of righteous effect can stack for two times.
-              defense_before_increasing = self.defense
-              defense_increased_amount_by_shield_of_righteous_single = math.ceil(self.original_defense * 0.15)  # Increase hero's defense by 15%
-              self.defense_increased_amount_by_shield_of_righteous = self.defense_increased_amount_by_shield_of_righteous + defense_increased_amount_by_shield_of_righteous_single  # Defense increase accumulated
-              self.defense = self.defense + defense_increased_amount_by_shield_of_righteous_single
-              self.shield_of_righteous_stacks += 1
-              self.shield_of_righteous_duration = 3  # Effect lasts for 2 rounds
-              self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Shield of Righteous, defense of {self.name} has increased from {defense_before_increasing} to {self.defense}.")
+            if self.wrath_of_crusader_stacks < 2: # wrath of crusader effect can stack for two times.
+              agility_before_increasing = self.agility
+            agility_increased_amount_by_wrath_of_crusader_single = math.ceil(self.original_agility * 0.75)  # Increase hero's agility by 75%
+            self.agility_increased_amount_by_wrath_of_crusader = self.agility_increased_amount_by_wrath_of_crusader + agility_increased_amount_by_wrath_of_crusader_single  # Defense increase accumulated
+            self.agility = self.agility + agility_increased_amount_by_wrath_of_crusader_single
+            self.wrath_of_crusader_stacks += 1
+            self.wrath_of_crusader_duration = 3  # Effect lasts for 2 rounds
+            self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Crusader Strike, agility of {self.name} has increased from {agility_before_increasing} to {self.agility}.")
             else:
-              self.shield_of_righteous_duration = 3
-              self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Shield of Righteous. Shield of Righteous buff duration refreshed")
+              self.wrath_of_crusader_duration = 3
+              self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Crusader Strike. Wrath of Crusader buff duration refreshed.")
         else:
-            self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Shield of Righteous.")
+            self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Crusader Strike.")
         basic_damage = 20
         variation = random.randint(-2, 2)
         damage_dealt = basic_damage + variation
@@ -99,22 +99,22 @@ class Paladin_Comprehensiveness(Paladin):
 
     def strategy_0(self):
       self.probability_hammer_of_anger = 0.3
-      self.probability_shield_of_righteous = 0.4
+      self.probability_crusader_strike = 0.4
       self.probability_flash_of_light = 0.3
 
     def strategy_1(self):
       self.probability_hammer_of_anger = 1
-      self.probability_shield_of_righteous = 0
+      sself.probability_crusader_strike = 0
       self.probability_flash_of_light = 0
 
     def strategy_2(self):
       self.probability_hammer_of_anger = 0
-      self.probability_shield_of_righteous = 1
+      self.probability_crusader_strike = 1
       self.probability_flash_of_light = 0
 
     def strategy_3(self):
       self.probability_hammer_of_anger = 0
-      self.probability_shield_of_righteous = 0
+      self.probability_crusader_strike = 0
       self.probability_flash_of_light = 1
 
 
@@ -126,7 +126,7 @@ class Paladin_Comprehensiveness(Paladin):
 
       # Priority targets tackling strategy--->
       # Prioritize keeping Shield of Righteous active
-      if self.shield_of_righteous_stacks < 1 or self.shield_of_righteous_duration <= 1:
+      if self.wrath_of_crusader_stacks < 1 or self.wrath_of_crusader_duration <= 1:
         self.strategy_2()  # Focus on casting Shield of Righteous if not activated
         return sorted_opponents[0]  # Attack to keep the buff up
       # Decide if damage or healing
@@ -173,7 +173,7 @@ class Paladin_Comprehensiveness(Paladin):
     def ai_choose_skill(self, opponents, allies):
         self.strategy_0()
         self.preset_target = self.battle_analysis(opponents, allies)
-        skill_weights = [self.probability_hammer_of_anger, self.probability_shield_of_righteous, self.probability_flash_of_light]
+        skill_weights = [self.probability_hammer_of_anger, self.probability_crusader_strike, self.probability_flash_of_light]
         chosen_skill = random.choices(self.skills, weights = skill_weights)[0]
         return chosen_skill
 
@@ -198,17 +198,21 @@ class Paladin_Protection(Paladin):
         damage_dealt = max(damage_dealt, 0)
 
         # Check if there is debuff on self
-        if len(self.buffs) == 0:
+        hero_status_activated = [key for key, value in hero.status.items() if value == True]
+        set_comb = set(self.list_status_debuff_magic) | set(self.list_status_debuff_bleeding) | set(self.list_status_debuff_disease) | set(self.list_status_debuff_physical)
+        equal_status = set(hero_status_activated) & set_comb
+        status_list_for_action = list(equal_status)
+        if len(status_list_for_action) == 0:
           extra_holy_damage = 0
-        elif len(self.buffs) == 1:
+        elif len(status_list_for_action) == 1:
           extra_holy_damage = random.randint(3, 5)
           self.game.display_battle_info(f"{self.name} is furying due to the debuff they suffered, Hammer of Revenge will have a higher damage.")
-        elif len(self.buffs) == 2:
+        elif len(status_list_for_action) == 2:
           extra_holy_damage = random.randint(6, 8)
-          self.game.display_battle_info(f"{self.name} is furying due to the debuff they suffered, Hammer of Revenge will have a higher damage.")
-        elif len(self.buffs) >= 3:
+          self.game.display_battle_info(f"{self.name} is very furying due to the debuff they suffered, Hammer of Revenge will have a higher damage.")
+        elif len(status_list_for_action) >= 3:
           extra_holy_damage = random.randint(9, 11)
-          self.game.display_battle_info(f"{self.name} is furying due to the debuff they suffered, Hammer of Revenge will have a higher damage.")
+          self.game.display_battle_info(f"{self.name} is extremly furying due to the debuff they suffered, Hammer of Revenge will have a higher damage.")
         damage_dealt += extra_holy_damage 
 
         if self.status['shield_of_righteous'] == True and other_hero.status['hammer_of_revenge'] == False:
