@@ -140,6 +140,28 @@ class Skill:
                       else:
                         self.initiator.shield_of_righteous_duration = 3
                         return f"{self.initiator.name} tries to attack {opponents.name} with Shield of Righteous. but {opponents.name} evades the attack. Shield of Righteous buff duration refreshed"
+                  if self.name = "Crusader Strike":
+                    if self.status['wrath_of_crusader'] == False:
+                      self.status['wrath_of_crusader'] = True
+                      agility_before_increasing = self.agility
+                      agility_increased_amount_by_wrath_of_crusader_single = math.ceil(self.original_agility * 0.75)  # Increase hero's agility by 75%
+                      self.agility_increased_amount_by_wrath_of_crusader = self.agility_increased_amount_by_wrath_of_crusader + agility_increased_amount_by_wrath_of_crusader_single  # Defense increase accumulated
+                      self.agility = self.agility + agility_increased_amount_by_wrath_of_crusader_single
+                      self.wrath_of_crusader_stacks += 1
+                      self.wrath_of_crusader_duration = 3  # Effect lasts for 2 rounds
+                      return f"{self.initiator.name} tries to attack {opponents.name} with Crusader Strike, but {opponents.name} evades the attack. Agility of {self.initiator.name} has increased from {agility_before_increasing} to {self.initiator.agility}."
+                    else:
+                      if self.wrath_of_crusader_stacks < 2: # wrath of crusader effect can stack for two times.
+                        agility_before_increasing = self.agility
+                        agility_increased_amount_by_wrath_of_crusader_single = math.ceil(self.original_agility * 0.75)  # Increase hero's agility by 75%
+                        self.agility_increased_amount_by_wrath_of_crusader = self.agility_increased_amount_by_wrath_of_crusader + agility_increased_amount_by_wrath_of_crusader_single  # Defense increase accumulated
+                        self.agility = self.agility + agility_increased_amount_by_wrath_of_crusader_single
+                        self.wrath_of_crusader_stacks += 1
+                        self.wrath_of_crusader_duration = 3  # Effect lasts for 2 rounds
+                        return f"{self.initiator.name} tries to attack {opponents.name} with Crusader Strike, but {opponents.name} evades the attack. Agility of {self.initiator.name} has increased from {agility_before_increasing} to {self.initiator.agility}."
+                      else:
+                        self.wrath_of_crusader_duration = 3
+                        return f"{self.initiator.name} tries to attack {opponents.name} with Crusader Strike, but {opponents.name} evades the attack. Wrath of Crusader buff duration refreshed"
                   if self.name == "Shadow Word Insanity" or self.name == "Curse of Fear":
                     self.if_cooldown = True
                     self.cooldown = 3
@@ -167,6 +189,13 @@ class Skill:
                         )
                         self.initiator.add_buff(buff)
                     return f"{self.initiator.name} tries to use {self.name} on {opponents.name}, but {opponents.name} evades the attack. The healing {self.initiator.name} receives is boost."
+                  if self.name == "Heroric Charge
+                    basic_healing_heroric_charge = 22
+                    variation = random.randint(-2, 2)
+                    actual_healing = basic_healing_heroric_charge + variation
+                    self.if_cooldown = True
+                    self.cooldown = 3
+                    return f"Holy light showers {self.initiator.name}. {self.initiator.take_healing(actual_healing)}. {self.initiator.name} tries to cast Heroric Charge on {opponents.name}, but {opponents.name} evades the attack."
                   else:
                     return f"{self.initiator.name} tries to use {self.name} on {opponents.name}, but {opponents.name} evades the attack."
         # Manage damage healing skill
