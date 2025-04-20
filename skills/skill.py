@@ -140,7 +140,7 @@ class Skill:
                       else:
                         self.initiator.shield_of_righteous_duration = 3
                         return f"{self.initiator.name} tries to attack {opponents.name} with Shield of Righteous. but {opponents.name} evades the attack. Shield of Righteous buff duration refreshed"
-                  if self.name = "Crusader Strike":
+                  if self.name == "Crusader Strike":
                     if self.status['wrath_of_crusader'] == False:
                       self.status['wrath_of_crusader'] = True
                       agility_before_increasing = self.agility
