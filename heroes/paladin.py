@@ -209,7 +209,7 @@ class Paladin_Protection(Paladin):
           self.game.display_battle_info(f"{self.name} is furying due to the debuff they suffered, Hammer of Revenge will have a higher damage.")
         elif len(status_list_for_action) == 2:
           extra_holy_damage = random.randint(6, 8)
-          self.game.display_battle_info(f"{self.name} is very furying due to the debuff they suffered, Hammer of Revenge will have a higher damage.")
+          self.game.display_battle_info(f"{self.name} is highly furying due to the debuff they suffered, Hammer of Revenge will have a higher damage.")
         elif len(status_list_for_action) >= 3:
           extra_holy_damage = random.randint(9, 11)
           self.game.display_battle_info(f"{self.name} is extremly furying due to the debuff they suffered, Hammer of Revenge will have a higher damage.")
