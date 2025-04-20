@@ -63,12 +63,12 @@ class Paladin_Comprehensiveness(Paladin):
           else:
             if self.wrath_of_crusader_stacks < 2: # wrath of crusader effect can stack for two times.
               agility_before_increasing = self.agility
-            agility_increased_amount_by_wrath_of_crusader_single = math.ceil(self.original_agility * 0.75)  # Increase hero's agility by 75%
-            self.agility_increased_amount_by_wrath_of_crusader = self.agility_increased_amount_by_wrath_of_crusader + agility_increased_amount_by_wrath_of_crusader_single  # Defense increase accumulated
-            self.agility = self.agility + agility_increased_amount_by_wrath_of_crusader_single
-            self.wrath_of_crusader_stacks += 1
-            self.wrath_of_crusader_duration = 3  # Effect lasts for 2 rounds
-            self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Crusader Strike, agility of {self.name} has increased from {agility_before_increasing} to {self.agility}.")
+              agility_increased_amount_by_wrath_of_crusader_single = math.ceil(self.original_agility * 0.75)  # Increase hero's agility by 75%
+              self.agility_increased_amount_by_wrath_of_crusader = self.agility_increased_amount_by_wrath_of_crusader + agility_increased_amount_by_wrath_of_crusader_single  # Defense increase accumulated
+              self.agility = self.agility + agility_increased_amount_by_wrath_of_crusader_single
+              self.wrath_of_crusader_stacks += 1
+              self.wrath_of_crusader_duration = 3  # Effect lasts for 2 rounds
+              self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Crusader Strike, agility of {self.name} has increased from {agility_before_increasing} to {self.agility}.")
             else:
               self.wrath_of_crusader_duration = 3
               self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Crusader Strike. Wrath of Crusader buff duration refreshed.")
