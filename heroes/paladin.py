@@ -35,7 +35,7 @@ class Paladin_Comprehensiveness(Paladin):
         actual_damage = self.damage + variation
         damage_dealt = actual_damage - other_hero.defense
         damage_dealt = max(damage_dealt, 0)
-        if self.status['wrath_of_crusader'] == True and self.wrath_of_crusader_stacks_stacks == 1:
+        if self.status['wrath_of_crusader'] == True and self.wrath_of_crusader_stacks == 1:
           extra_holy_damage = random.randint(3, 5)
           damage_dealt += extra_holy_damage
           self.game.display_battle_info(f"{self.name} uses Hammer of Anger on {other_hero.name}, due to Shield of Righteous, this attack causes extra {extra_holy_damage} holy damage.")
