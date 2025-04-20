@@ -104,7 +104,7 @@ class Paladin_Comprehensiveness(Paladin):
 
     def strategy_1(self):
       self.probability_hammer_of_anger = 1
-      sself.probability_crusader_strike = 0
+      self.probability_crusader_strike = 0
       self.probability_flash_of_light = 0
 
     def strategy_2(self):
