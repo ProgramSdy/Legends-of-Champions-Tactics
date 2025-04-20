@@ -189,7 +189,7 @@ class Skill:
                         )
                         self.initiator.add_buff(buff)
                     return f"{self.initiator.name} tries to use {self.name} on {opponents.name}, but {opponents.name} evades the attack. The healing {self.initiator.name} receives is boost."
-                  if self.name == "Heroric Charge"
+                  if self.name == "Heroric Charge":
                     basic_healing_heroric_charge = 22
                     variation = random.randint(-2, 2)
                     actual_healing = basic_healing_heroric_charge + variation
