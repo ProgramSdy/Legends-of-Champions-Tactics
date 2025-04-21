@@ -69,6 +69,7 @@ class StatusEffectManager:
                       hero.defense = hero.defense - hero.defense_increased_amount_by_shield_of_righteous  # Restore original defense
                       hero.defense_increased_amount_by_shield_of_righteous = 0 # Reset the amount of defense increased by shield of righteous
                       hero.shield_of_righteous_stacks = 0 # Reset stack count
+                      hero.status['shield_of_righteous'] = False
                       self.game.display_status_updates(f"{BLUE}Shield of Righteous effect has faded away from {hero.name}. {hero.name}'s defense has returned to {hero.defense}{RESET}")
 
             # Handle Shadow Word Pain Debuff Duration

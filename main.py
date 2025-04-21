@@ -49,21 +49,21 @@ def main():
     Player_1 = Paladin_Protection(sys_init, "Arthas", "Group_A", True)
     Player_2 = Death_Knight_Frost(sys_init, "Black Heart", "Group_A", True)
     Player_3 = Paladin_Comprehensiveness(sys_init, "Guldan", "Group_A", False)
-    player_heroes = [Player_1, Player_2, Player_3]
+    player_heroes = [Player_1]
     #'''
     
 
     # Opponent hero generator__________________________________________
-    #'''
+    '''
     generator_ai = HeroGenerator(sys_init)
     opponent_heroes = generator_ai.generate_heroes("Group_B", 3)
-    #'''
     '''
-    Galahad = Mage_Comprehensiveness(sys_init, "Galahad", "Group_B", True)
+    #'''
+    Galahad = Rogue_Comprehensiveness(sys_init, "Galahad", "Group_B", False)
     Deep_Seer = Warlock_Destruction(sys_init,"Aldric", "Group_B", True)
     Rohan = Warlock_Comprehensiveness(sys_init, "Draximus", "Group_B", False)
-    opponent_heroes = [Galahad, Deep_Seer]
-    '''
+    opponent_heroes = [Galahad]
+    #'''
     # Display heroes from both sides__________________________________________
     '''
     for player_hero in player_heroes:
