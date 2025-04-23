@@ -30,6 +30,7 @@ class HeroGenerator:
             Priest_Devine: self.priset_names_list,
             # Paladin
             Paladin_Comprehensiveness: self.paladin_names_list,
+            Paladin_Protection: self.paladin_names_list,
             # Rogue
             Rogue_Comprehensiveness: self.rogue_names_list,
             # Necromancer
