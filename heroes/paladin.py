@@ -400,36 +400,37 @@ class Paladin_Holy(Paladin):
         variation = random.randint(-2, 2)
         basic_healing = 25
         actual_healing = basic_healing + variation
-
-        # Check if there is debuff on target  
         hero_status_activated = [key for key, value in self.status.items() if value == True]
-        set_comb = set(self.list_status_debuff_magic) | set(self.list_status_debuff_bleeding) | set(self.list_status_debuff_disease) | set(self.list_status_debuff_physical)
+        set_comb = set(self.list_status_debuff_bleeding) | set(self.list_status_debuff_disease)
         equal_status = set(hero_status_activated) & set_comb
         status_list_for_action = list(equal_status)
-        print(f"{RED}DEBUG Message: status_list_for_action = {status_list_for_action}{RESET}")
-        if len(status_list_for_action) == 0:
-          extra_holy_damage = 0
-        elif len(status_list_for_action) == 1:
-          extra_holy_damage = random.randint(3, 5)
-          self.game.display_battle_info(f"{self.name} is furying due to the debuff they suffered, Hammer of Revenge will have a higher damage.")
-        elif len(status_list_for_action) == 2:
-          extra_holy_damage = random.randint(6, 8)
-          self.game.display_battle_info(f"{self.name} is highly furying due to the debuff they suffered, Hammer of Revenge will have a higher damage.")
-        elif len(status_list_for_action) >= 3:
-          extra_holy_damage = random.randint(9, 11)
-          self.game.display_battle_info(f"{self.name} is extremly furying due to the debuff they suffered, Hammer of Revenge will have a higher damage.")
-        damage_dealt += extra_holy_damage 
 
-        if self.status['shield_of_righteous'] == True and other_hero.status['hammer_of_revenge'] == False:
-          other_hero.status['hammer_of_revenge'] = True
-          other_hero.hammer_of_revenge_duration = 3   # Effect lasts for 2 rounds
-          damage_before_reducing = other_hero.damage
-          other_hero.damage_reduced_amount_by_hammer_of_revenge = round(other_hero.original_damage * 0.2)  # Reduce target's damage by 20%
-          other_hero.damage = other_hero.damage - other_hero.damage_reduced_amount_by_hammer_of_revenge
-          self.game.display_battle_info(f"{self.name} uses Hammer of Revenge on {other_hero.name}, due to Shield of Righteous, {other_hero.name}'s damage is reduced from {damage_before_reducing} to {other_hero.damage}.")
+        if other_hero.status['purify_healing'] == False:
+            other_hero.status['purify_healing'] = True
+            for buff in other_hero.buffs_debuffs_recycle_pool:
+                if buff.name == "Purify Healing" and buff.initiator == self:
+                    other_hero.buffs_debuffs_recycle_pool.remove(buff)
+                    buff.duration = 2   # Effect lasts for 4 rounds
+                    other_hero.add_buff(buff)
+            else:        
+              buff = Buff(
+                  name='Purify Healing',
+                  duration = 2,
+                  initiator = self,
+                  effect = 1.0
+              )
+              other_hero.add_buff(buff)
+            
         else:
-          self.game.display_battle_info(f"{self.name} uses Hammer of Revenge on {other_hero.name}.")
-        return other_hero.take_damage(damage_dealt)
+            for buff in other_hero.buffs:
+                if buff.name == "Purify Healing" and buff.initiator == self:
+                    buff.duration = 2   # Effect lasts for 4 rounds
+        
+        self.game.display_battle_info(f"{self.name} uses Purify Healing on {other_hero.name}.")
+        if status_list_for_action
+          random.shuffle(status_list_for_action)
+          self.game.magic_dispeller.dispell_magic(status_list_for_action[0], other_hero)
+        return other_hero.take_healing(actual_healing)
 
     def holy_blast(self, other_heros):
         if not isinstance(other_heros, list):
@@ -452,37 +453,8 @@ class Paladin_Holy(Paladin):
           results.append(opponent.take_damage(damage))
         return "\n".join(results)
 
-    def shield_of_righteous(self, other_hero):
-        accuracy = 100  # Shield of Righteous has a 100% chance to activate the defense increasing effect
-        roll = random.randint(1, 100)  # Simulate a roll of 100-sided dice
-        if roll <= accuracy:
-          if self.status['shield_of_righteous'] == False:
-            self.status['shield_of_righteous'] = True
-            defense_before_increasing = self.defense
-            defense_increased_amount_by_shield_of_righteous_single = math.ceil(self.original_defense * 0.15)  # Increase hero's defense by 15%
-            self.defense_increased_amount_by_shield_of_righteous = self.defense_increased_amount_by_shield_of_righteous + defense_increased_amount_by_shield_of_righteous_single  # Defense increase accumulated
-            self.defense = self.defense + defense_increased_amount_by_shield_of_righteous_single
-            self.shield_of_righteous_stacks += 1
-            self.shield_of_righteous_duration = 3  # Effect lasts for 2 rounds
-            self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Shield of Righteous, defense of {self.name} has increased from {defense_before_increasing} to {self.defense}.")
-          else:
-            if self.shield_of_righteous_stacks < 2: #shield of righteous effect can stack for two times.
-              defense_before_increasing = self.defense
-              defense_increased_amount_by_shield_of_righteous_single = math.ceil(self.original_defense * 0.15)  # Increase hero's defense by 15%
-              self.defense_increased_amount_by_shield_of_righteous = self.defense_increased_amount_by_shield_of_righteous + defense_increased_amount_by_shield_of_righteous_single  # Defense increase accumulated
-              self.defense = self.defense + defense_increased_amount_by_shield_of_righteous_single
-              self.shield_of_righteous_stacks += 1
-              self.shield_of_righteous_duration = 3  # Effect lasts for 2 rounds
-              self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Shield of Righteous, defense of {self.name} has increased from {defense_before_increasing} to {self.defense}.")
-            else:
-              self.shield_of_righteous_duration = 3
-              self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Shield of Righteous. Shield of Righteous buff duration refreshed")
-        else:
-            self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Shield of Righteous.")
-        basic_damage = 20
-        variation = random.randint(-2, 2)
-        damage_dealt = basic_damage + variation
-        return other_hero.take_damage(damage_dealt)
+    def shield_of_protection(self, other_hero):
+        sdfsdfsdfsdfsdf
 
 
 # Battling Strategy_________________________________________________________

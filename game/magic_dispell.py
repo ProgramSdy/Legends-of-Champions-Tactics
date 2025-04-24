@@ -17,7 +17,6 @@ class MagicDispell:
         self.game = game
 
     def dispell_magic(self, status_list_for_action, hero):
-        print(f"Arguments received: {status_list_for_action}, {hero}")
         for status in status_list_for_action:
           if status == 'cold':
             hero.cold_duration = 0
