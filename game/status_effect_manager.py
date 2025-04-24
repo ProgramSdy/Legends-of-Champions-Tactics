@@ -596,3 +596,22 @@ class StatusEffectManager:
                     hero.status['hammer_of_revenge'] = False
                     self.game.display_status_updates(f"{BLUE}{hero.name} is no longer feeling powerless. {hero.name}'s damage has returned to {hero.damage}.{RESET}")  
     
+            # Purify Healing Buff Duration
+            if hero.status['purify_healing'] and hero.hp > 0:
+                for buff in hero.buffs:
+                  if buff.name == "Purify Healing":
+                      buff.duration -= 1
+                      if buff.duration > 0:
+                          self.game.display_status_updates(f"{BLUE}{hero.name}'s Purify Healing from {buff.initiator.name} lasts {buff.duration} rounds.{RESET}")
+                          hero_status_activated = [key for key, value in hero.status.items() if value == True]
+                          set_comb = set(hero.list_status_debuff_bleeding) | set(hero.list_status_debuff_disease)
+                          equal_status = set(hero_status_activated) & set_comb
+                          status_list_for_action = list(equal_status)
+                          if status_list_for_action
+                            random.shuffle(status_list_for_action)
+                            self.game.magic_dispeller.dispell_magic(status_list_for_action[0], other_hero)
+                      elif buff.duration == 0:
+                          hero.status['holy_word_redemption'] = False
+                          hero.buffs.remove(buff)
+                          hero.buffs_debuffs_recycle_pool.append(buff)
+                          self.game.display_status_updates(f"{BLUE}{hero.name}'s Purify Healing from {buff.initiator.name} has disappeared.{RESET}")

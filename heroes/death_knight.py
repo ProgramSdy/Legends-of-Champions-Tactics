@@ -431,7 +431,7 @@ class Death_Knight_Blood(Death_Knight):
             if skill.name == "Cumbrous Axe":
               skill.if_cooldown = True
               skill.cooldown = 3
-          return f"{self.name} casts Cumbrous Axe on {other_hero.name}. {other_hero.name}'s magic casting has been interupted. {other_hero.take_damage(actual_damage)}. The healing {self.name} receives is boost. {other_hero.name} developed a deep hatred toward {self.name}. {result}"
+          return f"{self.name} casts Cumbrous Axe on {other_hero.name}. {other_hero.name}'s magic casting has been interupted. {other_hero.take_damage(actual_damage)}. The healing {self.name} receives is boost. {other_hero.name} developed a deep hatred toward {self.name}."
         else:
           other_hero.scoff_cumbrous_axe_duration = 2
           for skill in self.skills:
