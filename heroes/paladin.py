@@ -385,3 +385,189 @@ class Paladin_Protection(Paladin):
           chosen_opponent = self.preset_target
           return chosen_opponent
 '''
+
+class Paladin_Holy(Paladin):
+
+    major = "Holy"
+
+    def __init__(self, sys_init, name, group, is_player_controlled):
+            super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major)
+            self.add_skill(Skill(self, "Hammer of Revenge", self.hammer_of_revenge, target_type = "single", skill_type= "damage"))
+            self.add_skill(Skill(self, "Shield of Righteous", self.shield_of_righteous, target_type = "single", skill_type= "damage"))
+            self.add_skill(Skill(self, "Heroric Charge", self.heroric_charge, target_type = "single", skill_type= "damage"))
+
+    def purify_healing(self, other_hero):
+        variation = random.randint(-2, 2)
+        basic_healing = 25
+        actual_healing = basic_healing + variation
+
+        # Check if there is debuff on target  
+        hero_status_activated = [key for key, value in self.status.items() if value == True]
+        set_comb = set(self.list_status_debuff_magic) | set(self.list_status_debuff_bleeding) | set(self.list_status_debuff_disease) | set(self.list_status_debuff_physical)
+        equal_status = set(hero_status_activated) & set_comb
+        status_list_for_action = list(equal_status)
+        print(f"{RED}DEBUG Message: status_list_for_action = {status_list_for_action}{RESET}")
+        if len(status_list_for_action) == 0:
+          extra_holy_damage = 0
+        elif len(status_list_for_action) == 1:
+          extra_holy_damage = random.randint(3, 5)
+          self.game.display_battle_info(f"{self.name} is furying due to the debuff they suffered, Hammer of Revenge will have a higher damage.")
+        elif len(status_list_for_action) == 2:
+          extra_holy_damage = random.randint(6, 8)
+          self.game.display_battle_info(f"{self.name} is highly furying due to the debuff they suffered, Hammer of Revenge will have a higher damage.")
+        elif len(status_list_for_action) >= 3:
+          extra_holy_damage = random.randint(9, 11)
+          self.game.display_battle_info(f"{self.name} is extremly furying due to the debuff they suffered, Hammer of Revenge will have a higher damage.")
+        damage_dealt += extra_holy_damage 
+
+        if self.status['shield_of_righteous'] == True and other_hero.status['hammer_of_revenge'] == False:
+          other_hero.status['hammer_of_revenge'] = True
+          other_hero.hammer_of_revenge_duration = 3   # Effect lasts for 2 rounds
+          damage_before_reducing = other_hero.damage
+          other_hero.damage_reduced_amount_by_hammer_of_revenge = round(other_hero.original_damage * 0.2)  # Reduce target's damage by 20%
+          other_hero.damage = other_hero.damage - other_hero.damage_reduced_amount_by_hammer_of_revenge
+          self.game.display_battle_info(f"{self.name} uses Hammer of Revenge on {other_hero.name}, due to Shield of Righteous, {other_hero.name}'s damage is reduced from {damage_before_reducing} to {other_hero.damage}.")
+        else:
+          self.game.display_battle_info(f"{self.name} uses Hammer of Revenge on {other_hero.name}.")
+        return other_hero.take_damage(damage_dealt)
+
+    def holy_blast(self, other_heros):
+        if not isinstance(other_heros, list):
+          other_heros = [other_heros]
+        results = []
+        basic_damage = 22
+        variation = random.randint(-2, 3)
+        actual_damage = basic_damage + variation
+        damage_dealt = actual_damage 
+        damage_target_1 = math.ceil((actual_damage - opponent.arcane_resistance) * 3/3)
+        damage_target_2 = math.ceil((actual_damage - opponent.arcane_resistance) * 2/3)
+        damage_dealt = [damage_target_1, damage_target_2]
+        for i, opponent in enumerate(other_heros):
+          if i == 0:
+              damage_multiplier = 3 / 3  # 100% damage for the first target
+          else:
+              damage_multiplier = 2 / 3  # 66.67% damage for subsequent targets
+          damage = math.ceil((actual_damage - opponent.arcane_resistance) * damage_multiplier)
+          self.game.display_battle_info(f"{self.name} casts Holy Blast at {opponent.name}.")
+          results.append(opponent.take_damage(damage))
+        return "\n".join(results)
+
+    def shield_of_righteous(self, other_hero):
+        accuracy = 100  # Shield of Righteous has a 100% chance to activate the defense increasing effect
+        roll = random.randint(1, 100)  # Simulate a roll of 100-sided dice
+        if roll <= accuracy:
+          if self.status['shield_of_righteous'] == False:
+            self.status['shield_of_righteous'] = True
+            defense_before_increasing = self.defense
+            defense_increased_amount_by_shield_of_righteous_single = math.ceil(self.original_defense * 0.15)  # Increase hero's defense by 15%
+            self.defense_increased_amount_by_shield_of_righteous = self.defense_increased_amount_by_shield_of_righteous + defense_increased_amount_by_shield_of_righteous_single  # Defense increase accumulated
+            self.defense = self.defense + defense_increased_amount_by_shield_of_righteous_single
+            self.shield_of_righteous_stacks += 1
+            self.shield_of_righteous_duration = 3  # Effect lasts for 2 rounds
+            self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Shield of Righteous, defense of {self.name} has increased from {defense_before_increasing} to {self.defense}.")
+          else:
+            if self.shield_of_righteous_stacks < 2: #shield of righteous effect can stack for two times.
+              defense_before_increasing = self.defense
+              defense_increased_amount_by_shield_of_righteous_single = math.ceil(self.original_defense * 0.15)  # Increase hero's defense by 15%
+              self.defense_increased_amount_by_shield_of_righteous = self.defense_increased_amount_by_shield_of_righteous + defense_increased_amount_by_shield_of_righteous_single  # Defense increase accumulated
+              self.defense = self.defense + defense_increased_amount_by_shield_of_righteous_single
+              self.shield_of_righteous_stacks += 1
+              self.shield_of_righteous_duration = 3  # Effect lasts for 2 rounds
+              self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Shield of Righteous, defense of {self.name} has increased from {defense_before_increasing} to {self.defense}.")
+            else:
+              self.shield_of_righteous_duration = 3
+              self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Shield of Righteous. Shield of Righteous buff duration refreshed")
+        else:
+            self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Shield of Righteous.")
+        basic_damage = 20
+        variation = random.randint(-2, 2)
+        damage_dealt = basic_damage + variation
+        return other_hero.take_damage(damage_dealt)
+
+
+# Battling Strategy_________________________________________________________
+'''
+    def strategy_0(self):
+      self.probability_hammer_of_anger = 0.3
+      self.probability_shield_of_righteous = 0.4
+      self.probability_flash_of_light = 0.3
+
+    def strategy_1(self):
+      self.probability_hammer_of_anger = 1
+      self.probability_shield_of_righteous = 0
+      self.probability_flash_of_light = 0
+
+    def strategy_2(self):
+      self.probability_hammer_of_anger = 0
+      self.probability_shield_of_righteous = 1
+      self.probability_flash_of_light = 0
+
+    def strategy_3(self):
+      self.probability_hammer_of_anger = 0
+      self.probability_shield_of_righteous = 0
+      self.probability_flash_of_light = 1
+
+
+    def battle_analysis(self, opponents, allies):
+      # Sort hp from low to high
+      sorted_opponents = sorted(opponents, key=lambda hero: hero.hp, reverse=False)
+      sorted_allies = sorted(allies, key=lambda hero: hero.hp, reverse=False)
+      sorted_allies_excludes_self = [ally for ally in sorted_allies if ally != self]
+
+      # Priority targets tackling strategy--->
+      # Prioritize keeping Shield of Righteous active
+      if self.shield_of_righteous_stacks < 1 or self.shield_of_righteous_duration <= 1:
+        self.strategy_2()  # Focus on casting Shield of Righteous if not activated
+        return sorted_opponents[0]  # Attack to keep the buff up
+      # Decide if damage or healing
+      if sorted_allies[0].hp <= round(0.35 * sorted_allies[0].hp_max):
+        if sorted_opponents[0].hp <= round(0.25 * sorted_opponents[0].hp_max):
+          accuracy = 50 # When there is an low hp ally and a low hp opponent, there is 50-50 chance to damage or to heal
+          roll = random.randint(1, 100)  # Simulate a roll of 100-sided dice
+          if roll <= accuracy:
+            if sorted_opponents[0].faculty == "Warrior" or sorted_opponents[0].faculty == "Paladin": # eliminate low hp high defense target
+              self.strategy_2()
+              opponent = sorted_opponents[0]
+              return opponent
+            else: # eliminate low hp low defense target
+              self.strategy_1()
+              opponent = sorted_opponents[0]
+              return opponent
+          else:
+            self.strategy_3()
+            ally = sorted_allies[0]
+            return ally
+        else:
+          self.strategy_3()
+          ally = sorted_allies[0]
+          return ally
+
+      # Cast damage to low defense high threat target
+      valid_classes = ["Mage", "Warlock", "Necromancer", "Rogue"]
+      # Filter opponents to only include those from valid_classes
+      sorted_opponents_high_threat = [opponent for opponent in opponents if opponent.faculty in valid_classes]
+      if sorted_opponents_high_threat:
+        sorted_opponents_high_threat = sorted(sorted_opponents_high_threat, key=lambda hero: hero.hp, reverse=False)
+        opponent = sorted_opponents_high_threat[0]
+        self.strategy_1()
+        return opponent
+      else:
+        opponent = sorted_opponents[0]
+        if opponent.faculty == "Warrior" or opponent.faculty == "Paladin":
+          self.strategy_2()
+          return opponent
+        else: # conduct damage to priest
+          self.strategy_1()
+          return opponent
+
+    def ai_choose_skill(self, opponents, allies):
+        self.strategy_0()
+        self.preset_target = self.battle_analysis(opponents, allies)
+        skill_weights = [self.probability_hammer_of_anger, self.probability_shield_of_righteous, self.probability_flash_of_light]
+        chosen_skill = random.choices(self.skills, weights = skill_weights)[0]
+        return chosen_skill
+
+    def ai_choose_target(self, chosen_skill, opponents, allies):
+          chosen_opponent = self.preset_target
+          return chosen_opponent
+'''
