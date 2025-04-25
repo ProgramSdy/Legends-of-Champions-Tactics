@@ -619,7 +619,7 @@ class StatusEffectManager:
             # Handle Shield of Protection Duration
             if hero.status['shield_of_protection'] and hero.hp > 0:
                 hero.shield_of_protection_duration -=1
-                if hero.hammer_of_revenge_duration > 0:
+                if hero.shield_of_protection_duration > 0:
                     self.game.display_status_updates(f"{BLUE}{hero.name} is protected by Holy Light and immune towards all damage. {hero.name}'s Shield of Protection duration is {hero.shield_of_protection_duration} rounds. {RESET}")
                 elif hero.shield_of_protection_duration == 0:
                     hero.status['shield_of_protection'] = False

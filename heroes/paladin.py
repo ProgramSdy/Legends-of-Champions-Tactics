@@ -394,7 +394,7 @@ class Paladin_Holy(Paladin):
             super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major)
             self.add_skill(Skill(self, "Purify Healing", self.purify_healing, target_type = "single", skill_type= "healing"))
             self.add_skill(Skill(self, "Holy Blast", self.holy_blast, target_type = "single", skill_type= "damage"))
-            self.add_skill(Skill(self, "Shield of Protection", self.shield_of_protection, target_type = "single", skill_type= "buffs"))
+            self.add_skill(Skill(self, "Shield of Protection", self.shield_of_protection, target_type = "single", skill_type= "buffs", target_qty= 0))
 
     def purify_healing(self, other_hero):
         variation = random.randint(-2, 2)
@@ -439,28 +439,25 @@ class Paladin_Holy(Paladin):
         basic_damage = 22
         variation = random.randint(-2, 3)
         actual_damage = basic_damage + variation
-        damage_dealt = actual_damage 
-        damage_target_1 = math.ceil((actual_damage - opponent.arcane_resistance) * 3/3)
-        damage_target_2 = math.ceil((actual_damage - opponent.arcane_resistance) * 2/3)
-        damage_dealt = [damage_target_1, damage_target_2]
         for i, opponent in enumerate(other_heros):
           if i == 0:
               damage_multiplier = 3 / 3  # 100% damage for the first target
           else:
               damage_multiplier = 2 / 3  # 66.67% damage for subsequent targets
-          damage = math.ceil((actual_damage - opponent.arcane_resistance) * damage_multiplier)
+          damage = math.ceil(actual_damage * damage_multiplier)
+          print(f"damage = {damage}")
           self.game.display_battle_info(f"{self.name} casts Holy Blast at {opponent.name}.")
           results.append(opponent.take_damage(damage))
         return "\n".join(results)
 
-    def shield_of_protection(self, other_hero):
+    def shield_of_protection(self):
         hero_status_activated = [key for key, value in self.status.items() if value == True]
         set_comb = set(self.list_status_debuff_magic)  | set(self.list_status_debuff_bleeding) | set(self.list_status_debuff_disease) |set(self.list_status_debuff_physical)
         equal_status = set(hero_status_activated) & set_comb
         status_list_for_action = list(equal_status)
-
         self.game.display_battle_info(f"{self.name} uses Shield of Protection.")
-        self.game.magic_dispeller.dispell_magic(status_list_for_action, other_hero)
+        self.game.magic_dispeller.dispell_magic(status_list_for_action, self)
+
         if self.status['shield_of_protection'] == False:
             self.status['shield_of_protection'] = True
         self.shield_of_protection_duration = 2
@@ -468,7 +465,7 @@ class Paladin_Holy(Paladin):
             if skill.name == "Shield of Protection":
               skill.if_cooldown = True
               skill.cooldown = 3
-        return f"{self.name} is immune towards all damage."
+        return f"{YELLOW}{self.name} is immune towards all damage.{RESET}"
 
 
 # Battling Strategy_________________________________________________________

@@ -665,6 +665,8 @@ class Hero:
                       if buff.initiator.hp <= 0:
                         buff.initiator.hp = 0
                       return f"{self.name} takes {damage_dealt - round(damage_dealt * buff.effect)} damage. {self.name} has {self.hp} HP left.{buff.initiator.name} takes {round(damage_dealt * buff.effect)} damage. {buff.initiator.name} has {buff.initiator.hp} HP left."
+              elif self.status['shield_of_protection'] == True:
+                  return f"{YELLOW}{self.name} is in Shield of Protection status and is immune towards all damage!{RESET}"
               else:
                 self.hp = self.hp - damage_dealt
                 if self.hp < 0:
