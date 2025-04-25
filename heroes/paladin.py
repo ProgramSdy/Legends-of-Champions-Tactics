@@ -20,9 +20,9 @@ class Paladin(Hero):
             super().__init__(sys_init, name, group, is_player_controlled, major, faculty=self.__class__.faculty)
             self.hero_damage_type = "hybrid"
 
-class Paladin_Comprehensiveness(Paladin):
+class Paladin_Retribution(Paladin):
 
-    major = "Comprehensiveness"
+    major = "Retribution"
 
     def __init__(self, sys_init, name, group, is_player_controlled):
             super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major)
@@ -454,7 +454,21 @@ class Paladin_Holy(Paladin):
         return "\n".join(results)
 
     def shield_of_protection(self, other_hero):
-        sdfsdfsdfsdfsdf
+        hero_status_activated = [key for key, value in self.status.items() if value == True]
+        set_comb = set(self.list_status_debuff_magic)  | set(self.list_status_debuff_bleeding) | set(self.list_status_debuff_disease) |set(self.list_status_debuff_physical)
+        equal_status = set(hero_status_activated) & set_comb
+        status_list_for_action = list(equal_status)
+
+        self.game.display_battle_info(f"{self.name} uses Shield of Protection.")
+        self.game.magic_dispeller.dispell_magic(status_list_for_action, other_hero)
+        if self.status['shield_of_protection'] == False:
+            self.status['shield_of_protection'] = True
+        self.shield_of_protection_buff_duration = 2
+        for skill in self.skills:
+            if skill.name == "Shield of Protection":
+              skill.if_cooldown = True
+              skill.cooldown = 3
+        return f"{self.name} is immune towards all damage."
 
 
 # Battling Strategy_________________________________________________________
