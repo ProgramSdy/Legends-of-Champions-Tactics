@@ -173,24 +173,27 @@ class Priest_Shelter(Priest):
 
     def holy_word_shell(self, other_hero):
 
-        if other_hero.status['holy_word_shell'] == False:
-          variation = random.randint(-2, 2)
-          max_absorption = math.ceil(self.hp_max/2) + variation
-          other_hero.holy_word_shell_absorption = max_absorption
-          other_hero.status['holy_word_shell'] = True
-          other_hero.holy_word_shell_duration = 2
-          return f"{self.name} casts Holy Word Shell on {other_hero.name}. The shell will absorb {max_absorption} damage"
-        else:
-          accuracy = 100  # holy word shell has a 100% chance to override the previous shell
-          roll = random.randint(1, 100)  # Simulate a roll of 100-sided dice
-          if roll <= accuracy:
+        if other_hero.status['shield_of_protection'] == False:
+          if other_hero.status['holy_word_shell'] == False:
             variation = random.randint(-2, 2)
             max_absorption = math.ceil(self.hp_max/2) + variation
             other_hero.holy_word_shell_absorption = max_absorption
+            other_hero.status['holy_word_shell'] = True
             other_hero.holy_word_shell_duration = 2
-            return f"{self.name} casts Holy Word Shell on {other_hero.name}. It replace the previous Shell and will absorb {max_absorption} damage"
+            return f"{self.name} casts Holy Word Shell on {other_hero.name}. The shell will absorb {max_absorption} damage"
           else:
-            return f"{self.name} tries to cast Holy Word Shell on {other_hero.name}. But {other_hero.name} has already been protected by a shell"
+            accuracy = 100  # holy word shell has a 100% chance to override the previous shell
+            roll = random.randint(1, 100)  # Simulate a roll of 100-sided dice
+            if roll <= accuracy:
+              variation = random.randint(-2, 2)
+              max_absorption = math.ceil(self.hp_max/2) + variation
+              other_hero.holy_word_shell_absorption = max_absorption
+              other_hero.holy_word_shell_duration = 2
+              return f"{self.name} casts Holy Word Shell on {other_hero.name}. It replace the previous Shell and will absorb {max_absorption} damage"
+            else:
+              return f"{self.name} tries to cast Holy Word Shell on {other_hero.name}. But {other_hero.name} has already been protected by a shell"
+        else:
+              return f"It is not possible to cast Holy Word Shell on {other_hero.name}, because they are in Shield of Protection status."
 
     # Battling Strategy_________________________________________________________
 

@@ -607,7 +607,7 @@ class StatusEffectManager:
                           set_comb = set(hero.list_status_debuff_bleeding) | set(hero.list_status_debuff_disease)
                           equal_status = set(hero_status_activated) & set_comb
                           status_list_for_action = list(equal_status)
-                          if status_list_for_action
+                          if status_list_for_action:
                             random.shuffle(status_list_for_action)
                             self.game.magic_dispeller.dispell_magic(status_list_for_action[0], other_hero)
                       elif buff.duration == 0:
@@ -615,3 +615,12 @@ class StatusEffectManager:
                           hero.buffs.remove(buff)
                           hero.buffs_debuffs_recycle_pool.append(buff)
                           self.game.display_status_updates(f"{BLUE}{hero.name}'s Purify Healing from {buff.initiator.name} has disappeared.{RESET}")
+
+            # Handle Shield of Protection Duration
+            if hero.status['shield_of_protection'] and hero.hp > 0:
+                hero.shield_of_protection_duration -=1
+                if hero.hammer_of_revenge_duration > 0:
+                    self.game.display_status_updates(f"{BLUE}{hero.name} is protected by Holy Light and immune towards all damage. {hero.name}'s Shield of Protection duration is {hero.shield_of_protection_duration} rounds. {RESET}")
+                elif hero.shield_of_protection_duration == 0:
+                    hero.status['shield_of_protection'] = False
+                    self.game.display_status_updates(f"{BLUE}{hero.name} is no longer protected by Holy Light, Shield of Protection has disappeared.{RESET}")  

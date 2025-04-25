@@ -392,9 +392,9 @@ class Paladin_Holy(Paladin):
 
     def __init__(self, sys_init, name, group, is_player_controlled):
             super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major)
-            self.add_skill(Skill(self, "Hammer of Revenge", self.hammer_of_revenge, target_type = "single", skill_type= "damage"))
-            self.add_skill(Skill(self, "Shield of Righteous", self.shield_of_righteous, target_type = "single", skill_type= "damage"))
-            self.add_skill(Skill(self, "Heroric Charge", self.heroric_charge, target_type = "single", skill_type= "damage"))
+            self.add_skill(Skill(self, "Purify Healing", self.purify_healing, target_type = "single", skill_type= "healing"))
+            self.add_skill(Skill(self, "Holy Blast", self.holy_blast, target_type = "single", skill_type= "damage"))
+            self.add_skill(Skill(self, "Shield of Protection", self.shield_of_protection, target_type = "single", skill_type= "buffs"))
 
     def purify_healing(self, other_hero):
         variation = random.randint(-2, 2)
@@ -427,7 +427,7 @@ class Paladin_Holy(Paladin):
                     buff.duration = 2   # Effect lasts for 4 rounds
         
         self.game.display_battle_info(f"{self.name} uses Purify Healing on {other_hero.name}.")
-        if status_list_for_action
+        if status_list_for_action:
           random.shuffle(status_list_for_action)
           self.game.magic_dispeller.dispell_magic(status_list_for_action[0], other_hero)
         return other_hero.take_healing(actual_healing)
@@ -463,7 +463,7 @@ class Paladin_Holy(Paladin):
         self.game.magic_dispeller.dispell_magic(status_list_for_action, other_hero)
         if self.status['shield_of_protection'] == False:
             self.status['shield_of_protection'] = True
-        self.shield_of_protection_buff_duration = 2
+        self.shield_of_protection_duration = 2
         for skill in self.skills:
             if skill.name == "Shield of Protection":
               skill.if_cooldown = True

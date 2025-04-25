@@ -46,9 +46,9 @@ def main():
         hero.is_player_controlled = False
     '''
     #'''
-    Player_1 = Priest_Shelter(sys_init, "Arthas", "Group_A", True)
+    Player_1 = Paladin_Holy(sys_init, "Arthas", "Group_A", True)
     Player_2 = Death_Knight_Blood(sys_init, "Black Heart", "Group_A", True)
-    Player_3 = Paladin_Comprehensiveness(sys_init, "Guldan", "Group_A", True)
+    Player_3 = Paladin_Holy(sys_init, "Guldan", "Group_A", True)
     player_heroes = [Player_1]
     #'''
     
