@@ -393,7 +393,7 @@ class Paladin_Holy(Paladin):
     def __init__(self, sys_init, name, group, is_player_controlled):
             super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major)
             self.add_skill(Skill(self, "Purify Healing", self.purify_healing, target_type = "single", skill_type= "healing"))
-            self.add_skill(Skill(self, "Holy Blast", self.holy_blast, target_type = "single", skill_type= "damage"))
+            self.add_skill(Skill(self, "Holy Blast", self.holy_blast, target_type = "single", skill_type= "damage", target_qty= 2))
             self.add_skill(Skill(self, "Shield of Protection", self.shield_of_protection, target_type = "single", skill_type= "buffs", target_qty= 0))
 
     def purify_healing(self, other_hero):
