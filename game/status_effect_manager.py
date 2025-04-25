@@ -609,9 +609,9 @@ class StatusEffectManager:
                           status_list_for_action = list(equal_status)
                           if status_list_for_action:
                             random.shuffle(status_list_for_action)
-                            self.game.magic_dispeller.dispell_magic(status_list_for_action[0], other_hero)
+                            self.game.magic_dispeller.dispell_magic(status_list_for_action[0], hero)
                       elif buff.duration == 0:
-                          hero.status['holy_word_redemption'] = False
+                          hero.status['purify_healing'] = False
                           hero.buffs.remove(buff)
                           hero.buffs_debuffs_recycle_pool.append(buff)
                           self.game.display_status_updates(f"{BLUE}{hero.name}'s Purify Healing from {buff.initiator.name} has disappeared.{RESET}")
