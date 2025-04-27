@@ -37,7 +37,7 @@ class GameInterface:
         self.manual_target_selection = pygame.Surface((self.width, self.height//2), pygame.SRCALPHA)  # Allows transparency
         self.log_surface = pygame.Surface((self.width, self.height), pygame.SRCALPHA)  # Allows transparency
 
-        image_path_Death_Knight = os.path.join("images", "icons_profession", "icon_death_knight_2.webp")
+        image_path_Death_Knight = os.path.join("images", "icons_profession", "icon_death_knight_3.jpg")
         image_Death_Knight = pygame.image.load(image_path_Death_Knight).convert_alpha()
         image_Death_Knight = pygame.transform.scale(image_Death_Knight, (150, 150))  # Resize here
         image_path_Paladin = os.path.join("images", "icons_profession", "icon_paladin.webp")
@@ -46,10 +46,14 @@ class GameInterface:
         image_path_Warrior = os.path.join("images", "icons_profession", "icon_warrior.webp")
         image_Warrior = pygame.image.load(image_path_Warrior).convert_alpha()
         image_Warrior = pygame.transform.scale(image_Warrior, (150, 150))  # Resize here
+        image_path_Mage = os.path.join("images", "icons_profession", "icon_mage_1.png")
+        image_Mage = pygame.image.load(image_path_Mage).convert_alpha()
+        image_Mage = pygame.transform.scale(image_Mage, (150, 150))  # Resize here
         self.hero_images = {
             "Death Knight": image_Death_Knight,
             "Paladin": image_Paladin,
-            "Warrior": image_Warrior
+            "Warrior": image_Warrior,
+            "Mage": image_Mage
         }
 
         # Draw static elements once
