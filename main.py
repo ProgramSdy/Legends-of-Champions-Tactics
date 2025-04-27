@@ -22,7 +22,7 @@ def main():
     sys_init.initialize()
 
     # Initialize the game interface
-    interface = GameInterface(width=1200, height=800)
+    interface = GameInterface(sys_init, width=1200, height=800)
     interface.initialize_window()
   
 

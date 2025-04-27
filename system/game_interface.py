@@ -8,7 +8,7 @@ BLACK = (0, 0, 0)
 
 class GameInterface:
 
-    def __init__(self, width=800, height=600):
+    def __init__(self, sys_init, width=800, height=600):
         """Initialize the game interface with a fixed window size."""
         pygame.init()
         self.width = width
@@ -23,6 +23,7 @@ class GameInterface:
         self.log_rect = None #Log box
         self.game_log = [] #Game log
         self.game_state = None
+        self.sys_init = sys_init
 
     def initialize_window(self):
         """Set up the Pygame window and static/dynamic surfaces."""
@@ -37,23 +38,12 @@ class GameInterface:
         self.manual_target_selection = pygame.Surface((self.width, self.height//2), pygame.SRCALPHA)  # Allows transparency
         self.log_surface = pygame.Surface((self.width, self.height), pygame.SRCALPHA)  # Allows transparency
 
-        image_path_Death_Knight = os.path.join("images", "icons_profession", "icon_death_knight_3.jpg")
-        image_Death_Knight = pygame.image.load(image_path_Death_Knight).convert_alpha()
-        image_Death_Knight = pygame.transform.scale(image_Death_Knight, (150, 150))  # Resize here
-        image_path_Paladin = os.path.join("images", "icons_profession", "icon_paladin.webp")
-        image_Paladin = pygame.image.load(image_path_Paladin).convert_alpha()
-        image_Paladin = pygame.transform.scale(image_Paladin, (150, 150))  # Resize here
-        image_path_Warrior = os.path.join("images", "icons_profession", "icon_warrior.webp")
-        image_Warrior = pygame.image.load(image_path_Warrior).convert_alpha()
-        image_Warrior = pygame.transform.scale(image_Warrior, (150, 150))  # Resize here
-        image_path_Mage = os.path.join("images", "icons_profession", "icon_mage_1.png")
-        image_Mage = pygame.image.load(image_path_Mage).convert_alpha()
-        image_Mage = pygame.transform.scale(image_Mage, (150, 150))  # Resize here
+        
         self.hero_images = {
-            "Death Knight": image_Death_Knight,
-            "Paladin": image_Paladin,
-            "Warrior": image_Warrior,
-            "Mage": image_Mage
+            "Death Knight": self.sys_init.image_Death_Knight,
+            "Paladin": self.sys_init.image_Paladin,
+            "Warrior": self.sys_init.image_Warrior,
+            "Mage": self.sys_init.image_Mage
         }
 
         # Draw static elements once
