@@ -24,13 +24,13 @@ class System_initialization:
 
         # Loading images for each hero profession
         # Death Knight:
-        image_path_Death_Knight_Frost = os.path.join("images", "icons_profession", "icon_death_knight_3.jpg")
+        image_path_Death_Knight_Frost = os.path.join("images", "icons_profession", "icon_death_knight_frost.png")
         image_Death_Knight_Frost = pygame.image.load(image_path_Death_Knight_Frost).convert_alpha()
         self.image_Death_Knight_Frost = pygame.transform.scale(image_Death_Knight_Frost, (150, 150))  # Resize here
-        image_path_Death_Knight_Plague = os.path.join("images", "icons_profession", "icon_death_knight_3.jpg")
+        image_path_Death_Knight_Plague = os.path.join("images", "icons_profession", "icon_death_knight_plague.png")
         image_Death_Knight_Plague = pygame.image.load(image_path_Death_Knight_Plague).convert_alpha()
         self.image_Death_Knight_Plague = pygame.transform.scale(image_Death_Knight_Plague, (150, 150))  # Resize here
-        image_path_Death_Knight_Blood = os.path.join("images", "icons_profession", "icon_death_knight_3.jpg")
+        image_path_Death_Knight_Blood = os.path.join("images", "icons_profession", "icon_death_knight_blood.png")
         image_Death_Knight_Blood = pygame.image.load(image_path_Death_Knight_Blood).convert_alpha()
         self.image_Death_Knight_Blood = pygame.transform.scale(image_Death_Knight_Blood, (150, 150))  # Resize here
         # Paladin:
@@ -55,15 +55,15 @@ class System_initialization:
         image_path_Priest_Comprehensiveness = os.path.join("images", "icons_profession", "icon_priest_comprehensiveness.png")
         image_Priest_Comprehensiveness = pygame.image.load(image_path_Priest_Comprehensiveness).convert_alpha()
         self.image_Priest_Comprehensiveness = pygame.transform.scale(image_Priest_Comprehensiveness, (150, 150))  # Resize here
-        image_path_Priest_Decipline = os.path.join("images", "icons_profession", "icon_priest_decipline.png")
-        image_Priest_Decipline = pygame.image.load(image_path_Priest_Decipline).convert_alpha()
-        self.image_Priest_Decipline = pygame.transform.scale(image_Priest_Decipline, (150, 150))  # Resize here
+        image_path_Priest_Discipline = os.path.join("images", "icons_profession", "icon_priest_discipline.png")
+        image_Priest_Discipline = pygame.image.load(image_path_Priest_Discipline).convert_alpha()
+        self.image_Priest_Discipline = pygame.transform.scale(image_Priest_Discipline, (150, 150))  # Resize here
         image_path_Priest_Shelter = os.path.join("images", "icons_profession", "icon_priest_shelter.png")
         image_Priest_Shelter = pygame.image.load(image_path_Priest_Shelter).convert_alpha()
         self.image_Priest_Shelter = pygame.transform.scale(image_Priest_Shelter, (150, 150))  # Resize here
         image_path_Priest_Shadow = os.path.join("images", "icons_profession", "icon_priest_shadow.png")
         image_Priest_Shadow = pygame.image.load(image_path_Priest_Shadow).convert_alpha()
-        self.image_Priest_Shadow = pygame.transform.scale(image_Priest_Comprehensiveness, (150, 150))  # Resize here
-        image_path_Priest_Comprehensiveness = os.path.join("images", "icons_profession", "icon_priest_comprehensiveness.png")
-        image_Priest_Comprehensiveness = pygame.image.load(image_path_Priest_Comprehensiveness).convert_alpha()
-        self.image_Priest_Comprehensiveness = pygame.transform.scale(image_Priest_Comprehensiveness, (150, 150))  # Resize here
+        self.image_Priest_Shadow = pygame.transform.scale(image_Priest_Shadow, (150, 150))  # Resize here
+        image_path_Priest_Devine = os.path.join("images", "icons_profession", "icon_priest_devine.png")
+        image_Priest_Devine = pygame.image.load(image_path_Priest_Devine).convert_alpha()
+        self.image_Priest_Devine = pygame.transform.scale(image_Priest_Devine, (150, 150))  # Resize here

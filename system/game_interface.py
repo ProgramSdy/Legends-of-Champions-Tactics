@@ -46,7 +46,12 @@ class GameInterface:
             "Paladin_Protection": self.sys_init.image_Paladin_Protection,
             "Paladin_Holy": self.sys_init.image_Paladin_Holy,
             "Warrior_Comprehensiveness": self.sys_init.image_Warrior_Comprehensiveness,
-            "Mage_Comprehensiveness": self.sys_init.image_Mage_Comprehensiveness
+            "Mage_Comprehensiveness": self.sys_init.image_Mage_Comprehensiveness,
+            "Priest_Comprehensiveness": self.sys_init.image_Priest_Comprehensiveness,
+            "Priest_Discipline": self.sys_init.image_Priest_Discipline,
+            "Priest_Shelter": self.sys_init.image_Priest_Shelter,
+            "Priest_Shadow": self.sys_init.image_Priest_Shadow,
+            "Priest_Devine": self.sys_init.image_Priest_Devine,
         }
 
         # Draw static elements once
