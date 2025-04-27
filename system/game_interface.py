@@ -39,10 +39,14 @@ class GameInterface:
 
         
         self.hero_images = {
-            "Death Knight": self.sys_init.image_Death_Knight,
-            "Paladin": self.sys_init.image_Paladin,
-            "Warrior": self.sys_init.image_Warrior,
-            "Mage": self.sys_init.image_Mage
+            "Death Knight_Frost": self.sys_init.image_Death_Knight_Frost,
+            "Death Knight_Plague": self.sys_init.image_Death_Knight_Plague,
+            "Death Knight_Blood": self.sys_init.image_Death_Knight_Blood,
+            "Paladin_Retribution": self.sys_init.image_Paladin_Retribution,
+            "Paladin_Protection": self.sys_init.image_Paladin_Protection,
+            "Paladin_Holy": self.sys_init.image_Paladin_Holy,
+            "Warrior_Comprehensiveness": self.sys_init.image_Warrior_Comprehensiveness,
+            "Mage_Comprehensiveness": self.sys_init.image_Mage_Comprehensiveness
         }
 
         # Draw static elements once
@@ -300,8 +304,8 @@ class GameInterface:
         self.dynamic_surface.blit(round_text, (self.width // 2 - round_text.get_width() // 2, 10))
 
         # Draw profession icon and hero name
-        if hero.faculty in self.hero_images:
-            image = self.hero_images[hero.faculty]
+        if hero.profession in self.hero_images:
+            image = self.hero_images[hero.profession]
             image_rect = image.get_rect(center=(self.width // 2, 130))
             self.dynamic_surface.blit(image, image_rect)
 
