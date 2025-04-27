@@ -42,10 +42,10 @@ def main():
         hero.is_player_controlled = False
     '''
     #'''
-    Player_1 = Paladin_Holy(sys_init, "Arthas", "Group_A", True)
-    Player_2 = Paladin_Protection(sys_init, "Black Heart", "Group_A", True)
-    Player_3 = Paladin_Holy(sys_init, "Guldan", "Group_A", True)
-    player_heroes = [Player_1, Player_2]
+    Player_1 = Death_Knight_Frost(sys_init, "Arthas", "Group_A", True)
+    Player_2 = Death_Knight_Plague(sys_init, "Black Heart", "Group_A", True)
+    Player_3 = Death_Knight_Blood(sys_init, "Guldan", "Group_A", True)
+    player_heroes = [Player_1, Player_2, Player_3]
     #'''
     
 
@@ -55,10 +55,10 @@ def main():
     opponent_heroes = generator_ai.generate_heroes("Group_B", 3)
     '''
     #'''
-    Nighthawk = Warrior_Comprehensiveness(sys_init, "Nighthawk", "Group_B", False)
-    Deep_Seer = Rogue_Comprehensiveness(sys_init,"Aldric", "Group_B", False)
-    Rohan = Rogue_Comprehensiveness(sys_init, "Draximus", "Group_B", True)
-    opponent_heroes = [Nighthawk, Deep_Seer]
+    Nighthawk = Priest_Comprehensiveness(sys_init, "Aldric", "Group_B", False)
+    Deep_Seer = Mage_Comprehensiveness(sys_init,"Andonidas", "Group_B", False)
+    Rohan = Priest_Discipline(sys_init, "Gandoff", "Group_B", True)
+    opponent_heroes = [Nighthawk, Deep_Seer, Rohan]
     #'''
     # Display heroes from both sides__________________________________________
     '''

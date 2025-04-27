@@ -48,7 +48,7 @@ class System_initialization:
         image_Warrior_Comprehensiveness = pygame.image.load(image_path_Warrior_Comprehensiveness).convert_alpha()
         self.image_Warrior_Comprehensiveness = pygame.transform.scale(image_Warrior_Comprehensiveness, (150, 150))  # Resize here
         # Mage:
-        image_path_Mage_Comprehensiveness = os.path.join("images", "icons_profession", "icon_mage_1.png")
+        image_path_Mage_Comprehensiveness = os.path.join("images", "icons_profession", "icon_mage_2.png")
         image_Mage_Comprehensiveness = pygame.image.load(image_path_Mage_Comprehensiveness).convert_alpha()
         self.image_Mage_Comprehensiveness = pygame.transform.scale(image_Mage_Comprehensiveness, (150, 150))  # Resize here
         # Priest:
