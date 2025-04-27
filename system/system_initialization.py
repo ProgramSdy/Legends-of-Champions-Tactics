@@ -1,4 +1,8 @@
 import pandas as pd
+import pygame
+import sys
+import re
+import os
 
 class System_initialization:
 
@@ -17,3 +21,16 @@ class System_initialization:
         # Set the index to the first column (typically hero name)
         self.df_hero_basic_property.set_index(self.df_hero_basic_property.columns[0], inplace=True)
         self.df_hero_resistance.set_index(self.df_hero_resistance.columns[0], inplace=True)
+
+        image_path_Death_Knight = os.path.join("images", "icons_profession", "icon_death_knight_3.jpg")
+        image_Death_Knight = pygame.image.load(image_path_Death_Knight).convert_alpha()
+        self.image_Death_Knight = pygame.transform.scale(image_Death_Knight, (150, 150))  # Resize here
+        image_path_Paladin = os.path.join("images", "icons_profession", "icon_paladin.webp")
+        image_Paladin = pygame.image.load(image_path_Paladin).convert_alpha()
+        self.image_Paladin = pygame.transform.scale(image_Paladin, (150, 150))  # Resize here
+        image_path_Warrior = os.path.join("images", "icons_profession", "icon_warrior.webp")
+        image_Warrior = pygame.image.load(image_path_Warrior).convert_alpha()
+        self.image_Warrior = pygame.transform.scale(image_Warrior, (150, 150))  # Resize here
+        image_path_Mage = os.path.join("images", "icons_profession", "icon_mage_1.png")
+        image_Mage = pygame.image.load(image_path_Mage).convert_alpha()
+        self.image_Mage = pygame.transform.scale(image_Mage, (150, 150))  # Resize here
