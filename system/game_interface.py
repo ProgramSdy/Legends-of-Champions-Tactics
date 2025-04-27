@@ -8,7 +8,7 @@ BLACK = (0, 0, 0)
 
 class GameInterface:
 
-    def __init__(self, sys_init, width=800, height=600):
+    def __init__(self,width=800, height=600):
         """Initialize the game interface with a fixed window size."""
         pygame.init()
         self.width = width
@@ -23,13 +23,12 @@ class GameInterface:
         self.log_rect = None #Log box
         self.game_log = [] #Game log
         self.game_state = None
-        self.sys_init = sys_init
-
-    def initialize_window(self):
-        """Set up the Pygame window and static/dynamic surfaces."""
-        print(self.width, self.height)
         self.screen = pygame.display.set_mode((self.width, self.height))
         pygame.display.set_caption("Legends of Champions Tactics")
+
+    def initialize_window(self, sys_init):
+        """Set up static/dynamic surfaces."""
+        self.sys_init = sys_init
         #self.font = pygame.font.SysFont("Courier", 20)
 
         # Create separate surfaces for static and dynamic elements

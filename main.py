@@ -17,15 +17,11 @@ CYAN = "\033[96m"
 RESET = "\033[0m"
 
 def main():
-    
+    # Initialize the game_interface and system_initialization keep them in strict order like below
     sys_init = System_initialization()
-    sys_init.initialize()
-
-    # Initialize the game interface
     interface = GameInterface(sys_init, width=1200, height=800)
-    interface.initialize_window()
-  
-
+    sys_init.initialize()
+    interface.initialize_window(sys_init)
     # Player hero generator__________________________________________
     '''
     generator_player = HeroGenerator(sys_init)
