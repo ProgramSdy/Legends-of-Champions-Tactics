@@ -19,7 +19,7 @@ RESET = "\033[0m"
 def main():
     # Initialize the game_interface and system_initialization keep them in strict order like below
     sys_init = System_initialization()
-    interface = GameInterface(sys_init, width=1200, height=800)
+    interface = GameInterface(width=1200, height=800)
     sys_init.initialize()
     interface.initialize_window(sys_init)
     # Player hero generator__________________________________________
