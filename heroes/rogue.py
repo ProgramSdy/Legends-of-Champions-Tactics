@@ -19,6 +19,7 @@ class Rogue(Hero):
     def __init__(self, sys_init, name, group, is_player_controlled, major):
             super().__init__(sys_init, name, group, is_player_controlled, major, faculty=self.__class__.faculty)
             self.hero_damage_type = "physical"
+            self.is_after_vanish = False
 
 class Rogue_Comprehensiveness(Rogue):
 
@@ -41,9 +42,9 @@ class Rogue_Comprehensiveness(Rogue):
             other_hero.status['normal'] = False
             other_hero.sharp_blade_debuff_duration = 3
             if damage_dealt > 20:
-              other_hero.sharp_blade_continuous_damage = random.randint(8, 14)
+              other_hero.sharp_blade_continuous_damage = random.randint(9, 14)
             else:
-              other_hero.sharp_blade_continuous_damage = random.randint(5, 10)
+              other_hero.sharp_blade_continuous_damage = random.randint(5, 8)
             self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Sharp Blade, {other_hero.name} is bleeding.")
         else:
             self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Sharp Blade")
@@ -64,17 +65,11 @@ class Rogue_Comprehensiveness(Rogue):
               other_hero.status['normal'] = False
               other_hero.poisoned_dagger_debuff_duration = 4
               other_hero.poisoned_dagger_stacks += 1
-              if damage_dealt > 0:
-                other_hero.poisoned_dagger_continuous_damage = math.ceil((actual_damage - other_hero.poison_resistance)/4)
-              else:
-                other_hero.poisoned_dagger_continuous_damage = random.randint(1, 10)
+              other_hero.poisoned_dagger_continuous_damage = math.ceil((actual_damage - other_hero.poison_resistance)/4)
               self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Poisoned Dagger, {other_hero.name} is poisoned.")
           elif other_hero.status['poisoned_dagger'] == True and other_hero.poisoned_dagger_stacks == 1:
               other_hero.poisoned_dagger_stacks += 1
-              if damage_dealt > 0:
-                other_hero.poisoned_dagger_continuous_damage += math.ceil((actual_damage - other_hero.poison_resistance)/4)
-              else:
-                other_hero.poisoned_dagger_continuous_damage += random.randint(1, 10)
+              other_hero.poisoned_dagger_continuous_damage += math.ceil((actual_damage - other_hero.poison_resistance)/4)
               self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Poisoned Dagger again, {other_hero.name}'s poisnoning has worsened.")
           else:
             self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Poisoned Dagger")
@@ -94,3 +89,75 @@ class Rogue_Comprehensiveness(Rogue):
               skill.if_cooldown = True
               skill.cooldown = 2
         return f"{self.name} has used Shadow Evasion. {self.name}'s figure vanished on the battlefield"
+
+class Rogue_Assassination(Rogue):
+
+    major = "Assassination"
+
+    def __init__(self, sys_init, name, group, is_player_controlled):
+            super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major)
+            self.add_skill(Skill(self, "Ambush", self.ambush, target_type = "single", skill_type= "damage",))
+            self.add_skill(Skill(self, "backstab", self.backstab, target_type = "single", skill_type= "damage"))
+            self.add_skill(Skill(self, "Shadow Evasion", self.shadow_evasion, target_type = "single", skill_type= "buffs", target_qty= 0))
+
+    def ambush(self, other_hero):
+        # High damage when enemy is hp 90% or above, high damage after Vanish
+        variation = random.randint(-2, 2)
+        actual_damage = self.damage + variation
+        damage_dealt = (actual_damage - other_hero.defense) * 4/5
+        multiplier = 1.2
+        if other_hero.hp >= other_hero.max_hp * 0.9 or self.is_after_vanish:
+            damage_dealt *= multiplier
+            self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Ambush, causing high damage.")
+        else:
+            self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Ambush")
+        
+        # Ensure damage dealt is at least 0
+        damage_dealt = int(max(damage_dealt, 0))
+        # Apply damage to the other hero's HP
+        return other_hero.take_damage(damage_dealt)
+
+    def backstab(self, other_hero):
+        # Causeing wound debuff with 85% chance, wound debuff have effect of bleeding and agility reduction, can stack twice
+        variation = random.randint(-2, 2)
+        actual_damage = self.damage + variation
+        if self.is_after_vanish:
+          damage_dealt = int((actual_damage - other_hero.defense) * 2/3)
+          accuracy = 100
+        else:
+          damage_dealt = int((actual_damage - other_hero.defense) * 1/3)
+          accuracy = 85
+        roll = random.randint(1, 100)
+        if roll <= accuracy:
+            if other_hero.status['wound'] == False:
+                other_hero.status['wound'] = True
+                other_hero.wound_debuff_duration = 3
+                other_hero.wound_continuous_damage = random.randint(8, 10)
+                other_hero.agility_reduced_amount_by_wound = other_hero.agility * 0.1
+                other_hero.agility -= other_hero.agility_reduced_amount_by_wound
+                other_hero.wound_stacks += 1
+                self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Backstab, causing wound.")
+            elif other_hero.status['wound'] == True and other_hero.wound_stacks == 1:
+                other_hero.wound_continuous_damage += random.randint(8, 10)
+                other_hero.agility_reduced_amount_by_wound = other_hero.agility * 0.1
+                other_hero.agility -= other_hero.agility_reduced_amount_by_wound
+                other_hero.wound_stacks += 1
+                self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Backstab again, causing more wound.")
+            else:
+              self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Backstab")
+        else:
+            self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Backstab")
+            
+        damage_dealt = max(damage_dealt, 0)
+        return other_hero.take_damage(damage_dealt)
+
+    def vanish(self):
+        # Vanish: 100% evasion for 2 turn, 2nd turn will recover 10% hp but cannot do anything.
+        self.evasion_capability = 100
+        self.status['vanish'] = True
+        self.vanish_buff_duration = 2
+        for skill in self.skills:
+            if skill.name == "Vanish":
+              skill.if_cooldown = True
+              skill.cooldown = 3
+        return f"{self.name} has used Vanish. {self.name}'s figure vanished on the battlefield"
