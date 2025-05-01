@@ -98,7 +98,7 @@ class Rogue_Assassination(Rogue):
             super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major)
             self.add_skill(Skill(self, "Ambush", self.ambush, target_type = "single", skill_type= "damage",))
             self.add_skill(Skill(self, "backstab", self.backstab, target_type = "single", skill_type= "damage"))
-            self.add_skill(Skill(self, "Shadow Evasion", self.shadow_evasion, target_type = "single", skill_type= "buffs", target_qty= 0))
+            self.add_skill(Skill(self, "Vanish", self.vanish, target_type = "single", skill_type= "buffs", target_qty= 0))
 
     def ambush(self, other_hero):
         # High damage when enemy is hp 90% or above, high damage after Vanish
@@ -106,7 +106,7 @@ class Rogue_Assassination(Rogue):
         actual_damage = self.damage + variation
         damage_dealt = (actual_damage - other_hero.defense) * 4/5
         multiplier = 1.2
-        if other_hero.hp >= other_hero.max_hp * 0.9 or self.is_after_vanish:
+        if other_hero.hp >= other_hero.hp_max * 0.9 or self.is_after_vanish:
             damage_dealt *= multiplier
             self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Ambush, causing high damage.")
         else:
@@ -133,11 +133,12 @@ class Rogue_Assassination(Rogue):
                 other_hero.status['wound_backstab'] = True
                 other_hero.wound_backstab_debuff_duration = 3
                 other_hero.wound_backstab_continuous_damage = random.randint(8, 10)
+                agility_before_reduce = other_hero.agility
                 other_hero.agility_reduced_amount_by_wound_backstab = other_hero.agility * 0.1
                 other_hero.agility -= other_hero.agility_reduced_amount_by_wound_backstab
                 other_hero.wound_backstab_stacks += 1
-                self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Backstab, causing wound.")
-            elif other_hero.status['wound_backstab'] == True and other_hero.wound_stacks == 1:
+                self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Backstab, causing wound. {other_hero.name}'s agility has reduced from {agility_before_reduce} to {other_hero.agility}.")
+            elif other_hero.status['wound_backstab'] == True and other_hero.wound_backstab_stacks == 1:
                 other_hero.wound_backstab_continuous_damage += random.randint(8, 10)
                 other_hero.agility_reduced_amount_by_wound_backstab = other_hero.agility * 0.1
                 other_hero.agility -= other_hero.agility_reduced_amount_by_wound_backstab

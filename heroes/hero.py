@@ -65,7 +65,8 @@ class Hero:
         'wrath_of_crusader': False,
         'purify_healing': False,
         'shield_of_protection': False,
-        'wound_backstab': False
+        'wound_backstab': False,
+        'vanish': False
     }
     list_status_debuff_magic = ['shadow_word_pain', 'cold', 'holy_word_punishment', \
                                 'shadow_word_insanity', 'unholy_frenzy', 'curse_of_agony', 'fear', 'shadow_bolt', \

@@ -46,6 +46,8 @@ class GameInterface:
             "Paladin_Protection": self.sys_init.image_Paladin_Protection,
             "Paladin_Holy": self.sys_init.image_Paladin_Holy,
             "Warrior_Comprehensiveness": self.sys_init.image_Warrior_Comprehensiveness,
+            "Rogue_Comprehensiveness": self.sys_init.image_Rogue_Comprehensiveness,
+            "Rogue_Assassination": self.sys_init.image_Rogue_Assassination,
             "Mage_Comprehensiveness": self.sys_init.image_Mage_Comprehensiveness,
             "Priest_Comprehensiveness": self.sys_init.image_Priest_Comprehensiveness,
             "Priest_Discipline": self.sys_init.image_Priest_Discipline,

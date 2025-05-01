@@ -624,11 +624,25 @@ class StatusEffectManager:
                 elif hero.shield_of_protection_duration == 0:
                     hero.status['shield_of_protection'] = False
                     self.game.display_status_updates(f"{BLUE}{hero.name} is no longer protected by Holy Light, Shield of Protection has disappeared.{RESET}")  
+            
+            # Handle Wound Backstab Duration
+            if hero.status['wound_backstab'] and hero.hp > 0:
+                hero.wound_backstab_debuff_duration -= 1
+                if hero.wound_backstab_debuff_duration > 0:
+                    variation = random.randint(-1, 1)
+                    self.game.display_status_updates(f"{BLUE}{hero.name}'s wound from Backstab is {hero.wound_backstab_debuff_duration} rounds. {hero.take_damage(hero.wound_backstab_continuous_damage + variation)}{RESET}")
+                elif hero.wound_backstab_debuff_duration == 0:
+                    hero.wound_backstab_continuous_damage = 0
+                    hero.agility = hero.agility + hero.agility_reduced_amount_by_wound_backstab
+                    hero.wound_backstab_stacks = 0
+                    hero.status['wound_backstab'] = False
+                    self.game.display_status_updates(f"{BLUE}{hero.name} has recovered from Backstab wound. Their agility has returned to {hero.agility}.{RESET}")
+
             # Vanish Duration
             if hero.status['vanish'] and hero.hp > 0:
                 hero.vanish_duration -=1
                 if hero.vanish_duration == 1:
-                    self.game.display_status_updates(f"{BLUE}{hero.name} is hiding in the dark and taking healing. {hero.take_healing(int(hero.max_hp * 0.1))}.{RESET}")
+                    self.game.display_status_updates(f"{BLUE}{hero.name} is hiding in the dark and taking healing. {hero.take_healing(int(hero.hp_max * 0.1))}.{RESET}")
                 elif hero.vanish_duration == 0:
                     hero.status['vanish'] = False
                     hero.evasion_capability = 0

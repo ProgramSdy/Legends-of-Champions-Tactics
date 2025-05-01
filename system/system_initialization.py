@@ -47,6 +47,13 @@ class System_initialization:
         image_path_Warrior_Comprehensiveness = os.path.join("images", "icons_profession", "icon_warrior.webp")
         image_Warrior_Comprehensiveness = pygame.image.load(image_path_Warrior_Comprehensiveness).convert_alpha()
         self.image_Warrior_Comprehensiveness = pygame.transform.scale(image_Warrior_Comprehensiveness, (150, 150))  # Resize here
+        # Rogue:
+        image_path_Rogue_Comprehensiveness = os.path.join("images", "icons_profession", "icon_rogue_comprehensiveness.png")
+        image_Rogue_Comprehensiveness = pygame.image.load(image_path_Rogue_Comprehensiveness).convert_alpha()
+        self.image_Rogue_Comprehensiveness = pygame.transform.scale(image_Rogue_Comprehensiveness, (150, 150))  # Resize here
+        image_path_Rogue_Assassination = os.path.join("images", "icons_profession", "icon_rogue_assassination.png")
+        image_Rogue_Assassination = pygame.image.load(image_path_Rogue_Assassination).convert_alpha()
+        self.image_Rogue_Assassination = pygame.transform.scale(image_Rogue_Assassination, (150, 150))  # Resize here
         # Mage:
         image_path_Mage_Comprehensiveness = os.path.join("images", "icons_profession", "icon_mage_2.png")
         image_Mage_Comprehensiveness = pygame.image.load(image_path_Mage_Comprehensiveness).convert_alpha()
