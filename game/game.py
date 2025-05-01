@@ -8,7 +8,7 @@ import os
 from heroes import *
 from skills import *
 from game.status_effect_manager import StatusEffectManager
-from game.magic_dispell import MagicDispell
+from game.status_dispell import StatusDispell
 
 ORANGE = "\033[38;5;208m"
 RED = "\033[91m"
@@ -35,7 +35,7 @@ class Game:
         self.output_buffer = []
         self.interface = interface  # New addition to hold GameInterface instance
         self.status_manager = StatusEffectManager(self)  # Instantiate the status manager
-        self.magic_dispeller = MagicDispell(self)
+        self.status_dispeller = StatusDispell(self)
         self.observers = []
         self.game_state = "game_initialization"
         self.current_action_hero = None  # Keep track of the hero currently taking action

@@ -213,7 +213,7 @@ class StatusDispell:
                 hero.buffs_debuffs_recycle_pool.append(debuff)
                 self.game.display_status_updates(f"{RED}{hero.name} has recovered from scoff.{RESET}")  
           elif hero.status['hammer_of_revenge']:
-              hero.hammer_of_revenge_duration == 0:
+              hero.hammer_of_revenge_duration = 0
               hero.damage = hero.damage + hero.damage_reduced_amount_by_hammer_of_revenge
               hero.damage_reduced_amount_by_hammer_of_revenge = 0
               hero.status['hammer_of_revenge'] = False
