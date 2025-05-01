@@ -124,47 +124,7 @@ class Priest_Shelter(Priest):
       if status_list_for_action:
         #self.game.display_battle_info(f"Status purificable: {status_list_for_action}")
         self.game.display_battle_info(f"{self.name} casts Purification and Cure on {hero.name}.")
-        for status in status_list_for_action:
-          if status == 'cold':
-            healing_amount = healing_amount + math.ceil(hero.hp_max/6)
-          elif status == 'shadow_word_pain':
-            healing_amount = healing_amount + math.ceil(hero.shadow_word_pain_continuous_damage*1.2)
-          elif status == 'poisoned_dagger':
-            healing_amount = healing_amount + max(15, math.ceil(hero.poisoned_dagger_continuous_damage*1.2))
-          elif status == 'holy_word_punishment':
-            for debuff in hero.debuffs:
-              if debuff.name == "Holy Word Punishment":
-                healing_amount = healing_amount + math.ceil(debuff.effect * 1.1)
-          elif status == 'shadow_word_insanity':
-            healing_amount = healing_amount + math.ceil(hero.hp_max/6)
-          elif status == 'unholy_frenzy':
-            for buff in hero.buffs:
-              if buff.name == "Unholy Frenzy":
-                healing_amount = healing_amount + math.ceil(hero.unholy_frenzy_continuous_damage * 1.1)
-          elif status == 'curse_of_agony':
-            i = random.randint(0, 3)
-            healing_amount = healing_amount + min(15, round(hero.curse_of_agony_continuous_damage[i] * 1.1))
-          elif status == 'bleeding_slash':
-            healing_amount = healing_amount + math.ceil(hero.bleeding_slash_continuous_damage * 1.1)
-          elif status == 'bleeding_sharp_blade':
-            healing_amount = healing_amount + math.ceil(hero.sharp_blade_continuous_damage * 1.1)
-          elif status == 'fear':
-            for debuff in hero.debuffs:
-              if debuff.name == "Curse of Fear":
-                healing_amount = healing_amount + math.ceil(hero.hp_max/6)
-          elif status == 'shadow_bolt':
-            healing_amount = healing_amount + math.ceil(hero.hp_max/6)
-          elif status == 'corrosion':
-            healing_amount = healing_amount + max(15, math.ceil(hero.corrosion_continuous_damage*1.2))
-          elif status == 'soul_siphon':
-            for debuff in hero.debuffs:
-              if debuff.name == "Soul Siphon":
-                healing_amount = healing_amount + max(15, math.ceil(hero.soul_siphon_continuous_damage*1.2))
-          elif status == 'immolate':
-              for debuff in hero.debuffs:
-                if debuff.name == "Immolate":
-                  healing_amount = healing_amount + max(15, math.ceil(hero.immolate_continuous_damage*1.2))
-        self.game.magic_dispeller.dispell_magic(status_list_for_action, hero)
+        self.game.status_dispeller.dispell_status(status_list_for_action, hero)
         return f"{hero.name} gains healing from Purifification and Cure. {hero.take_healing(healing_amount)}"
       else:
         self.game.display_battle_info(f"{self.name} casts Purification and Cure on {hero.name}.")

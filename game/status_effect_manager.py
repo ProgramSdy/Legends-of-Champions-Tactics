@@ -553,7 +553,7 @@ class StatusEffectManager:
                     variation = random.randint(-2, 2)
                     self.game.display_status_updates(f"{BLUE}{hero.name}'s bleeding effect from Crimson Cleave is {hero.bleeding_crimson_cleave_duration} rounds. {hero.take_damage(hero.bleeding_crimson_cleave_continuous_damage + variation)}{RESET}")
                 elif hero.bleeding_crimson_cleave_duration == 0:
-                    hero.bleeding_slash_continuous_damage = 0
+                    hero.bleeding_crimson_cleave_continuous_damage = 0
                     hero.status['bleeding_crimson_cleave'] = False
                     self.game.display_status_updates(f"{BLUE}{hero.name} has stopped bleeding. Their wound from Crimson Cleave has recovered.{RESET}")     
 
@@ -624,3 +624,12 @@ class StatusEffectManager:
                 elif hero.shield_of_protection_duration == 0:
                     hero.status['shield_of_protection'] = False
                     self.game.display_status_updates(f"{BLUE}{hero.name} is no longer protected by Holy Light, Shield of Protection has disappeared.{RESET}")  
+            # Vanish Duration
+            if hero.status['vanish'] and hero.hp > 0:
+                hero.vanish_duration -=1
+                if hero.vanish_duration == 1:
+                    self.game.display_status_updates(f"{BLUE}{hero.name} is hiding in the dark and taking healing. {hero.take_healing(int(hero.max_hp * 0.1)).}{RESET}")
+                elif hero.vanish_duration == 0:
+                    hero.status['vanish'] = False
+                    hero.evasion_capability = 0
+                    self.game.display_status_updates(f"{BLUE}{hero.name}'s figure slowly emerged from the darkness.{RESET}")

@@ -430,7 +430,7 @@ class Paladin_Holy(Paladin):
         self.game.display_battle_info(f"{self.name} uses Purify Healing on {other_hero.name}.")
         if status_list_for_action:
           random.shuffle(status_list_for_action)
-          self.game.magic_dispeller.dispell_magic(status_list_for_action[0], other_hero)
+          self.game.status_dispeller.dispell_status(status_list_for_action[0], other_hero)
         return other_hero.take_healing(actual_healing)
 
     def holy_blast(self, other_heros):
@@ -458,7 +458,7 @@ class Paladin_Holy(Paladin):
         equal_status = set(hero_status_activated) & set_comb
         status_list_for_action = list(equal_status)
         self.game.display_battle_info(f"{self.name} uses Shield of Protection.")
-        self.game.magic_dispeller.dispell_magic(status_list_for_action, self)
+        self.game.status_dispeller.dispell_status(status_list_for_action, self)
 
         if self.status['shield_of_protection'] == False:
             self.status['shield_of_protection'] = True

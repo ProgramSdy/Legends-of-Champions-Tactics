@@ -129,25 +129,25 @@ class Rogue_Assassination(Rogue):
           accuracy = 85
         roll = random.randint(1, 100)
         if roll <= accuracy:
-            if other_hero.status['wound'] == False:
-                other_hero.status['wound'] = True
-                other_hero.wound_debuff_duration = 3
-                other_hero.wound_continuous_damage = random.randint(8, 10)
-                other_hero.agility_reduced_amount_by_wound = other_hero.agility * 0.1
-                other_hero.agility -= other_hero.agility_reduced_amount_by_wound
-                other_hero.wound_stacks += 1
+            if other_hero.status['wound_backstab'] == False:
+                other_hero.status['wound_backstab'] = True
+                other_hero.wound_backstab_debuff_duration = 3
+                other_hero.wound_backstab_continuous_damage = random.randint(8, 10)
+                other_hero.agility_reduced_amount_by_wound_backstab = other_hero.agility * 0.1
+                other_hero.agility -= other_hero.agility_reduced_amount_by_wound_backstab
+                other_hero.wound_backstab_stacks += 1
                 self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Backstab, causing wound.")
-            elif other_hero.status['wound'] == True and other_hero.wound_stacks == 1:
-                other_hero.wound_continuous_damage += random.randint(8, 10)
-                other_hero.agility_reduced_amount_by_wound = other_hero.agility * 0.1
-                other_hero.agility -= other_hero.agility_reduced_amount_by_wound
-                other_hero.wound_stacks += 1
+            elif other_hero.status['wound_backstab'] == True and other_hero.wound_stacks == 1:
+                other_hero.wound_backstab_continuous_damage += random.randint(8, 10)
+                other_hero.agility_reduced_amount_by_wound_backstab = other_hero.agility * 0.1
+                other_hero.agility -= other_hero.agility_reduced_amount_by_wound_backstab
+                other_hero.wound_backstab_stacks += 1
                 self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Backstab again, causing more wound.")
             else:
               self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Backstab")
         else:
             self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Backstab")
-            
+
         damage_dealt = max(damage_dealt, 0)
         return other_hero.take_damage(damage_dealt)
 
@@ -155,7 +155,7 @@ class Rogue_Assassination(Rogue):
         # Vanish: 100% evasion for 2 turn, 2nd turn will recover 10% hp but cannot do anything.
         self.evasion_capability = 100
         self.status['vanish'] = True
-        self.vanish_buff_duration = 2
+        self.vanish_duration = 2
         for skill in self.skills:
             if skill.name == "Vanish":
               skill.if_cooldown = True
