@@ -628,7 +628,7 @@ class StatusEffectManager:
             if hero.status['vanish'] and hero.hp > 0:
                 hero.vanish_duration -=1
                 if hero.vanish_duration == 1:
-                    self.game.display_status_updates(f"{BLUE}{hero.name} is hiding in the dark and taking healing. {hero.take_healing(int(hero.max_hp * 0.1)).}{RESET}")
+                    self.game.display_status_updates(f"{BLUE}{hero.name} is hiding in the dark and taking healing. {hero.take_healing(int(hero.max_hp * 0.1))}.{RESET}")
                 elif hero.vanish_duration == 0:
                     hero.status['vanish'] = False
                     hero.evasion_capability = 0
