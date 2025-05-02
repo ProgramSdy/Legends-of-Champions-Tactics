@@ -639,11 +639,16 @@ class StatusEffectManager:
                     self.game.display_status_updates(f"{BLUE}{hero.name} has recovered from Backstab wound. Their agility has returned to {hero.agility}.{RESET}")
 
             # Vanish Duration
+            if hero.is_after_vanish:
+               hero.is_after_vanish = False
             if hero.status['vanish'] and hero.hp > 0:
                 hero.vanish_duration -=1
                 if hero.vanish_duration == 1:
-                    self.game.display_status_updates(f"{BLUE}{hero.name} is hiding in the dark and taking healing. {hero.take_healing(int(hero.hp_max * 0.1))}.{RESET}")
+                    self.game.display_status_updates(f"{BLUE}{hero.name} is hiding in the dark.{RESET}")
                 elif hero.vanish_duration == 0:
-                    hero.status['vanish'] = False
                     hero.evasion_capability = 0
+                    hero.status['vanish'] = False
+                    hero.is_after_vanish = True
                     self.game.display_status_updates(f"{BLUE}{hero.name}'s figure slowly emerged from the darkness.{RESET}")
+                
+            
