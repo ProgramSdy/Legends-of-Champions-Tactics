@@ -331,20 +331,22 @@ class Death_Knight_Blood(Death_Knight):
                     results.append(f"{self.name} casts Blood Plague on {other_hero.name}. {other_hero.name} is taking continuous damage.")
                     results.append(other_hero.take_damage(actual_damage))
                     results.append(f"{self.name} is draining blood. {self.take_healing(blood_drain)}")
+                    break
             
-            debuff = Debuff(
+            else:
+                debuff = Debuff(
                 name='Blood Plague',
                 duration=4,
                 initiator=self,
                 effect=0.8
-            )
-            debuff.type = ['Disease']
-            other_hero.add_debuff(debuff)
-            other_hero.blood_plague_continuous_damage = round(actual_damage * debuff.effect)
-            other_hero.blood_plague_blood_drain = other_hero.blood_plague_continuous_damage * debuff.effect
-            results.append(f"{self.name} casts Blood Plague on {other_hero.name}. {other_hero.name} is taking continuous damage.")
-            results.append(other_hero.take_damage(actual_damage))
-            results.append(f"{self.name} is draining blood. {self.take_healing(blood_drain)}")
+                )
+                debuff.type = ['Disease']
+                other_hero.add_debuff(debuff)
+                other_hero.blood_plague_continuous_damage = round(actual_damage * debuff.effect)
+                other_hero.blood_plague_blood_drain = other_hero.blood_plague_continuous_damage * debuff.effect
+                results.append(f"{self.name} casts Blood Plague on {other_hero.name}. {other_hero.name} is taking continuous damage.")
+                results.append(other_hero.take_damage(actual_damage))
+                results.append(f"{self.name} is draining blood. {self.take_healing(blood_drain)}")
         else:
             results.append(f"{self.name} casts Blood Plague on {other_hero.name}.")
             results.append(other_hero.take_damage(actual_damage))
@@ -396,11 +398,13 @@ class Death_Knight_Blood(Death_Knight):
           if debuff.name == "Scoff":
             other_hero.debuffs.remove(debuff)
             other_hero.buffs_debuffs_recycle_pool.add(debuff)
+
         for debuff in other_hero.buffs_debuffs_recycle_pool:
                 if debuff.name == "Scoff" and debuff.initiator == self:
                     other_hero.buffs_debuffs_recycle_pool.remove(debuff)
                     debuff.duration = 1
-                    other_hero.add_debuff(debuff)   
+                    other_hero.add_debuff(debuff)
+                    break   
         else:
             debuff = Debuff(
                 name='Scoff',
@@ -415,6 +419,7 @@ class Death_Knight_Blood(Death_Knight):
                     self.buffs_debuffs_recycle_pool.remove(buff)
                     buff.duration = 2
                     self.add_buff(buff)   
+                    break
         else:
             buff = Buff(
                 name='Cumbrous Axe',
@@ -431,7 +436,7 @@ class Death_Knight_Blood(Death_Knight):
             if skill.name == "Cumbrous Axe":
               skill.if_cooldown = True
               skill.cooldown = 3
-          return f"{self.name} casts Cumbrous Axe on {other_hero.name}. {other_hero.name}'s magic casting has been interupted. {other_hero.take_damage(actual_damage)}. The healing {self.name} receives is boost. {other_hero.name} developed a deep hatred toward {self.name}."
+          return f"{self.name} casts Cumbrous Axe on {other_hero.name}. {result}. {other_hero.take_damage(actual_damage)}. The healing {self.name} receives is boost. {other_hero.name} developed a deep hatred toward {self.name}."
         else:
           other_hero.scoff_cumbrous_axe_duration = 2
           for skill in self.skills:

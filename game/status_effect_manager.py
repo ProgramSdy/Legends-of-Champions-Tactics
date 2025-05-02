@@ -639,8 +639,9 @@ class StatusEffectManager:
                     self.game.display_status_updates(f"{BLUE}{hero.name} has recovered from Backstab wound. Their agility has returned to {hero.agility}.{RESET}")
 
             # Vanish Duration
-            if hero.is_after_vanish:
-               hero.is_after_vanish = False
+            if hero.faculty == 'Rogue':
+                if hero.is_after_vanish:
+                    hero.is_after_vanish = False
             if hero.status['vanish'] and hero.hp > 0:
                 hero.vanish_duration -=1
                 if hero.vanish_duration == 1:
