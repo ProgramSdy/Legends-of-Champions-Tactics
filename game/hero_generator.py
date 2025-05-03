@@ -29,10 +29,12 @@ class HeroGenerator:
             Priest_Shadow: self.priset_names_list,
             Priest_Devine: self.priset_names_list,
             # Paladin
-            Paladin_Comprehensiveness: self.paladin_names_list,
+            Paladin_Retribution: self.paladin_names_list,
             Paladin_Protection: self.paladin_names_list,
+            Paladin_Holy: self.paladin_names_list,
             # Rogue
             Rogue_Comprehensiveness: self.rogue_names_list,
+            Rogue_Assassination: self.rogue_names_list,
             # Necromancer
             Necromancer_Comprehensiveness: self.necromancer_names_list,
             # Warlock

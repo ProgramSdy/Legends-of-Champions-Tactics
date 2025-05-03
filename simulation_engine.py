@@ -69,8 +69,9 @@ class BattleTester_1v1:
         self.sys_init = sys_init
         self.num_battles = num_battles
         self.professions = [
-            Warrior_Comprehensiveness, Mage_Comprehensiveness, Paladin_Comprehensiveness, Paladin_Protection,
-            Priest_Comprehensiveness, Rogue_Comprehensiveness, Necromancer_Comprehensiveness, Priest_Shelter, Priest_Shadow, Priest_Discipline, Priest_Devine,
+            Warrior_Comprehensiveness, Mage_Comprehensiveness, Paladin_Retribution, Paladin_Protection,
+            Priest_Comprehensiveness, Rogue_Comprehensiveness, Rogue_Assassination, Necromancer_Comprehensiveness, 
+            Priest_Shelter, Priest_Shadow, Priest_Discipline, Priest_Devine,
             Warlock_Comprehensiveness, Warlock_Destruction, Warlock_Affliction,
             Death_Knight_Frost, Death_Knight_Plague, Death_Knight_Blood
         ]
@@ -140,7 +141,10 @@ class BattleTester_1v1:
 def main():
     
     sys_init = System_initialization()
-    sys_init.initialize() 
+    interface = GameInterface(width=1200, height=800)
+    sys_init.initialize()
+    interface.initialize_window(sys_init)
+
     battle_tester = BattleTester_1v1(sys_init, num_battles=100)  # For 1v1 battles
     battle_tester.run_profession_tests()
 
