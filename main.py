@@ -45,7 +45,7 @@ def main():
     Player_1 = Rogue_Assassination(sys_init, "Arthas", "Group_A", True)
     Player_2 = Paladin_Holy(sys_init, "Black Heart", "Group_A", True)
     Player_3 = Mage_Comprehensiveness(sys_init, "Guldan", "Group_A", True)
-    player_heroes = [Player_1, Player_2]
+    player_heroes = [Player_2]
     #'''
     
 
@@ -58,7 +58,7 @@ def main():
     Aldric = Rogue_Comprehensiveness(sys_init, "Aldric", "Group_B", False)
     Deep_Seer = Death_Knight_Blood(sys_init,"Andonidas", "Group_B", False)
     Rohan = Priest_Shelter(sys_init, "Gandoff", "Group_B", False)
-    opponent_heroes = [Aldric, Deep_Seer]
+    opponent_heroes = [Deep_Seer]
     #'''
     # Display heroes from both sides__________________________________________
     '''
