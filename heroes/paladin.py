@@ -411,8 +411,9 @@ class Paladin_Holy(Paladin):
             for buff in other_hero.buffs_debuffs_recycle_pool:
                 if buff.name == "Purify Healing" and buff.initiator == self:
                     other_hero.buffs_debuffs_recycle_pool.remove(buff)
-                    buff.duration = 2   # Effect lasts for 4 rounds
+                    buff.duration = 2   # Effect lasts for 2 rounds
                     other_hero.add_buff(buff)
+                    break
             else:        
               buff = Buff(
                   name='Purify Healing',
@@ -425,7 +426,7 @@ class Paladin_Holy(Paladin):
         else:
             for buff in other_hero.buffs:
                 if buff.name == "Purify Healing" and buff.initiator == self:
-                    buff.duration = 2   # Effect lasts for 4 rounds
+                    buff.duration = 2   # Refresh effect
         
         self.game.display_battle_info(f"{self.name} uses Purify Healing on {other_hero.name}.")
         if status_list_for_action:
