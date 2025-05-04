@@ -123,7 +123,7 @@ class StatusDispell:
                   hero.debuffs.remove(debuff)
                   hero.buffs_debuffs_recycle_pool.append(debuff)
                   self.game.display_battle_info(f"{BLUE}{hero.name} is no longer burned. Immolate effect has faded away from {hero.name}.{RESET}")
-          elif hero.status['void_connection'] and hero.hp > 0 :
+          elif status == ['void_connection']:
             for buff in hero.buffs:
               if buff.name == "Void Connection":
                   buff.duration = 0
@@ -132,13 +132,13 @@ class StatusDispell:
                   hero.buffs.remove(buff)
                   hero.buffs_debuffs_recycle_pool.append(buff)
                   self.game.display_status_updates(f"{BLUE}{hero.name} is no longer connecting with {buff.initiator.name}. The connection has finished. {RESET}")
-          elif hero.status['hell_flame']:
+          elif status == ['hell_flame']:
             hero.status['hell_flame'] = False
             self.game.display_status_updates(f"{BLUE}{hero.name} is no longer in Hell Flame status.{RESET}")
-          elif hero.status['holy_infusion']:
+          elif status == ['holy_infusion']:
             hero.status['holy_infusion'] = False
             self.game.display_status_updates(f"{BLUE}{hero.name} is no longer in Holy Infusion status.{RESET}")
-          elif hero.status['frost_fever']:
+          elif status == ['frost_fever']:
             hero.status['frost_fever'] = False
             for debuff in hero.debuffs:
               if debuff.name == "Frost Fever":
@@ -149,7 +149,7 @@ class StatusDispell:
                 hero.debuffs.remove(debuff)
                 hero.buffs_debuffs_recycle_pool.append(debuff)
                 self.game.display_status_updates(f"{BLUE}{hero.name}'s Frost Fever has disappeared. {hero.name}'s agility has returned to {hero.agility}.{RESET}")
-          elif hero.status['icy_squall']:
+          elif status == ['icy_squall']:
             for debuff in hero.debuffs:
               if debuff.name == "Icy Squall":
                   debuff.duration = 0
@@ -159,7 +159,7 @@ class StatusDispell:
                   hero.debuffs.remove(debuff)
                   hero.buffs_debuffs_recycle_pool.append(debuff)
                   self.game.display_status_updates(f"{BLUE}{hero.name} is no longer vulnerable towards frost attack. {hero.name}'s frost resistance has returned to {hero.frost_resistance}.{RESET}")
-          elif hero.status['necrotic_decay']:
+          elif status == ['necrotic_decay']:
             for debuff in hero.debuffs:
                 if debuff.name == "Necrotic Decay":
                   debuff.duration = 0
@@ -170,7 +170,7 @@ class StatusDispell:
                   hero.debuffs.remove(debuff)
                   hero.buffs_debuffs_recycle_pool.append(debuff)
                   self.game.display_status_updates(f"{BLUE}{hero.name} has recovered from Necrotic Decay.{RESET}")
-          elif hero.status['virulent_infection']:
+          elif status == ['virulent_infection']:
             for debuff in hero.debuffs:
                 if debuff.name == "Virulent Infection":
                   debuff.duration = 0
@@ -179,7 +179,7 @@ class StatusDispell:
                   hero.debuffs.remove(debuff)
                   hero.buffs_debuffs_recycle_pool.append(debuff)
                   self.game.display_status_updates(f"{BLUE}{hero.name} has recovered from Virulent Infection.{RESET}")
-          elif hero.status['blood_plague']:
+          elif status == ['blood_plague']:
             for debuff in hero.debuffs:
                 if debuff.name == "Blood Plague":
                   debuff.duration = 0
@@ -189,12 +189,12 @@ class StatusDispell:
                   hero.debuffs.remove(debuff)
                   hero.buffs_debuffs_recycle_pool.append(debuff)
                   self.game.display_status_updates(f"{BLUE}{hero.name} has recovered from Blood Plague.{RESET}")   
-          elif hero.status['bleeding_crimson_cleave']:
+          elif status == ['bleeding_crimson_cleave']:
               hero.bleeding_crimson_cleave_duration = 0
               hero.bleeding_crimson_cleave_continuous_damage = 0
               hero.status['bleeding_crimson_cleave'] = False
               self.game.display_status_updates(f"{BLUE}{hero.name} has stopped bleeding. Their wound from Crimson Cleave has recovered.{RESET}") 
-          elif hero.status['cumbrous_axe']:
+          elif status == ['cumbrous_axe']:
             for buff in hero.buffs:
                 if buff.name == "Cumbrous Axe":
                   buff.duration = 0
@@ -204,7 +204,7 @@ class StatusDispell:
                   hero.buffs.remove(buff)
                   hero.buffs_debuffs_recycle_pool.append(buff)
                   self.game.display_status_updates(f"{BLUE}{hero.name}'s Cumbrous Axe effect has disappeared. {hero.name} has stopped receiving boost healing.{RESET}")    
-          elif hero.status['scoff']:
+          elif status == ['scoff']:
             hero.status['scoff'] = False
             for debuff in hero.debuffs:
               if debuff.name == "Scoff":
@@ -212,13 +212,13 @@ class StatusDispell:
                 hero.debuffs.remove(debuff)
                 hero.buffs_debuffs_recycle_pool.append(debuff)
                 self.game.display_status_updates(f"{RED}{hero.name} has recovered from scoff.{RESET}")  
-          elif hero.status['hammer_of_revenge']:
+          elif status == ['hammer_of_revenge']:
               hero.hammer_of_revenge_duration = 0
               hero.damage = hero.damage + hero.damage_reduced_amount_by_hammer_of_revenge
               hero.damage_reduced_amount_by_hammer_of_revenge = 0
               hero.status['hammer_of_revenge'] = False
               self.game.display_status_updates(f"{BLUE}{hero.name} is no longer feeling powerless. {hero.name}'s damage has returned to {hero.damage}.{RESET}")  
-          elif hero.status['purify_healing']:
+          elif status == ['purify_healing']:
             for buff in hero.buffs:
               if buff.name == "Purify Healing":
                 buff.duration = 0
@@ -226,7 +226,7 @@ class StatusDispell:
                 hero.buffs.remove(buff)
                 hero.buffs_debuffs_recycle_pool.append(buff)
                 self.game.display_status_updates(f"{BLUE}{hero.name}'s Purify Healing from {buff.initiator.name} has disappeared.{RESET}")
-          elif hero.status['shield_of_protection']:
+          elif status == ['shield_of_protection']:
                 hero.shield_of_protection_duration = 0
                 hero.status['shield_of_protection'] = False
                 self.game.display_status_updates(f"{BLUE}{hero.name} is no longer protected by Holy Light, Shield of Protection has disappeared.{RESET}")  
