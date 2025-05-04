@@ -43,7 +43,7 @@ def main():
     '''
     #'''
     Player_1 = Rogue_Assassination(sys_init, "Arthas", "Group_A", True)
-    Player_2 = Paladin_Protection(sys_init, "Black Heart", "Group_A", True)
+    Player_2 = Paladin_Holy(sys_init, "Black Heart", "Group_A", True)
     Player_3 = Mage_Comprehensiveness(sys_init, "Guldan", "Group_A", True)
     player_heroes = [Player_1, Player_2]
     #'''

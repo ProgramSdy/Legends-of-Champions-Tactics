@@ -281,7 +281,7 @@ class Game:
               return
         elif hero.status['scoff'] == True:
           for debuff in hero.debuffs:
-            if debuff.name == "Scoff":
+            if debuff.name == "Scoff" and debuff.initiator.hp > 0:
               self.display_battle_info(f"{hero.name} has a deep hatred towards {debuff.initiator.name} and launches an all-out attack against them.")
               result = hero.ai_action(hero.opponents, hero.allies)
               hero.status['scoff'] = False
@@ -290,6 +290,25 @@ class Game:
               if len(self.check_groups_status()) == 1 or len(self.check_groups_status()) == 0:
                 self.game_state = "game_over"
                 return
+            elif debuff.name == "Scoff" and debuff.initiator.hp <= 0:
+              self.display_battle_info(f"{hero.name}'s deep hatred towards {debuff.initiator.name} has disappeared.")
+              hero.status['scoff'] = False
+              if hero.is_player_controlled:
+                  self.skill_selection_active = True  # Activate skill selection
+                  result = hero.player_action(hero, hero.opponents, hero.allies)  # Execute the chosen skill and chosen target
+                  if result is not None:
+                    self.display_battle_info(result)
+                  if len(self.check_groups_status())  == 1 or len(self.check_groups_status()) == 0:
+                    self.game_state = "game_over"
+                    return
+              else:
+                  if hero.opponents:  # Ensure there are opponents available
+                      result = hero.ai_action(hero.opponents, hero.allies)
+                      if result is not None:
+                        self.display_battle_info(result)
+                      if len(self.check_groups_status()) == 1 or len(self.check_groups_status()) == 0:
+                        self.game_state = "game_over"
+                        return
         else:
           if hero.is_player_controlled:
               self.skill_selection_active = True  # Activate skill selection
