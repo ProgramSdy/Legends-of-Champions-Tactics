@@ -609,7 +609,7 @@ class StatusEffectManager:
                           status_list_for_action = list(equal_status)
                           if status_list_for_action:
                             random.shuffle(status_list_for_action)
-                            self.game.status_dispeller.dispell_status(status_list_for_action[0], hero)
+                            self.game.status_dispeller.dispell_status([status_list_for_action[0]], hero)
                       elif buff.duration == 0:
                           hero.status['purify_healing'] = False
                           hero.buffs.remove(buff)
