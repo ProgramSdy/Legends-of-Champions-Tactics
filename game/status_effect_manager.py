@@ -18,6 +18,26 @@ class StatusEffectManager:
 
     def check_heroes_status_effects(self, hero):
         if hero.hp > 0: # Only process heroes who are not defeated
+            # Purify Healing Buff Duration
+            if hero.status['purify_healing'] and hero.hp > 0:
+                for buff in hero.buffs:
+                  if buff.name == "Purify Healing":
+                      buff.duration -= 1
+                      if buff.duration > 0:
+                          self.game.display_status_updates(f"{BLUE}{hero.name}'s Purify Healing from {buff.initiator.name} lasts {buff.duration} rounds.{RESET}")
+                          hero_status_activated = [key for key, value in hero.status.items() if value == True]
+                          set_comb = set(hero.list_status_debuff_bleeding) | set(hero.list_status_debuff_disease)
+                          equal_status = set(hero_status_activated) & set_comb
+                          status_list_for_action = list(equal_status)
+                          if status_list_for_action:
+                            random.shuffle(status_list_for_action)
+                            self.game.status_dispeller.dispell_status([status_list_for_action[0]], hero)
+                      elif buff.duration == 0:
+                          hero.status['purify_healing'] = False
+                          hero.buffs.remove(buff)
+                          hero.buffs_debuffs_recycle_pool.append(buff)
+                          self.game.display_status_updates(f"{BLUE}{hero.name}'s Purify Healing from {buff.initiator.name} has disappeared.{RESET}")
+            
             # Handle Stun Duration
             if hero.status['stunned'] and hero.hp > 0:
                 if hero.stun_duration > 0:
@@ -594,27 +614,7 @@ class StatusEffectManager:
                     hero.damage = hero.damage + hero.damage_reduced_amount_by_hammer_of_revenge
                     hero.damage_reduced_amount_by_hammer_of_revenge = 0
                     hero.status['hammer_of_revenge'] = False
-                    self.game.display_status_updates(f"{BLUE}{hero.name} is no longer feeling powerless. {hero.name}'s damage has returned to {hero.damage}.{RESET}")  
-    
-            # Purify Healing Buff Duration
-            if hero.status['purify_healing'] and hero.hp > 0:
-                for buff in hero.buffs:
-                  if buff.name == "Purify Healing":
-                      buff.duration -= 1
-                      if buff.duration > 0:
-                          self.game.display_status_updates(f"{BLUE}{hero.name}'s Purify Healing from {buff.initiator.name} lasts {buff.duration} rounds.{RESET}")
-                          hero_status_activated = [key for key, value in hero.status.items() if value == True]
-                          set_comb = set(hero.list_status_debuff_bleeding) | set(hero.list_status_debuff_disease)
-                          equal_status = set(hero_status_activated) & set_comb
-                          status_list_for_action = list(equal_status)
-                          if status_list_for_action:
-                            random.shuffle(status_list_for_action)
-                            self.game.status_dispeller.dispell_status([status_list_for_action[0]], hero)
-                      elif buff.duration == 0:
-                          hero.status['purify_healing'] = False
-                          hero.buffs.remove(buff)
-                          hero.buffs_debuffs_recycle_pool.append(buff)
-                          self.game.display_status_updates(f"{BLUE}{hero.name}'s Purify Healing from {buff.initiator.name} has disappeared.{RESET}")
+                    self.game.display_status_updates(f"{BLUE}{hero.name} is no longer feeling powerless. {hero.name}'s damage has returned to {hero.damage}.{RESET}")   
 
             # Handle Shield of Protection Duration
             if hero.status['shield_of_protection'] and hero.hp > 0:

@@ -232,7 +232,13 @@ class StatusDispell:
                 hero.shield_of_protection_duration = 0
                 hero.status['shield_of_protection'] = False
                 self.game.display_status_updates(f"{BLUE}{hero.name} is no longer protected by Holy Light, Shield of Protection has disappeared.{RESET}")  
-
+          elif status == 'wound_backstab':
+                hero.wound_backstab_debuff_duration = 0
+                hero.wound_backstab_continuous_damage = 0
+                hero.agility = hero.agility + hero.agility_reduced_amount_by_wound_backstab
+                hero.wound_backstab_stacks = 0
+                hero.status['wound_backstab'] = False
+                self.game.display_status_updates(f"{BLUE}{hero.name} has recovered from Backstab wound. Their agility has returned to {hero.agility}.{RESET}")
 
 
 
