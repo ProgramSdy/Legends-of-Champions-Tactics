@@ -173,33 +173,12 @@ class Rogue_Toxicology(Rogue):
             self.add_skill(Skill(self, "Poisoned Dagger", self.poisoned_dagger, target_type = "single", skill_type= "damage"))
             self.add_skill(Skill(self, "Shadow Evasion", self.shadow_evasion, target_type = "single", skill_type= "buffs", target_qty= 0))
 
-    def sharp_blade(self, other_hero):
-        variation = random.randint(-5, 0)
-        actual_damage = self.damage + variation
-        damage_dealt = actual_damage - other_hero.defense
-        accuracy = 50  # Bleeding effect has a 50% chance to succeed
-        roll = random.randint(1, 100)  # Simulate a roll of 100-sided dice
-        if roll <= accuracy and other_hero.status['bleeding_sharp_blade'] == False:
-            other_hero.status['bleeding_sharp_blade'] = True
-            other_hero.status['normal'] = False
-            other_hero.sharp_blade_debuff_duration = 3
-            if damage_dealt > 20:
-              other_hero.sharp_blade_continuous_damage = random.randint(9, 14)
-            else:
-              other_hero.sharp_blade_continuous_damage = random.randint(5, 8)
-            self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Sharp Blade, {other_hero.name} is bleeding.")
-        else:
-            self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Sharp Blade")
-        # Ensure damage dealt is at least 0
-        damage_dealt = max(damage_dealt, 0)
-        # Apply damage to the other hero's HP
-        return other_hero.take_damage(damage_dealt)
 
     def poisoned_dagger(self, other_hero): #poisoned dagger debuff can stack twice, and continuous damage is a poison damage
         variation = random.randint(-2, 2)
         actual_damage = self.damage + variation
         damage_dealt = int((actual_damage - other_hero.defense)/2)
-        accuracy = 85  # Poinsed effect has a 85% chance to succeed
+        accuracy = 95  # Poinsed effect has a 95% chance to succeed
         roll = random.randint(1, 100)  # Simulate a roll of 100-sided dice
         if roll <= accuracy: # attach poisoned_dagger effect
           if other_hero.status['poisoned_dagger'] == False:
@@ -220,4 +199,40 @@ class Rogue_Toxicology(Rogue):
         # Ensure damage dealt is at least 0
         damage_dealt = max(damage_dealt, 0)
         # Apply damage to the other hero's HP
+        return other_hero.take_damage(damage_dealt)
+
+    def paralyze_blade(self, other_hero): 
+        variation = random.randint(-2, 2)
+        actual_damage = self.damage + variation
+        damage_dealt = int((actual_damage - other_hero.defense)/3)
+        accuracy = 90 # Paralyze venom has a 90% chance to succeed
+        roll = random.randint(1, 100)
+        if roll <= accuracy:
+            if other_hero.status['paralyze_blade'] == False:
+              other_hero.status['paralyze_blade'] = True
+              other_hero.paralyze_blade_debuff_duration = 3
+              other_hero.paralyze_blade_continuous_damage = math.ceil((actual_damage - other_hero.poison_resistance)/6)
+              agility_before_reduce = other_hero.agility
+              other_hero.agility_reduced_amount_by_paralyze_blade = int(other_hero.agility * 0.5)
+              other_hero.agility -= other_hero.agility_reduced_amount_by_paralyze_blade
+              other_hero.paralyze_blade_stacks += 1
+              if other_hero.status['poisoned_dagger'] == True and other_hero.status['mixed_venom'] == False:
+                other_hero.status['mixed_venom'] = True
+                other_hero.mixed_venom_debuff_duration = 3
+                other_hero.mixed_venom_continuous_damage = math.ceil((actual_damage - other_hero.poison_resistance)/6)
+              self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Paralyze Blade. {other_hero.name}'s agility has reduced from {agility_,before_reduce} to {other_hero.agility}.")
+            elif other_hero.status['paralyze_blade'] == True and other_hero.paralyze_blade_stacks == 1:
+              other_hero.status['paralyzed'] = True
+              other_hero.paralyzed_duration = 1
+              other_hero.paralyze_blade_stacks += 1
+              if other_hero.status['magic_casting'] == True:
+                result = self.interrupt_magic_casting(other_hero)
+                self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Paralyze Blade again, {other_hero.name} is paralyzed and cannot move. {result}")
+              else:
+                self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Paralyze Blade again, {other_hero.name} is paralyzed and cannot move.")
+            else:
+              self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Paralyze Blade")
+        else:
+            self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Paralyze Blade")
+        damage_dealt = max(damage_dealt, 0)
         return other_hero.take_damage(damage_dealt)
