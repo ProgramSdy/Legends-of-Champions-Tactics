@@ -66,13 +66,19 @@ class Hero:
         'purify_healing': False,
         'shield_of_protection': False,
         'wound_backstab': False,
-        'vanish': False
+        'vanish': False,
+        'paralyze_blade': False,
+        'paralyzed': False,
+        'mixed_venom': False,
+        'acid_bomb': False,
+        'unstable_compound': False
     }
     list_status_debuff_magic = ['shadow_word_pain', 'cold', 'holy_word_punishment', \
                                 'shadow_word_insanity', 'unholy_frenzy', 'curse_of_agony', 'fear', 'shadow_bolt', \
                                 'corrosion','soul_siphon', 'immolate', 'icy_squall']
-    list_status_debuff_disease = ['poisoned_dagger', 'frost_fever', 'necrotic_decay', 'virulent_infection', 'blood_plague']
-    list_status_debuff_physical  = ['armor_breaker', 'scoff', 'hammer_of_revenge']
+    list_status_debuff_disease = ['frost_fever', 'necrotic_decay', 'virulent_infection', 'blood_plague']
+    list_status_debuff_toxic = ['poisoned_dagger', 'paralyze_blade', 'mixed_venom', 'acid_bomb', 'unstable_compound']                     
+    list_status_debuff_physical  = ['armor_breaker', 'scoff', 'hammer_of_revenge', 'stunned', 'paralyzed']
     list_status_debuff_bleeding = ['bleeding_slash','bleeding_sharp_blade', 'bleeding_crimson_cleave', 'wound_backstab']
     list_status_buff_magic = ['shield_of_righteous','wrath_of_crusader','holy_word_shell','holy_word_redemption', \
                               'holy_fire', 'unholy_frenzy', 'holy_infusion', 'hell_flame', 'cumbrous_axe', 'purify_healing', \

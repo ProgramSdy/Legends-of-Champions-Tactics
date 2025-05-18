@@ -115,6 +115,20 @@ class StatusEffectManager:
                     hero.poisoned_dagger_stacks = 0
                     self.game.display_status_updates(f"{BLUE}{hero.name} is no longer poisoned.{RESET}")
 
+            # Handle Paralyze Blade Debuff Duration
+            if hero.status['paralyze_blade'] and hero.hp > 0:
+                hero.paralyze_blade_debuff_duration -=1
+                if hero.paralyze_blade_debuff_duration > 0:
+                    variation = random.randint(-2, 2)
+                    self.game.display_status_updates(f"{BLUE}{hero.name}'s Paralyze Blade duration is {hero.paralyze_blade_debuff_duration} rounds. {hero.take_damage(hero.paralyze_blade_continuous_damage + variation)}{RESET}")
+                elif hero.paralyze_blade_debuff_duration == 0:
+                    hero.paralyze_blade_continuous_damage = 0
+                    hero.agility = hero.agility + hero.agility_reduced_amount_by_paralyze_blade  # Restore original agility
+                    hero.agility_reduced_amount_by_paralyze_blade = 0
+                    hero.status['paralyze_blade'] = False
+                    hero.paralyze_blade_stacks = 0
+                    self.game.display_status_updates(f"{BLUE}{hero.name} is no longer effected by Paralyze Blade. {hero.name}'s agility has come back to {hero.agility} {RESET}")
+
             # Handle Sharp Blade Debuff Duration
             if hero.status['bleeding_sharp_blade'] and hero.hp > 0:
                 hero.sharp_blade_debuff_duration -=1

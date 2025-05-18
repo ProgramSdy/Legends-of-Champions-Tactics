@@ -169,9 +169,9 @@ class Rogue_Toxicology(Rogue):
 
     def __init__(self, sys_init, name, group, is_player_controlled):
             super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major)
-            self.add_skill(Skill(self, "Sharp Blade", self.sharp_blade, target_type = "single", skill_type= "damage",))
             self.add_skill(Skill(self, "Poisoned Dagger", self.poisoned_dagger, target_type = "single", skill_type= "damage"))
-            self.add_skill(Skill(self, "Shadow Evasion", self.shadow_evasion, target_type = "single", skill_type= "buffs", target_qty= 0))
+            self.add_skill(Skill(self, "Paralyze Blade", self.paralyze_blade, target_type = "single", skill_type= "damage"))
+            self.add_skill(Skill(self, "Acid Bomb", self.acid_bomb, target_type = "single", skill_type= "damage"))
 
 
     def poisoned_dagger(self, other_hero): #poisoned dagger debuff can stack twice, and continuous damage is a poison damage
@@ -183,7 +183,6 @@ class Rogue_Toxicology(Rogue):
         if roll <= accuracy: # attach poisoned_dagger effect
           if other_hero.status['poisoned_dagger'] == False:
               other_hero.status['poisoned_dagger'] = True
-              other_hero.status['normal'] = False
               other_hero.poisoned_dagger_debuff_duration = 4
               other_hero.poisoned_dagger_stacks += 1
               other_hero.poisoned_dagger_continuous_damage = math.ceil((actual_damage - other_hero.poison_resistance)/4)
@@ -299,53 +298,31 @@ class Rogue_Toxicology(Rogue):
     def acid_bomb(self, other_hero): 
         variation = random.randint(-2, 2)
         actual_damage = self.damage + variation
-        damage_dealt = int((actual_damage - other_hero.poison_resistance)* 4/5)
-        accuracy = 95  # Poinsed effect has a 95% chance to succeed
-        roll = random.randint(1, 100)  # Simulate a roll of 100-sided dice
-        if roll <= accuracy: # attach poisoned_dagger effect
-          if other_hero.status['poisoned_dagger'] == False:
-              other_hero.status['poisoned_dagger'] = True
-              other_hero.status['normal'] = False
-              other_hero.poisoned_dagger_debuff_duration = 4
-              other_hero.poisoned_dagger_stacks += 1
-              other_hero.poisoned_dagger_continuous_damage = math.ceil((actual_damage - other_hero.poison_resistance)/4)
-              if other_hero.status['paralyze_blade'] == True and other_hero.status['mixed_venom'] == False:
-                other_hero.status['mixed_venom'] = True
-                other_hero.mixed_venom_debuff_duration = 3
-                poison_resistance_before_reduce = other_hero.poison_resistance
-                other_hero.poison_resistance_reduced_amount_by_mixed_venom = int(other_hero.poison_resistance * 0.3)
-                other_hero.poison_resistance -= other_hero.poison_resistance_reduced_amount_by_mixed_venom
-                self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Poisoned Dagger, {other_hero.name} is poisoned.")
-                self.game.display_battle_info(f"{other_hero.name} is suffering from a mix of two venom inside. {other_hero.name}'s poison resistance has reduced from {poison_resistance_before_reduce} to {other_hero.poison_resistance}.")
-              else:
-                self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Poisoned Dagger, {other_hero.name} is poisoned.")
-          elif other_hero.status['poisoned_dagger'] == True and other_hero.poisoned_dagger_stacks == 1:
-              other_hero.poisoned_dagger_stacks += 1
-              other_hero.poisoned_dagger_continuous_damage += math.ceil((actual_damage - other_hero.poison_resistance)/4)
-              if other_hero.status['paralyze_blade'] == True and other_hero.status['mixed_venom'] == False:
-                other_hero.status['mixed_venom'] = True
-                other_hero.mixed_venom_debuff_duration = 3
-                poison_resistance_before_reduce = other_hero.poison_resistance
-                other_hero.poison_resistance_reduced_amount_by_mixed_venom = int(other_hero.poison_resistance * 0.3)
-                other_hero.poison_resistance -= other_hero.poison_resistance_reduced_amount_by_mixed_venom
-                self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Poisoned Dagger again, {other_hero.name}'s poisnoning has worsened.")
-                self.game.display_battle_info(f"{other_hero.name} is suffering from a mix of two venom inside. {other_hero.name}'s poison resistance has reduced from {poison_resistance_before_reduce} to {other_hero.poison_resistance}.")
-              else:
-                self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Poisoned Dagger again, {other_hero.name}'s poisnoning has worsened.")
+        damage_dealt = int((actual_damage - other_hero.poison_resistance)* 1/2)
+        if other_hero.status['acid_bomb'] == False:
+          other_hero.status['acid_bomb'] = True
+          other_hero.acid_bomb_debuff_duration = 1
+          damage_before_reduce = other_hero.damage
+          other_hero.damage_reduced_amount_by_acid_bomb = int(other_hero.damage * 0.7)
+          other_hero.damage -= other_hero.damage_reduced_amount_by_acid_bomb
+          if other_hero.status['mixed_venom'] == True and other_hero.status['unstable_compound'] == False:
+            other_hero.status['unstable_compound'] = True
+            other_hero.unstable_compound_debuff_duration = 3
+            self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Acid Bomb, {other_hero.name}'s weapon is melting. {other_hero.name}'s damage has reduced from {damage_before_reduce} to {other_hero.damage}.")
+            self.game.display_battle_info(f"All venom on {other_hero.name} has formed an unstable compound.")
           else:
-              if other_hero.status['paralyze_blade'] == True and other_hero.status['mixed_venom'] == False:
-                other_hero.status['mixed_venom'] = True
-                other_hero.mixed_venom_debuff_duration = 3
-                poison_resistance_before_reduce = other_hero.poison_resistance
-                other_hero.poison_resistance_reduced_amount_by_mixed_venom = int(other_hero.poison_resistance * 0.3)
-                other_hero.poison_resistance -= other_hero.poison_resistance_reduced_amount_by_mixed_venom
-                self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Poisoned Dagger.")
-                self.game.display_battle_info(f"{other_hero.name} is suffering from a mix of two venom inside. {other_hero.name}'s poison resistance has reduced from {poison_resistance_before_reduce} to {other_hero.poison_resistance}.")
-              else:
-                self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Poisoned Dagger.")
+            self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Acid Bomb, {other_hero.name}'s weapon is melting. {other_hero.name}'s damage has reduced from {damage_before_reduce} to {other_hero.damage}.")
         else:
-            self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Poisoned Dagger, but the venom failed to take effect.")
-        # Ensure damage dealt is at least 0
+          if other_hero.status['mixed_venom'] == True and other_hero.status['unstable_compound'] == False:
+            other_hero.status['unstable_compound'] = True
+            other_hero.unstable_compound_debuff_duration = 3
+            self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Acid Bomb.")
+            self.game.display_battle_info(f"All venom on {other_hero.name} has formed an unstable compound.")
+          else:
+            self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Acid Bomb.")
+        for skill in self.skills:
+            if skill.name == "Acid Bomb":
+              skill.if_cooldown = True
+              skill.cooldown = 3
         damage_dealt = max(damage_dealt, 0)
-        # Apply damage to the other hero's HP
         return other_hero.take_damage(damage_dealt)
