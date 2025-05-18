@@ -74,7 +74,7 @@ class Rogue_Comprehensiveness(Rogue):
           else:
             self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Poisoned Dagger")
         else:
-            self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Poisoned Dagger")
+            self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Poisoned Dagger, but the venom failed to take effect.")
         # Ensure damage dealt is at least 0
         damage_dealt = max(damage_dealt, 0)
         # Apply damage to the other hero's HP
@@ -187,15 +187,42 @@ class Rogue_Toxicology(Rogue):
               other_hero.poisoned_dagger_debuff_duration = 4
               other_hero.poisoned_dagger_stacks += 1
               other_hero.poisoned_dagger_continuous_damage = math.ceil((actual_damage - other_hero.poison_resistance)/4)
-              self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Poisoned Dagger, {other_hero.name} is poisoned.")
+              if other_hero.status['paralyze_blade'] == True and other_hero.status['mixed_venom'] == False:
+                other_hero.status['mixed_venom'] = True
+                other_hero.mixed_venom_debuff_duration = 3
+                poison_resistance_before_reduce = other_hero.poison_resistance
+                other_hero.poison_resistance_reduced_amount_by_mixed_venom = int(other_hero.poison_resistance * 0.3)
+                other_hero.poison_resistance -= other_hero.poison_resistance_reduced_amount_by_mixed_venom
+                self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Poisoned Dagger, {other_hero.name} is poisoned.")
+                self.game.display_battle_info(f"{other_hero.name} is suffering from a mix of two venom inside. {other_hero.name}'s poison resistance has reduced from {poison_resistance_before_reduce} to {other_hero.poison_resistance}.")
+              else:
+                self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Poisoned Dagger, {other_hero.name} is poisoned.")
           elif other_hero.status['poisoned_dagger'] == True and other_hero.poisoned_dagger_stacks == 1:
               other_hero.poisoned_dagger_stacks += 1
               other_hero.poisoned_dagger_continuous_damage += math.ceil((actual_damage - other_hero.poison_resistance)/4)
-              self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Poisoned Dagger again, {other_hero.name}'s poisnoning has worsened.")
+              if other_hero.status['paralyze_blade'] == True and other_hero.status['mixed_venom'] == False:
+                other_hero.status['mixed_venom'] = True
+                other_hero.mixed_venom_debuff_duration = 3
+                poison_resistance_before_reduce = other_hero.poison_resistance
+                other_hero.poison_resistance_reduced_amount_by_mixed_venom = int(other_hero.poison_resistance * 0.3)
+                other_hero.poison_resistance -= other_hero.poison_resistance_reduced_amount_by_mixed_venom
+                self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Poisoned Dagger again, {other_hero.name}'s poisnoning has worsened.")
+                self.game.display_battle_info(f"{other_hero.name} is suffering from a mix of two venom inside. {other_hero.name}'s poison resistance has reduced from {poison_resistance_before_reduce} to {other_hero.poison_resistance}.")
+              else:
+                self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Poisoned Dagger again, {other_hero.name}'s poisnoning has worsened.")
           else:
-            self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Poisoned Dagger")
+              if other_hero.status['paralyze_blade'] == True and other_hero.status['mixed_venom'] == False:
+                other_hero.status['mixed_venom'] = True
+                other_hero.mixed_venom_debuff_duration = 3
+                poison_resistance_before_reduce = other_hero.poison_resistance
+                other_hero.poison_resistance_reduced_amount_by_mixed_venom = int(other_hero.poison_resistance * 0.3)
+                other_hero.poison_resistance -= other_hero.poison_resistance_reduced_amount_by_mixed_venom
+                self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Poisoned Dagger.")
+                self.game.display_battle_info(f"{other_hero.name} is suffering from a mix of two venom inside. {other_hero.name}'s poison resistance has reduced from {poison_resistance_before_reduce} to {other_hero.poison_resistance}.")
+              else:
+                self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Poisoned Dagger.")
         else:
-            self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Poisoned Dagger")
+            self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Poisoned Dagger, but the venom failed to take effect.")
         # Ensure damage dealt is at least 0
         damage_dealt = max(damage_dealt, 0)
         # Apply damage to the other hero's HP
@@ -219,20 +246,106 @@ class Rogue_Toxicology(Rogue):
               if other_hero.status['poisoned_dagger'] == True and other_hero.status['mixed_venom'] == False:
                 other_hero.status['mixed_venom'] = True
                 other_hero.mixed_venom_debuff_duration = 3
-                other_hero.mixed_venom_continuous_damage = math.ceil((actual_damage - other_hero.poison_resistance)/6)
-              self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Paralyze Blade. {other_hero.name}'s agility has reduced from {agility_,before_reduce} to {other_hero.agility}.")
+                poison_resistance_before_reduce = other_hero.poison_resistance
+                other_hero.poison_resistance_reduced_amount_by_mixed_venom = int(other_hero.poison_resistance * 0.3)
+                other_hero.poison_resistance -= other_hero.poison_resistance_reduced_amount_by_mixed_venom
+                self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Paralyze Blade. {other_hero.name}'s agility has reduced from {agility_,before_reduce} to {other_hero.agility}.")
+                self.game.display_battle_info(f"{other_hero.name} is suffering from a mix of two venom inside. {other_hero.name}'s poison resistance has reduced from {poison_resistance_before_reduce} to {other_hero.poison_resistance}.")
+              else:
+                self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Paralyze Blade. {other_hero.name}'s agility has reduced from {agility_before_reduce} to {other_hero.agility}.")
             elif other_hero.status['paralyze_blade'] == True and other_hero.paralyze_blade_stacks == 1:
               other_hero.status['paralyzed'] = True
               other_hero.paralyzed_duration = 1
               other_hero.paralyze_blade_stacks += 1
               if other_hero.status['magic_casting'] == True:
                 result = self.interrupt_magic_casting(other_hero)
-                self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Paralyze Blade again, {other_hero.name} is paralyzed and cannot move. {result}")
+                if other_hero.status['poisoned_dagger'] == True and other_hero.status['mixed_venom'] == False:
+                  other_hero.status['mixed_venom'] = True
+                  other_hero.mixed_venom_debuff_duration = 3
+                  poison_resistance_before_reduce = other_hero.poison_resistance
+                  other_hero.poison_resistance_reduced_amount_by_mixed_venom = int(other_hero.poison_resistance * 0.3)
+                  other_hero.poison_resistance -= other_hero.poison_resistance_reduced_amount_by_mixed_venom
+                  self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Paralyze Blade again, {other_hero.name} is paralyzed and cannot move. {result}")
+                  self.game.display_battle_info(f"{other_hero.name} is suffering from a mix of two venom inside. {other_hero.name}'s poison resistance has reduced from {poison_resistance_before_reduce} to {other_hero.poison_resistance}.")
+                else:
+                  self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Paralyze Blade again, {other_hero.name} is paralyzed and cannot move. {result}")
               else:
-                self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Paralyze Blade again, {other_hero.name} is paralyzed and cannot move.")
+                if other_hero.status['poisoned_dagger'] == True and other_hero.status['mixed_venom'] == False:
+                  other_hero.status['mixed_venom'] = True
+                  other_hero.mixed_venom_debuff_duration = 3
+                  poison_resistance_before_reduce = other_hero.poison_resistance
+                  other_hero.poison_resistance_reduced_amount_by_mixed_venom = int(other_hero.poison_resistance * 0.3)
+                  other_hero.poison_resistance -= other_hero.poison_resistance_reduced_amount_by_mixed_venom
+                  self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Paralyze Blade again, {other_hero.name} is paralyzed and cannot move.")
+                  self.game.display_battle_info(f"{other_hero.name} is suffering from a mix of two venom inside. {other_hero.name}'s poison resistance has reduced from {poison_resistance_before_reduce} to {other_hero.poison_resistance}.")
+                else:
+                  self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Paralyze Blade again, {other_hero.name} is paralyzed and cannot move.")
             else:
-              self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Paralyze Blade")
+                if other_hero.status['poisoned_dagger'] == True and other_hero.status['mixed_venom'] == False:
+                  other_hero.status['mixed_venom'] = True
+                  other_hero.mixed_venom_debuff_duration = 3
+                  poison_resistance_before_reduce = other_hero.poison_resistance
+                  other_hero.poison_resistance_reduced_amount_by_mixed_venom = int(other_hero.poison_resistance * 0.3)
+                  other_hero.poison_resistance -= other_hero.poison_resistance_reduced_amount_by_mixed_venom
+                  self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Paralyze Blade.")
+                  self.game.display_battle_info(f"{other_hero.name} is suffering from a mix of two venom inside. {other_hero.name}'s poison resistance has reduced from {poison_resistance_before_reduce} to {other_hero.poison_resistance}.")
+                else:
+                  self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Paralyze Blade again.")
         else:
-            self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Paralyze Blade")
+            self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Paralyze Blade, but the venom failed to take effect.")
         damage_dealt = max(damage_dealt, 0)
+        return other_hero.take_damage(damage_dealt)
+
+    def acid_bomb(self, other_hero): 
+        variation = random.randint(-2, 2)
+        actual_damage = self.damage + variation
+        damage_dealt = int((actual_damage - other_hero.poison_resistance)* 4/5)
+        accuracy = 95  # Poinsed effect has a 95% chance to succeed
+        roll = random.randint(1, 100)  # Simulate a roll of 100-sided dice
+        if roll <= accuracy: # attach poisoned_dagger effect
+          if other_hero.status['poisoned_dagger'] == False:
+              other_hero.status['poisoned_dagger'] = True
+              other_hero.status['normal'] = False
+              other_hero.poisoned_dagger_debuff_duration = 4
+              other_hero.poisoned_dagger_stacks += 1
+              other_hero.poisoned_dagger_continuous_damage = math.ceil((actual_damage - other_hero.poison_resistance)/4)
+              if other_hero.status['paralyze_blade'] == True and other_hero.status['mixed_venom'] == False:
+                other_hero.status['mixed_venom'] = True
+                other_hero.mixed_venom_debuff_duration = 3
+                poison_resistance_before_reduce = other_hero.poison_resistance
+                other_hero.poison_resistance_reduced_amount_by_mixed_venom = int(other_hero.poison_resistance * 0.3)
+                other_hero.poison_resistance -= other_hero.poison_resistance_reduced_amount_by_mixed_venom
+                self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Poisoned Dagger, {other_hero.name} is poisoned.")
+                self.game.display_battle_info(f"{other_hero.name} is suffering from a mix of two venom inside. {other_hero.name}'s poison resistance has reduced from {poison_resistance_before_reduce} to {other_hero.poison_resistance}.")
+              else:
+                self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Poisoned Dagger, {other_hero.name} is poisoned.")
+          elif other_hero.status['poisoned_dagger'] == True and other_hero.poisoned_dagger_stacks == 1:
+              other_hero.poisoned_dagger_stacks += 1
+              other_hero.poisoned_dagger_continuous_damage += math.ceil((actual_damage - other_hero.poison_resistance)/4)
+              if other_hero.status['paralyze_blade'] == True and other_hero.status['mixed_venom'] == False:
+                other_hero.status['mixed_venom'] = True
+                other_hero.mixed_venom_debuff_duration = 3
+                poison_resistance_before_reduce = other_hero.poison_resistance
+                other_hero.poison_resistance_reduced_amount_by_mixed_venom = int(other_hero.poison_resistance * 0.3)
+                other_hero.poison_resistance -= other_hero.poison_resistance_reduced_amount_by_mixed_venom
+                self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Poisoned Dagger again, {other_hero.name}'s poisnoning has worsened.")
+                self.game.display_battle_info(f"{other_hero.name} is suffering from a mix of two venom inside. {other_hero.name}'s poison resistance has reduced from {poison_resistance_before_reduce} to {other_hero.poison_resistance}.")
+              else:
+                self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Poisoned Dagger again, {other_hero.name}'s poisnoning has worsened.")
+          else:
+              if other_hero.status['paralyze_blade'] == True and other_hero.status['mixed_venom'] == False:
+                other_hero.status['mixed_venom'] = True
+                other_hero.mixed_venom_debuff_duration = 3
+                poison_resistance_before_reduce = other_hero.poison_resistance
+                other_hero.poison_resistance_reduced_amount_by_mixed_venom = int(other_hero.poison_resistance * 0.3)
+                other_hero.poison_resistance -= other_hero.poison_resistance_reduced_amount_by_mixed_venom
+                self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Poisoned Dagger.")
+                self.game.display_battle_info(f"{other_hero.name} is suffering from a mix of two venom inside. {other_hero.name}'s poison resistance has reduced from {poison_resistance_before_reduce} to {other_hero.poison_resistance}.")
+              else:
+                self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Poisoned Dagger.")
+        else:
+            self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Poisoned Dagger, but the venom failed to take effect.")
+        # Ensure damage dealt is at least 0
+        damage_dealt = max(damage_dealt, 0)
+        # Apply damage to the other hero's HP
         return other_hero.take_damage(damage_dealt)
