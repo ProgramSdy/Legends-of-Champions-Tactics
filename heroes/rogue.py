@@ -178,6 +178,7 @@ class Rogue_Toxicology(Rogue):
         variation = random.randint(-2, 2)
         actual_damage = self.damage + variation
         damage_dealt = int((actual_damage - other_hero.defense)/2)
+        other_hero.poisoned_dagger_applier_damage = self.damage
         accuracy = 95  # Poinsed effect has a 95% chance to succeed
         roll = random.randint(1, 100)  # Simulate a roll of 100-sided dice
         if roll <= accuracy: # attach poisoned_dagger effect
@@ -231,6 +232,7 @@ class Rogue_Toxicology(Rogue):
         variation = random.randint(-2, 2)
         actual_damage = self.damage + variation
         damage_dealt = int((actual_damage - other_hero.defense)/3)
+        other_hero.paralyze_blade_applier_damage = self.damage
         accuracy = 90 # Paralyze venom has a 90% chance to succeed
         roll = random.randint(1, 100)
         if roll <= accuracy:
@@ -248,7 +250,7 @@ class Rogue_Toxicology(Rogue):
                 poison_resistance_before_reduce = other_hero.poison_resistance
                 other_hero.poison_resistance_reduced_amount_by_mixed_venom = int(other_hero.poison_resistance * 0.3)
                 other_hero.poison_resistance -= other_hero.poison_resistance_reduced_amount_by_mixed_venom
-                self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Paralyze Blade. {other_hero.name}'s agility has reduced from {agility_,before_reduce} to {other_hero.agility}.")
+                self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Paralyze Blade. {other_hero.name}'s agility has reduced from {agility_before_reduce} to {other_hero.agility}.")
                 self.game.display_battle_info(f"{other_hero.name} is suffering from a mix of two venom inside. {other_hero.name}'s poison resistance has reduced from {poison_resistance_before_reduce} to {other_hero.poison_resistance}.")
               else:
                 self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Paralyze Blade. {other_hero.name}'s agility has reduced from {agility_before_reduce} to {other_hero.agility}.")
@@ -308,7 +310,7 @@ class Rogue_Toxicology(Rogue):
           other_hero.status['acid_bomb'] = True
           other_hero.acid_bomb_debuff_duration = 1
           damage_before_reduce = other_hero.damage
-          other_hero.damage_reduced_amount_by_acid_bomb = int(other_hero.damage * 0.7)
+          other_hero.damage_reduced_amount_by_acid_bomb = int(other_hero.damage * 0.5)
           other_hero.damage -= other_hero.damage_reduced_amount_by_acid_bomb
           if other_hero.status['mixed_venom'] == True and other_hero.status['unstable_compound'] == False:
             other_hero.status['unstable_compound'] = True

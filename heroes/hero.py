@@ -179,7 +179,7 @@ class Hero:
         self.paralyzed_duration = 0
         self.mixed_venom_debuff_duration = 0
         self.acid_bomb_debuff_duration = 0
-        self.unstable_compound_duration = 0
+        self.unstable_compound_debuff_duration = 0
                        
 
         self.armor_breaker_stacks = 0 # Track number of Armor Breaker applications
@@ -221,6 +221,7 @@ class Hero:
         self.agility_reduced_amount_by_wound_backstab = 0
         self.wound_backstab_stacks = 0
         self.paralyze_blade_continuous_damage = 0
+        self.paralyze_blade_applier_damage = 0
         self.agility_reduced_amount_by_paralyze_blade = 0
         self.paralyze_blade_stacks = 0
         self.mixed_venom_continuous_damage = 0

@@ -55,7 +55,7 @@ def main():
     opponent_heroes = generator_ai.generate_heroes("Group_B", 3)
     '''
     #'''
-    Aldric = Warrior_Comprehensiveness(sys_init, "Aldric", "Group_B", True)
+    Aldric = Warrior_Comprehensiveness(sys_init, "Aldric", "Group_B", False)
     Deep_Seer = Paladin_Holy(sys_init,"Andonidas", "Group_B", False)
     Rohan = Warrior_Comprehensiveness(sys_init, "Gandoff", "Group_B", False)
     opponent_heroes = [Aldric]

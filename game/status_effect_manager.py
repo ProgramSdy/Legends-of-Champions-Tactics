@@ -108,6 +108,10 @@ class StatusEffectManager:
                 hero.poisoned_dagger_debuff_duration -=1
                 if hero.poisoned_dagger_debuff_duration > 0:
                     variation = random.randint(-2, 2)
+                    if hero.poisoned_dagger_stacks == 1:
+                        hero.poisoned_dagger_continuous_damage = math.ceil((hero.poisoned_dagger_applier_damage - hero.poison_resistance)/4)
+                    elif hero.poisoned_dagger_stacks == 2:
+                        hero.poisoned_dagger_continuous_damage = math.ceil((hero.poisoned_dagger_applier_damage - hero.poison_resistance)/2)
                     self.game.display_status_updates(f"{BLUE}{hero.name}'s Poisoned Dagger duration is {hero.poisoned_dagger_debuff_duration} rounds. {hero.take_damage(hero.poisoned_dagger_continuous_damage + variation)}{RESET}")
                 elif hero.poisoned_dagger_debuff_duration == 0:
                     hero.poisoned_dagger_continuous_damage = 0 # Reset shadow word pain continuous_damage
@@ -120,6 +124,7 @@ class StatusEffectManager:
                 hero.paralyze_blade_debuff_duration -=1
                 if hero.paralyze_blade_debuff_duration > 0:
                     variation = random.randint(-2, 2)
+                    hero.paralyze_blade_continuous_damage = math.ceil((hero.paralyze_blade_applier_damage - hero.poison_resistance)/6)
                     self.game.display_status_updates(f"{BLUE}{hero.name}'s Paralyze Blade duration is {hero.paralyze_blade_debuff_duration} rounds. {hero.take_damage(hero.paralyze_blade_continuous_damage + variation)}{RESET}")
                 elif hero.paralyze_blade_debuff_duration == 0:
                     hero.paralyze_blade_continuous_damage = 0
@@ -133,12 +138,12 @@ class StatusEffectManager:
             if hero.status['mixed_venom'] and hero.hp > 0:
                 hero.mixed_venom_debuff_duration -= 1
                 if hero.mixed_venom_debuff_duration > 0:
-                    self.game.display_battle_info(f"{other_hero.name} is suffering from a Mixed Venom effect. {other_hero.name}'s Mixed Venom effect is {hero.mixed_venom_debuff_duration} rounds.")
+                    self.game.display_battle_info(f"{hero.name} is suffering from a Mixed Venom effect. {hero.name}'s Mixed Venom effect is {hero.mixed_venom_debuff_duration} rounds.")
                 elif hero.mixed_venom_debuff_duration == 0:
                     hero.status['mixed_venom'] = False
                     hero.poison_resistance = hero.poison_resistance + hero.poison_resistance_reduced_amount_by_mixed_venom
                     hero.poison_resistance_reduced_amount_by_mixed_venom = 0
-                    self.game.display_battle_info(f"{other_hero.name} is no longer suffering from a Mixed Venom effect. {other_hero.name}'s poison resistance has returned to {hero.poison_resistance}.")
+                    self.game.display_battle_info(f"{hero.name} is no longer suffering from a Mixed Venom effect. {hero.name}'s poison resistance has returned to {hero.poison_resistance}.")
 
             # Handle Paralyzed Debuff Duration
             if hero.status['paralyzed'] and hero.hp > 0:
@@ -151,10 +156,10 @@ class StatusEffectManager:
 
             # Handle Acid Bomb Debuff Duration
             if hero.status['acid_bomb'] and hero.hp > 0:
-                hero.acid_bomb_duration -= 1
-                if hero.acid_bomb_duration > 0:
+                hero.acid_bomb_debuff_duration -= 1
+                if hero.acid_bomb_debuff_duration > 0:
                     self.game.display_status_updates(f"{BLUE}{hero.name}'s weapon is melted. Acid Bomb duration is {hero.acid_bomb_duration} rounds.{RESET}")
-                elif hero.acid_bomb_duration == 0:
+                elif hero.acid_bomb_debuff_duration == 0:
                     hero.status['acid_bomb'] = False
                     hero.damage = hero.damage + hero.damage_reduced_amount_by_acid_bomb  # Restore original damage
                     hero.damage_reduced_amount_by_acid_bomb = 0
@@ -162,10 +167,10 @@ class StatusEffectManager:
 
             # Handle Unstable Compound Debuff Duration
             if hero.status['unstable_compound'] and hero.hp > 0:
-                hero.unstable_compound_duration -= 1
-                if hero.unstable_compound_duration > 0:
+                hero.unstable_compound_debuff_duration -= 1
+                if hero.unstable_compound_debuff_duration > 0:
                     self.game.display_status_updates(f"{BLUE}{hero.name} is affected by Unstable Compound. The effect lasts {hero.unstable_compound_duration} rounds.{RESET}")
-                elif hero.unstable_compound_duration == 0:
+                elif hero.unstable_compound_debuff_duration == 0:
                     variation = random.randint(-2, 2)
                     hero.status['unstable_compound'] = False
                     hero.unstable_compound_damage = hero.unstable_compound_damage + variation
