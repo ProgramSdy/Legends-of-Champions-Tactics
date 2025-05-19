@@ -57,6 +57,7 @@ class Rogue_Comprehensiveness(Rogue):
         variation = random.randint(-2, 2)
         actual_damage = self.damage + variation
         damage_dealt = int((actual_damage - other_hero.defense)/2)
+        other_hero.poisoned_dagger_applier_damage = self.damage
         accuracy = 85  # Poinsed effect has a 85% chance to succeed
         roll = random.randint(1, 100)  # Simulate a roll of 100-sided dice
         if roll <= accuracy: # attach poisoned_dagger effect
@@ -199,7 +200,7 @@ class Rogue_Toxicology(Rogue):
                 self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Poisoned Dagger, {other_hero.name} is poisoned.")
           elif other_hero.status['poisoned_dagger'] == True and other_hero.poisoned_dagger_stacks == 1:
               other_hero.poisoned_dagger_stacks += 1
-              other_hero.poisoned_dagger_continuous_damage += math.ceil((actual_damage - other_hero.poison_resistance)/4)
+              other_hero.poisoned_dagger_continuous_damage = math.ceil((actual_damage - other_hero.poison_resistance)/2)
               if other_hero.status['paralyze_blade'] == True and other_hero.status['mixed_venom'] == False:
                 other_hero.status['mixed_venom'] = True
                 other_hero.mixed_venom_debuff_duration = 3

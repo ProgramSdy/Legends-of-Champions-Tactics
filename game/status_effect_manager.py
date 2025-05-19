@@ -132,18 +132,18 @@ class StatusEffectManager:
                     hero.agility_reduced_amount_by_paralyze_blade = 0
                     hero.status['paralyze_blade'] = False
                     hero.paralyze_blade_stacks = 0
-                    self.game.display_status_updates(f"{BLUE}{hero.name} is no longer effected by Paralyze Blade. {hero.name}'s agility has come back to {hero.agility} {RESET}")
+                    self.game.display_status_updates(f"{BLUE}{hero.name} is no longer effected by Paralyze Blade. {hero.name}'s agility has come back to {hero.agility}. {RESET}")
 
             # Handle Mixed Venom Debuff Duration
             if hero.status['mixed_venom'] and hero.hp > 0:
                 hero.mixed_venom_debuff_duration -= 1
                 if hero.mixed_venom_debuff_duration > 0:
-                    self.game.display_battle_info(f"{hero.name} is suffering from a Mixed Venom effect. {hero.name}'s Mixed Venom effect is {hero.mixed_venom_debuff_duration} rounds.")
+                    self.game.display_battle_info(f"{BLUE}{hero.name} is suffering from a Mixed Venom effect. {hero.name}'s Mixed Venom effect is {hero.mixed_venom_debuff_duration} rounds.{RESET}")
                 elif hero.mixed_venom_debuff_duration == 0:
                     hero.status['mixed_venom'] = False
                     hero.poison_resistance = hero.poison_resistance + hero.poison_resistance_reduced_amount_by_mixed_venom
                     hero.poison_resistance_reduced_amount_by_mixed_venom = 0
-                    self.game.display_battle_info(f"{hero.name} is no longer suffering from a Mixed Venom effect. {hero.name}'s poison resistance has returned to {hero.poison_resistance}.")
+                    self.game.display_battle_info(f"{BLUE}{hero.name} is no longer suffering from a Mixed Venom effect. {hero.name}'s poison resistance has returned to {hero.poison_resistance}.{RESET}")
 
             # Handle Paralyzed Debuff Duration
             if hero.status['paralyzed'] and hero.hp > 0:

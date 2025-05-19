@@ -192,6 +192,7 @@ class Hero:
         self.agility_reduced_amount_by_frost_bolt = 0 # Track the amount of Frost Bolt
         self.shadow_word_pain_continuous_damage = 0 # Track the continuous damage of Shadow Word Pain
         self.poisoned_dagger_continuous_damage = 0 # Track the continuous damage of Poisoned Dagger
+        self.poisoned_dagger_applier_damage = 0
         self.poisoned_dagger_stacks = 0 # Track number of Poisoned Dagger applications
         self.sharp_blade_continuous_damage = 0 # Track the continuous damage of Sharp Blade
         self.holy_word_shell_absorption = 0 # Track the absorption of Holy Word Shell
@@ -981,16 +982,95 @@ class Hero:
 
 
     def ai_action(self, opponents, allies):
-        if self.status['stunned'] == False or self.status['paralyzed'] == False:
-          if self.status['vanish'] == False:
-            if self.status['fear'] == False:
-              if self.status['scoff'] == False:
+        if self.status['stunned'] == False:
+          if self.status['paralyzed'] == False:
+            if self.status['vanish'] == False:
+              if self.status['fear'] == False:
+                if self.status['scoff'] == False:
+                  if self.status['magic_casting'] == False:
+                    if self.skills:
+                        chosen_skill = self.ai_choose_skill(opponents, allies)
+                        chosen_target = self.ai_choose_target(chosen_skill, opponents, allies)
+                        if opponents:
+                            return chosen_skill.execute(chosen_target)
+                        else:
+                            return f"{self.name} tries to use {chosen_skill}, but it's not implemented or no valid opponents."
+                    else:
+                        return f"{self.name} has no skills to use."
+                  elif self.status['magic_casting'] == True and self.magic_casting_duration == 0:
+                    return self.casting_magic.execute(self.casting_magic_target)
+                  elif self.status['magic_casting'] == True and self.magic_casting_duration > 0:
+                    return f"{self.name} is casting {self.casting_magic.name}."
+                else:
+                  for debuff in self.debuffs:
+                    if debuff.name == "Scoff":
+                      damage_skills = [skill for skill in self.skills if skill.target_type == "single" and skill.skill_type in ["damage", "damage_healing"] and skill.if_cooldown == False]
+                      chosen_skill = random.choice(damage_skills) if damage_skills else None
+                      chosen_target = debuff.initiator
+                      if chosen_skill == None:
+                        damage_skills = [skill for skill in self.skills if skill.target_type == "multi" and skill.skill_type in ["damage", "damage_healing"] and skill.target_qty == 2 and skill.if_cooldown == False]
+                        chosen_skill = random.choice(damage_skills) if damage_skills else None
+                        chosen_target = [debuff.initiator]
+                        other_opponents = [op for op in opponents if op != debuff.initiator and op.alive]
+                        if other_opponents:
+                          chosen_target.append(random.choice(other_opponents))
+                      return chosen_skill.execute(chosen_target)
+              else:
+                return f"{self.name} is running in fear."
+            else:
+              return f"{self.name} is hiding in dark and drinking healing potion. {self.take_healing(int(self.hp_max * 0.15))}"
+          else:
+             return f"{self.name} is paralyzed and can't move."
+        else:
+            return f"{self.name} is stunned and can't move."
+
+    def player_action(self, hero, opponents, allies):
+        # Update all status effects at the beginning of the action
+        #self.update_status_effects()
+        self.hero = hero
+        # Proceed with action if not stunned
+        if self.status['stunned']  == False:
+          if self.status['paralyzed'] == False:
+            if self.status['vanish'] == False:
+              if self.status['fear'] == False:
                 if self.status['magic_casting'] == False:
                   if self.skills:
-                      chosen_skill = self.ai_choose_skill(opponents, allies)
-                      chosen_target = self.ai_choose_target(chosen_skill, opponents, allies)
+                      chosen_targets = 'Back to skill chosen'
+                      while chosen_targets == 'Back to skill chosen':
+                        chosen_skill = hero.player_choose_skill(hero)
+                        if chosen_skill.skill_type == "damage" or chosen_skill.skill_type == "damage_healing":
+                          if len(opponents) > 1: #if their is plural enemy available
+                            if chosen_skill.target_type == "multi":
+                                chosen_targets = hero.player_choose_target(opponents, allies, chosen_skill, num_targets = chosen_skill.target_qty)
+                            elif chosen_skill.target_type == "single":
+                              if chosen_skill.target_qty == 0:
+                                chosen_targets = ['none'] # for non target type skill such as Shadow Evation
+                              else:
+                                chosen_targets = hero.player_choose_target(opponents, allies, chosen_skill, num_targets = chosen_skill.target_qty)[0]
+                          else: #if there is only one enemy available
+                            if chosen_skill.target_qty == 0:
+                              chosen_targets = ['none']
+                            else:
+                              chosen_targets = hero.player_choose_target(opponents, allies, chosen_skill, num_targets = chosen_skill.target_qty)[0]
+
+                        if chosen_skill.skill_type == "healing" or chosen_skill.skill_type == "buffs":
+                          if chosen_skill.target_type == "multi":
+                              chosen_targets = hero.player_choose_target(opponents, allies, chosen_skill, num_targets = chosen_skill.target_qty)
+                          elif chosen_skill.target_type == "single":
+                            if chosen_skill.target_qty == 0:
+                              chosen_targets = ['none'] # for non target type skill such as Shadow Evation
+                            else:
+                              chosen_targets = hero.player_choose_target(opponents, allies, chosen_skill, num_targets = chosen_skill.target_qty)[0]
+                        if chosen_skill.skill_type == "summon":
+                          chosen_targets = ['none']
+
+                      # Skill and Target chosen finish, start execution
                       if opponents:
-                          return chosen_skill.execute(chosen_target)
+                        if chosen_targets == ['none']:
+                          print('***************************************************************************************************************')
+                          return chosen_skill.execute(chosen_targets)
+                        else:
+                          return chosen_skill.execute(chosen_targets)  # Pass opponents
                       else:
                           return f"{self.name} tries to use {chosen_skill}, but it's not implemented or no valid opponents."
                   else:
@@ -1000,83 +1080,10 @@ class Hero:
                 elif self.status['magic_casting'] == True and self.magic_casting_duration > 0:
                   return f"{self.name} is casting {self.casting_magic.name}."
               else:
-                for debuff in self.debuffs:
-                  if debuff.name == "Scoff":
-                    damage_skills = [skill for skill in self.skills if skill.target_type == "single" and skill.skill_type in ["damage", "damage_healing"] and skill.if_cooldown == False]
-                    chosen_skill = random.choice(damage_skills) if damage_skills else None
-                    chosen_target = debuff.initiator
-                    if chosen_skill == None:
-                      damage_skills = [skill for skill in self.skills if skill.target_type == "multi" and skill.skill_type in ["damage", "damage_healing"] and skill.target_qty == 2 and skill.if_cooldown == False]
-                      chosen_skill = random.choice(damage_skills) if damage_skills else None
-                      chosen_target = [debuff.initiator]
-                      other_opponents = [op for op in opponents if op != debuff.initiator and op.alive]
-                      if other_opponents:
-                        chosen_target.append(random.choice(other_opponents))
-                    return chosen_skill.execute(chosen_target)
+                return f"{self.name} is running in fear."
             else:
-              return f"{self.name} is running in fear."
+              return f"{self.name} is hiding in dark and drinking healing potion. {self.take_healing(int(self.hp_max * 0.15))}"
           else:
-            return f"{self.name} is hiding in dark and drinking healing potion. {self.take_healing(int(self.hp_max * 0.15))}"
+             return f"{self.name} is paralyzed and can't move."
         else:
-            return f"{self.name} can't move."
-
-    def player_action(self, hero, opponents, allies):
-        # Update all status effects at the beginning of the action
-        #self.update_status_effects()
-        self.hero = hero
-        # Proceed with action if not stunned
-        if self.status['stunned']  == False or self.status['paralyzed']:
-          if self.status['vanish'] == False:
-            if self.status['fear'] == False:
-              if self.status['magic_casting'] == False:
-                if self.skills:
-                    chosen_targets = 'Back to skill chosen'
-                    while chosen_targets == 'Back to skill chosen':
-                      chosen_skill = hero.player_choose_skill(hero)
-                      if chosen_skill.skill_type == "damage" or chosen_skill.skill_type == "damage_healing":
-                        if len(opponents) > 1: #if their is plural enemy available
-                          if chosen_skill.target_type == "multi":
-                              chosen_targets = hero.player_choose_target(opponents, allies, chosen_skill, num_targets = chosen_skill.target_qty)
-                          elif chosen_skill.target_type == "single":
-                            if chosen_skill.target_qty == 0:
-                              chosen_targets = ['none'] # for non target type skill such as Shadow Evation
-                            else:
-                              chosen_targets = hero.player_choose_target(opponents, allies, chosen_skill, num_targets = chosen_skill.target_qty)[0]
-                        else: #if there is only one enemy available
-                          if chosen_skill.target_qty == 0:
-                            chosen_targets = ['none']
-                          else:
-                            chosen_targets = hero.player_choose_target(opponents, allies, chosen_skill, num_targets = chosen_skill.target_qty)[0]
-
-                      if chosen_skill.skill_type == "healing" or chosen_skill.skill_type == "buffs":
-                        if chosen_skill.target_type == "multi":
-                            chosen_targets = hero.player_choose_target(opponents, allies, chosen_skill, num_targets = chosen_skill.target_qty)
-                        elif chosen_skill.target_type == "single":
-                          if chosen_skill.target_qty == 0:
-                            chosen_targets = ['none'] # for non target type skill such as Shadow Evation
-                          else:
-                            chosen_targets = hero.player_choose_target(opponents, allies, chosen_skill, num_targets = chosen_skill.target_qty)[0]
-                      if chosen_skill.skill_type == "summon":
-                        chosen_targets = ['none']
-
-                    # Skill and Target chosen finish, start execution
-                    if opponents:
-                      if chosen_targets == ['none']:
-                        print('***************************************************************************************************************')
-                        return chosen_skill.execute(chosen_targets)
-                      else:
-                        return chosen_skill.execute(chosen_targets)  # Pass opponents
-                    else:
-                        return f"{self.name} tries to use {chosen_skill}, but it's not implemented or no valid opponents."
-                else:
-                    return f"{self.name} has no skills to use."
-              elif self.status['magic_casting'] == True and self.magic_casting_duration == 0:
-                return self.casting_magic.execute(self.casting_magic_target)
-              elif self.status['magic_casting'] == True and self.magic_casting_duration > 0:
-                return f"{self.name} is casting {self.casting_magic.name}."
-            else:
-              return f"{self.name} is running in fear."
-          else:
-            return f"{self.name} is hiding in dark and drinking healing potion. {self.take_healing(int(self.hp_max * 0.15))}"
-        else:
-            return f"{self.name} can't move."
+            return f"{self.name} is stunned and can't move."
