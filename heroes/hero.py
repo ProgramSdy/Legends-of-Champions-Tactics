@@ -175,6 +175,11 @@ class Hero:
         self.shield_of_protection_duration = 0
         self.wound_backstab_debuff_duration = 0
         self.vanish_duration = 0
+        self.paralyze_blade_debuff_duration = 0
+        self.paralyzed_duration = 0
+        self.mixed_venom_debuff_duration = 0
+        self.acid_bomb_debuff_duration = 0
+        self.unstable_compound_duration = 0
                        
 
         self.armor_breaker_stacks = 0 # Track number of Armor Breaker applications
@@ -215,6 +220,13 @@ class Hero:
         self.wound_backstab_continuous_damage = 0
         self.agility_reduced_amount_by_wound_backstab = 0
         self.wound_backstab_stacks = 0
+        self.paralyze_blade_continuous_damage = 0
+        self.agility_reduced_amount_by_paralyze_blade = 0
+        self.paralyze_blade_stacks = 0
+        self.mixed_venom_continuous_damage = 0
+        self.poison_resistance_reduced_amount_by_mixed_venom = 0
+        self.damage_reduced_amount_by_acid_bomb = 0
+        self.unstable_compound_damage = 0
 
     @classmethod
     def random_in_range(cls, value_range):
