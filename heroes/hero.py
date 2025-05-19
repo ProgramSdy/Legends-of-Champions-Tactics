@@ -968,7 +968,7 @@ class Hero:
 
 
     def ai_action(self, opponents, allies):
-        if self.status['stunned'] == False:
+        if self.status['stunned'] == False or self.status['paralyzed'] == False:
           if self.status['vanish'] == False:
             if self.status['fear'] == False:
               if self.status['scoff'] == False:
@@ -1012,7 +1012,7 @@ class Hero:
         #self.update_status_effects()
         self.hero = hero
         # Proceed with action if not stunned
-        if self.status['stunned']  == False:
+        if self.status['stunned']  == False or self.status['paralyzed']:
           if self.status['vanish'] == False:
             if self.status['fear'] == False:
               if self.status['magic_casting'] == False:

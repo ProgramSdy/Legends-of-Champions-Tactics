@@ -129,6 +129,48 @@ class StatusEffectManager:
                     hero.paralyze_blade_stacks = 0
                     self.game.display_status_updates(f"{BLUE}{hero.name} is no longer effected by Paralyze Blade. {hero.name}'s agility has come back to {hero.agility} {RESET}")
 
+            # Handle Mixed Venom Debuff Duration
+            if hero.status['mixed_venom'] and hero.hp > 0:
+                hero.mixed_venom_debuff_duration -= 1
+                if hero.mixed_venom_debuff_duration > 0:
+                    self.game.display_battle_info(f"{other_hero.name} is suffering from a Mixed Venom effect. {other_hero.name}'s Mixed Venom effect is {hero.mixed_venom_debuff_duration} rounds.")
+                elif hero.mixed_venom_debuff_duration == 0:
+                    hero.status['mixed_venom'] = False
+                    hero.poison_resistance = hero.poison_resistance + hero.poison_resistance_reduced_amount_by_mixed_venom
+                    hero.poison_resistance_reduced_amount_by_mixed_venom = 0
+                    self.game.display_battle_info(f"{other_hero.name} is no longer suffering from a Mixed Venom effect. {other_hero.name}'s poison resistance has returned to {hero.poison_resistance}.")
+
+            # Handle Paralyzed Debuff Duration
+            if hero.status['paralyzed'] and hero.hp > 0:
+                hero.paralyzed_duration -= 1
+                if hero.paralyzed_duration > 0:
+                    self.game.display_status_updates(f"{BLUE}{hero.name} is paralyzed and unable to move. Paralyzed duration is {hero.paralyzed_duration} rounds.{RESET}")
+                elif hero.paralyzed_duration == 0:
+                    hero.status['paralyzed'] = False
+                    self.game.display_status_updates(f"{BLUE}{hero.name} has recovered from paralysis.{RESET}")
+
+            # Handle Acid Bomb Debuff Duration
+            if hero.status['acid_bomb'] and hero.hp > 0:
+                hero.acid_bomb_duration -= 1
+                if hero.acid_bomb_duration > 0:
+                    self.game.display_status_updates(f"{BLUE}{hero.name}'s weapon is melted. Acid Bomb duration is {hero.acid_bomb_duration} rounds.{RESET}")
+                elif hero.acid_bomb_duration == 0:
+                    hero.status['acid_bomb'] = False
+                    hero.damage = hero.damage + hero.damage_reduced_amount_by_acid_bomb  # Restore original damage
+                    hero.damage_reduced_amount_by_acid_bomb = 0
+                    self.game.display_status_updates(f"{BLUE}Acid Bomb effect has faded away from {hero.name}. {hero.name}'s damage has returned to {hero.damage}.{RESET}")
+
+            # Handle Unstable Compound Debuff Duration
+            if hero.status['unstable_compound'] and hero.hp > 0:
+                hero.unstable_compound_duration -= 1
+                if hero.unstable_compound_duration > 0:
+                    self.game.display_status_updates(f"{BLUE}{hero.name} is affected by Unstable Compound. The effect lasts {hero.unstable_compound_duration} rounds.{RESET}")
+                elif hero.unstable_compound_duration == 0:
+                    variation = random.randint(-2, 2)
+                    hero.status['unstable_compound'] = False
+                    hero.unstable_compound_damage = hero.unstable_compound_damage + variation
+                    self.game.display_status_updates(f"{ORANGE}Unstable Compound from {hero.name} has exploded. {hero.take_damage(hero.sharp_blade_continuous_damage + variation)}{RESET}")
+
             # Handle Sharp Blade Debuff Duration
             if hero.status['bleeding_sharp_blade'] and hero.hp > 0:
                 hero.sharp_blade_debuff_duration -=1

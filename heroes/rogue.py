@@ -254,7 +254,12 @@ class Rogue_Toxicology(Rogue):
                 self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Paralyze Blade. {other_hero.name}'s agility has reduced from {agility_before_reduce} to {other_hero.agility}.")
             elif other_hero.status['paralyze_blade'] == True and other_hero.paralyze_blade_stacks == 1:
               other_hero.status['paralyzed'] = True
-              other_hero.paralyzed_duration = 1
+              accuracy = 80
+              roll = random.randint(1, 100)
+              if roll <= accuracy:
+                other_hero.paralyzed_duration = 1
+              else:
+                other_hero.paralyzed_duration = 2
               other_hero.paralyze_blade_stacks += 1
               if other_hero.status['magic_casting'] == True:
                 result = self.interrupt_magic_casting(other_hero)
