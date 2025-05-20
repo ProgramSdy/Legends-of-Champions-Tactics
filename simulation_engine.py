@@ -69,8 +69,8 @@ class BattleTester_1v1:
         self.sys_init = sys_init
         self.num_battles = num_battles
         self.professions = [
-            Warrior_Comprehensiveness, Mage_Comprehensiveness, Paladin_Retribution, Paladin_Protection,
-            Priest_Comprehensiveness, Rogue_Comprehensiveness, Rogue_Assassination, Necromancer_Comprehensiveness, 
+            Warrior_Comprehensiveness, Mage_Comprehensiveness, Paladin_Retribution, Paladin_Protection, Paladin_Holy,
+            Priest_Comprehensiveness, Rogue_Comprehensiveness, Rogue_Assassination, Rogue_Toxicology, Necromancer_Comprehensiveness, 
             Priest_Shelter, Priest_Shadow, Priest_Discipline, Priest_Devine,
             Warlock_Comprehensiveness, Warlock_Destruction, Warlock_Affliction,
             Death_Knight_Frost, Death_Knight_Plague, Death_Knight_Blood

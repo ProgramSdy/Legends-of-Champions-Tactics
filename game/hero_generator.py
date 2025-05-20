@@ -35,6 +35,7 @@ class HeroGenerator:
             # Rogue
             Rogue_Comprehensiveness: self.rogue_names_list,
             Rogue_Assassination: self.rogue_names_list,
+            Rogue_Toxicology: self.rogue_names_list,
             # Necromancer
             Necromancer_Comprehensiveness: self.necromancer_names_list,
             # Warlock
