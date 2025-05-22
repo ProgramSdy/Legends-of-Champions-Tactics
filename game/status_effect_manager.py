@@ -169,7 +169,7 @@ class StatusEffectManager:
             if hero.status['unstable_compound'] and hero.hp > 0:
                 hero.unstable_compound_debuff_duration -= 1
                 if hero.unstable_compound_debuff_duration > 0:
-                    self.game.display_status_updates(f"{BLUE}{hero.name} is affected by Unstable Compound. The effect lasts {hero.unstable_compound_duration} rounds.{RESET}")
+                    self.game.display_status_updates(f"{BLUE}{hero.name} is affected by Unstable Compound. The effect lasts {hero.unstable_compound_debuff_duration} rounds.{RESET}")
                 elif hero.unstable_compound_debuff_duration == 0:
                     variation = random.randint(-2, 2)
                     hero.status['unstable_compound'] = False
