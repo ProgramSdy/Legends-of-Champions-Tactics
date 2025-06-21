@@ -17,6 +17,11 @@ class Skill:
         self.cooldown = 0  # Skill cooldown in rounds
         self.is_available = True
 
+    def immunity_check(self, opponent):
+      if not self.evasion_check(opponents):
+              return self.skill_action(opponents, 'opponent')
+      else:
+        return f"{self.initiator.name} tries to use {self.name} on {opponents.name}, but {opponents.name} evades the attack."
 
     def evasion_check(self, opponent):
         # Calculate the chance to evade based on agility;
@@ -27,6 +32,26 @@ class Skill:
         if random.randint(1, 100) <= math.ceil(evasion_chance):
            return True
         return False
+
+    def resolve_targets(skill, targets):
+        outcomes = {
+            "hit": [],
+            "evaded": [],
+            "immune": [],
+            "dead": []
+        }
+        for target in targets:
+            if target.hp <= 0:
+                outcomes["dead"].append(target)
+                continue
+            if hasattr(skill, "immunity_check") and skill.immunity_check(target):
+                outcomes["immune"].append(target)
+                continue
+            if skill.evasion_check(target):
+                outcomes["evaded"].append(target)
+                continue
+            outcomes["hit"].append(target)
+        return outcomes
 
     def execute(self, opponents):
         # Manage healing skills
