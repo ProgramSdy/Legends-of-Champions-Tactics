@@ -245,6 +245,7 @@ class Game:
         self.sorted_heroes = sorted(self.heroes, key=lambda hero: hero.agility, reverse=True)
         # All hero unactioned in the begining of each round
         self.unactioned_sorted_heroes = self.sorted_heroes.copy()
+
         self.game_state = "hero_action"
 
       
@@ -327,8 +328,9 @@ class Game:
                     self.game_state = "game_over"
                     return
         hero.actioned = True
-        #self.sorted_heroes = sorted(self.heroes, key=lambda hero: hero.agility, reverse=True)
-        self.update_hero_action_sequence()
+        self.sorted_heroes = sorted(self.heroes, key=lambda hero: hero.agility, reverse=True)
+        self.unactioned_sorted_heroes = sorted(self.unactioned_sorted_heroes, key=lambda hero: hero.agility, reverse=True)
+        #self.update_hero_action_sequence()
         #self.notify_observers()
 
     def end_round(self):

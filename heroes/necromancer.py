@@ -44,10 +44,12 @@ class Necromancer_Comprehensiveness(Necromancer):
           if self.name == hero.name:
             self.game.player_heroes.append(skeleton)
             self.game.heroes.append(skeleton)
+            self.game.unactioned_sorted_heroes.append(skeleton)
             break
         else:
           self.game.opponent_heroes.append(skeleton)
           self.game.heroes.append(skeleton)
+          self.game.unactioned_sorted_heroes.append(skeleton)
         for skill in self.skills:
           if skill.name == "Command Skeleton":
             skill.if_cooldown = True
