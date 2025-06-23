@@ -327,7 +327,8 @@ class Game:
                     self.game_state = "game_over"
                     return
         hero.actioned = True
-        self.sorted_heroes = sorted(self.heroes, key=lambda hero: hero.agility, reverse=True)
+        #self.sorted_heroes = sorted(self.heroes, key=lambda hero: hero.agility, reverse=True)
+        self.update_hero_action_sequence()
         #self.notify_observers()
 
     def end_round(self):
