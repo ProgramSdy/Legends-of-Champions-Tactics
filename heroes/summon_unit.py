@@ -245,3 +245,42 @@ class VoidRambler(SummonableWarrior):
     def ai_choose_target(self, chosen_skill, opponents, allies):
           chosen_opponent = self.preset_target
           return chosen_opponent
+    
+class WaterElemental(SummonableWarrior):
+
+    major = "Water_Elemental"
+
+    def __init__(self, sys_init, name, group, master, duration, summon_unit_race, is_player_controlled=False):
+        super().__init__(sys_init, name, group, master, duration, summon_unit_race, is_player_controlled, major = self.__class__.major)
+        self.probability_void_punch = 0.5
+        self.probability_void_connection = 0.5
+        self.preset_target = None
+        self.summon_unit_race = summon_unit_race
+        self.add_skill(Skill(self, "Void Punch", self.void_punch, target_type = "single", skill_type= "damage",))
+        self.add_skill(Skill(self, "Void Connection", self.void_connection, target_type = "single", skill_type= "buffs"))
+
+    def show_info(self):
+        base_info = super().show_info()
+        summon_info = self.show_summon_info()
+        return base_info + "\n" + summon_info
+
+    def tide_slam(self, other_hero):
+        variation = random.randint(-2, 2)
+        actual_damage = self.damage + variation
+        damage_dealt = round((actual_damage - other_hero.nature_resistance))
+        damage_dealt = max(damage_dealt, 0)
+        self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Tide Slam.")
+        return other_hero.take_damage(damage_dealt)
+    
+    def crushing_wave(self, other_heros):
+        if not isinstance(other_heros, list):
+          other_heros = [other_heros]
+        results = []
+        variation = random.randint(-3, 3)
+        actual_damage = self.damage + variation
+        selected_opponents = other_heros
+        for opponent in selected_opponents:
+            damage_dealt = math.ceil((actual_damage - opponent.nature_resistance) * 2/3)
+            self.game.display_battle_info(f"{self.name} casts Crushing Wave at {opponent.name}.")
+            results.append(opponent.take_damage(damage_dealt))
+        return "\n".join(results)

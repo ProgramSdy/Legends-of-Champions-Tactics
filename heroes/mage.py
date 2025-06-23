@@ -2,6 +2,7 @@ import math
 import random
 from heroes import *
 from skills import *
+from .summon_unit import WaterElemental
 
 ORANGE = "\033[38;5;208m"
 RED = "\033[91m"
@@ -78,14 +79,28 @@ class Mage_Water(Mage):
         self.add_skill(Skill(self, "Arcane Missiles", self.arcane_missiles, target_type = "multi", skill_type= "damage", target_qty= 2))
         self.add_skill(Skill(self, "Frost Bolt", self.frost_bolt, target_type = "single", skill_type= "damage"))
 
-    def water_elemental(self, other_hero):
-        variation = random.randint(-5, 5)
-        actual_damage = self.damage + variation
-        damage_dealt = actual_damage - other_hero.fire_resistance
-        damage_dealt = max(damage_dealt, 0)
-        self.game.display_battle_info(f"{self.name} casts Fireball at {other_hero.name}.")
-        return other_hero.take_damage(damage_dealt)
-
+    def summon_water_elemental(self):
+        unit_name = f"{self.name}'s Water Elemental"
+        unit_group = self.group
+        unit_duration = 4  # The summoning unit will last for 4 rounds
+        unit_race = 'element'
+        waterelemental = WaterElemental(self.sys_init, unit_name, unit_group, self, unit_duration, unit_race, is_player_controlled=False)
+        waterelemental.take_game_instance(self.game)
+        self.summoned_unit = waterelemental
+        for hero in self.game.player_heroes:
+          if self.name == hero.name:
+            self.game.player_heroes.append(waterelemental)
+            self.game.heroes.append(waterelemental)
+            break
+        else:
+          self.game.opponent_heroes.append(waterelemental)
+          self.game.heroes.append(waterelemental)
+        for skill in self.skills:
+          if skill.name == "Summon Water Elemental":
+            skill.if_cooldown = True
+            skill.cooldown = 3
+        return f"{self.name} summons a Water Elemental in the battle field."
+    
     def arcane_missiles(self, other_heros):
         if not isinstance(other_heros, list):
           other_heros = [other_heros]
