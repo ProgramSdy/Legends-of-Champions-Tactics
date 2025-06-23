@@ -42,7 +42,7 @@ def main():
         hero.is_player_controlled = False
     '''
     #'''
-    Player_1 = Warrior_Comprehensiveness(sys_init, "Arthas", "Group_A", True)
+    Player_1 = Mage_Comprehensiveness(sys_init, "Arthas", "Group_A", True)
     Player_2 = Necromancer_Comprehensiveness(sys_init, "Black Heart", "Group_A", True)
     Player_3 = Rogue_Comprehensiveness(sys_init, "Guldan", "Group_A", True)
     player_heroes = [Player_1, Player_2, Player_3]
