@@ -4,7 +4,7 @@ from heroes import *
 from skills import *
 
 class Skill:
-    def __init__(self, initiator, name, skill_action, target_type, skill_type, target_qty = 1, capable_interrupt_magic_casting = False, is_instant_skill = True):
+    def __init__(self, initiator, name, skill_action, target_type, skill_type, target_qty = 1, capable_interrupt_magic_casting = False, is_instant_skill = True, damage_nature=None, damage_type=None):       
         self.initiator = initiator  # Reference to the hero instance who initiated the skill
         self.name = name            # Name of the skill, e.g., "Fireball"
         self.skill_action = skill_action   # This is a method reference that performs the skill's action
@@ -16,12 +16,34 @@ class Skill:
         self.if_cooldown = False  # Flag to indicate if the skill is on cooldown
         self.cooldown = 0  # Skill cooldown in rounds
         self.is_available = True
+        self.immunity_condition_all = ['shield_of_protection', 'glacier']
+        self.immunity_condition_physical = []
+        self.immunity_condition_magical = []
+        self.active_state = None
 
-    def immunity_check(self, opponent):
-      if not self.evasion_check(opponents):
-              return self.skill_action(opponents, 'opponent')
-      else:
-        return f"{self.initiator.name} tries to use {self.name} on {opponents.name}, but {opponents.name} evades the attack."
+    def immunity_condition_all_check(self, opponent):
+        # Check for immunity to all damage
+        for state in getattr(self, 'immunity_condition_all', []):
+            if opponent.status[state] is True:
+                self.active_state = state
+                return True
+        return False
+    
+    def immunity_condition_physical_check(self, opponent):
+        # Check for immunity to physical damage
+        for state in getattr(self, 'immunity_condition_physical', []):
+            if opponent.status[state] is True:
+                self.active_state = state
+                return True
+        return False
+            
+    def immunity_condition_magical_check(self, opponent):
+        # Check for immunity to magical damage
+        for state in getattr(self, 'immunity_condition_magical', []):
+            if opponent.status[state] is True:
+                self.active_state = state
+                return True
+        return False
 
     def evasion_check(self, opponent):
         # Calculate the chance to evade based on agility;
@@ -37,18 +59,26 @@ class Skill:
         outcomes = {
             "hit": [],
             "evaded": [],
-            "immune": [],
+            "immunity_condition_all": [],
+            "immunity_condition_physical": [],
+            "immunity_condition_magical": [],
             "dead": []
         }
         for target in targets:
             if target.hp <= 0:
                 outcomes["dead"].append(target)
                 continue
-            if hasattr(skill, "immunity_check") and skill.immunity_check(target):
-                outcomes["immune"].append(target)
-                continue
             if skill.evasion_check(target):
                 outcomes["evaded"].append(target)
+                continue
+            if skill.immunity_condition_all_check(target):
+                outcomes["immunity_condition_all"].append(target)
+                continue
+            if skill.immunity_condition_physical_check(target):
+                outcomes["immunity_condition_physical"].append(target)
+                continue
+            if skill.immunity_condition_magical_check(target):
+                outcomes["immunity_condition_magical"].append(target)
                 continue
             outcomes["hit"].append(target)
         return outcomes
