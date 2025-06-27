@@ -86,90 +86,12 @@ class Skill:
     def execute(self, opponents):
         # Manage healing skills
         if self.skill_type == "healing":
-            return self.skill_action(opponents)
-       
+          if self.target_type == "multi":
+              return self.skill_action(opponents)
+          elif self.target_type == "single":
+              return self.skill_action(opponents)  # Pass only the first target
         # Manage damage skills
         elif self.skill_type == "damage":
-          if not isinstance(opponents, list):
-            opponents = [opponents]
-          outcomes = self.resolve_targets(self, opponents)
-          hits = outcomes["hit"]
-          evaded = outcomes["evaded"]
-          immune_all = outcomes["immunity_condition_all"]
-          if self.damage_nature == "physical":
-            immune_phy = outcomes["immunity_condition_physical"]
-          if self.damage_nature == "magical":
-            immune_mag = outcomes["immunity_condition_magical"]
-          dead = outcomes["dead"]
-
-          if self.target_type == "multi": # Manage multi-targets damage skill
-            if not hits:
-              if dead:
-                target_names = ', '.join([t.name for t in dead])
-                result_message += f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} were already dead. \n"
-              if evaded:
-                target_names = ', '.join([t.name for t in evaded])
-                result_message += f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} evaded the attack. \n"
-              if immune_all:
-                target_names = ', '.join([t.name for t in immune_all])
-                result_message += f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immuned to all damage \n"
-              if immune_phy:
-                target_names = ', '.join([t.name for t in immune_phy])
-                result_message += f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immuned to physical damage \n"
-              if immune_mag:
-                target_names = ', '.join([t.name for t in immune_mag])
-                result_message += f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immuned to magical damage \n"
-              return result_message
-            
-            else:
-              if dead:
-                target_names = ', '.join([t.name for t in dead])
-                result_message += f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} were already dead. \n"
-              if evaded:
-                target_names = ', '.join([t.name for t in evaded])
-                result_message += f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} evaded the attack. \n"
-              if immune_all:
-                target_names = ', '.join([t.name for t in immune_all])
-                result_message += f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immuned to all damage. \n"
-              if immune_phy:
-                target_names = ', '.join([t.name for t in immune_phy])
-                result_message += f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immuned to physical damage. \n"
-              if immune_mag:
-                target_names = ', '.join([t.name for t in immune_mag])
-                result_message += f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immuned to magical damage. \n"
-              self.initiator.game.display_battle_info(result_message)
-              return self.skill_action(hits)
-
-          elif self.target_type == "single": # Manage single target damage skill
-              if not hits:
-
-                
-                if dead:
-                  target_names = ', '.join([t.name for t in dead])
-                  return f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} was already dead."
-                if evaded:
-                  target_names = ', '.join([t.name for t in evaded])
-                  return f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} evaded the attack."
-                if immune_all:
-                  target_names = ', '.join([t.name for t in immune_all])
-                  return f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immuned to all damage."
-                if immune_phy:
-                  target_names = ', '.join([t.name for t in immune_phy])
-                  return f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immuned to physical damage."
-                if immune_mag:
-                  target_names = ', '.join([t.name for t in immune_mag])
-                  return f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immuned to magical damage."
-
-              return self.skill_action(hits)
-
-
-
-
-
-
-
-
-
           if self.is_instant_skill == False:
             if self.initiator.status['magic_casting'] == True and self.initiator.magic_casting_duration == 0:
               if self.target_type == "multi":
