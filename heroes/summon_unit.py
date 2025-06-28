@@ -256,8 +256,8 @@ class WaterElemental(SummonableWarrior):
         self.probability_void_connection = 0.5
         self.preset_target = None
         self.summon_unit_race = summon_unit_race
-        self.add_skill(Skill(self, "Void Punch", self.void_punch, target_type = "single", skill_type= "damage",))
-        self.add_skill(Skill(self, "Void Connection", self.void_connection, target_type = "single", skill_type= "buffs"))
+        self.add_skill(Skill(self, "Tide Slam", self.void_punch, target_type = "single", skill_type= "damage",))
+        self.add_skill(Skill(self, "Crushing Wave", self.void_connection, target_type = "single", skill_type= "buffs"))
 
     def show_info(self):
         base_info = super().show_info()
@@ -272,13 +272,18 @@ class WaterElemental(SummonableWarrior):
         self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Tide Slam.")
         return other_hero.take_damage(damage_dealt)
     
-    def crushing_wave(self, other_heros):
+    def crushing_wave(self, other_heros): # Cause damage to self.
         if not isinstance(other_heros, list):
           other_heros = [other_heros]
         results = []
         variation = random.randint(-3, 3)
         actual_damage = self.damage + variation
+        self_damage = math.ceil(self.hp_max * 0.2) + variation
         selected_opponents = other_heros
+        for skill in self.skills:
+          if skill.name == "Crushing Wave":
+            skill.if_cooldown = True
+            skill.cooldown = 2
         for opponent in selected_opponents:
             damage_dealt = math.ceil((actual_damage - opponent.nature_resistance) * 2/3)
             self.game.display_battle_info(f"{self.name} casts Crushing Wave at {opponent.name}.")

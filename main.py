@@ -42,24 +42,24 @@ def main():
         hero.is_player_controlled = False
     '''
     #'''
-    Player_1 = Paladin_Holy(sys_init, "Arthas", "Group_A", True)
-    Player_2 = Warlock_Destruction(sys_init, "Black Heart", "Group_A", True)
-    Player_3 = Rogue_Assassination(sys_init, "Guldan", "Group_A", True)
+    Player_1 = Necromancer_Comprehensiveness(sys_init, "Arthas", "Group_A", True)
+    Player_2 = Priest_Comprehensiveness(sys_init, "Black Heart", "Group_A", True)
+    Player_3 = Rogue_Toxicology(sys_init, "Guldan", "Group_A", True)
     player_heroes = [Player_1, Player_2, Player_3]
     #'''
     
 
     # Opponent hero generator__________________________________________
-    #'''
+    '''
     generator_ai = HeroGenerator(sys_init)
     opponent_heroes = generator_ai.generate_heroes("Group_B", 3)
+    '''
     #'''
-    '''
-    Aldric = Rogue_Toxicology(sys_init, "Aldric", "Group_B", False)
-    Deep_Seer = Rogue_Assassination(sys_init,"Andonidas", "Group_B", False)
-    Rohan = Rogue_Comprehensiveness(sys_init, "Gandoff", "Group_B", False)
+    Aldric = Rogue_Assassination(sys_init, "Aldric", "Group_B", True)
+    Deep_Seer = Paladin_Holy(sys_init,"Andonidas", "Group_B", True)
+    Rohan = Warlock_Destruction(sys_init, "Gandoff", "Group_B", True)
     opponent_heroes = [Aldric, Deep_Seer, Rohan]
-    '''
+    #'''
     # Display heroes from both sides__________________________________________
     '''
     for player_hero in player_heroes:
