@@ -20,6 +20,8 @@ class Skill:
         self.immunity_condition_physical = []
         self.immunity_condition_magical = []
         self.active_state = None
+        self.damage_nature = damage_nature
+        self.damage_type = damage_type
 
     def immunity_condition_all_check(self, opponent):
         # Check for immunity to all damage
@@ -96,6 +98,8 @@ class Skill:
           hits = outcomes["hit"]
           evaded = outcomes["evaded"]
           immune_all = outcomes["immunity_condition_all"]
+          immune_phy = []
+          immune_mag = []
           if self.damage_nature == "physical":
             immune_phy = outcomes["immunity_condition_physical"]
           if self.damage_nature == "magical":
@@ -242,7 +246,7 @@ class Skill:
                   result_message +=  f"Holy light showers {self.initiator.name}. {self.initiator.take_healing(actual_healing)}."
                 return result_message
               else:
-                return self.skill_action(hits)
+                return self.skill_action(hits[0])
 
         # Manage damage healing skill
         elif self.skill_type == "damage_healing":
