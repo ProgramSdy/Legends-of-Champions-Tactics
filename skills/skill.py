@@ -107,6 +107,13 @@ class Skill:
           dead = outcomes["dead"]
 
           if self.target_type == "multi": # Manage multi-targets damage skill
+
+            # Special condition manage casting skills
+            if self.name == "Rain of Fire":
+               if not self.initiator.status['hell_flame']:
+                  if self.initiator.status['magic_casting'] == False:
+                    return self.skill_action(opponents)
+
             if not hits:
               if dead:
                 target_names = ', '.join([t.name for t in dead])
@@ -131,6 +138,7 @@ class Skill:
               return result_message
             
             else:
+              result_message = ""
               if dead:
                 target_names = ', '.join([t.name for t in dead])
                 result_message += f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} were already dead. \n"
@@ -146,7 +154,8 @@ class Skill:
               if immune_mag:
                 target_names = ', '.join([t.name for t in immune_mag])
                 result_message += f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immuned to magical damage. \n"
-              self.initiator.game.display_battle_info(result_message)
+              if result_message:
+                self.initiator.game.display_battle_info(result_message)
               return self.skill_action(hits)
 
           elif self.target_type == "single": # Manage single target damage skill
