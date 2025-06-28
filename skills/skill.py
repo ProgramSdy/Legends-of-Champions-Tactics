@@ -55,7 +55,7 @@ class Skill:
            return True
         return False
 
-    def resolve_targets(skill, targets):
+    def resolve_targets(self, targets):
         outcomes = {
             "hit": [],
             "evaded": [],
@@ -68,16 +68,16 @@ class Skill:
             if target.hp <= 0:
                 outcomes["dead"].append(target)
                 continue
-            if skill.evasion_check(target):
+            if self.evasion_check(target):
                 outcomes["evaded"].append(target)
                 continue
-            if skill.immunity_condition_all_check(target):
+            if self.immunity_condition_all_check(target):
                 outcomes["immunity_condition_all"].append(target)
                 continue
-            if skill.immunity_condition_physical_check(target):
+            if self.immunity_condition_physical_check(target):
                 outcomes["immunity_condition_physical"].append(target)
                 continue
-            if skill.immunity_condition_magical_check(target):
+            if self.immunity_condition_magical_check(target):
                 outcomes["immunity_condition_magical"].append(target)
                 continue
             outcomes["hit"].append(target)
@@ -92,7 +92,7 @@ class Skill:
         elif self.skill_type == "damage":
           if not isinstance(opponents, list):
             opponents = [opponents]
-          outcomes = self.resolve_targets(self, opponents)
+          outcomes = self.resolve_targets(opponents)
           hits = outcomes["hit"]
           evaded = outcomes["evaded"]
           immune_all = outcomes["immunity_condition_all"]

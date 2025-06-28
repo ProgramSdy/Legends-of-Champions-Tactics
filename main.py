@@ -42,8 +42,8 @@ def main():
         hero.is_player_controlled = False
     '''
     #'''
-    Player_1 = Paladin_Protection(sys_init, "Arthas", "Group_A", True)
-    Player_2 = Rogue_Toxicology(sys_init, "Black Heart", "Group_A", True)
+    Player_1 = Paladin_Holy(sys_init, "Arthas", "Group_A", True)
+    Player_2 = Warlock_Destruction(sys_init, "Black Heart", "Group_A", True)
     Player_3 = Rogue_Assassination(sys_init, "Guldan", "Group_A", True)
     player_heroes = [Player_1, Player_2, Player_3]
     #'''
