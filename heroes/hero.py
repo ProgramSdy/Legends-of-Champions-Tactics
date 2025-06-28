@@ -71,7 +71,8 @@ class Hero:
         'paralyzed': False,
         'mixed_venom': False,
         'acid_bomb': False,
-        'unstable_compound': False
+        'unstable_compound': False,
+        'glacier': False
     }
     list_status_debuff_magic = ['shadow_word_pain', 'cold', 'holy_word_punishment', \
                                 'shadow_word_insanity', 'unholy_frenzy', 'curse_of_agony', 'fear', 'shadow_bolt', \
