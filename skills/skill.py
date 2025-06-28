@@ -119,6 +119,11 @@ class Skill:
               if immune_mag:
                 target_names = ', '.join([t.name for t in immune_mag])
                 result_message += f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immuned to magical damage \n"
+              
+              # Special Condition
+              if self.name == "Icy Squall":
+                self.if_cooldown = True
+                self.cooldown = 2
               return result_message
             
             else:
@@ -142,116 +147,24 @@ class Skill:
 
           elif self.target_type == "single": # Manage single target damage skill
               if not hits:
-
-                
                 if dead:
                   target_names = ', '.join([t.name for t in dead])
-                  return f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} was already dead."
+                  result_message = f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} was already dead."
                 if evaded:
                   target_names = ', '.join([t.name for t in evaded])
-                  return f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} evaded the attack."
+                  result_message = f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} evades the attack."
                 if immune_all:
                   target_names = ', '.join([t.name for t in immune_all])
-                  return f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immuned to all damage."
+                  result_message = f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immunes to all damage."
                 if immune_phy:
                   target_names = ', '.join([t.name for t in immune_phy])
-                  return f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immuned to physical damage."
+                  result_message = f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immunes to physical damage."
                 if immune_mag:
                   target_names = ', '.join([t.name for t in immune_mag])
-                  return f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immuned to magical damage."
-
-              return self.skill_action(hits)
-
-
-
-
-
-
-
-
-
-          if self.is_instant_skill == False:
-            if self.initiator.status['magic_casting'] == True and self.initiator.magic_casting_duration == 0:
-              if self.target_type == "multi":
-                if not isinstance(opponents, list):
-                  opponents = [opponents]
-                target_hit = []
-                target_evaded = []
-                for target in opponents:
-                  if not self.evasion_check(target):
-                    target_hit.append(target)
-                  else:
-                    target_evaded.append(target)
-
-                # Check if targets is alive and if they are hit or miss
-                target_hit_alive = [target for target in target_hit if target.hp > 0]
-                target_evaded_alive = [target for target in target_evaded if target.hp > 0]
-
-                if not target_evaded_alive and not target_hit_alive: # All targets dead
-                  self.initiator.status['magic_casting'] = False
-                  return f"{self.initiator.name} used {self.name}, but all targets are dead."
-
-                if not target_evaded_alive:  # All targets hit
-                    target_names = ', '.join([target.name for target in target_hit_alive])
-                    return self.skill_action(target_hit_alive)
-
-                elif not target_hit_alive:  # All targets missed
-                    target_names = ', '.join([target.name for target in target_evaded_alive])
-                    self.initiator.status['magic_casting'] = False
-                    return f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} evades the attack."
-
-                else:  # Some hit, some evaded
-                    target_hit_names = ', '.join([target.name for target in target_hit_alive])
-                    target_evaded_names = ', '.join([target.name for target in target_evaded_alive])
-                    self.initiator.game.display_battle_info(f"{self.initiator.name} tries to use {self.name} on {target_evaded_names}, but {target_evaded_names} evades the attack.")
-                    return self.skill_action(target_hit_alive)
-
-              elif self.target_type == "single":
-                  if not self.evasion_check(opponents):
-                      return self.skill_action(opponents)
-                  else:
-                    if self.name == "Shadow Word Insanity" or self.name == "Curse of Fear":
-                      self.if_cooldown = True
-                      self.cooldown = 3
-                      return f"{self.initiator.name} tries to use {self.name} on {opponents.name}, but {opponents.name} evades the attack."
-                    elif self.name == "Pestilence":
-                      self.if_cooldown = True
-                      self.cooldown = 2
-                      return f"{self.initiator.name} tries to use {self.name} on {opponents.name}, but {opponents.name} evades the attack."
-                    else:
-                      return f"{self.initiator.name} tries to use {self.name} on {opponents.name}, but {opponents.name} evades the attack."
-            else:
-              return self.skill_action(opponents)
-          else:
-            if self.target_type == "multi": # Manage damage skill with multiple targets
-                if not isinstance(opponents, list):
-                  opponents = [opponents]
-                target_hit = []
-                target_evaded = []
-                for target in opponents:
-                  if not self.evasion_check(target):
-                    target_hit.append(target)
-                  else:
-                    target_evaded.append(target)
-                if not target_evaded:  # all targets hit
-                  target_names = ', '.join([target.name for target in target_hit])
-                  #print(f"{self.initiator.name} use {self.name} on {target_names}.")
-                  return self.skill_action(target_hit)
-                elif not target_hit: # all targets miss
-                  if self.name == "Icy Squall":
-                      self.if_cooldown = True
-                      self.cooldown = 2
-                  target_names = ', '.join([target.name for target in target_evaded])
-                  return f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} evades the attack."
-                else:
-                  target_names = ', '.join([target.name for target in target_evaded])
-                  self.initiator.game.display_battle_info(f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} evades the attack.")
-                  return self.skill_action(target_hit)
-            elif self.target_type == "single": # Manage damage skill with single targets
-                if not self.evasion_check(opponents):
-                    return self.skill_action(opponents)
-                else:
-                  if self.name == "Shield of Righteous":
+                  result_message = f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immunes to magical damage."
+                
+                # Special Condition
+                if self.name == "Shield of Righteous":
                     if self.initiator.status['shield_of_righteous'] == False:
                       self.initiator.status['shield_of_righteous'] = True
                       defense_before_increasing = self.initiator.defense
@@ -260,7 +173,7 @@ class Skill:
                       self.initiator.defense = self.initiator.defense + defense_increased_amount_by_shield_of_righteous_single
                       self.initiator.shield_of_righteous_stacks += 1
                       self.initiator.shield_of_righteous_duration = 3  # Effect lasts for 2 rounds
-                      return f"{self.initiator.name} tries to attack {opponents.name} with Shield of Righteous, but {opponents.name} evades the attack. Defense of {self.initiator.name} has increased from {defense_before_increasing} to {self.initiator.defense}."
+                      result_message += f" Defense of {self.initiator.name} has increased from {defense_before_increasing} to {self.initiator.defense}."
                     else:
                       if self.initiator.shield_of_righteous_stacks < 2: #shield of righteous effect can stack for two times.
                         defense_before_increasing = self.initiator.defense
@@ -269,68 +182,68 @@ class Skill:
                         self.initiator.defense = self.initiator.defense + defense_increased_amount_by_shield_of_righteous_single
                         self.initiator.shield_of_righteous_stacks += 1
                         self.initiator.shield_of_righteous_duration = 3  # Effect lasts for 2 rounds
-                        return f"{self.initiator.name} tries to attack {opponents.name} with Shield of Righteous, but {opponents.name} evades the attack. Defense of {self.initiator.name} has increased from {defense_before_increasing} to {self.initiator.defense}."
+                        result_message += f" Defense of {self.initiator.name} has increased from {defense_before_increasing} to {self.initiator.defense}."
                       else:
                         self.initiator.shield_of_righteous_duration = 3
-                        return f"{self.initiator.name} tries to attack {opponents.name} with Shield of Righteous. but {opponents.name} evades the attack. Shield of Righteous buff duration refreshed"
-                  if self.name == "Crusader Strike":
-                    if self.initiator.status['wrath_of_crusader'] == False:
-                      self.initiator.status['wrath_of_crusader'] = True
+                        result_message += f" Shield of Righteous buff duration refreshed."
+                if self.name == "Crusader Strike":
+                  if self.initiator.status['wrath_of_crusader'] == False:
+                    self.initiator.status['wrath_of_crusader'] = True
+                    agility_before_increasing = self.initiator.agility
+                    agility_increased_amount_by_wrath_of_crusader_single = math.ceil(self.initiator.original_agility * 0.75)  # Increase hero's agility by 75%
+                    self.initiator.agility_increased_amount_by_wrath_of_crusader = self.initiator.agility_increased_amount_by_wrath_of_crusader + agility_increased_amount_by_wrath_of_crusader_single  # Defense increase accumulated
+                    self.initiator.agility = self.initiator.agility + agility_increased_amount_by_wrath_of_crusader_single
+                    self.initiator.wrath_of_crusader_stacks += 1
+                    self.initiator.wrath_of_crusader_duration = 3  # Effect lasts for 2 rounds
+                    result_message += f" Agility of {self.initiator.name} has increased from {agility_before_increasing} to {self.initiator.agility}."
+                  else:
+                    if self.initiator.wrath_of_crusader_stacks < 2: # wrath of crusader effect can stack for two times.
                       agility_before_increasing = self.initiator.agility
                       agility_increased_amount_by_wrath_of_crusader_single = math.ceil(self.initiator.original_agility * 0.75)  # Increase hero's agility by 75%
                       self.initiator.agility_increased_amount_by_wrath_of_crusader = self.initiator.agility_increased_amount_by_wrath_of_crusader + agility_increased_amount_by_wrath_of_crusader_single  # Defense increase accumulated
                       self.initiator.agility = self.initiator.agility + agility_increased_amount_by_wrath_of_crusader_single
                       self.initiator.wrath_of_crusader_stacks += 1
                       self.initiator.wrath_of_crusader_duration = 3  # Effect lasts for 2 rounds
-                      return f"{self.initiator.name} tries to attack {opponents.name} with Crusader Strike, but {opponents.name} evades the attack. Agility of {self.initiator.name} has increased from {agility_before_increasing} to {self.initiator.agility}."
+                      result_message += f" Agility of {self.initiator.name} has increased from {agility_before_increasing} to {self.initiator.agility}."
                     else:
-                      if self.initiator.wrath_of_crusader_stacks < 2: # wrath of crusader effect can stack for two times.
-                        agility_before_increasing = self.initiator.agility
-                        agility_increased_amount_by_wrath_of_crusader_single = math.ceil(self.initiator.original_agility * 0.75)  # Increase hero's agility by 75%
-                        self.initiator.agility_increased_amount_by_wrath_of_crusader = self.initiator.agility_increased_amount_by_wrath_of_crusader + agility_increased_amount_by_wrath_of_crusader_single  # Defense increase accumulated
-                        self.initiator.agility = self.initiator.agility + agility_increased_amount_by_wrath_of_crusader_single
-                        self.initiator.wrath_of_crusader_stacks += 1
-                        self.initiator.wrath_of_crusader_duration = 3  # Effect lasts for 2 rounds
-                        return f"{self.initiator.name} tries to attack {opponents.name} with Crusader Strike, but {opponents.name} evades the attack. Agility of {self.initiator.name} has increased from {agility_before_increasing} to {self.initiator.agility}."
-                      else:
-                        self.wrath_of_crusader_duration = 3
-                        return f"{self.initiator.name} tries to attack {opponents.name} with Crusader Strike, but {opponents.name} evades the attack. Wrath of Crusader buff duration refreshed"
-                  if self.name == "Shadow Word Insanity" or self.name == "Curse of Fear":
-                    self.if_cooldown = True
-                    self.cooldown = 3
-                    return f"{self.initiator.name} tries to use {self.name} on {opponents.name}, but {opponents.name} evades the attack."
-                  if self.name == "Pestilence":
-                    self.if_cooldown = True
-                    self.cooldown = 2
-                    return f"{self.initiator.name} tries to use {self.name} on {opponents.name}, but {opponents.name} evades the attack."
-                  if self.name == "Cumbrous Axe":
-                    self.if_cooldown = True
-                    self.cooldown = 3
-                    self.initiator.status['cumbrous_axe'] = True
-                    self.initiator.healing_boost_effects['cumbrous_axe'] = 1.0
-                    for buff in self.initiator.buffs_debuffs_recycle_pool:
-                      if buff.name == "Cumbrous Axe" and buff.initiator == self:
-                          self.initiator.buffs_debuffs_recycle_pool.remove(buff)
-                          buff.duration = 2
-                          self.initiator.add_buff(buff)   
-                    else:
-                        buff = Buff(
-                            name='Cumbrous Axe',
-                            duration=2,
-                            initiator=self,
-                            effect=1
-                        )
-                        self.initiator.add_buff(buff)
-                    return f"{self.initiator.name} tries to use {self.name} on {opponents.name}, but {opponents.name} evades the attack. The healing {self.initiator.name} receives is boost."
-                  if self.name == "Heroric Charge":
-                    basic_healing_heroric_charge = 22
-                    variation = random.randint(-2, 2)
-                    actual_healing = basic_healing_heroric_charge + variation
-                    self.if_cooldown = True
-                    self.cooldown = 3
-                    return f"Holy light showers {self.initiator.name}. {self.initiator.take_healing(actual_healing)}. {self.initiator.name} tries to cast Heroric Charge on {opponents.name}, but {opponents.name} evades the attack."
+                      self.wrath_of_crusader_duration = 3
+                      result_message += f" Wrath of Crusader buff duration refreshed"
+                if self.name == "Shadow Word Insanity" or self.name == "Curse of Fear":
+                  self.if_cooldown = True
+                  self.cooldown = 3
+                if self.name == "Pestilence":
+                  self.if_cooldown = True
+                  self.cooldown = 2
+                if self.name == "Cumbrous Axe":
+                  self.if_cooldown = True
+                  self.cooldown = 3
+                  self.initiator.status['cumbrous_axe'] = True
+                  self.initiator.healing_boost_effects['cumbrous_axe'] = 1.0
+                  for buff in self.initiator.buffs_debuffs_recycle_pool:
+                    if buff.name == "Cumbrous Axe" and buff.initiator == self:
+                        self.initiator.buffs_debuffs_recycle_pool.remove(buff)
+                        buff.duration = 2
+                        self.initiator.add_buff(buff)   
                   else:
-                    return f"{self.initiator.name} tries to use {self.name} on {opponents.name}, but {opponents.name} evades the attack."
+                      buff = Buff(
+                          name='Cumbrous Axe',
+                          duration=2,
+                          initiator=self,
+                          effect=1
+                      )
+                      self.initiator.add_buff(buff)
+                  result_message +=  f" The healing {self.initiator.name} receives is boost."
+                if self.name == "Heroric Charge":
+                  basic_healing_heroric_charge = 22
+                  variation = random.randint(-2, 2)
+                  actual_healing = basic_healing_heroric_charge + variation
+                  self.if_cooldown = True
+                  self.cooldown = 3
+                  result_message +=  f"Holy light showers {self.initiator.name}. {self.initiator.take_healing(actual_healing)}."
+                return result_message
+              else:
+                return self.skill_action(hits)
+
         # Manage damage healing skill
         elif self.skill_type == "damage_healing":
           if opponents in self.initiator.allies:
