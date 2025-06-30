@@ -286,6 +286,40 @@ class WaterElemental(SummonableWarrior):
             skill.cooldown = 2
         for opponent in selected_opponents:
             damage_dealt = math.ceil((actual_damage - opponent.nature_resistance) * 2/3)
-            self.game.display_battle_info(f"{self.name} casts Crushing Wave at {opponent.name}.")
+            self.game.display_battle_info(f"{self.name} has splited part of their body forming a Crushing Wave at {opponent.name}.")
             results.append(opponent.take_damage(damage_dealt))
+        self.game.display_battle_info(f"{self.name} will loose Hp for casting Crushing Wave")
+        results.append(opponent.take_damage(self_damage))
         return "\n".join(results)
+    
+ # Battling Strategy_________________________________________________________
+
+    def strategy_0(self):
+      self.probability_tide_slam = 1
+      self.probability_crushing_wave = 0
+
+    def strategy_1(self):
+      self.probability_tide_slam = 0
+      self.probability_crushing_wave = 1
+
+    def battle_analysis(self, opponents, allies):
+      targets = []
+      for skill in self.skills:
+        if skill.name == "Crushing Wave":
+          if skill.if_cooldown == False:
+            self.strategy_1()
+            return opponents
+      opponent = random.choice(opponents)
+      self.strategy_0()
+      return opponent
+    
+    def ai_choose_skill(self, opponents, allies):
+      self.strategy_0()
+      self.preset_target = self.battle_analysis(opponents, allies)
+      skill_weights = [self.probability_void_punch, self.probability_void_connection]
+      chosen_skill = random.choices(self.skills, weights = skill_weights)[0]
+      return chosen_skill
+
+    def ai_choose_target(self, chosen_skill, opponents, allies):
+      chosen_opponent = self.preset_target
+      return chosen_opponent

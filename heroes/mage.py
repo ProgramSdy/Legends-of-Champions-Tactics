@@ -76,7 +76,7 @@ class Mage_Water(Mage):
     def __init__(self, sys_init, name, group, is_player_controlled):
         super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major)
         self.add_skill(Skill(self, "Summon Water Elemetal", self.summon_water_elemental, target_type="single", skill_type="summon", target_qty= 0, damage_nature = "magical", damage_type = "water"))
-        self.add_skill(Skill(self, "Arcane Missiles", self.arcane_missiles, target_type = "multi", skill_type= "damage", target_qty= 2))
+        self.add_skill(Skill(self, "Water Arrow", self.water_arrow, target_type = "single", skill_type= "damage_healing", damage_nature = "magical", damage_type = "water"))
         self.add_skill(Skill(self, "Frost Bolt", self.frost_bolt, target_type = "single", skill_type= "damage"))
 
     def summon_water_elemental(self):
@@ -101,18 +101,44 @@ class Mage_Water(Mage):
             skill.cooldown = 3
         return f"{self.name} summons a Water Elemental in the battle field."
     
-    def arcane_missiles(self, other_heros):
-        if not isinstance(other_heros, list):
-          other_heros = [other_heros]
-        results = []
-        variation = random.randint(-3, 3)
-        actual_damage = self.damage + variation
-        selected_opponents = other_heros
-        for opponent in selected_opponents:
-            damage_dealt = math.ceil((actual_damage - opponent.arcane_resistance) * 2/3)
-            self.game.display_battle_info(f"{self.name} casts Arcane Missiles at {opponent.name}.")
-            results.append(opponent.take_damage(damage_dealt))
-        return "\n".join(results)
+    def water_arrow(self, other_hero, target_type):
+      healing_amount_base = 15
+      damage_increase_percent = 0.2
+      agility_increase_percent = 0.2
+      duration_sustainable = 1
+      results = []
+      if target_type == "ally": # healing effect
+        variation = random.randint(-4, 0)
+        healing_amount = healing_amount_base + variation
+        self.game.display_battle_info(f"{self.name} casts Penance on {other_hero.name}.")
+        return other_hero.take_healing(healing_amount)
+
+      elif target_type =="opponent": # damage effect
+        variation = random.randint(-8, -4)
+        actual_damage = healing_amount_base + variation
+        damage_dealt = actual_damage #damage discard opponent's defense
+        damage_dealt = max(damage_dealt, 0) # Ensure damage dealt is at least 0
+
+        # Apply damage to the other hero's HP
+        ally_with_buff = []
+        for ally in self.allies:
+          for buff in ally.buffs:
+            if buff.name == "Holy Word Redemption" and buff.initiator == self:
+              ally_with_buff.append(ally)
+              break
+        if ally_with_buff:
+          self.game.display_battle_info(f"{self.name} casts Penance at {other_hero.name}.")
+          self.game.display_battle_info(f"{other_hero.take_damage(damage_dealt)}")
+          #print("Holy light shines upon ally heroes")
+          buff_healing = round(buff.effect * damage_dealt)
+          variation = random.randint(-1, 1)
+          for ally in ally_with_buff:
+              self.game.display_battle_info(f"{ally.name} is protected by Holy Word Redemption.")
+              results.append(f"{ally.take_healing(buff_healing)}")
+          return "\n".join(results)
+        else:
+          self.game.display_battle_info(f"{self.name} casts Penance at {other_hero.name}.")
+          return f"{other_hero.take_damage(damage_dealt)}"
 
     def frost_bolt(self, other_hero):
         if other_hero.status['cold'] == False:

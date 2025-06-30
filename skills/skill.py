@@ -115,6 +115,7 @@ class Skill:
                     return self.skill_action(opponents)
 
             if not hits:
+              result_message = ""
               if dead:
                 target_names = ', '.join([t.name for t in dead])
                 result_message += f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} were already dead. \n"
@@ -131,7 +132,7 @@ class Skill:
                 target_names = ', '.join([t.name for t in immune_mag])
                 result_message += f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immuned to magical damage \n"
               
-              # Special Condition
+              # Special Condition Cool down skills
               if self.name == "Icy Squall":
                 self.if_cooldown = True
                 self.cooldown = 2

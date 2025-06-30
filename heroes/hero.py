@@ -936,7 +936,14 @@ class Hero:
             else:
                 available_targets.extend(allies)
         elif chosen_skill.skill_type == "damage_healing":
-            available_targets.extend(opponents + allies)
+            if chosen_skill.name == "Water Arrow":
+               summoned_ally = [ally for ally in allies if ally.is_summoned == True and ally.master == self]
+               if summoned_ally:
+                  available_targets.extend(opponents + summoned_ally)
+               else:
+                  available_targets.extend(opponents)
+            else:
+              available_targets.extend(opponents + allies)
 
         # If there are auto-selected targets, return them immediately
         if auto_selected_targets:
