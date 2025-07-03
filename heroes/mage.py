@@ -82,7 +82,7 @@ class Mage_Water(Mage):
     def summon_water_elemental(self):
         unit_name = f"{self.name}'s Water Elemental"
         unit_group = self.group
-        unit_duration = 4  # The summoning unit will last for 4 rounds
+        unit_duration = 3  # The summoning unit will last for 3 rounds
         unit_race = 'element'
         waterelemental = WaterElemental(self.sys_init, unit_name, unit_group, self, unit_duration, unit_race, is_player_controlled=False)
         waterelemental.take_game_instance(self.game)
@@ -91,10 +91,12 @@ class Mage_Water(Mage):
           if self.name == hero.name:
             self.game.player_heroes.append(waterelemental)
             self.game.heroes.append(waterelemental)
+            self.game.unactioned_sorted_heroes.append(waterelemental)
             break
         else:
           self.game.opponent_heroes.append(waterelemental)
           self.game.heroes.append(waterelemental)
+          self.game.unactioned_sorted_heroes.append(waterelemental)
         for skill in self.skills:
           if skill.name == "Summon Water Elemental":
             skill.if_cooldown = True
@@ -103,21 +105,63 @@ class Mage_Water(Mage):
     
     def water_arrow(self, other_hero, target_type):
       healing_amount_base = 15
-      damage_increase_percent = 0.2
-      agility_increase_percent = 0.2
       duration_sustainable = 1
-      results = []
-      if target_type == "ally": # healing effect
+      if target_type == "ally": # boost effect
         variation = random.randint(-2, 2)
-        healing_amount = healing_amount_base + variation
-        self.game.display_battle_info(f"{self.name} casts Penance on {other_hero.name}.")
-        return other_hero.take_healing(healing_amount)
+        other_hero.duration += duration_sustainable
+
+        if other_hero.status['water_arrow'] == False:
+            other_hero.status['water_arrow'] = True
+            for buff in other_hero.buffs_debuffs_recycle_pool:
+                if buff.name == "Water Arrow" and buff.initiator == self:
+                    other_hero.buffs_debuffs_recycle_pool.remove(buff)
+                    buff.duration = 3   # Effect lasts for 2 rounds
+                    other_hero.water_arrow_stacks += 1
+                    other_hero.add_buff(buff)
+                    damage_before_increasing = other_hero.damage # damage increase
+                    other_hero.damage_increased_amount_by_water_arrow = round(other_hero.original_damage * buff.effect)  # Increase hero's damage by 10%
+                    other_hero.damage = other_hero.damage + other_hero.damage_increased_amount_by_water_arrow
+                    agility_before_increasing = other_hero.agility
+                    other_hero.agility_increased_amount_by_water_arrow = round(other_hero.original_agility * buff.effect * 10)  # Increase hero's agility by 100%
+                    other_hero.agility = other_hero.agility + other_hero.agility_increased_amount_by_water_arrow
+                    self.game.display_battle_info(f"{self.name} uses Water Arrow on {other_hero.name}, {other_hero.name} has received energy from water. {other_hero.name}'s damage and agility has increased, {other_hero.name} will stay one more round in the battle field.")
+                    return f"{other_hero.name}'s damage has increased from {damage_before_increasing} to {other_hero.damage}, agility has increased from {agility_before_increasing} to {other_hero.agility}."
+
+            buff = Buff(
+                name='Unholy Frenzy',
+                duration = 3,
+                initiator = self,
+                effect = 0.10
+            )
+            other_hero.water_arrow_stacks += 1
+            other_hero.add_buff(buff)
+            damage_before_increasing = other_hero.damage # damage increase
+            other_hero.damage_increased_amount_by_water_arrow = round(other_hero.original_damage * buff.effect)  # Increase hero's damage by 10%
+            other_hero.damage = other_hero.damage + other_hero.damage_increased_amount_by_water_arrow
+            agility_before_increasing = other_hero.agility
+            other_hero.agility_increased_amount_by_water_arrow = round(other_hero.original_agility * buff.effect * 10)  # Increase hero's agility by 100%
+            other_hero.agility = other_hero.agility + other_hero.agility_increased_amount_by_water_arrow
+            self.game.display_battle_info(f"{self.name} uses Water Arrow on {other_hero.name}, {other_hero.name} has received energy from water. {other_hero.name}'s damage and agility has increased, {other_hero.name} will stay one more round in the battle field.")
+            return f"{other_hero.name}'s damage has increased from {damage_before_increasing} to {other_hero.damage}, agility has increased from {agility_before_increasing} to {other_hero.agility}."
+        elif other_hero.status['water_arrow'] == True and other_hero.water_arrow_stacks == 1:
+            other_hero.water_arrow_stacks += 1
+            damage_before_increasing = other_hero.damage # damage increase
+            other_hero.damage_increased_amount_by_water_arrow = round(other_hero.original_damage * buff.effect)  # Increase hero's damage by 10%
+            other_hero.damage = other_hero.damage + other_hero.damage_increased_amount_by_water_arrow
+            agility_before_increasing = other_hero.agility
+            other_hero.agility_increased_amount_by_water_arrow = round(other_hero.original_agility * buff.effect * 10)  # Increase hero's agility by 100%
+            other_hero.agility = other_hero.agility + other_hero.agility_increased_amount_by_water_arrow
+            self.game.display_battle_info(f"{self.name} uses Water Arrow on {other_hero.name} again, {other_hero.name} has received energy from water. {other_hero.name}'s damage and agility has increased, {other_hero.name} will stay one more round in the battle field.")
+            return f"{other_hero.name}'s damage has increased from {damage_before_increasing} to {other_hero.damage}, agility has increased from {agility_before_increasing} to {other_hero.agility}."
+        else:
+           return f"{self.name} uses Water Arrow on {other_hero.name} again, but {other_hero.name} cannot be futher strenthened, {other_hero.name} will stay one more round in the battle field."
 
       elif target_type =="opponent": # damage effect
         variation = random.randint(-2, -2)
         actual_damage = healing_amount_base + variation
         damage_dealt = actual_damage #damage discard opponent's defense
         damage_dealt = max(damage_dealt, 0) # Ensure damage dealt is at least 0
+        self.game.display_battle_info(f"{self.name} casts Water Arrow at {other_hero.name}.")
         return f"{other_hero.take_damage(damage_dealt)}"
 
     def frost_bolt(self, other_hero):

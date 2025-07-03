@@ -72,6 +72,7 @@ class Hero:
         'mixed_venom': False,
         'acid_bomb': False,
         'unstable_compound': False,
+        'water_arrow': False,
         'glacier': False
     }
     list_status_debuff_magic = ['shadow_word_pain', 'cold', 'holy_word_punishment', \
@@ -83,7 +84,7 @@ class Hero:
     list_status_debuff_bleeding = ['bleeding_slash','bleeding_sharp_blade', 'bleeding_crimson_cleave', 'wound_backstab']
     list_status_buff_magic = ['shield_of_righteous','wrath_of_crusader','holy_word_shell','holy_word_redemption', \
                               'holy_fire', 'unholy_frenzy', 'holy_infusion', 'hell_flame', 'cumbrous_axe', 'purify_healing', \
-                              'shield_of_protection']
+                              'shield_of_protection', 'water_arrow']
     list_status_buff_physical = ['shadow_evasion', 'vanish']
 
     def __init__(self, sys_init, name, group, is_player_controlled, major, faculty):
@@ -230,6 +231,9 @@ class Hero:
         self.poison_resistance_reduced_amount_by_mixed_venom = 0
         self.damage_reduced_amount_by_acid_bomb = 0
         self.unstable_compound_damage = 0
+        self.water_arrow_stacks = 0 # Track number of Water Arrow applications
+        self.damage_increased_amount_by_water_arrow = 0 # Track the amount of damage increased by water arrow
+        self.agility_increased_amount_by_water_arrow = 0 # Track the amount of agility increased by water arrow
 
     @classmethod
     def random_in_range(cls, value_range):

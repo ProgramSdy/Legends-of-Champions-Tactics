@@ -93,7 +93,7 @@ class Necromancer_Comprehensiveness(Necromancer):
                     other_hero.damage_increased_amount_by_unholy_frenzy = round(other_hero.original_damage * buff.effect)  # Increase hero's damage by 15%
                     other_hero.damage = other_hero.damage + other_hero.damage_increased_amount_by_unholy_frenzy
                     agility_before_increasing = other_hero.agility
-                    other_hero.agility_increased_amount_by_unholy_frenzy = round(other_hero.original_agility * buff.effect * 3)  # Increase hero's agility by 45%
+                    other_hero.agility_increased_amount_by_unholy_frenzy = round(other_hero.original_agility * buff.effect * 13)  # Increase hero's agility by 200%
                     other_hero.agility = other_hero.agility + other_hero.agility_increased_amount_by_unholy_frenzy
                     damage_dealt = round(other_hero.hp_max * buff.effect) # Hero loose 15% of hp each round
                     other_hero.unholy_frenzy_continuous_damage = damage_dealt
@@ -111,7 +111,7 @@ class Necromancer_Comprehensiveness(Necromancer):
             other_hero.damage_increased_amount_by_unholy_frenzy = round(other_hero.original_damage * buff.effect)  # Increase hero's damage by 15%
             other_hero.damage = other_hero.damage + other_hero.damage_increased_amount_by_unholy_frenzy
             agility_before_increasing = other_hero.agility
-            other_hero.agility_increased_amount_by_unholy_frenzy = round(other_hero.original_agility * buff.effect * 3)  # Increase hero's agility by 45%
+            other_hero.agility_increased_amount_by_unholy_frenzy = round(other_hero.original_agility * buff.effect * 13)  # Increase hero's agility by 200%
             other_hero.agility = other_hero.agility + other_hero.agility_increased_amount_by_unholy_frenzy
             damage_dealt = round(other_hero.hp_max * buff.effect) # Hero loose 15% of hp each round
             other_hero.unholy_frenzy_continuous_damage = damage_dealt
