@@ -712,5 +712,23 @@ class StatusEffectManager:
                     hero.status['vanish'] = False
                     hero.is_after_vanish = True
                     self.game.display_status_updates(f"{BLUE}{hero.name}'s figure slowly emerged from the darkness.{RESET}")
+            
+            # Water Arrow Duration
+            if hero.status['water_arrow'] and hero.hp > 0:
+                for buff in hero.buffs:
+                  if buff.name == "Water Arrow":
+                      buff.duration -= 1
+                      if buff.duration > 0:
+                        self.game.display_status_updates(f"{BLUE}{hero.name}'s water arrow duration is {buff.duration} rounds.{RESET}")
+
+                      elif buff.duration == 0:
+                          hero.status['water_arrow'] = False
+                          hero.damage = hero.damage - hero.damage_increased_amount_by_water_arrow  # Restore original damage
+                          hero.damage_increased_amount_by_water_arrow = 0 # Reset the amount of damage increased by water arrow
+                          hero.agility = hero.agility - hero.agility_increased_amount_by_water_arrow  # Restore original damage
+                          hero.agility_increased_amount_by_water_arrow = 0 # Reset the amount of damage increased by water arrow
+                          hero.buffs.remove(buff)
+                          hero.buffs_debuffs_recycle_pool.append(buff)
+                          self.game.display_status_updates(f"{BLUE}{hero.name}'s Water Arrow Buff has disappeared. {hero.name}'s damage has returned to {hero.damage}, {hero.name}'s agility has returned to {hero.agility}{RESET}")
                 
             
