@@ -257,7 +257,7 @@ class WaterElemental(SummonableWarrior):
         self.preset_target = None
         self.summon_unit_race = summon_unit_race
         self.add_skill(Skill(self, "Tide Slam", self.tide_slam, target_type = "single", skill_type= "damage", damage_nature = "magical", damage_type = "water"))
-        self.add_skill(Skill(self, "Crushing Wave", self.crushing_wave, target_type = "multi", skill_type= "damage", target_qty= 2))
+        self.add_skill(Skill(self, "Crushing Wave", self.crushing_wave, target_type = "multi", skill_type= "damage", target_qty= 2, damage_nature = "magical", damage_type = "water"))
 
     def show_info(self):
         base_info = super().show_info()

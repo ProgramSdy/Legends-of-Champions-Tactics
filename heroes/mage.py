@@ -125,7 +125,7 @@ class Mage_Water(Mage):
                     agility_before_increasing = other_hero.agility
                     agility_increased_amount_by_water_arrow_single = round(other_hero.original_agility * buff.effect * 10)  # Increase hero's agility by 100%
                     other_hero.agility_increased_amount_by_water_arrow = other_hero.agility_increased_amount_by_water_arrow + agility_increased_amount_by_water_arrow_single
-                    other_hero.agility = other_hero.agility + other_hero.agility_increased_amount_by_water_arrow
+                    other_hero.agility = other_hero.agility + agility_increased_amount_by_water_arrow_single
                     self.game.display_battle_info(f"{self.name} uses Water Arrow on {other_hero.name}, {other_hero.name} has received energy from water. {other_hero.name}'s damage and agility has increased, {other_hero.name} will stay one more round in the battle field.")
                     return f"{other_hero.name}'s damage has increased from {damage_before_increasing} to {other_hero.damage}, agility has increased from {agility_before_increasing} to {other_hero.agility}."
 
@@ -144,7 +144,7 @@ class Mage_Water(Mage):
             agility_before_increasing = other_hero.agility
             agility_increased_amount_by_water_arrow_single = round(other_hero.original_agility * buff.effect * 10)  # Increase hero's agility by 100%
             other_hero.agility_increased_amount_by_water_arrow = other_hero.agility_increased_amount_by_water_arrow + agility_increased_amount_by_water_arrow_single
-            other_hero.agility = other_hero.agility + other_hero.agility_increased_amount_by_water_arrow
+            other_hero.agility = other_hero.agility + agility_increased_amount_by_water_arrow_single
             self.game.display_battle_info(f"{self.name} uses Water Arrow on {other_hero.name}, {other_hero.name} has received energy from water. {other_hero.name}'s damage and agility has increased, {other_hero.name} will stay one more round in the battle field.")
             return f"{other_hero.name}'s damage has increased from {damage_before_increasing} to {other_hero.damage}, agility has increased from {agility_before_increasing} to {other_hero.agility}."
         elif other_hero.status['water_arrow'] == True and other_hero.water_arrow_stacks == 1:
