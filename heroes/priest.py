@@ -113,7 +113,7 @@ class Priest_Shelter(Priest):
     #list_status_debuff_bleeding = ['bleeding_slash','bleeding_sharp_blade']
     def purification_and_cure(self, hero):
       hero_status_activated = [key for key, value in hero.status.items() if value == True]
-      set_comb = set(self.list_status_debuff_magic) | set(self.list_status_debuff_bleeding) | set(self.list_status_debuff_disease)
+      set_comb = set(self.list_status_debuff_magic) | set(self.list_status_debuff_bleeding) | set(self.list_status_debuff_disease) | set(self.list_status_debuff_toxic)
       equal_status = set(hero_status_activated) & set_comb
       status_list_for_action = list(equal_status)
       random.shuffle(status_list_for_action)

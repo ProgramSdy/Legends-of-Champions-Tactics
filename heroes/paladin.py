@@ -401,7 +401,7 @@ class Paladin_Holy(Paladin):
         basic_healing = 25
         actual_healing = basic_healing + variation
         hero_status_activated = [key for key, value in other_hero.status.items() if value == True]
-        set_comb = set(self.list_status_debuff_bleeding) | set(self.list_status_debuff_disease)
+        set_comb = set(self.list_status_debuff_bleeding) | set(self.list_status_debuff_disease) | set(self.list_status_debuff_toxic)
         equal_status = set(hero_status_activated) & set_comb
         status_list_for_action = list(equal_status)
         print(status_list_for_action)
