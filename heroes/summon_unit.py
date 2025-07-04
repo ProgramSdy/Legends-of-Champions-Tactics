@@ -257,7 +257,7 @@ class WaterElemental(SummonableWarrior):
         self.preset_target = None
         self.summon_unit_race = summon_unit_race
         self.add_skill(Skill(self, "Tide Slam", self.tide_slam, target_type = "single", skill_type= "damage", damage_nature = "magical", damage_type = "water"))
-        self.add_skill(Skill(self, "Crushing Wave", self.crushing_wave, target_type = "multi", skill_type= "damage", target_qty= 2, damage_nature = "magical", damage_type = "water"))
+        self.add_skill(Skill(self, "Crushing Wave", self.crushing_wave, target_type = "multi", skill_type= "damage", target_qty= 2))
 
     def show_info(self):
         base_info = super().show_info()
@@ -275,6 +275,8 @@ class WaterElemental(SummonableWarrior):
     def crushing_wave(self, other_heros): # Cause damage to self.
         if not isinstance(other_heros, list):
           other_heros = [other_heros]
+        for hero in other_heros:
+           print(hero.name)
         results = []
         variation = random.randint(-3, 3)
         actual_damage = self.damage + variation
@@ -284,12 +286,13 @@ class WaterElemental(SummonableWarrior):
           if skill.name == "Crushing Wave":
             skill.if_cooldown = True
             skill.cooldown = 2
+        self.game.display_battle_info(f"{self.name} has splited part of their body forming a Crushing Wave.")
         for opponent in selected_opponents:
             damage_dealt = math.ceil((actual_damage - opponent.nature_resistance) * 2/3)
-            self.game.display_battle_info(f"{self.name} has splited part of their body forming a Crushing Wave at {opponent.name}.")
+            self.game.display_battle_info(f"{self.name} casts Crushing Wave at {opponent.name}.")
             results.append(opponent.take_damage(damage_dealt))
         self.game.display_battle_info(f"{self.name} will loose Hp for casting Crushing Wave")
-        results.append(opponent.take_damage(self_damage))
+        results.append(self.take_damage(self_damage))
         return "\n".join(results)
     
  # Battling Strategy_________________________________________________________

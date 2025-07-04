@@ -75,7 +75,7 @@ class Mage_Water(Mage):
 
     def __init__(self, sys_init, name, group, is_player_controlled):
         super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major)
-        self.add_skill(Skill(self, "Summon Water Elemetal", self.summon_water_elemental, target_type="single", skill_type="summon", target_qty= 0, damage_nature = "magical", damage_type = "water"))
+        self.add_skill(Skill(self, "Summon Water Elemental", self.summon_water_elemental, target_type="single", skill_type="summon", target_qty= 0, damage_nature = "magical", damage_type = "water"))
         self.add_skill(Skill(self, "Water Arrow", self.water_arrow, target_type = "single", skill_type= "damage_healing", damage_nature = "magical", damage_type = "water"))
         #self.add_skill(Skill(self, "Frost Bolt", self.frost_bolt, target_type = "single", skill_type= "damage"))
 
@@ -130,7 +130,7 @@ class Mage_Water(Mage):
                     return f"{other_hero.name}'s damage has increased from {damage_before_increasing} to {other_hero.damage}, agility has increased from {agility_before_increasing} to {other_hero.agility}."
 
             buff = Buff(
-                name='Unholy Frenzy',
+                name='Water Arrow',
                 duration = 3,
                 initiator = self,
                 effect = 0.10
@@ -150,15 +150,17 @@ class Mage_Water(Mage):
         elif other_hero.status['water_arrow'] == True and other_hero.water_arrow_stacks == 1:
             other_hero.water_arrow_stacks += 1
             damage_before_increasing = other_hero.damage # damage increase
-            damage_increased_amount_by_water_arrow_single = round(other_hero.original_damage * buff.effect)  # Increase hero's damage by 10%
-            other_hero.damage_increased_amount_by_water_arrow = other_hero.damage_increased_amount_by_water_arrow + damage_increased_amount_by_water_arrow_single
-            other_hero.damage = other_hero.damage + other_hero.damage_increased_amount_by_water_arrow
-            agility_before_increasing = other_hero.agility
-            agility_increased_amount_by_water_arrow_single = round(other_hero.original_agility * buff.effect * 10)  # Increase hero's agility by 100%
-            other_hero.agility_increased_amount_by_water_arrow = other_hero.agility_increased_amount_by_water_arrow + agility_increased_amount_by_water_arrow_single
-            other_hero.agility = other_hero.agility + other_hero.agility_increased_amount_by_water_arrow
-            self.game.display_battle_info(f"{self.name} uses Water Arrow on {other_hero.name} again, {other_hero.name} has received energy from water. {other_hero.name}'s damage and agility has increased, {other_hero.name} will stay one more round in the battle field.")
-            return f"{other_hero.name}'s damage has increased from {damage_before_increasing} to {other_hero.damage}, agility has increased from {agility_before_increasing} to {other_hero.agility}."
+            for buff in other_hero.buffs:
+                if buff.name == "Water Arrow" and buff.initiator == self:
+                  damage_increased_amount_by_water_arrow_single = round(other_hero.original_damage * buff.effect)  # Increase hero's damage by 10%
+                  other_hero.damage_increased_amount_by_water_arrow = other_hero.damage_increased_amount_by_water_arrow + damage_increased_amount_by_water_arrow_single
+                  other_hero.damage = other_hero.damage + other_hero.damage_increased_amount_by_water_arrow
+                  agility_before_increasing = other_hero.agility
+                  agility_increased_amount_by_water_arrow_single = round(other_hero.original_agility * buff.effect * 10)  # Increase hero's agility by 100%
+                  other_hero.agility_increased_amount_by_water_arrow = other_hero.agility_increased_amount_by_water_arrow + agility_increased_amount_by_water_arrow_single
+                  other_hero.agility = other_hero.agility + other_hero.agility_increased_amount_by_water_arrow
+                  self.game.display_battle_info(f"{self.name} uses Water Arrow on {other_hero.name} again, {other_hero.name} has received energy from water. {other_hero.name}'s damage and agility has increased, {other_hero.name} will stay one more round in the battle field.")
+                  return f"{other_hero.name}'s damage has increased from {damage_before_increasing} to {other_hero.damage}, agility has increased from {agility_before_increasing} to {other_hero.agility}."
         else:
            return f"{self.name} uses Water Arrow on {other_hero.name} again, but {other_hero.name} cannot be futher strenthened, {other_hero.name} will stay one more round in the battle field."
 

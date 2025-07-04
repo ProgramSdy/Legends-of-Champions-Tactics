@@ -4,7 +4,7 @@ from heroes import *
 from skills import *
 
 class Skill:
-    def __init__(self, initiator, name, skill_action, target_type, skill_type, target_qty = 1, capable_interrupt_magic_casting = False, is_instant_skill = True, damage_nature=None, damage_type=None):       
+    def __init__(self, initiator, name, skill_action, target_type, skill_type, target_qty = 1, capable_interrupt_magic_casting = False, is_instant_skill = True, damage_nature = "NA", damage_type = "NA"):       
         self.initiator = initiator  # Reference to the hero instance who initiated the skill
         self.name = name            # Name of the skill, e.g., "Fireball"
         self.skill_action = skill_action   # This is a method reference that performs the skill's action
