@@ -239,7 +239,31 @@ class StatusDispell:
                 hero.wound_backstab_stacks = 0
                 hero.status['wound_backstab'] = False
                 self.game.display_status_updates(f"{BLUE}{hero.name} has recovered from Backstab wound. Their agility has returned to {hero.agility}.{RESET}")
-
+          elif status == 'paralyze_blade':
+                hero.paralyze_blade_continuous_damage = 0
+                hero.agility = hero.agility + hero.agility_reduced_amount_by_paralyze_blade  # Restore original agility
+                hero.agility_reduced_amount_by_paralyze_blade = 0
+                hero.status['paralyze_blade'] = False
+                hero.paralyze_blade_stacks = 0
+                self.game.display_status_updates(f"{BLUE}{hero.name} is no longer effected by Paralyze Blade. {hero.name}'s agility has come back to {hero.agility}. {RESET}")
+          elif status =='mixed_venom':
+                hero.status['mixed_venom'] = False
+                hero.poison_resistance = hero.poison_resistance + hero.poison_resistance_reduced_amount_by_mixed_venom
+                hero.poison_resistance_reduced_amount_by_mixed_venom = 0
+                self.game.display_battle_info(f"{BLUE}{hero.name} is no longer suffering from a Mixed Venom effect. {hero.name}'s poison resistance has returned to {hero.poison_resistance}.{RESET}")
+          elif status == 'paralyzed':
+                hero.status['paralyzed'] = False
+                self.game.display_status_updates(f"{BLUE}{hero.name} has recovered from paralysis.{RESET}")
+          elif status == 'acid_bomb':
+                hero.status['acid_bomb'] = False
+                hero.damage = hero.damage + hero.damage_reduced_amount_by_acid_bomb  # Restore original damage
+                hero.damage_reduced_amount_by_acid_bomb = 0
+                self.game.display_status_updates(f"{BLUE}Acid Bomb effect has faded away from {hero.name}. {hero.name}'s damage has returned to {hero.damage}.{RESET}")
+          elif status == 'unstable_compound':
+                variation = random.randint(-2, 2)
+                hero.status['unstable_compound'] = False
+                hero.unstable_compound_damage = hero.unstable_compound_damage + variation
+                self.game.display_status_updates(f"{ORANGE}Unstable Compound from {hero.name} has exploded. {hero.take_damage(hero.sharp_blade_continuous_damage + variation)}{RESET}")
 
 
 
