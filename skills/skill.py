@@ -56,6 +56,11 @@ class Skill:
         if random.randint(1, 100) <= math.ceil(evasion_chance):
            return True
         return False
+    
+    def death_check(self, opponent):
+       if opponent.hp <= 0:
+          return True
+       return False
 
     def resolve_targets(self, targets):
         outcomes = {
@@ -67,7 +72,7 @@ class Skill:
             "dead": []
         }
         for target in targets:
-            if target.hp <= 0:
+            if self.death_check(target):
                 outcomes["dead"].append(target)
                 continue
             if self.evasion_check(target):

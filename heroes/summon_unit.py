@@ -276,7 +276,7 @@ class WaterElemental(SummonableWarrior):
         if not isinstance(other_heros, list):
           other_heros = [other_heros]
         for hero in other_heros:
-           print(hero.name)
+           print(f"{RED}Debug summon_unit: Hero name = {hero.name}{RESET}")
         results = []
         variation = random.randint(-3, 3)
         actual_damage = self.damage + variation
@@ -286,7 +286,6 @@ class WaterElemental(SummonableWarrior):
           if skill.name == "Crushing Wave":
             skill.if_cooldown = True
             skill.cooldown = 2
-        self.game.display_battle_info(f"{self.name} has splited part of their body forming a Crushing Wave.")
         for opponent in selected_opponents:
             damage_dealt = math.ceil((actual_damage - opponent.nature_resistance) * 2/3)
             self.game.display_battle_info(f"{self.name} casts Crushing Wave at {opponent.name}.")
@@ -306,12 +305,12 @@ class WaterElemental(SummonableWarrior):
       self.probability_crushing_wave = 1
 
     def battle_analysis(self, opponents, allies):
-      targets = []
       for skill in self.skills:
         if skill.name == "Crushing Wave":
           if skill.if_cooldown == False:
             self.strategy_1()
-            return opponents
+            chosen_opponent = random.sample(opponents, skill.target_qty) if len(opponents) > skill.target_qty else opponents
+            return chosen_opponent
       opponent = random.choice(opponents)
       self.strategy_0()
       return opponent
