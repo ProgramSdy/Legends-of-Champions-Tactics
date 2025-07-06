@@ -73,6 +73,7 @@ class Hero:
         'acid_bomb': False,
         'unstable_compound': False,
         'water_arrow': False,
+        'aqua_ring' : False,
         'glacier': False
     }
     list_status_debuff_magic = ['shadow_word_pain', 'cold', 'holy_word_punishment', \
@@ -962,11 +963,7 @@ class Hero:
           if chosen_skill.target_type == "single":
               chosen_opponent = random.choice(opponents)
           if chosen_skill.target_type == "multi":
-              for hero in opponents:
-                print(f"{RED}Debug hero.py: Hero name = {hero.name}{RESET}, target_qty = {chosen_skill.target_qty}")
               chosen_opponent = random.sample(opponents, chosen_skill.target_qty) if len(opponents) > chosen_skill.target_qty else opponents
-              for hero in chosen_opponent:
-                print(f"{RED}Debug hero.py: Chosen hero name = {hero.name}{RESET}")
           return chosen_opponent
 
         elif chosen_skill.skill_type == "healing":

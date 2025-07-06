@@ -77,7 +77,7 @@ class Mage_Water(Mage):
         super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major)
         self.add_skill(Skill(self, "Summon Water Elemental", self.summon_water_elemental, target_type="single", skill_type="summon", target_qty= 0, damage_nature = "magical", damage_type = "water"))
         self.add_skill(Skill(self, "Water Arrow", self.water_arrow, target_type = "single", skill_type= "damage_healing", damage_nature = "magical", damage_type = "water"))
-        #self.add_skill(Skill(self, "Frost Bolt", self.frost_bolt, target_type = "single", skill_type= "damage"))
+        self.add_skill(Skill(self, "Aqua Ring", self.purify_healing, target_type = "single", skill_type= "healing"))
 
     def summon_water_elemental(self):
         unit_name = f"{self.name}'s Water Elemental"
@@ -171,20 +171,41 @@ class Mage_Water(Mage):
         damage_dealt = max(damage_dealt, 0) # Ensure damage dealt is at least 0
         self.game.display_battle_info(f"{self.name} casts Water Arrow at {other_hero.name}.")
         return f"{other_hero.take_damage(damage_dealt)}"
-
-    def frost_bolt(self, other_hero):
-        if other_hero.status['cold'] == False:
-          agility_before_reducing = other_hero.agility
-          other_hero.agility_reduced_amount_by_frost_bolt = math.ceil(other_hero.original_agility * 0.70)  # Reduce target's agility by 70%
-          other_hero.agility = other_hero.agility - other_hero.agility_reduced_amount_by_frost_bolt
-          other_hero.status['cold'] = True
-          other_hero.status['normal'] = False
-          other_hero.cold_duration = 2
-          self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Frost Bolt, {other_hero.name} is feeling cold and their agility is reduced from {agility_before_reducing} to {other_hero.agility}.")
-        else:
-            self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Frost Bolt")
+    
+    def aqua_ring(self, other_hero):
         variation = random.randint(-2, 2)
-        actual_damage = self.damage + variation
-        damage_dealt = math.ceil((actual_damage - other_hero.frost_resistance) * 4/5)
-        damage_dealt = max(damage_dealt, 0)
-        return other_hero.take_damage(damage_dealt)
+        basic_healing = 20
+        actual_healing = basic_healing + variation
+        hero_status_activated = [key for key, value in other_hero.status.items() if value == True]
+        set_comb = set(self.list_status_debuff_magic) |  set(self.list_status_debuff_toxic)
+        equal_status = set(hero_status_activated) & set_comb
+        status_list_for_action = list(equal_status)
+        print(status_list_for_action)
+
+        if other_hero.status['aqua_ring'] == False:
+            other_hero.status['aqua_ring'] = True
+            for buff in other_hero.buffs_debuffs_recycle_pool:
+                if buff.name == "Aqua Ring" and buff.initiator == self:
+                    other_hero.buffs_debuffs_recycle_pool.remove(buff)
+                    buff.duration = 2   # Effect lasts for 2 rounds
+                    other_hero.add_buff(buff)
+                    break
+            else:        
+              buff = Buff(
+                  name='Aqua Ring',
+                  duration = 2,
+                  initiator = self,
+                  effect = 1.0
+              )
+              other_hero.add_buff(buff)
+            
+        else:
+            for buff in other_hero.buffs:
+                if buff.name == "Aqua Ring" and buff.initiator == self:
+                    buff.duration = 2   # Refresh effect
+        
+        self.game.display_battle_info(f"{self.name} uses Aqua Ring on {other_hero.name}.")
+        if status_list_for_action:
+          random.shuffle(status_list_for_action)
+          self.game.status_dispeller.dispell_status([status_list_for_action[0]], other_hero)
+        return other_hero.take_healing(actual_healing)

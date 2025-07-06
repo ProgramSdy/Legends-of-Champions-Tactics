@@ -3,6 +3,15 @@ import random
 from heroes import *
 from skills import *
 
+ORANGE = "\033[38;5;208m"
+RED = "\033[91m"
+GREEN = "\033[92m"
+YELLOW = "\033[93m"
+BLUE = "\033[94m"
+MAGENTA = "\033[95m"
+CYAN = "\033[96m"
+RESET = "\033[0m"
+
 class Skill:
     def __init__(self, initiator, name, skill_action, target_type, skill_type, target_qty = 1, capable_interrupt_magic_casting = False, is_instant_skill = True, damage_nature = "NA", damage_type = "NA"):       
         self.initiator = initiator  # Reference to the hero instance who initiated the skill
@@ -91,6 +100,10 @@ class Skill:
         return outcomes
 
     def execute(self, opponents):
+        if self.name == "Crushing Wave":
+          for hero in opponents:
+            print(f"{RED}Debug Skill: Hero name = {hero.name}{RESET}")
+
         # Manage healing skills
         if self.skill_type == "healing":
             return self.skill_action(opponents)
