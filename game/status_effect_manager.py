@@ -31,7 +31,7 @@ class StatusEffectManager:
                           status_list_for_action = list(equal_status)
                           if status_list_for_action:
                             random.shuffle(status_list_for_action)
-                            self.game.display_battle_info(f"{self.name}'s Purify Healing is taking effect. {self.game.status_dispeller.dispell_status([status_list_for_action[0]], hero)}.")  
+                            self.game.display_battle_info(f"{hero.name}'s Purify Healing is taking effect. {self.game.status_dispeller.dispell_status([status_list_for_action[0]], hero)}.")  
                       elif buff.duration == 0:
                           hero.status['purify_healing'] = False
                           hero.buffs.remove(buff)
@@ -47,14 +47,14 @@ class StatusEffectManager:
                       actual_healing = basic_healing + variation
                       buff.duration -= 1
                       if buff.duration > 0:
-                          self.game.display_status_updates(f"{BLUE}{hero.name}'s Aqua Ring from {buff.initiator.name} lasts {buff.duration} rounds. {self.take_healing(actual_healing)}{RESET}")
+                          self.game.display_status_updates(f"{BLUE}{hero.name}'s Aqua Ring from {buff.initiator.name} lasts {buff.duration} rounds. {hero.take_healing(actual_healing)}{RESET}")
                           hero_status_activated = [key for key, value in hero.status.items() if value == True]
                           set_comb = set(hero.list_status_debuff_magic) |  set(hero.list_status_debuff_toxic)
                           equal_status = set(hero_status_activated) & set_comb
                           status_list_for_action = list(equal_status)
                           if status_list_for_action:
                             random.shuffle(status_list_for_action)
-                            self.game.display_battle_info(f"{self.name}'s Aqua Ring is taking effect. {self.game.status_dispeller.dispell_status([status_list_for_action[0]], hero)}.")  
+                            self.game.display_battle_info(f"{hero.name}'s Aqua Ring is taking effect. {self.game.status_dispeller.dispell_status([status_list_for_action[0]], hero)}.")  
                       elif buff.duration == 0:
                           hero.status['aqua_ring'] = False
                           hero.buffs.remove(buff)

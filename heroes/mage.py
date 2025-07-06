@@ -77,7 +77,7 @@ class Mage_Water(Mage):
         super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major)
         self.add_skill(Skill(self, "Summon Water Elemental", self.summon_water_elemental, target_type="single", skill_type="summon", target_qty= 0, damage_nature = "magical", damage_type = "water"))
         self.add_skill(Skill(self, "Water Arrow", self.water_arrow, target_type = "single", skill_type= "damage_healing", damage_nature = "magical", damage_type = "water"))
-        self.add_skill(Skill(self, "Aqua Ring", self.purify_healing, target_type = "single", skill_type= "healing"))
+        self.add_skill(Skill(self, "Aqua Ring", self.aqua_ring, target_type = "single", skill_type= "healing"))
 
     def summon_water_elemental(self):
         unit_name = f"{self.name}'s Water Elemental"
