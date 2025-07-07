@@ -982,9 +982,23 @@ class Hero:
 
         if chosen_skill.skill_type == "damage_healing":
           if chosen_skill.target_type == "single":
-            target_list = opponents + allies
-            chosen_opponent = random.choice(target_list)
-            return chosen_opponent
+            if chosen_skill.name == "Water Arrow":
+              chosen_ally = []
+              for ally in allies:
+                 if ally.is_summoned == True and ally.master == chosen_skill.initiator:
+                    chosen_ally.append(ally)
+              if chosen_ally:
+                    target_list = opponents + chosen_ally
+                    chosen_opponent = random.choice(target_list)
+                    return chosen_opponent
+              else:
+                 target_list = opponents
+                 chosen_opponent = random.choice(target_list)
+                 return chosen_opponent
+            else:
+              target_list = opponents + allies
+              chosen_opponent = random.choice(target_list)
+              return chosen_opponent
 
         elif chosen_skill.skill_type == "buffs":
           if chosen_skill.target_qty == 0:
