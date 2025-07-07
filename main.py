@@ -23,11 +23,11 @@ def main():
     sys_init.initialize()
     interface.initialize_window(sys_init)
     # Player hero generator__________________________________________
-    '''
+    #'''
     generator_player = HeroGenerator(sys_init)
-    name_list = ["Daoyu", "Yiquan", "Evelyn"]
+    name_list = ["Player 1", "Player 2", "Player 3"]
     #name_list = ["Yiquan", "Evelyn"]
-    player_heroes = generator_player.generate_heroes("Group_A", 2)
+    player_heroes = generator_player.generate_heroes("Group_A", 3)
     i = 0
     for hero in player_heroes:
       hero.name = name_list[i]
@@ -40,13 +40,14 @@ def main():
         hero.is_player_controlled = False
       if hero.name == 'Player 3':
         hero.is_player_controlled = False
-    '''
     #'''
+    '''
+
     Player_1 = Necromancer_Comprehensiveness(sys_init, "Arthas", "Group_A", True)
     Player_2 = Mage_Water(sys_init, "Black Heart", "Group_A", True)
     Player_3 = Priest_Shelter(sys_init, "Guldan", "Group_A", True)
     player_heroes = [Player_1, Player_2, Player_3]
-    #'''
+    '''
     
 
     # Opponent hero generator__________________________________________
