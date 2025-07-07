@@ -77,7 +77,7 @@ class Mage_Water(Mage):
         super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major)
         self.add_skill(Skill(self, "Summon Water Elemental", self.summon_water_elemental, target_type="single", skill_type="summon", target_qty= 0, damage_nature = "magical", damage_type = "water"))
         self.add_skill(Skill(self, "Water Arrow", self.water_arrow, target_type = "single", skill_type= "damage_healing", damage_nature = "magical", damage_type = "water"))
-        self.add_skill(Skill(self, "Aqua Ring", self.aqua_ring, target_type = "single", skill_type= "healing"))
+        #self.add_skill(Skill(self, "Aqua Ring", self.aqua_ring, target_type = "single", skill_type= "healing"))
 
     def summon_water_elemental(self):
         unit_name = f"{self.name}'s Water Elemental"
@@ -106,7 +106,7 @@ class Mage_Water(Mage):
     def water_arrow(self, other_hero, target_type):
       healing_amount_base = 15
       duration_sustainable = 1
-      if target_type == "ally": # boost effect
+      if other_hero.is_summoned == True and other_hero.master == self: # boost effect
         variation = random.randint(-2, 2)
         other_hero.duration += duration_sustainable
 
@@ -164,7 +164,7 @@ class Mage_Water(Mage):
         else:
            return f"{self.name} uses Water Arrow on {other_hero.name} again, but {other_hero.name} cannot be futher strenthened, {other_hero.name} will stay one more round in the battle field."
 
-      elif target_type =="opponent": # damage effect
+      else: # damage effect
         variation = random.randint(-2, -2)
         actual_damage = healing_amount_base + variation
         damage_dealt = actual_damage #damage discard opponent's defense
