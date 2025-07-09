@@ -209,3 +209,83 @@ class Mage_Water(Mage):
           random.shuffle(status_list_for_action)
           self.game.status_dispeller.dispell_status([status_list_for_action[0]], other_hero)
         return other_hero.take_healing(actual_healing)
+    
+class Mage_Frost(Mage):
+
+    major = "Frost"
+
+    def __init__(self, sys_init, name, group, is_player_controlled):
+        super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major)
+        self.add_skill(Skill(self, "Frost Bolt", self.frost_bolt, target_type = "single", skill_type= "damage", damage_nature = "magical", damage_type = "frost"))
+
+
+    def frost_bolt(self, other_hero):
+        if other_hero.status['cold'] == False:
+          agility_before_reducing = other_hero.agility
+          other_hero.agility_reduced_amount_by_frost_bolt = math.ceil(other_hero.original_agility * 0.70)  # Reduce target's agility by 70%
+          other_hero.agility = other_hero.agility - other_hero.agility_reduced_amount_by_frost_bolt
+          other_hero.status['cold'] = True
+          other_hero.status['normal'] = False
+          other_hero.cold_duration = 2
+          self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Frost Bolt, {other_hero.name} is feeling cold and their agility is reduced from {agility_before_reducing} to {other_hero.agility}.")
+        else:
+            self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Frost Bolt")
+        variation = random.randint(-2, 2)
+        actual_damage = self.damage + variation
+        damage_dealt = math.ceil((actual_damage - other_hero.frost_resistance) * 4/5)
+        damage_dealt = max(damage_dealt, 0)
+        return other_hero.take_damage(damage_dealt)
+    
+    def blizzard(self, other_heroes):
+        if not isinstance(other_heroes, list):
+          other_heroes = [other_heroes]
+
+        if self.status['bless_of_frost']:
+          if self.status['magic_casting'] == False:
+            self.game.display_battle_info(f"{self.name} receives bless of frost and will cast Blizzard instantly!")
+            self.status['bless_of_frost'] = False  # Reset the status after use
+            results = []
+            variation = random.randint(-2, 2)
+            actual_damage = self.damage + variation
+            selected_opponents = other_heroes
+            for opponent in selected_opponents:
+              if opponent.hp > 0:
+                damage_dealt = round((actual_damage - opponent.frost_resistance) * 2/3)
+                self.game.display_battle_info(f"{self.name} casts Blizzard at {opponent.name}.")
+                results.append(opponent.take_damage(damage_dealt))
+            return "\n".join(results)
+          elif self.status['magic_casting'] == True:
+            self.status['magic_casting'] = False
+            self.game.display_battle_info(f"From bless of frost, {self.name} casts a much powerful Blizzard!")
+            self.status['bless_of_frost'] = False  # Reset the status after use
+            results = []
+            variation = random.randint(-2, 2)
+            actual_damage = self.damage + variation
+            selected_opponents = other_heroes
+            for opponent in selected_opponents:
+              if opponent.hp > 0:
+                damage_dealt = actual_damage - opponent.frost_resistance
+                self.game.display_battle_info(f"{self.name} casts Blizzard at {opponent.name}.")
+                results.append(opponent.take_damage(damage_dealt))
+            return "\n".join(results)
+
+        if self.status['magic_casting'] == False:
+          self.status['magic_casting'] = True
+          self.game.display_battle_info(f"{self.name} is casting Blizzard.")
+          self.magic_casting_duration = 1
+          for skill in self.skills:
+            if skill.name == "Blizzard":
+              return self.magic_casting(skill, other_heroes)
+
+        elif self.status['magic_casting'] == True:
+          self.status['magic_casting'] = False
+          results = []
+          variation = random.randint(-2, 2)
+          actual_damage = self.damage + variation
+          selected_opponents = other_heroes
+          for opponent in selected_opponents:
+            if opponent.hp > 0:
+              damage_dealt = round((actual_damage - opponent.frost_resistance) * 2/3)
+              self.game.display_battle_info(f"{self.name} casts Blizzard at {opponent.name}.")
+              results.append(opponent.take_damage(damage_dealt))
+          return "\n".join(results)
