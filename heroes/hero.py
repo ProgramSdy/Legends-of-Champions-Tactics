@@ -74,7 +74,8 @@ class Hero:
         'unstable_compound': False,
         'water_arrow': False,
         'aqua_ring' : False,
-        'glacier': False
+        'glacier': False,
+        'bless_of_frost': False
     }
     list_status_debuff_magic = ['shadow_word_pain', 'cold', 'holy_word_punishment', \
                                 'shadow_word_insanity', 'unholy_frenzy', 'curse_of_agony', 'fear', 'shadow_bolt', \
