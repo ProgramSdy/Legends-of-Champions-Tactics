@@ -45,7 +45,7 @@ def main():
 
     Player_1 = Necromancer_Comprehensiveness(sys_init, "Arthas", "Group_A", True)
     Player_2 = Mage_Water(sys_init, "Black Heart", "Group_A", True)
-    Player_3 = Priest_Shelter(sys_init, "Guldan", "Group_A", True)
+    Player_3 = Mage_Frost(sys_init, "Guldan", "Group_A", True)
     player_heroes = [Player_1, Player_2, Player_3]
     #'''
     

@@ -1,6 +1,6 @@
 from .hero import Hero
 from .warrior import Warrior, Warrior_Comprehensiveness
-from .mage import Mage, Mage_Comprehensiveness, Mage_Water
+from .mage import Mage, Mage_Comprehensiveness, Mage_Water, Mage_Frost
 from .paladin import Paladin, Paladin_Retribution, Paladin_Protection, Paladin_Holy
 from .priest import Priest, Priest_Comprehensiveness, Priest_Shelter, Priest_Discipline, Priest_Shadow, Priest_Devine
 from .rogue import Rogue, Rogue_Comprehensiveness, Rogue_Assassination, Rogue_Toxicology
