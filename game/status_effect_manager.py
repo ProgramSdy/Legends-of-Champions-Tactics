@@ -754,4 +754,16 @@ class StatusEffectManager:
                           hero.buffs_debuffs_recycle_pool.append(buff)
                           self.game.display_status_updates(f"{BLUE}{hero.name}'s Water Arrow Buff has disappeared. {hero.name}'s damage has returned to {hero.damage}, {hero.name}'s agility has returned to {hero.agility}{RESET}")
                 
-            
+            # Glacier Duration
+            if hero.status['glacier'] and hero.hp > 0:
+                for buff in hero.buffs:
+                  if buff.name == "Glacier":
+                      buff.duration -= 1
+                      if buff.duration > 0:
+                        self.game.display_status_updates(f"{BLUE}{hero.name} is frozen and cannot move. {hero.name}'s Glacier duration is {buff.duration} rounds.{RESET}")
+
+                      elif buff.duration == 0:
+                          hero.status['glacier'] = False
+                          hero.buffs.remove(buff)
+                          hero.buffs_debuffs_recycle_pool.append(buff)
+                          self.game.display_status_updates(f"{BLUE}{hero.name} has recovered from frozen and started moving slowly. {RESET}")

@@ -78,14 +78,14 @@ class Hero:
     }
     list_status_debuff_magic = ['shadow_word_pain', 'cold', 'holy_word_punishment', \
                                 'shadow_word_insanity', 'unholy_frenzy', 'curse_of_agony', 'fear', 'shadow_bolt', \
-                                'corrosion','soul_siphon', 'immolate', 'icy_squall']
+                                'corrosion','soul_siphon', 'immolate', 'icy_squall', 'glacier']
     list_status_debuff_disease = ['frost_fever', 'necrotic_decay', 'virulent_infection', 'blood_plague']
     list_status_debuff_toxic = ['poisoned_dagger', 'paralyze_blade', 'mixed_venom', 'acid_bomb', 'unstable_compound']                     
     list_status_debuff_physical  = ['armor_breaker', 'scoff', 'hammer_of_revenge', 'stunned', 'paralyzed']
     list_status_debuff_bleeding = ['bleeding_slash','bleeding_sharp_blade', 'bleeding_crimson_cleave', 'wound_backstab']
     list_status_buff_magic = ['shield_of_righteous','wrath_of_crusader','holy_word_shell','holy_word_redemption', \
                               'holy_fire', 'unholy_frenzy', 'holy_infusion', 'hell_flame', 'cumbrous_axe', 'purify_healing', \
-                              'shield_of_protection', 'water_arrow']
+                              'shield_of_protection', 'water_arrow', 'glacier']
     list_status_buff_physical = ['shadow_evasion', 'vanish']
 
     def __init__(self, sys_init, name, group, is_player_controlled, major, faculty):
@@ -1009,47 +1009,50 @@ class Hero:
 
 
     def ai_action(self, opponents, allies):
-        if self.status['stunned'] == False:
-          if self.status['paralyzed'] == False:
-            if self.status['vanish'] == False:
-              if self.status['fear'] == False:
-                if self.status['scoff'] == False:
-                  if self.status['magic_casting'] == False:
-                    if self.skills:
-                        chosen_skill = self.ai_choose_skill(opponents, allies)
-                        chosen_target = self.ai_choose_target(chosen_skill, opponents, allies)
-                        if opponents:
-                            return chosen_skill.execute(chosen_target)
-                        else:
-                            return f"{self.name} tries to use {chosen_skill}, but it's not implemented or no valid opponents."
-                    else:
-                        return f"{self.name} has no skills to use."
-                  elif self.status['magic_casting'] == True and self.magic_casting_duration == 0:
-                    return self.casting_magic.execute(self.casting_magic_target)
-                  elif self.status['magic_casting'] == True and self.magic_casting_duration > 0:
-                    return f"{self.name} is casting {self.casting_magic.name}."
-                else:
-                  for debuff in self.debuffs:
-                    if debuff.name == "Scoff":
-                      damage_skills = [skill for skill in self.skills if skill.target_type == "single" and skill.skill_type in ["damage", "damage_healing"] and skill.if_cooldown == False]
-                      chosen_skill = random.choice(damage_skills) if damage_skills else None
-                      chosen_target = debuff.initiator
-                      if chosen_skill == None:
-                        damage_skills = [skill for skill in self.skills if skill.target_type == "multi" and skill.skill_type in ["damage", "damage_healing"] and skill.target_qty == 2 and skill.if_cooldown == False]
+        if self.status['glacier'] == False:
+          if self.status['stunned'] == False:
+            if self.status['paralyzed'] == False:
+              if self.status['vanish'] == False:
+                if self.status['fear'] == False:
+                  if self.status['scoff'] == False:
+                    if self.status['magic_casting'] == False:
+                      if self.skills:
+                          chosen_skill = self.ai_choose_skill(opponents, allies)
+                          chosen_target = self.ai_choose_target(chosen_skill, opponents, allies)
+                          if opponents:
+                              return chosen_skill.execute(chosen_target)
+                          else:
+                              return f"{self.name} tries to use {chosen_skill}, but it's not implemented or no valid opponents."
+                      else:
+                          return f"{self.name} has no skills to use."
+                    elif self.status['magic_casting'] == True and self.magic_casting_duration == 0:
+                      return self.casting_magic.execute(self.casting_magic_target)
+                    elif self.status['magic_casting'] == True and self.magic_casting_duration > 0:
+                      return f"{self.name} is casting {self.casting_magic.name}."
+                  else:
+                    for debuff in self.debuffs:
+                      if debuff.name == "Scoff":
+                        damage_skills = [skill for skill in self.skills if skill.target_type == "single" and skill.skill_type in ["damage", "damage_healing"] and skill.if_cooldown == False]
                         chosen_skill = random.choice(damage_skills) if damage_skills else None
-                        chosen_target = [debuff.initiator]
-                        other_opponents = [op for op in opponents if op != debuff.initiator and op.alive]
-                        if other_opponents:
-                          chosen_target.append(random.choice(other_opponents))
-                      return chosen_skill.execute(chosen_target)
+                        chosen_target = debuff.initiator
+                        if chosen_skill == None:
+                          damage_skills = [skill for skill in self.skills if skill.target_type == "multi" and skill.skill_type in ["damage", "damage_healing"] and skill.target_qty == 2 and skill.if_cooldown == False]
+                          chosen_skill = random.choice(damage_skills) if damage_skills else None
+                          chosen_target = [debuff.initiator]
+                          other_opponents = [op for op in opponents if op != debuff.initiator and op.alive]
+                          if other_opponents:
+                            chosen_target.append(random.choice(other_opponents))
+                        return chosen_skill.execute(chosen_target)
+                else:
+                  return f"{self.name} is running in fear."
               else:
-                return f"{self.name} is running in fear."
+                return f"{self.name} is hiding in dark and drinking healing potion. {self.take_healing(int(self.hp_max * 0.15))}"
             else:
-              return f"{self.name} is hiding in dark and drinking healing potion. {self.take_healing(int(self.hp_max * 0.15))}"
+              return f"{self.name} is paralyzed and can't move."
           else:
-             return f"{self.name} is paralyzed and can't move."
+              return f"{self.name} is stunned and can't move."
         else:
-            return f"{self.name} is stunned and can't move."
+            return f"{self.name} is frozen and can't move."
 
     def player_action(self, hero, opponents, allies):
         # Update all status effects at the beginning of the action

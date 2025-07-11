@@ -217,7 +217,8 @@ class Mage_Frost(Mage):
     def __init__(self, sys_init, name, group, is_player_controlled):
         super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major)
         self.add_skill(Skill(self, "Frost Bolt", self.frost_bolt, target_type = "single", skill_type= "damage", damage_nature = "magical", damage_type = "frost"))
-
+        self.add_skill(Skill(self, "Blizzard", self.blizzard, "multi", skill_type= "damage", target_qty=3, is_instant_skill = False, damage_nature = "magical", damage_type = "frost"))
+        self.add_skill(Skill(self, "Glacier", self.glacier, "single", skill_type= "damage_healing"))
 
     def frost_bolt(self, other_hero):
         if other_hero.status['cold'] == False:
@@ -289,3 +290,24 @@ class Mage_Frost(Mage):
               self.game.display_battle_info(f"{self.name} casts Blizzard at {opponent.name}.")
               results.append(opponent.take_damage(damage_dealt))
           return "\n".join(results)
+        
+    def glacier(self, other_hero, target_type):
+        if other_hero.status['glacier'] == False:
+            other_hero.status['glacier'] = True
+            for buff in other_hero.buffs_debuffs_recycle_pool:
+                if buff.name == "Glacier" and buff.initiator == self:
+                    other_hero.buffs_debuffs_recycle_pool.remove(buff)
+                    buff.duration = 2   # Effect lasts for 2 rounds
+                    other_hero.add_buff(buff)
+                    return f"{self.name} casts Glacier on {other_hero.name}. {other_hero.name} is frozen and cannot move."
+
+            buff = Buff(
+                name='Glacier',
+                duration = 2,
+                initiator = self,
+                effect = 0.15
+            )
+            other_hero.add_buff(buff)
+            return f"{self.name} casts Glacier on {other_hero.name}. {other_hero.name} is frozen and cannot move."
+        else:
+            return f"{self.name} tries to use Glacier on {other_hero.name}. But {other_hero.name} has already been frozen."
