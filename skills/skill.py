@@ -154,6 +154,10 @@ class Skill:
               if self.name == "Icy Squall":
                 self.if_cooldown = True
                 self.cooldown = 2
+              if self.name == "Crushing Wave":
+                self.if_cooldown = True
+                self.cooldown = 2
+
               return result_message
             
             else:
@@ -240,7 +244,7 @@ class Skill:
                     else:
                       self.wrath_of_crusader_duration = 3
                       result_message += f" Wrath of Crusader buff duration refreshed"
-                if self.name == "Shadow Word Insanity" or self.name == "Curse of Fear":
+                if self.name == "Shadow Word Insanity" or self.name == "Curse of Fear" or skill.name == "Glacier":
                   self.if_cooldown = True
                   self.cooldown = 3
                 if self.name == "Pestilence":

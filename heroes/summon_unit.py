@@ -275,19 +275,15 @@ class WaterElemental(SummonableWarrior):
     def crushing_wave(self, other_heros): # Cause damage to self.
         if not isinstance(other_heros, list):
           other_heros = [other_heros]
-        for hero in other_heros:
-           print(f"{RED}Debug summon_unit: Hero name = {hero.name}{RESET}")
         results = []
         variation = random.randint(-3, 3)
         actual_damage = self.damage + variation
         self_damage = math.ceil(self.hp_max * 0.2) + variation
         selected_opponents = other_heros
-        '''
         for skill in self.skills:
           if skill.name == "Crushing Wave":
             skill.if_cooldown = True
             skill.cooldown = 2
-        '''
         for opponent in selected_opponents:
             damage_dealt = math.ceil((actual_damage - opponent.nature_resistance) * 2/3)
             self.game.display_battle_info(f"{self.name} casts Crushing Wave at {opponent.name}.")

@@ -292,6 +292,10 @@ class Mage_Frost(Mage):
           return "\n".join(results)
         
     def glacier(self, other_hero, target_type):
+        for skill in self.skills:
+          if skill.name == "Glacier":
+            skill.if_cooldown = True
+            skill.cooldown = 3
         if other_hero.status['glacier'] == False:
             other_hero.status['glacier'] = True
             for buff in other_hero.buffs_debuffs_recycle_pool:
