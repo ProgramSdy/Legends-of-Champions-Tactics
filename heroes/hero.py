@@ -754,6 +754,14 @@ class Hero:
 
 
     def ai_choose_skill(self, opponents, allies):
+        # Deal with special situation:
+        for skill in self.skills:
+           if skill.name == "Summon Water Elemental":
+              for summoned_unit in self.allies:
+                 if summoned_unit.is_summoned == True and summoned_unit.master == self:
+                    skill.available = False
+                 else:
+                    skill.available = True
         available_skills = [skill for skill in self.skills if not skill.if_cooldown and skill.is_available]
         chosen_skill = random.choice(available_skills)
         return chosen_skill
@@ -780,6 +788,14 @@ class Hero:
         :param interface: GameInterface instance to handle the interaction.
         :return: Selected skill object.
         """
+        # Deal with special situation:
+        for skill in self.skills:
+           if skill.name == "Summon Water Elemental":
+              for summoned_unit in self.allies:
+                 if summoned_unit.is_summoned == True and summoned_unit.master == self:
+                    skill.available = False
+                 else:
+                    skill.available = True
         available_skills = [skill for skill in self.skills if not skill.if_cooldown and skill.is_available]
         if not available_skills:
             print(f"{self.name} has no available skills!")
@@ -925,7 +941,7 @@ class Hero:
 
         # Determine valid targets based on skill type
         if chosen_skill.skill_type == "damage":
-            if chosen_skill.name == "Rain of Fire":
+            if chosen_skill.name == "Rain of Fire" or chosen_skill.name == "Blizzard":
                 # Automatic targeting for multi-target skill
                 auto_selected_targets = random.sample(opponents, chosen_skill.target_qty) if len(opponents) > chosen_skill.target_qty else opponents
             else:
