@@ -43,7 +43,7 @@ def main():
     '''
     #'''
 
-    Player_1 = Necromancer_Comprehensiveness(sys_init, "Arthas", "Group_A", True)
+    Player_1 = Rogue_Assassination(sys_init, "Arthas", "Group_A", True)
     Player_2 = Mage_Water(sys_init, "Black Heart", "Group_A", True)
     Player_3 = Mage_Frost(sys_init, "Guldan", "Group_A", True)
     player_heroes = [Player_1, Player_2, Player_3]
@@ -51,16 +51,16 @@ def main():
     
 
     # Opponent hero generator__________________________________________
-    '''
+    #'''
     generator_ai = HeroGenerator(sys_init)
     opponent_heroes = generator_ai.generate_heroes("Group_B", 3)
-    '''
     #'''
+    '''
     Aldric = Mage_Water(sys_init, "Aldric", "Group_B", False)
     Deep_Seer = Mage_Water(sys_init,"Andonidas", "Group_B", False)
     Rohan = Mage_Water(sys_init, "Gandoff", "Group_B", False)
     opponent_heroes = [Aldric, Deep_Seer, Rohan]
-    #'''
+    '''
     # Display heroes from both sides__________________________________________
     '''
     for player_hero in player_heroes:
