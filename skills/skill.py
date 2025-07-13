@@ -27,7 +27,7 @@ class Skill:
         self.is_available = True
         self.immunity_condition_all = ['shield_of_protection', 'glacier']
         self.immunity_condition_physical = []
-        self.immunity_condition_magical = []
+        self.immunity_condition_magical = ['anti_magic_shield']
         self.active_state = None
         self.damage_nature = damage_nature
         self.damage_type = damage_type
@@ -146,13 +146,13 @@ class Skill:
                 result_message += f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} evaded the attack. \n"
               if immune_all:
                 target_names = ', '.join([t.name for t in immune_all])
-                result_message += f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immuned to all damage \n"
+                result_message += f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immuned to all damage. \n"
               if immune_phy:
                 target_names = ', '.join([t.name for t in immune_phy])
-                result_message += f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immuned to physical damage \n"
+                result_message += f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immuned to physical damage. \n"
               if immune_mag:
                 target_names = ', '.join([t.name for t in immune_mag])
-                result_message += f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immuned to magical damage \n"
+                result_message += f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immuned to magical effect. \n"
               
               # Special Condition Cool down skills
               if self.name == "Icy Squall":
@@ -180,7 +180,7 @@ class Skill:
                 result_message += f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immuned to physical damage. \n"
               if immune_mag:
                 target_names = ', '.join([t.name for t in immune_mag])
-                result_message += f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immuned to magical damage. \n"
+                result_message += f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immuned to magical effect. \n"
               if result_message:
                 self.initiator.game.display_battle_info(result_message)
               return self.skill_action(hits)
@@ -201,7 +201,7 @@ class Skill:
                   result_message = f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immunes to physical damage."
                 if immune_mag:
                   target_names = ', '.join([t.name for t in immune_mag])
-                  result_message = f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immunes to magical damage."
+                  result_message = f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immunes to magical effect."
                 
                 # Special Condition
                 if self.name == "Shield of Righteous":

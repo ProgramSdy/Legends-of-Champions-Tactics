@@ -767,3 +767,17 @@ class StatusEffectManager:
                           hero.buffs.remove(buff)
                           hero.buffs_debuffs_recycle_pool.append(buff)
                           self.game.display_status_updates(f"{BLUE}{hero.name} has recovered from frozen and started moving slowly. {RESET}")
+
+            # Anti Magic Shield Duration
+            if hero.status['anti_magic_shield'] and hero.hp > 0:
+                for buff in hero.buffs:
+                    if buff.name == "Anti Magic Shield":
+                        buff.duration -= 1
+                        if buff.duration > 0:
+                            self.game.display_status_updates(f"{BLUE}{hero.name} is immuned against all magical effect. {hero.name}'s Anti Magic Shield duration is {buff.duration} rounds.{RESET}")
+
+                        elif buff.duration == 0:
+                            hero.status['anti_magic_shield'] = False
+                            hero.buffs.remove(buff)
+                            hero.buffs_debuffs_recycle_pool.append(buff)
+                            self.game.display_status_updates(f"{BLUE}{hero.name}'s Anti Magic Shield effect has disappeared. {RESET}")

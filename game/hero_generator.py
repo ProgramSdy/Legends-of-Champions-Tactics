@@ -23,6 +23,8 @@ class HeroGenerator:
             # Mage
             Mage_Comprehensiveness: self.mage_names_list,
             Mage_Water: self.mage_names_list,
+            Mage_Frost: self.mage_names_list,
+            Mage_Arcane: self.mage_names_list,
             # Priest
             Priest_Comprehensiveness: self.priset_names_list,
             Priest_Shelter: self.priset_names_list,

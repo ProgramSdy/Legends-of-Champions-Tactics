@@ -218,7 +218,7 @@ class Mage_Frost(Mage):
         super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major)
         self.add_skill(Skill(self, "Frost Bolt", self.frost_bolt, target_type = "single", skill_type= "damage", damage_nature = "magical", damage_type = "frost"))
         self.add_skill(Skill(self, "Blizzard", self.blizzard, "multi", skill_type= "damage", target_qty=3, is_instant_skill = False, damage_nature = "magical", damage_type = "frost"))
-        self.add_skill(Skill(self, "Glacier", self.glacier, "single", skill_type= "damage_healing"))
+        self.add_skill(Skill(self, "Glacier", self.glacier, "single", skill_type= "damage_healing", damage_nature = "magical", damage_type = "frost"))
 
     def frost_bolt(self, other_hero):
         if other_hero.status['cold'] == False:
@@ -315,3 +315,60 @@ class Mage_Frost(Mage):
             return f"{self.name} casts Glacier on {other_hero.name}. {other_hero.name} is frozen and cannot move."
         else:
             return f"{self.name} tries to use Glacier on {other_hero.name}. But {other_hero.name} has already been frozen."
+        
+class Mage_Arcane(Mage):
+
+    major = "Arcane"
+
+    def __init__(self, sys_init, name, group, is_player_controlled):
+        super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major)
+        self.add_skill(Skill(self, "Arcane Missiles", self.arcane_missiles, target_type = "multi", skill_type= "damage", target_qty= 2, damage_nature = "magical", damage_type = "arcane"))
+        self.add_skill(Skill(self, "Arcane Shock", self.arcane_shock, target_type = "single", skill_type= "damage", damage_nature = "magical", damage_type = "arcane"))
+        self.add_skill(Skill(self, "Anti Magic Shield", self.anti_magic_shield, "single", skill_type= "damage_healing", damage_nature = "magical", damage_type = "arcane"))
+
+    def arcane_missiles(self, other_heros):
+        if not isinstance(other_heros, list):
+          other_heros = [other_heros]
+        results = []
+        variation = random.randint(-3, 3)
+        actual_damage = self.damage + variation
+        selected_opponents = other_heros
+        for opponent in selected_opponents:
+            damage_dealt = math.ceil((actual_damage - opponent.arcane_resistance) * 2/3)
+            self.game.display_battle_info(f"{self.name} casts Arcane Missiles at {opponent.name}.")
+            results.append(opponent.take_damage(damage_dealt))
+        return "\n".join(results)
+    
+    def arcane_shock(self, other_hero):
+        variation = random.randint(-5, 5)
+        actual_damage = self.damage + variation
+        damage_dealt = actual_damage - other_hero.arcane_resistance
+        damage_dealt = max(damage_dealt, 0)
+        hero_status_activated = [key for key, value in other_hero.status.items() if value == True]
+        set_comb = set(self.list_status_buff_magic)
+        equal_status = set(hero_status_activated) & set_comb
+        status_list_for_action = list(equal_status)
+        self.game.display_battle_info(f"{self.name} casts Arcane Shock at {other_hero.name}, which dispells all their positive magic effect.")
+        for status in status_list_for_action:
+          self.game.status_dispeller.dispell_status(status, other_hero)
+        return other_hero.take_damage(damage_dealt)
+    
+    def anti_magic_shield(self, other_hero, target_type):
+        if other_hero.status['anti_magic_shield'] == False:
+            other_hero.status['anti_magic_shield'] = True
+            for buff in other_hero.buffs_debuffs_recycle_pool:
+              if buff.name == "Anti Magic Shield" and buff.initiator == self:
+                other_hero.buffs_debuffs_recycle_pool.remove(buff)
+                buff.duration = 2   # Effect lasts for 2 rounds
+                other_hero.add_buff(buff)
+                return f"{self.name} casts Anti Magic Shield on {other_hero.name}, {other_hero.name} is immuned against all magic effect."
+            buff = Buff(
+                name='Anti Magic Shield',
+                duration = 2,
+                initiator = self,
+                effect = 0.10
+            )
+            other_hero.add_buff(buff)
+            return f"{self.name} casts Anti Magic Shield on {other_hero.name}, {other_hero.name} is immuned against all magic effect."
+        else:
+           return f"{self.name} Tries to cast Anti Magic Shield on {other_hero.name}, {other_hero.name} is already under Anti Magic Shield."

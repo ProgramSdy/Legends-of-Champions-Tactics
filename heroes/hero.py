@@ -75,7 +75,8 @@ class Hero:
         'water_arrow': False,
         'aqua_ring' : False,
         'glacier': False,
-        'bless_of_frost': False
+        'bless_of_frost': False,
+        'anti_magic_shield': False
     }
     list_status_debuff_magic = ['shadow_word_pain', 'cold', 'holy_word_punishment', \
                                 'shadow_word_insanity', 'unholy_frenzy', 'curse_of_agony', 'fear', 'shadow_bolt', \
@@ -86,7 +87,7 @@ class Hero:
     list_status_debuff_bleeding = ['bleeding_slash','bleeding_sharp_blade', 'bleeding_crimson_cleave', 'wound_backstab']
     list_status_buff_magic = ['shield_of_righteous','wrath_of_crusader','holy_word_shell','holy_word_redemption', \
                               'holy_fire', 'unholy_frenzy', 'holy_infusion', 'hell_flame', 'cumbrous_axe', 'purify_healing', \
-                              'shield_of_protection', 'water_arrow', 'glacier']
+                              'shield_of_protection', 'water_arrow', 'glacier', 'anti_magic_shield']
     list_status_buff_physical = ['shadow_evasion', 'vanish']
 
     def __init__(self, sys_init, name, group, is_player_controlled, major, faculty):
