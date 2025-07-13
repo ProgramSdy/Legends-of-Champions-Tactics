@@ -131,6 +131,10 @@ class Skill:
                if not self.initiator.status['hell_flame']:
                   if self.initiator.status['magic_casting'] == False:
                     return self.skill_action(opponents)
+            elif self.name == "Blizzard":
+               if not self.initiator.status['bless_of_frost']:
+                  if self.initiator.status['magic_casting'] == False:
+                    return self.skill_action(opponents)
 
             if not hits:
               result_message = ""
@@ -244,7 +248,7 @@ class Skill:
                     else:
                       self.wrath_of_crusader_duration = 3
                       result_message += f" Wrath of Crusader buff duration refreshed"
-                if self.name == "Shadow Word Insanity" or self.name == "Curse of Fear" or self.name == "Glacier":
+                if self.name == "Shadow Word Insanity" or self.name == "Curse of Fear":
                   self.if_cooldown = True
                   self.cooldown = 3
                 if self.name == "Pestilence":
@@ -282,6 +286,12 @@ class Skill:
 
         # Manage damage healing skill
         elif self.skill_type == "damage_healing":
+
+          # Special Condition
+          if self.name == "Glacier":
+            self.if_cooldown = True
+            self.cooldown = 3
+
           if opponents in self.initiator.allies:
             return self.skill_action(opponents, 'ally')
           else:
