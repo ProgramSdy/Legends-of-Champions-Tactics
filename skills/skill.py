@@ -280,7 +280,10 @@ class Skill:
                   self.if_cooldown = True
                   self.cooldown = 3
                   result_message +=  f"Holy light showers {self.initiator.name}. {self.initiator.take_healing(actual_healing)}."
-                return result_message
+                if result_message:
+                 return result_message
+                else:
+                   print(f"{RED}Debug Skill: skill name = {self.name}{RESET}")
               else:
                 return self.skill_action(hits[0])
 
