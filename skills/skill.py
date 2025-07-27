@@ -100,6 +100,7 @@ class Skill:
         return outcomes
 
     def execute(self, opponents):
+        result_message = ""
         if self.name == "Crushing Wave":
           for hero in opponents:
             print(f"{RED}Debug Skill: Hero name = {hero.name}{RESET}")
@@ -137,7 +138,7 @@ class Skill:
                     return self.skill_action(opponents)
 
             if not hits:
-              result_message = ""
+              #result_message = ""
               if dead:
                 target_names = ', '.join([t.name for t in dead])
                 result_message += f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} were already dead. \n"

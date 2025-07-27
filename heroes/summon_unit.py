@@ -310,13 +310,13 @@ class WaterElemental(SummonableWarrior):
             chosen_opponent = random.sample(opponents, skill.target_qty) if len(opponents) > skill.target_qty else opponents
             return chosen_opponent
       opponent = random.choice(opponents)
-      self.strategy_0()
+      #self.strategy_0()
       return opponent
     
     def ai_choose_skill(self, opponents, allies):
       self.strategy_0()
       self.preset_target = self.battle_analysis(opponents, allies)
-      skill_weights = [self.probability_void_punch, self.probability_void_connection]
+      skill_weights = [self.probability_tide_slam, self.probability_crushing_wave]
       chosen_skill = random.choices(self.skills, weights = skill_weights)[0]
       return chosen_skill
 
