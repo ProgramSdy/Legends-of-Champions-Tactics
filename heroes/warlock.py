@@ -246,7 +246,6 @@ class Warlock_Destruction(Warlock):
 
     def immolate(self, other_hero):
         variation = random.randint(-2, 2)
-        variation = 0
         actual_damage = self.damage + variation
         damage_dealt = round((actual_damage - other_hero.fire_resistance)*(1/2))
         damage_dealt = max(damage_dealt, 0)

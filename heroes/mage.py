@@ -372,3 +372,94 @@ class Mage_Arcane(Mage):
             return f"{self.name} casts Anti Magic Shield on {other_hero.name}, {other_hero.name} is immuned against all magic effect."
         else:
            return f"{self.name} Tries to cast Anti Magic Shield on {other_hero.name}, {other_hero.name} is already under Anti Magic Shield."
+
+class Mage_Fire(Mage):
+
+    major = "Fire"
+
+    def __init__(self, sys_init, name, group, is_player_controlled):
+        super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major)
+        self.add_skill(Skill(self, "Fireball", self.fireball, target_type = "single", skill_type= "damage", damage_nature = "magical", damage_type = "fire"))
+        self.add_skill(Skill(self, "Giant Fireball", self.giant_fireball, target_type = "single", skill_type= "damage", damage_nature = "magical", damage_type = "fire"))
+        self.add_skill(Skill(self, "Scorchbrand", self.scorchbrand, target_type = "single", skill_type= "damage", damage_nature = "magical", damage_type = "fire"))
+
+    def fireball(self, other_hero):
+        variation = random.randint(-5, 5)
+        actual_damage = self.damage + variation
+        damage_dealt = actual_damage - other_hero.fire_resistance
+        damage_dealt = max(damage_dealt, 0)
+        self.game.display_battle_info(f"{self.name} casts Fireball at {other_hero.name}.")
+        return other_hero.take_damage(damage_dealt)
+
+    def giant_fireball(self, other_hero):
+        accuracy = 30  # Giant fire ball has 30% chance to split a small fire ball
+        roll = random.randint(1, 100)  # Simulate a roll of 100-sided dice
+        if roll <= accuracy:
+          is_giant_fireball_split = True
+        if self.status['magic_casting'] == False:
+          self.status['magic_casting'] = True
+          self.game.display_battle_info(f"{self.name} is casting Giant Fireball.")
+          self.magic_casting_duration = 1
+          for skill in self.skills:
+            if skill.name == "Giant Fireball":
+              return self.magic_casting(skill, other_hero)
+            
+        elif self.status['magic_casting'] == True:
+          self.status['magic_casting'] = False
+          variation = random.randint(-5, 5)
+          actual_damage = self.damage + variation
+          damage_dealt = math.ceil(1.35 * actual_damage - other_hero.fire_resistance)
+          damage_dealt = max(damage_dealt, 0)
+          if is_giant_fireball_split:
+            if other_hero.allies_self_excluded:
+              results = []
+              damage_splitted_fireball = math.ceil(0.25* damage_dealt)
+              damage_giant_fireball_after_split = math.ceil(0.75* damage_dealt)
+              extra_opponent = random.sample(other_hero.allies_self_excluded, 1)
+              self.game.display_battle_info(f"{self.name} casts Giant Fireball at {other_hero.name}. A small fireball splites and flies towards {extra_opponent}.")
+              results.append(other_hero.take_damage(damage_giant_fireball_after_split))
+              results.append(extra_opponent.take_damage(damage_splitted_fireball))
+              return "\n".join(results)
+            else:
+               self.game.display_battle_info(f"{self.name} casts Giant Fireball at {other_hero.name}.")
+               return other_hero.take_damage(damage_dealt)
+          else:
+             self.game.display_battle_info(f"{self.name} casts Giant Fireball at {other_hero.name}.")
+             return other_hero.take_damage(damage_dealt)
+
+    def scorchbrand(self, other_hero):
+        variation = random.randint(-2, 2)
+        actual_damage = self.damage + variation
+        damage_dealt = round((actual_damage - other_hero.fire_resistance)*(1/2))
+        damage_dealt = max(damage_dealt, 0)
+        if damage_dealt > 0:
+          other_hero.scorchbrand_continuous_damage = round((actual_damage - other_hero.fire_resistance)*(1/3))
+        else:
+          other_hero.scorchbrand_continuous_damage = random.randint(3, 8)
+        if other_hero.status['scorchbrand'] == False:
+          other_hero.status['scorchbrand'] = True
+          for debuff in other_hero.buffs_debuffs_recycle_pool:
+                if debuff.name == "Scorchbrand" and debuff.initiator == self:
+                    other_hero.buffs_debuffs_recycle_pool.remove(debuff)
+                    debuff.duration = 3   # Effect lasts for 2 rounds
+                    other_hero.add_debuff(debuff)
+                    fire_resistance_before_reducing = other_hero.fire_resistance
+                    other_hero.fire_resistance_reduced_amount_by_scorchbrand = round(other_hero.original_fire_resistance * debuff.effect)  # Reduce target's damage by 18%
+                    other_hero.fire_resistance = other_hero.fire_resistance - other_hero.fire_resistance_reduced_amount_by_scorchbrand
+                    self.game.display_battle_info(f"{self.name} casts Scorchbrand on {other_hero.name}. {other_hero.name} is burned and their fire resistance is reduced from {fire_resistance_before_reducing} to {other_hero.fire_resistance}.")
+                    return other_hero.take_damage(damage_dealt)
+          debuff = Debuff(
+                name='Scorchbrand',
+                duration = 3, # Effect lasts for 1-3 rounds
+                initiator = self,
+                effect = 0.18
+            )
+          other_hero.add_debuff(debuff)
+          fire_resistance_before_reducing = other_hero.fire_resistance
+          other_hero.fire_resistance_reduced_amount_by_scorchbrand = round(other_hero.original_fire_resistance * debuff.effect)  # Reduce target's damage by 18%
+          other_hero.fire_resistance = other_hero.fire_resistance - other_hero.fire_resistance_reduced_amount_by_scorchbrand
+          self.game.display_battle_info(f"{self.name} casts Scorchbrand on {other_hero.name}. {other_hero.name} is burned and their fire resistance is reduced from {fire_resistance_before_reducing} to {other_hero.fire_resistance}.")
+          return other_hero.take_damage(damage_dealt)
+        else:
+          self.game.display_battle_info(f"{self.name} casts Scorchbrand on {other_hero.name}. {other_hero.name} is burned.")
+          return other_hero.take_damage(damage_dealt)
