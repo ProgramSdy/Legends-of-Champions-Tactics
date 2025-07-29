@@ -44,8 +44,8 @@ def main():
     #'''
 
     Player_1 = Mage_Fire(sys_init, "Arthas", "Group_A", True)
-    Player_2 = Mage_Water(sys_init, "Black Heart", "Group_A", True)
-    Player_3 = Mage_Frost(sys_init, "Guldan", "Group_A", True)
+    Player_2 = Warrior_Comprehensiveness(sys_init, "Black Heart", "Group_A", True)
+    Player_3 = Warlock_Destruction(sys_init, "Guldan", "Group_A", True)
     player_heroes = [Player_1, Player_2, Player_3]
     #'''
     

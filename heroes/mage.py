@@ -394,6 +394,7 @@ class Mage_Fire(Mage):
     def giant_fireball(self, other_hero):
         accuracy = 30  # Giant fire ball has 30% chance to split a small fire ball
         roll = random.randint(1, 100)  # Simulate a roll of 100-sided dice
+        is_giant_fireball_split = False
         if roll <= accuracy:
           is_giant_fireball_split = True
         if self.status['magic_casting'] == False:
