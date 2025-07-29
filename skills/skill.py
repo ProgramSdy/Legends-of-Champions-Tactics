@@ -111,6 +111,8 @@ class Skill:
        
         # Manage damage skills
         elif self.skill_type == "damage":
+          if self.is_instant_skill == False and self.initiator.status['magic_casting'] == False:
+            return self.skill_action(opponents)
           if not isinstance(opponents, list):
             opponents = [opponents]
           outcomes = self.resolve_targets(opponents)
@@ -163,7 +165,7 @@ class Skill:
                 self.if_cooldown = True
                 self.cooldown = 2
               if self.initiator.status['magic_casting'] == True:
-                 self.initiator.status['magic_casting'] = False
+                self.initiator.status['magic_casting'] = False
 
               return result_message
             
@@ -207,7 +209,7 @@ class Skill:
                   result_message = f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immunes to magical effect."
                 
                 # Special Condition
-                if self.initiator.status['magic_casting'] == True:
+                if self.self.initiator.status['magic_casting'] == True:
                     self.initiator.status['magic_casting'] = False
                 if self.name == "Shield of Righteous":
                     if self.initiator.status['shield_of_righteous'] == False:
