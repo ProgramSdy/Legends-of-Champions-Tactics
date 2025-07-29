@@ -18,6 +18,11 @@ class StatusEffectManager:
 
     def check_heroes_status_effects(self, hero):
         if hero.hp > 0: # Only process heroes who are not defeated
+            # Casting Magic Duration
+            if hero.status['magic_casting'] == True and hero.hp > 0:
+              hero.magic_casting_duration -=1
+              self.game.display_status_updates(f"{BLUE}{hero.name} is casting {hero.casting_magic.name}. Casting remains {hero.magic_casting_duration} rounds{RESET}")
+            
             # Purify Healing Buff Duration
             if hero.status['purify_healing'] and hero.hp > 0:
                 for buff in hero.buffs:
@@ -279,10 +284,6 @@ class StatusEffectManager:
                   hero.shadow_word_insanity_duration -=1
                   self.game.display_status_updates(f"{BLUE}{hero.name} has recovered from insanity.{RESET}")
 
-            # Casting Magic Duration
-            if hero.status['magic_casting'] == True and hero.hp > 0:
-              hero.magic_casting_duration -=1
-              self.game.display_status_updates(f"{BLUE}{hero.name} is casting {hero.casting_magic.name}. Casting remains {hero.magic_casting_duration} rounds{RESET}")
 
             # Handle Holy Fire Duration
             if hero.status['holy_fire'] and hero.hp > 0:
@@ -786,9 +787,14 @@ class StatusEffectManager:
             if hero.status['scorchbrand'] and hero.hp > 0:
                 for debuff in hero.debuffs:
                   if debuff.name == "Scorchbrand":
+                      variation = random.randint(-2, 2)
+                      actual_damage = debuff.initiator.damage + variation
+                      hero.scorchbrand_continuous_damage = round((actual_damage - hero.fire_resistance)*(1/3))
+                      if hero.scorchbrand_continuous_damage <= 0:
+                        hero.scorchbrand_continuous_damage = random.randint(3, 8)
                       debuff.duration -= 1
                       if debuff.duration > 0:
-                         self.game.display_status_updates(f"{BLUE}{hero.name} is vulnerable towards fire attack. {hero.name}'s Scorchbrand debuff duration is {debuff.duration} rounds.{RESET}")
+                         self.game.display_status_updates(f"{BLUE}{hero.name} is vulnerable towards fire attack. {hero.name}'s Scorchbrand debuff duration is {debuff.duration} rounds. {hero.take_damage(hero.scorchbrand_continuous_damage)}{RESET}")
                       elif debuff.duration == 0:
                           hero.status['scorchbrand'] = False
                           hero.fire_resistance = hero.fire_resistance + hero.fire_resistance_reduced_amount_by_scorchbrand

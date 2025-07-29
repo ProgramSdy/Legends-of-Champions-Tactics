@@ -392,7 +392,7 @@ class Mage_Fire(Mage):
         return other_hero.take_damage(damage_dealt)
 
     def giant_fireball(self, other_hero):
-        accuracy = 30  # Giant fire ball has 30% chance to split a small fire ball
+        accuracy = 100  # Giant fire ball has 30% chance to split a small fire ball
         roll = random.randint(1, 100)  # Simulate a roll of 100-sided dice
         is_giant_fireball_split = False
         if roll <= accuracy:
@@ -417,9 +417,9 @@ class Mage_Fire(Mage):
               damage_splitted_fireball = math.ceil(0.25* damage_dealt)
               damage_giant_fireball_after_split = math.ceil(0.75* damage_dealt)
               extra_opponent = random.sample(other_hero.allies_self_excluded, 1)
-              self.game.display_battle_info(f"{self.name} casts Giant Fireball at {other_hero.name}. A small fireball splites and flies towards {extra_opponent}.")
+              self.game.display_battle_info(f"{self.name} casts Giant Fireball at {other_hero.name}. A small fireball splites and flies towards {extra_opponent[0].name}.")
               results.append(other_hero.take_damage(damage_giant_fireball_after_split))
-              results.append(extra_opponent.take_damage(damage_splitted_fireball))
+              results.append(extra_opponent[0].take_damage(damage_splitted_fireball))
               return "\n".join(results)
             else:
                self.game.display_battle_info(f"{self.name} casts Giant Fireball at {other_hero.name}.")

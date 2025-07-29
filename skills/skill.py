@@ -209,7 +209,7 @@ class Skill:
                   result_message = f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immunes to magical effect."
                 
                 # Special Condition
-                if self.self.initiator.status['magic_casting'] == True:
+                if self.initiator.status['magic_casting'] == True:
                     self.initiator.status['magic_casting'] = False
                 if self.name == "Shield of Righteous":
                     if self.initiator.status['shield_of_righteous'] == False:
