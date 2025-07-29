@@ -76,11 +76,12 @@ class Hero:
         'aqua_ring' : False,
         'glacier': False,
         'bless_of_frost': False,
-        'anti_magic_shield': False
+        'anti_magic_shield': False,
+        'scorchbrand': False
     }
     list_status_debuff_magic = ['shadow_word_pain', 'cold', 'holy_word_punishment', \
                                 'shadow_word_insanity', 'unholy_frenzy', 'curse_of_agony', 'fear', 'shadow_bolt', \
-                                'corrosion','soul_siphon', 'immolate', 'icy_squall', 'glacier']
+                                'corrosion','soul_siphon', 'immolate', 'icy_squall', 'glacier', 'scorchbrand']
     list_status_debuff_disease = ['frost_fever', 'necrotic_decay', 'virulent_infection', 'blood_plague']
     list_status_debuff_toxic = ['poisoned_dagger', 'paralyze_blade', 'mixed_venom', 'acid_bomb', 'unstable_compound']                     
     list_status_debuff_physical  = ['armor_breaker', 'scoff', 'hammer_of_revenge', 'stunned', 'paralyzed']
@@ -237,6 +238,8 @@ class Hero:
         self.water_arrow_stacks = 0 # Track number of Water Arrow applications
         self.damage_increased_amount_by_water_arrow = 0 # Track the amount of damage increased by water arrow
         self.agility_increased_amount_by_water_arrow = 0 # Track the amount of agility increased by water arrow
+        self.scorchbrand_continuous_damage = 0
+        self.fire_resistance_reduced_amount_by_scorchbrand = 0
 
     @classmethod
     def random_in_range(cls, value_range):

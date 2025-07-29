@@ -781,3 +781,18 @@ class StatusEffectManager:
                             hero.buffs.remove(buff)
                             hero.buffs_debuffs_recycle_pool.append(buff)
                             self.game.display_status_updates(f"{BLUE}{hero.name}'s Anti Magic Shield effect has disappeared. {RESET}")
+
+            # Scorchbrand Duration
+            if hero.status['scorchbrand'] and hero.hp > 0:
+                for debuff in hero.debuffs:
+                  if debuff.name == "Scorchbrand":
+                      debuff.duration -= 1
+                      if debuff.duration > 0:
+                         self.game.display_status_updates(f"{BLUE}{hero.name} is vulnerable towards fire attack. {hero.name}'s Scorchbrand debuff duration is {debuff.duration} rounds.{RESET}")
+                      elif debuff.duration == 0:
+                          hero.status['scorchbrand'] = False
+                          hero.fire_resistance = hero.fire_resistance + hero.fire_resistance_reduced_amount_by_scorchbrand
+                          hero.fire_resistance_reduced_amount_by_scorchbrand = 0
+                          hero.debuffs.remove(debuff)
+                          hero.buffs_debuffs_recycle_pool.append(debuff)
+                          self.game.display_status_updates(f"{BLUE}{hero.name} is no longer vulnerable towards fire attack. {hero.name}'s fire resistance has returned to {hero.fire_resistance}.{RESET}")
