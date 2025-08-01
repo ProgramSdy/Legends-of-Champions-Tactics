@@ -380,7 +380,7 @@ class Mage_Fire(Mage):
     def __init__(self, sys_init, name, group, is_player_controlled):
         super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major)
         self.add_skill(Skill(self, "Fireball", self.fireball, target_type = "single", skill_type= "damage", damage_nature = "magical", damage_type = "fire"))
-        self.add_skill(Skill(self, "Giant Fireball", self.giant_fireball, target_type = "single", skill_type= "damage", damage_nature = "magical", damage_type = "fire"))
+        self.add_skill(Skill(self, "Giant Fireball", self.giant_fireball, target_type = "single", skill_type= "damage", is_instant_skill = False, damage_nature = "magical", damage_type = "fire"))
         self.add_skill(Skill(self, "Scorchbrand", self.scorchbrand, target_type = "single", skill_type= "damage", damage_nature = "magical", damage_type = "fire"))
 
     def fireball(self, other_hero):
@@ -392,7 +392,7 @@ class Mage_Fire(Mage):
         return other_hero.take_damage(damage_dealt)
 
     def giant_fireball(self, other_hero):
-        accuracy = 100  # Giant fire ball has 30% chance to split a small fire ball
+        accuracy = 25  # Giant fire ball has 25% chance to split a small fire ball
         roll = random.randint(1, 100)  # Simulate a roll of 100-sided dice
         is_giant_fireball_split = False
         if roll <= accuracy:
