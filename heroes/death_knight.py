@@ -400,11 +400,11 @@ class Death_Knight_Blood(Death_Knight):
             other_hero.buffs_debuffs_recycle_pool.add(debuff)
 
         for debuff in other_hero.buffs_debuffs_recycle_pool:
-                if debuff.name == "Scoff" and debuff.initiator == self:
-                    other_hero.buffs_debuffs_recycle_pool.remove(debuff)
-                    debuff.duration = 1
-                    other_hero.add_debuff(debuff)
-                    break   
+          if debuff.name == "Scoff" and debuff.initiator == self:
+            other_hero.buffs_debuffs_recycle_pool.remove(debuff)
+            debuff.duration = 1
+            other_hero.add_debuff(debuff)
+            break   
         else:
             debuff = Debuff(
                 name='Scoff',

@@ -228,33 +228,8 @@ class Warrior_Defence(Warrior):
             self.add_skill(Skill(self, "Shield Bash", self.shield_bash, target_type = "single", skill_type= "damage", capable_interrupt_magic_casting = True))
             self.add_skill(Skill(self, "Armor Breaker", self.armor_breaker, target_type = "single", skill_type= "damage"))
 
-    def slash(self, other_hero):
-      variation = random.randint(-3, 3)
-      actual_damage = self.damage + variation
-      damage_dealt = actual_damage - other_hero.defense
-      damage_dealt = max(damage_dealt, 0)
-      # Consider different situations
-      if other_hero.status['bleeding_slash'] == True:
-        self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Slash.")
-      else:
-        if other_hero.status['armor_breaker'] == True:
-          accuracy = 100  # Bleeding effect has a 85% chance to succeed
-          roll = random.randint(1, 100)  # Simulate a roll of 100-sided dice
-          if roll <= accuracy:
-            other_hero.status['bleeding_slash'] = True
-            other_hero.status['normal'] = False
-            other_hero.bleeding_slash_duration = other_hero.armor_breaker_stacks + 1
-            other_hero.bleeding_slash_continuous_damage = random.randint(8, 12)
-            self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Slash, {other_hero.name} got injured and start bleeding because of their broken armor.")
-          else:
-              self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Slash")
-        else:
-          self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Slash.")
-      # apply damage
-      return other_hero.take_damage(damage_dealt)
-
     def shield_bash(self, other_hero):
-        accuracy = 70  # Shield Bash has a 70% chance to succeed
+        accuracy = 100  # Shield Bash has a 100% chance to succeed
         roll = random.randint(1, 100)  # Simulate a roll of 100-sided dice
         if other_hero.status['magic_casting'] == True:
           result = self.interrupt_magic_casting(other_hero)
@@ -273,28 +248,24 @@ class Warrior_Defence(Warrior):
             self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Shield Bash, {other_hero.name} is stunned.")
           else:
               self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Shield Bash")
+        for skill in self.skills:
+            if skill.name == "Shield Bash":
+              skill.if_cooldown = True
+              skill.cooldown = 3
         variation = random.randint(-2, 2)
         actual_damage = self.damage + variation
-        damage_dealt = int((actual_damage - other_hero.defense)/2)
-            # Ensure damage dealt is at least 0
+        damage_dealt = int((actual_damage - other_hero.defense)/4)
         damage_dealt = max(damage_dealt, 0)
-          # Apply damage to the other hero's HP
         return other_hero.take_damage(damage_dealt)
 
-    def armor_breaker(self, other_hero):
-        damage_dealt = self.random_in_range((8, 14))  # Small damage
+    def devastate(self, other_hero):
+        variation = random.randint(-3, 3)
+        actual_damage = self.damage + variation
+        damage_dealt = math.ceil((actual_damage - other_hero.defense) * 0.5)
+        damage_dealt = max(damage_dealt, 1)
         if other_hero.status['armor_breaker'] == True:
-          if other_hero.armor_breaker_stacks < 3:
-              defense_before_reducing = other_hero.defense
-              defense_reduced_amount_by_armor_breaker_single = math.ceil(other_hero.original_defense * 0.15)  # Reduce target's defense by 15%
-              other_hero.defense_reduced_amount_by_armor_breaker = other_hero.defense_reduced_amount_by_armor_breaker + defense_reduced_amount_by_armor_breaker_single  # Reduce target's defense by 15%
-              other_hero.defense = other_hero.defense - defense_reduced_amount_by_armor_breaker_single  # Reduce target's defense by 15%
-              other_hero.armor_breaker_stacks += 1
-              other_hero.armor_breaker_duration = 2  # Effect lasts for 2 rounds
-              self.game.display_battle_info(f"{self.name} uses Armor Breaker on {other_hero.name}, reducing their defense from {defense_before_reducing} to {other_hero.defense}.")
-          else:
-              other_hero.armor_breaker_duration = 2  # Refresh armor breaker effect
-              self.game.display_battle_info(f"{self.name} uses Armor Breaker on {other_hero.name}, but {other_hero.name}'s Armor Breaker effect cannot be further stacked. Armor Breaker duration refreshed")
+           other_hero.armor_breaker_duration = 2  # Refresh armor breaker effect
+           self.game.display_battle_info(f"{self.name} uses Devastate on {other_hero.name}, refreshes their duration of Armor Breaker")
         else:
           other_hero.status['armor_breaker'] = True
           defense_before_reducing = other_hero.defense
@@ -303,8 +274,74 @@ class Warrior_Defence(Warrior):
           other_hero.defense = other_hero.defense - defense_reduced_amount_by_armor_breaker_single  # Reduce target's defense by 15%
           other_hero.armor_breaker_stacks += 1
           other_hero.armor_breaker_duration = 2  # Effect lasts for 2 rounds
-          self.game.display_battle_info(f"{self.name} uses Armor Breaker on {other_hero.name}, reducing their defense from {defense_before_reducing} to {other_hero.defense}.")
+          self.game.display_battle_info(f"{self.name} uses Devastate on {other_hero.name}, reducing their defense from {defense_before_reducing} to {other_hero.defense}.")
 
         return other_hero.take_damage(damage_dealt)
+
+    def shield_lash(self, other_hero):
+        other_hero.status['scoff'] = True
+        self.status['shield_lash'] = True
+        self.fire_resistance_boost_amount['shield_lash'] = 45
+        self.frost_resistance_boost_amount['shield_lash'] = 45
+        self.death_resistance_boost_amount['shield_lash'] = 45
+        self.nature_resistance_boost_amount['shield_lash'] = 45
+        basic_damage = round((self.damage - other_hero.defense) * 1/3)
+        variation = random.randint(-1, 1)
+        actual_damage = max(1, basic_damage + variation)
+
+        fire_resistance_before_increasing = other_hero.fire_resistance
+        frost_resistance_before_increasing = other_hero.frost_resistance 
+        death_resistance_before_increasing = other_hero.death_resistance
+        nature_resistance_before_increasing = other_hero.nature_resistance
+        other_hero.fire_resistance = other_hero.fire_resistance + self.fire_resistance_boost_amount['shield_lash']
+        other_hero.frost_resistance = other_hero.frost_resistance + self.frost_resistance_boost_amount['shield_lash']
+        other_hero.death_resistance = other_hero.death_resistance + self.death_resistance_boost_amount['shield_lash']
+        other_hero.nature_resistance = other_hero.nature_resistance + self.nature_resistance_boost_amount['shield_lash']
+        
+        for skill in self.skills:
+            if skill.name == "Shield Lash":
+              skill.if_cooldown = True
+              skill.cooldown = 3
+        for debuff in other_hero.debuffs:
+          if debuff.name == "Scoff":
+            other_hero.debuffs.remove(debuff)
+            other_hero.buffs_debuffs_recycle_pool.add(debuff)
+        for debuff in other_hero.buffs_debuffs_recycle_pool:
+          if debuff.name == "Scoff" and debuff.initiator == self:
+              other_hero.buffs_debuffs_recycle_pool.remove(debuff)
+              debuff.duration = 1
+              other_hero.add_debuff(debuff)
+              break   
+        else:
+            debuff = Debuff(
+                name='Scoff',
+                duration=1,
+                initiator=self,
+                effect=1
+            )
+            other_hero.add_debuff(debuff)
+
+        for buff in self.buffs_debuffs_recycle_pool:
+                if buff.name == "Shield Lash" and buff.initiator == self:
+                    self.buffs_debuffs_recycle_pool.remove(buff)
+                    buff.duration = 2
+                    self.add_buff(buff)   
+                    break
+        else:
+            buff = Buff(
+                name='Shield Lash',
+                duration=2,
+                initiator=self,
+                effect=1
+            )
+            self.add_buff(buff)
+
+        if other_hero.status['magic_casting'] == True:
+          result = self.interrupt_magic_casting(other_hero)
+          other_hero.scoff_shield_lash_duration = 2
+          return f"{self.name} casts Shield Lash on {other_hero.name}. {result}. {other_hero.take_damage(actual_damage)}. {self.name}'s resistance is boost. {other_hero.name} developed a deep hatred toward {self.name}."
+        else:
+          other_hero.scoff_shield_lash_duration = 2
+          return f"{self.name} casts Shield Lash on {other_hero.name}. {other_hero.take_damage(actual_damage)}. {self.name}'s resistance is boost. {other_hero.name} developed a deep hatred toward {self.name}."
 
     # Battling Strategy_________________________________________________________

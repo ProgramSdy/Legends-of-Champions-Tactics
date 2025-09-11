@@ -137,6 +137,10 @@ class Hero:
         self.casting_magic_target = None
         self.healing_reduction_effects = {}
         self.healing_boost_effects = {}
+        self.fire_resistance_boost_amount = {}
+        self.frost_resistance_boost_amount = {}
+        self.death_resistance_boost_amount = {}
+        self.nature_resistance_boost_amount = {}
 
         # Status buff and debuff
         self.status = self.status.copy() # Copy the status dictionary for individual management
