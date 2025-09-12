@@ -77,7 +77,8 @@ class Hero:
         'glacier': False,
         'bless_of_frost': False,
         'anti_magic_shield': False,
-        'scorchbrand': False
+        'scorchbrand': False,
+        'shield_lash': False
     }
     list_status_debuff_magic = ['shadow_word_pain', 'cold', 'holy_word_punishment', \
                                 'shadow_word_insanity', 'unholy_frenzy', 'curse_of_agony', 'fear', 'shadow_bolt', \

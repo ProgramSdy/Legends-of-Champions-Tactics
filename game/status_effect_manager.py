@@ -802,3 +802,28 @@ class StatusEffectManager:
                           hero.debuffs.remove(debuff)
                           hero.buffs_debuffs_recycle_pool.append(debuff)
                           self.game.display_status_updates(f"{BLUE}{hero.name} is no longer vulnerable towards fire attack. {hero.name}'s fire resistance has returned to {hero.fire_resistance}.{RESET}")
+
+            # Handle Shield Lash Buff
+            if hero.status['shield_lash'] and hero.hp > 0:
+                for buff in hero.buffs:
+                    if buff.name == "Shield Lash":
+                        buff.duration -= 1
+                        if buff.duration > 0:
+                            self.game.display_status_updates(f"{BLUE}{hero.name}'s Shield Lash duration is {buff.duration} rounds. {hero.name}'s resistance is boost.{RESET}")
+                        elif buff.duration == 0:
+                            hero.status['shield_lash'] = False
+                            if 'shield_lash' in hero.fire_resistance_boost_amount:  
+                              hero.fire_resistance = hero.fire_resistance - hero.fire_resistance_boost_amount['shield_lash']
+                              del hero.fire_resistance_boost_amount['shield_lash']
+                            if 'shield_lash' in hero.frost_resistance_boost_amount: 
+                              hero.frost_resistance = hero.frost_resistance - hero.frost_resistance_boost_amount['shield_lash']
+                              del hero.frost_resistance_boost_amount['shield_lash']
+                            if 'shield_lash' in hero.death_resistance_boost_amount: 
+                              hero.death_resistance = hero.death_resistance - hero.death_resistance_boost_amount['shield_lash']
+                              del hero.death_resistance_boost_amount['shield_lash']
+                            if 'shield_lash' in hero.nature_resistance_boost_amount:  
+                              hero.nature_resistance = hero.nature_resistance - hero.nature_resistance_boost_amount['shield_lash']
+                              del hero.nature_resistance_boost_amount['shield_lash']
+                            hero.buffs.remove(buff)
+                            hero.buffs_debuffs_recycle_pool.append(buff)
+                            self.game.display_status_updates(f"{BLUE}{hero.name}'s Shield Lash effect has disappeared. {hero.name}'s resistance has come back to normal.{RESET}")

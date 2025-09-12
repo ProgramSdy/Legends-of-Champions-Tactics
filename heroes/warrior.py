@@ -224,9 +224,9 @@ class Warrior_Defence(Warrior):
             self.probability_shield_bash = 0
             self.probability_slash = 0
             self.preset_target = None
-            self.add_skill(Skill(self, "Slash", self.slash, target_type = "single", skill_type= "damage",))
+            self.add_skill(Skill(self, "Devastate", self.devastate, target_type = "single", skill_type= "damage",))
             self.add_skill(Skill(self, "Shield Bash", self.shield_bash, target_type = "single", skill_type= "damage", capable_interrupt_magic_casting = True))
-            self.add_skill(Skill(self, "Armor Breaker", self.armor_breaker, target_type = "single", skill_type= "damage"))
+            self.add_skill(Skill(self, "Shield Lash", self.shield_lash, target_type = "single", skill_type= "damage"))
 
     def shield_bash(self, other_hero):
         accuracy = 100  # Shield Bash has a 100% chance to succeed
@@ -259,9 +259,9 @@ class Warrior_Defence(Warrior):
         return other_hero.take_damage(damage_dealt)
 
     def devastate(self, other_hero):
-        variation = random.randint(-3, 3)
+        variation = random.randint(-1, 1)
         actual_damage = self.damage + variation
-        damage_dealt = math.ceil((actual_damage - other_hero.defense) * 0.5)
+        damage_dealt = math.ceil((actual_damage - other_hero.defense) * 0.75)
         damage_dealt = max(damage_dealt, 1)
         if other_hero.status['armor_breaker'] == True:
            other_hero.armor_breaker_duration = 2  # Refresh armor breaker effect
@@ -293,10 +293,10 @@ class Warrior_Defence(Warrior):
         frost_resistance_before_increasing = other_hero.frost_resistance 
         death_resistance_before_increasing = other_hero.death_resistance
         nature_resistance_before_increasing = other_hero.nature_resistance
-        other_hero.fire_resistance = other_hero.fire_resistance + self.fire_resistance_boost_amount['shield_lash']
-        other_hero.frost_resistance = other_hero.frost_resistance + self.frost_resistance_boost_amount['shield_lash']
-        other_hero.death_resistance = other_hero.death_resistance + self.death_resistance_boost_amount['shield_lash']
-        other_hero.nature_resistance = other_hero.nature_resistance + self.nature_resistance_boost_amount['shield_lash']
+        self.fire_resistance = self.fire_resistance + self.fire_resistance_boost_amount['shield_lash']
+        self.frost_resistance = self.frost_resistance + self.frost_resistance_boost_amount['shield_lash']
+        self.death_resistance = self.death_resistance + self.death_resistance_boost_amount['shield_lash']
+        self.nature_resistance = self.nature_resistance + self.nature_resistance_boost_amount['shield_lash']
         
         for skill in self.skills:
             if skill.name == "Shield Lash":
