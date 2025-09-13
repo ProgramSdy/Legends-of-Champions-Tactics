@@ -101,9 +101,11 @@ class Skill:
 
     def execute(self, opponents):
         result_message = ""
+        """
         if self.name == "Crushing Wave":
           for hero in opponents:
             print(f"{RED}Debug Skill: Hero name = {hero.name}{RESET}")
+        """
 
         # Manage healing skills
         if self.skill_type == "healing":
