@@ -330,7 +330,7 @@ class GameInterface:
         """
 
     def select_target_manual_disappear(self):
-
+        """
         # Define the area for skill selection
         skill_selection_x = self.width // 3
         skill_selection_y = 200 
@@ -349,6 +349,8 @@ class GameInterface:
         self.screen.blit(dynamic_surface_snapshot, (0, 0))  # Restore the dynamic elements
         self.screen.blit(self.dynamic_surface, (0, 0))  # Draw the updated skill selection
         pygame.display.flip()
+        """
+        self.update_all_display(self.game_state)
 
     def select_skill(self, hero, available_skills):
         """Render skill selection in the designated area and handle input."""
