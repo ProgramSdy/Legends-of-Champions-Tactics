@@ -19,7 +19,8 @@ class HeroGenerator:
 
       self.hero_classes = {
             # Warrior
-            Warrior_Comprehensiveness: self.warlock_names_list,
+            Warrior_Comprehensiveness: self.warrior_names_list,
+            Warrior_Defence: self.warrior_names_list,
             # Mage
             Mage_Comprehensiveness: self.mage_names_list,
             Mage_Water: self.mage_names_list,

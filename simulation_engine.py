@@ -7,6 +7,7 @@ from game.hero_generator import HeroGenerator
 from system.system_initialization import System_initialization
 from system.game_interface import GameInterface
 import os
+from tqdm import tqdm
 
 RED = "\033[91m"
 GREEN = "\033[92m"
@@ -69,7 +70,7 @@ class BattleTester_1v1:
         self.sys_init = sys_init
         self.num_battles = num_battles
         self.professions = [
-            Warrior_Comprehensiveness, 
+            Warrior_Comprehensiveness, Warrior_Defence,
             Mage_Comprehensiveness, Mage_Water, Mage_Frost, Mage_Arcane, Mage_Fire, 
             Paladin_Retribution, Paladin_Protection, Paladin_Holy,
             Priest_Comprehensiveness, Priest_Shelter, Priest_Shadow, Priest_Discipline, Priest_Devine,
@@ -117,7 +118,8 @@ class BattleTester_1v1:
             }
 
         # Test each profession against all others
-        for profession_A in self.professions:
+        #for profession_A in self.professions:
+        for profession_A in tqdm(self.professions, desc="Testing Professions"):
             overall_results[profession_A.__name__] = {}
             for profession_B in self.professions:
                 if profession_A != profession_B:
