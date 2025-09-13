@@ -574,7 +574,7 @@ class StatusEffectManager:
                                 if possible_targets:
                                     spread_target = min(possible_targets, key=lambda e: e.poison_resistance)  # Find lowest poison resistance enemy
                                     spread_chance = round(min(1, 10/(spread_target.poison_resistance + 0.01)) * 100)  # Prevent division by zero
-                                    print(f"{RED}Debug: spread chance = {spread_chance}{RESET}")
+                                    #print(f"{RED}Debug: spread chance = {spread_chance}{RESET}")
                                     if random.random() * 100 <= spread_chance:  # Convert to percentage chance
                                         spread_target.status['virulent_infection'] = True
                                         new_debuff = Debuff(
@@ -630,7 +630,7 @@ class StatusEffectManager:
                                 elif possible_targets:
                                     spread_target = min(possible_targets, key=lambda e: e.shadow_resistance)  # Find lowest shadow resistance enemy
                                     spread_chance = round(min(1, 10/(spread_target.shadow_resistance + 0.01)) * 100)  # Prevent division by zero
-                                    print(f"{RED}Debug: spread chance = {spread_chance}{RESET}")
+                                    #print(f"{RED}Debug: spread chance = {spread_chance}{RESET}")
                                     if random.random() * 100 <= spread_chance:  # Convert to percentage chance
                                         spread_target.status['blood_plague'] = True
                                         new_debuff = Debuff(
@@ -683,7 +683,7 @@ class StatusEffectManager:
                   if debuff.duration == 1 and hero.hp > 0:
                       if hero.status['scoff']:
                         self.game.display_status_updates(f"{RED}{hero.name} is in an scoff state, {hero.name} has a deep hatred toward {debuff.initiator.name}.{RESET}")
-                        print(f"Debuff Duration = {debuff.duration}")
+                        #print(f"Debuff Duration = {debuff.duration}")
                       else:
                           debuff.duration -=1
                           hero.debuffs.remove(debuff)

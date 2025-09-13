@@ -180,7 +180,7 @@ class Mage_Water(Mage):
         set_comb = set(self.list_status_debuff_magic) |  set(self.list_status_debuff_toxic)
         equal_status = set(hero_status_activated) & set_comb
         status_list_for_action = list(equal_status)
-        print(status_list_for_action)
+        #print(status_list_for_action)
 
         if other_hero.status['aqua_ring'] == False:
             other_hero.status['aqua_ring'] = True

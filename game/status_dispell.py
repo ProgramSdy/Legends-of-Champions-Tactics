@@ -180,7 +180,7 @@ class StatusDispell:
                   hero.buffs_debuffs_recycle_pool.append(debuff)
                   self.game.display_status_updates(f"{BLUE}{hero.name} has recovered from Virulent Infection.{RESET}")
           elif status == 'blood_plague':
-            print("blood plague detected")
+            #print("blood plague detected")
             for debuff in hero.debuffs:
                 if debuff.name == "Blood Plague":
                   debuff.duration = 0
@@ -191,7 +191,7 @@ class StatusDispell:
                   hero.buffs_debuffs_recycle_pool.append(debuff)
                   self.game.display_status_updates(f"{BLUE}{hero.name} has recovered from Blood Plague.{RESET}")   
           elif status == 'bleeding_crimson_cleave':
-              print("bleeding crimson cleave detected")
+              #print("bleeding crimson cleave detected")
               hero.bleeding_crimson_cleave_duration = 0
               hero.bleeding_crimson_cleave_continuous_damage = 0
               hero.status['bleeding_crimson_cleave'] = False

@@ -85,6 +85,7 @@ class Warlock_Comprehensiveness(Warlock):
           if self.name == hero.name:
             self.game.player_heroes.append(voidrambler)
             self.game.heroes.append(voidrambler)
+            self.game.unactioned_sorted_heroes.append(voidrambler)
             break
         else:
           self.game.opponent_heroes.append(voidrambler)

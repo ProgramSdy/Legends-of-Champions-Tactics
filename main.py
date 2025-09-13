@@ -43,7 +43,7 @@ def main():
     '''
     #'''
 
-    Player_1 = Warrior_Defence(sys_init, "Arthas", "Group_A", True)
+    Player_1 = Warlock_Comprehensiveness(sys_init, "Arthas", "Group_A", True)
     Player_2 = Warrior_Comprehensiveness(sys_init, "Black Heart", "Group_A", True)
     Player_3 = Warlock_Destruction(sys_init, "Guldan", "Group_A", True)
     player_heroes = [Player_1]
