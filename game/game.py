@@ -3,7 +3,6 @@ import itertools
 import random
 import math 
 import time
-import curses
 import os
 from heroes import *
 from skills import *
