@@ -78,14 +78,15 @@ class Hero:
         'bless_of_frost': False,
         'anti_magic_shield': False,
         'scorchbrand': False,
-        'shield_lash': False
+        'shield_lash': False,
+        'fatal_strike': False
     }
     list_status_debuff_magic = ['shadow_word_pain', 'cold', 'holy_word_punishment', \
                                 'shadow_word_insanity', 'unholy_frenzy', 'curse_of_agony', 'fear', 'shadow_bolt', \
                                 'corrosion','soul_siphon', 'immolate', 'icy_squall', 'glacier', 'scorchbrand']
     list_status_debuff_disease = ['frost_fever', 'necrotic_decay', 'virulent_infection', 'blood_plague']
     list_status_debuff_toxic = ['poisoned_dagger', 'paralyze_blade', 'mixed_venom', 'acid_bomb', 'unstable_compound']                     
-    list_status_debuff_physical  = ['armor_breaker', 'scoff', 'hammer_of_revenge', 'stunned', 'paralyzed']
+    list_status_debuff_physical  = ['armor_breaker', 'scoff', 'hammer_of_revenge', 'stunned', 'paralyzed', 'fatal_strike']
     list_status_debuff_bleeding = ['bleeding_slash','bleeding_sharp_blade', 'bleeding_crimson_cleave', 'wound_backstab']
     list_status_buff_magic = ['shield_of_righteous','wrath_of_crusader','holy_word_shell','holy_word_redemption', \
                               'holy_fire', 'unholy_frenzy', 'holy_infusion', 'hell_flame', 'cumbrous_axe', 'purify_healing', \

@@ -345,3 +345,90 @@ class Warrior_Defence(Warrior):
           return f"{self.name} casts Shield Lash on {other_hero.name}. {other_hero.take_damage(actual_damage)}. {self.name}'s resistance is boost. {other_hero.name} developed a deep hatred toward {self.name}."
 
     # Battling Strategy_________________________________________________________
+
+class Warrior_Weapon_Master(Warrior):
+    
+    major = "Weapon_Master"
+
+    def __init__(self, sys_init, name, group, is_player_controlled):
+            super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major)
+            self.damage_type = "physical"
+            self.probability_armor_breaker = 0
+            self.probability_shield_bash = 0
+            self.probability_slash = 0
+            self.preset_target = None
+            self.add_skill(Skill(self, "Slash", self.slash, target_type = "single", skill_type= "damage",))
+            self.add_skill(Skill(self, "Shield Bash", self.shield_bash, target_type = "single", skill_type= "damage", capable_interrupt_magic_casting = True))
+            self.add_skill(Skill(self, "Armor Breaker", self.armor_breaker, target_type = "single", skill_type= "damage"))
+
+    def fatal_strike(self, other_hero):
+      variation = random.randint(-3, 3)
+      actual_damage = self.damage + variation
+      damage_dealt = actual_damage - other_hero.defense
+      damage_dealt = max(damage_dealt, 1)
+      if not other_hero.status['fatal_strike']:
+          other_hero.status['fatal_strike'] = True
+          other_hero.healing_reduction_effects['fatal_strike'] = 0.7
+          for debuff in other_hero.buffs_debuffs_recycle_pool:
+              if debuff.name == "Fatal Strike" and debuff.initiator == self:
+                  other_hero.buffs_debuffs_recycle_pool.remove(debuff)
+                  debuff.duration = 2
+                  other_hero.add_debuff(debuff)
+                  self.game.display_battle_info(f"{self.name} uses Fatal Strike on {other_hero.name}. The healing they receive will be reduced sharply.")
+                  return other_hero.take_damage(damage_dealt)
+          
+          debuff = Debuff(
+              name='Fatal Strike',
+              duration=2,
+              initiator=self,
+              effect=0.8
+          )
+          other_hero.add_debuff(debuff)
+          self.game.display_battle_info(f"{self.name} uses Fatal Strike on {other_hero.name}. The healing they receive will be reduced sharply.")
+          return other_hero.take_damage(damage_dealt)
+      else:
+          self.game.display_battle_info(f"{self.name} uses Fatal Strike on {other_hero.name}.")
+      return other_hero.take_damage(damage_dealt)
+
+    def armor_crush(self, other_hero):
+        damage_dealt_stack_0 = self.random_in_range((6, 10))  # Small damage
+        variation = random.randint(-3, 3)
+        actual_damage = self.damage + variation
+        damage_dealt = math.ceil((actual_damage - other_hero.defense) * 0.55)
+        damage_dealt = max(damage_dealt, 1)
+        if other_hero.status['armor_breaker'] == True:
+          if other_hero.armor_breaker_stacks == 1:
+              defense_before_reducing = other_hero.defense
+              defense_reduced_amount_by_armor_breaker_single = math.ceil(other_hero.original_defense * 0.15)  # Reduce target's defense by 15%
+              other_hero.defense_reduced_amount_by_armor_breaker = other_hero.defense_reduced_amount_by_armor_breaker + defense_reduced_amount_by_armor_breaker_single  # Reduce target's defense by 15%
+              other_hero.defense = other_hero.defense - defense_reduced_amount_by_armor_breaker_single  # Reduce target's defense by 15%
+              other_hero.armor_breaker_stacks += 1
+              other_hero.armor_breaker_duration = 2  # armor breaker Effect lasts for 2 rounds
+              other_hero.status['bleeding_armor_crush'] = True
+              other_hero.status['normal'] = False
+              other_hero.bleeding_armor_crush_duration = other_hero.armor_breaker_stacks + 1
+              other_hero.bleeding_armor_crush_continuous_damage = random.randint(8, 12)
+              self.game.display_battle_info(f"{self.name} uses Armor Crush on {other_hero.name}, reducing their defense from {defense_before_reducing} to {other_hero.defense}. {other_hero.name} got injured and start bleeding.")
+          elif other_hero.armor_breaker_stacks == 2:
+              defense_before_reducing = other_hero.defense
+              defense_reduced_amount_by_armor_breaker_single = math.ceil(other_hero.original_defense * 0.15)  # Reduce target's defense by 15%
+              other_hero.defense_reduced_amount_by_armor_breaker = other_hero.defense_reduced_amount_by_armor_breaker + defense_reduced_amount_by_armor_breaker_single  # Reduce target's defense by 15%
+              other_hero.defense = other_hero.defense - defense_reduced_amount_by_armor_breaker_single  # Reduce target's defense by 15%
+              other_hero.armor_breaker_stacks += 1
+              other_hero.armor_breaker_duration = 2  # armor breaker Effect lasts for 2 rounds
+          else:
+              other_hero.armor_breaker_duration = 2  # Refresh armor breaker effect
+              self.game.display_battle_info(f"{self.name} uses Armor Crush on {other_hero.name}, but {other_hero.name}'s Armor Breaker effect cannot be further stacked. Armor Breaker duration refreshed")
+        else:
+          other_hero.status['armor_breaker'] = True
+          defense_before_reducing = other_hero.defense
+          defense_reduced_amount_by_armor_breaker_single = math.ceil(other_hero.original_defense * 0.15)  # Reduce target's defense by 15%
+          other_hero.defense_reduced_amount_by_armor_breaker = other_hero.defense_reduced_amount_by_armor_breaker + defense_reduced_amount_by_armor_breaker_single  # Reduce target's defense by 15%
+          other_hero.defense = other_hero.defense - defense_reduced_amount_by_armor_breaker_single  # Reduce target's defense by 15%
+          other_hero.armor_breaker_stacks += 1
+          other_hero.armor_breaker_duration = 2  # Effect lasts for 2 rounds
+          self.game.display_battle_info(f"{self.name} uses Armor Crush on {other_hero.name}, reducing their defense from {defense_before_reducing} to {other_hero.defense}.")
+          return other_hero.take_damage(damage_dealt_stack_0)
+        return other_hero.take_damage(damage_dealt)
+
+    # Battling Strategy_________________________________________________________
