@@ -399,7 +399,7 @@ class Warrior_Weapon_Master(Warrior):
         
         if other_hero.status['armor_breaker'] == True:
           if other_hero.armor_breaker_stacks == 1:
-              damage_dealt = math.ceil((actual_damage - other_hero.defense) * 0.75)
+              damage_dealt = math.ceil((actual_damage - other_hero.defense) * 0.65)
               damage_dealt = max(damage_dealt, 1) # damage dealt stack 1
               defense_before_reducing = other_hero.defense
               defense_reduced_amount_by_armor_breaker_single = math.ceil(other_hero.original_defense * 0.15)  # Reduce target's defense by 15%
@@ -412,7 +412,7 @@ class Warrior_Weapon_Master(Warrior):
               other_hero.bleeding_armor_crush_continuous_damage = random.randint(8, 12)
               self.game.display_battle_info(f"{self.name} uses Armor Crush on {other_hero.name}, reducing their defense from {defense_before_reducing} to {other_hero.defense}. {other_hero.name} got injured and start bleeding.")
           elif other_hero.armor_breaker_stacks == 2:
-              damage_dealt = math.ceil((actual_damage - other_hero.defense) * 0.95)
+              damage_dealt = math.ceil((actual_damage - other_hero.defense) * 0.75)
               damage_dealt = max(damage_dealt, 1) # damage dealt stack 2
               defense_before_reducing = other_hero.defense
               defense_reduced_amount_by_armor_breaker_single = math.ceil(other_hero.original_defense * 0.15)  # Reduce target's defense by 15%
