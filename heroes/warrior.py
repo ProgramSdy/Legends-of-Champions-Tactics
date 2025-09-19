@@ -427,7 +427,7 @@ class Warrior_Weapon_Master(Warrior):
               other_hero.agility -= other_hero.agility_reduced_amount_by_wound_armor_crush
               self.game.display_battle_info(f"{self.name} uses Armor Crush on {other_hero.name}, reducing their defense from {defense_before_reducing} to {other_hero.defense}. This attack causes wound. {other_hero.name}'s agility has reduced from {agility_before_reduce} to {other_hero.agility}.")
           else:
-              damage_dealt = math.ceil((actual_damage - other_hero.defense) * 0.95)
+              damage_dealt = math.ceil((actual_damage - other_hero.defense) * 0.75)
               damage_dealt = max(damage_dealt, 1) # damage dealt stack >= 3
               other_hero.armor_breaker_duration = 2  # Refresh armor breaker effect
               self.game.display_battle_info(f"{self.name} uses Armor Crush on {other_hero.name}, but {other_hero.name}'s Armor Breaker effect cannot be further stacked. Armor Breaker duration refreshed")
