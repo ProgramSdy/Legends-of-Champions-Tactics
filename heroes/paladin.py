@@ -202,7 +202,7 @@ class Paladin_Protection(Paladin):
         set_comb = set(self.list_status_debuff_magic) | set(self.list_status_debuff_bleeding) | set(self.list_status_debuff_disease) | set(self.list_status_debuff_physical)
         equal_status = set(hero_status_activated) & set_comb
         status_list_for_action = list(equal_status)
-        print(f"{RED}DEBUG Message: status_list_for_action = {status_list_for_action}{RESET}")
+        #print(f"{RED}DEBUG Message: status_list_for_action = {status_list_for_action}{RESET}")
         if len(status_list_for_action) == 0:
           extra_holy_damage = 0
         elif len(status_list_for_action) == 1:

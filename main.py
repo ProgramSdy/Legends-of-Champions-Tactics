@@ -51,16 +51,16 @@ def main():
     
 
     # Opponent hero generator__________________________________________
-    #'''
+    '''
     generator_ai = HeroGenerator(sys_init)
     opponent_heroes = generator_ai.generate_heroes("Group_B", 1)
-    #'''
     '''
-    Aldric = Mage_Water(sys_init, "Aldric", "Group_B", False)
+    #'''
+    Aldric = Paladin_Protection(sys_init, "Aldric", "Group_B", False)
     Deep_Seer = Mage_Water(sys_init,"Andonidas", "Group_B", False)
     Rohan = Mage_Water(sys_init, "Gandoff", "Group_B", False)
-    opponent_heroes = [Aldric, Deep_Seer, Rohan]
-    '''
+    opponent_heroes = [Aldric]
+    #'''
     # Display heroes from both sides__________________________________________
     '''
     for player_hero in player_heroes:
