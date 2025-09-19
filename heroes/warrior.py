@@ -357,9 +357,9 @@ class Warrior_Weapon_Master(Warrior):
             self.probability_shield_bash = 0
             self.probability_slash = 0
             self.preset_target = None
-            self.add_skill(Skill(self, "Slash", self.slash, target_type = "single", skill_type= "damage",))
-            self.add_skill(Skill(self, "Shield Bash", self.shield_bash, target_type = "single", skill_type= "damage", capable_interrupt_magic_casting = True))
-            self.add_skill(Skill(self, "Armor Breaker", self.armor_breaker, target_type = "single", skill_type= "damage"))
+            self.add_skill(Skill(self, "Fatal Strike", self.fatal_strike, target_type = "single", skill_type= "damage",))
+            #self.add_skill(Skill(self, "Shield Bash", self.shield_bash, target_type = "single", skill_type= "damage", capable_interrupt_magic_casting = True))
+            self.add_skill(Skill(self, "Armor Crush", self.armor_crush, target_type = "single", skill_type= "damage"))
 
     def fatal_strike(self, other_hero):
       variation = random.randint(-3, 3)
@@ -391,13 +391,16 @@ class Warrior_Weapon_Master(Warrior):
       return other_hero.take_damage(damage_dealt)
 
     def armor_crush(self, other_hero):
-        damage_dealt_stack_0 = self.random_in_range((6, 10))  # Small damage
+        #damage_dealt_stack_0 = self.random_in_range((6, 10))  # Small damage
         variation = random.randint(-3, 3)
         actual_damage = self.damage + variation
-        damage_dealt = math.ceil((actual_damage - other_hero.defense) * 0.55)
-        damage_dealt = max(damage_dealt, 1)
+        damage_dealt = math.ceil((actual_damage - other_hero.defense) * 0.55) 
+        damage_dealt = max(damage_dealt, 1) # damage dealt stack 0
+        
         if other_hero.status['armor_breaker'] == True:
           if other_hero.armor_breaker_stacks == 1:
+              damage_dealt = math.ceil((actual_damage - other_hero.defense) * 0.75)
+              damage_dealt = max(damage_dealt, 1) # damage dealt stack 1
               defense_before_reducing = other_hero.defense
               defense_reduced_amount_by_armor_breaker_single = math.ceil(other_hero.original_defense * 0.15)  # Reduce target's defense by 15%
               other_hero.defense_reduced_amount_by_armor_breaker = other_hero.defense_reduced_amount_by_armor_breaker + defense_reduced_amount_by_armor_breaker_single  # Reduce target's defense by 15%
@@ -405,18 +408,27 @@ class Warrior_Weapon_Master(Warrior):
               other_hero.armor_breaker_stacks += 1
               other_hero.armor_breaker_duration = 2  # armor breaker Effect lasts for 2 rounds
               other_hero.status['bleeding_armor_crush'] = True
-              other_hero.status['normal'] = False
-              other_hero.bleeding_armor_crush_duration = other_hero.armor_breaker_stacks + 1
+              other_hero.bleeding_armor_crush_duration = 3
               other_hero.bleeding_armor_crush_continuous_damage = random.randint(8, 12)
               self.game.display_battle_info(f"{self.name} uses Armor Crush on {other_hero.name}, reducing their defense from {defense_before_reducing} to {other_hero.defense}. {other_hero.name} got injured and start bleeding.")
           elif other_hero.armor_breaker_stacks == 2:
+              damage_dealt = math.ceil((actual_damage - other_hero.defense) * 0.95)
+              damage_dealt = max(damage_dealt, 1) # damage dealt stack 2
               defense_before_reducing = other_hero.defense
               defense_reduced_amount_by_armor_breaker_single = math.ceil(other_hero.original_defense * 0.15)  # Reduce target's defense by 15%
               other_hero.defense_reduced_amount_by_armor_breaker = other_hero.defense_reduced_amount_by_armor_breaker + defense_reduced_amount_by_armor_breaker_single  # Reduce target's defense by 15%
               other_hero.defense = other_hero.defense - defense_reduced_amount_by_armor_breaker_single  # Reduce target's defense by 15%
               other_hero.armor_breaker_stacks += 1
               other_hero.armor_breaker_duration = 2  # armor breaker Effect lasts for 2 rounds
+              other_hero.status['wound_armor_crush'] = True
+              other_hero.wound_armor_crush_duration = 2
+              agility_before_reduce = other_hero.agility
+              other_hero.agility_reduced_amount_by_wound_armor_crush = int(other_hero.agility * 0.2)
+              other_hero.agility -= other_hero.agility_reduced_amount_by_wound_armor_crush
+              self.game.display_battle_info(f"{self.name} uses Armor Crush on {other_hero.name}, reducing their defense from {defense_before_reducing} to {other_hero.defense}. This attack causes wound. {other_hero.name}'s agility has reduced from {agility_before_reduce} to {other_hero.agility}.")
           else:
+              damage_dealt = math.ceil((actual_damage - other_hero.defense) * 0.95)
+              damage_dealt = max(damage_dealt, 1) # damage dealt stack >= 3
               other_hero.armor_breaker_duration = 2  # Refresh armor breaker effect
               self.game.display_battle_info(f"{self.name} uses Armor Crush on {other_hero.name}, but {other_hero.name}'s Armor Breaker effect cannot be further stacked. Armor Breaker duration refreshed")
         else:
@@ -428,7 +440,6 @@ class Warrior_Weapon_Master(Warrior):
           other_hero.armor_breaker_stacks += 1
           other_hero.armor_breaker_duration = 2  # Effect lasts for 2 rounds
           self.game.display_battle_info(f"{self.name} uses Armor Crush on {other_hero.name}, reducing their defense from {defense_before_reducing} to {other_hero.defense}.")
-          return other_hero.take_damage(damage_dealt_stack_0)
         return other_hero.take_damage(damage_dealt)
 
     # Battling Strategy_________________________________________________________

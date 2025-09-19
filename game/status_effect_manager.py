@@ -827,3 +827,47 @@ class StatusEffectManager:
                             hero.buffs.remove(buff)
                             hero.buffs_debuffs_recycle_pool.append(buff)
                             self.game.display_status_updates(f"{BLUE}{hero.name}'s Shield Lash effect has disappeared. {hero.name}'s resistance has come back to normal.{RESET}")
+
+            # Handle Fatal Strike Debuff
+            if hero.status['fatal_strike'] and hero.hp > 0:
+                for debuff in hero.debuffs:
+                    if debuff.name == "Fatal Strike":
+                        debuff.duration -= 1
+                        if debuff.duration > 0:
+                            self.game.display_status_updates(f"{BLUE}{hero.name}'s Fatal Strike duration is {debuff.duration} rounds.{RESET}")
+                        elif debuff.duration == 0:
+                            hero.status['fatal_strike'] = False
+                            if 'fatal_strike' in hero.healing_reduction_effects:  # Ensure it is removed when expired
+                              del hero.healing_reduction_effects['necrotic_decay']
+                            hero.debuffs.remove(debuff)
+                            hero.buffs_debuffs_recycle_pool.append(debuff)
+                            self.game.display_status_updates(f"{BLUE}{hero.name} has recovered from Fatal Strike.{RESET}")
+
+            # Handle Bleeding_Armor_Crush
+            if hero.status['bleeding_armor_crush'] and hero.hp > 0:
+                hero.bleeding_armor_crush_duration -=1
+                if hero.bleeding_armor_crush_duration > 0:
+                    variation = random.randint(-2, 2)
+                    self.game.display_status_updates(f"{BLUE}{hero.name}'s bleeding effect from Armor Crush is {hero.bleeding_armor_crush_duration} rounds. {hero.take_damage(hero.bleeding_armor_crush_continuous_damage + variation)}{RESET}")
+                elif hero.bleeding_armor_crush_duration == 0:
+                    hero.bleeding_armor_crush_continuous_damage = 0
+                    hero.status['bleeding_armor_crush'] = False
+                    self.game.display_status_updates(f"{BLUE}{hero.name}'s bleeding from Armor Crush has stopped.{RESET}")
+
+            # Handle Wound Armor Crush
+            if hero.status['wound_armor_crush'] and hero.hp > 0:
+                hero.wound_armor_crush_duration -= 1
+                if hero.wound_armor_crush_duration > 0:
+                    self.game.display_status_updates(f"{BLUE}{hero.name}'s wound from Armor Crush is {hero.wound_armor_crush_duration} rounds. {hero.name} is moving slowly. {RESET}")
+                elif hero.wound_armor_crush_duration == 0:
+                    hero.agility = hero.agility + hero.agility_reduced_amount_by_wound_armor_crush
+                    hero.status['wound_armor_crush'] = False
+                    self.game.display_status_updates(f"{BLUE}{hero.name} has recovered from Armor Crush wound. Their agility has returned to {hero.agility}.{RESET}")
+
+
+
+
+
+
+
+

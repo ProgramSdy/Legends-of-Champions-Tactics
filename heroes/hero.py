@@ -79,15 +79,17 @@ class Hero:
         'anti_magic_shield': False,
         'scorchbrand': False,
         'shield_lash': False,
-        'fatal_strike': False
+        'fatal_strike': False,
+        'bleeding_armor_crush': False,
+        'wound_armor_crush': False
     }
     list_status_debuff_magic = ['shadow_word_pain', 'cold', 'holy_word_punishment', \
                                 'shadow_word_insanity', 'unholy_frenzy', 'curse_of_agony', 'fear', 'shadow_bolt', \
                                 'corrosion','soul_siphon', 'immolate', 'icy_squall', 'glacier', 'scorchbrand']
     list_status_debuff_disease = ['frost_fever', 'necrotic_decay', 'virulent_infection', 'blood_plague']
     list_status_debuff_toxic = ['poisoned_dagger', 'paralyze_blade', 'mixed_venom', 'acid_bomb', 'unstable_compound']                     
-    list_status_debuff_physical  = ['armor_breaker', 'scoff', 'hammer_of_revenge', 'stunned', 'paralyzed', 'fatal_strike']
-    list_status_debuff_bleeding = ['bleeding_slash','bleeding_sharp_blade', 'bleeding_crimson_cleave', 'wound_backstab']
+    list_status_debuff_physical  = ['armor_breaker', 'scoff', 'hammer_of_revenge', 'stunned', 'paralyzed', 'fatal_strike', 'wound_armor_crush']
+    list_status_debuff_bleeding = ['bleeding_slash','bleeding_sharp_blade', 'bleeding_crimson_cleave', 'wound_backstab', 'bleeding_armor_crush']
     list_status_buff_magic = ['shield_of_righteous','wrath_of_crusader','holy_word_shell','holy_word_redemption', \
                               'holy_fire', 'unholy_frenzy', 'holy_infusion', 'hell_flame', 'cumbrous_axe', 'purify_healing', \
                               'shield_of_protection', 'water_arrow', 'glacier', 'anti_magic_shield']
@@ -192,6 +194,8 @@ class Hero:
         self.mixed_venom_debuff_duration = 0
         self.acid_bomb_debuff_duration = 0
         self.unstable_compound_debuff_duration = 0
+        self.bleeding_armor_crush_duration = 0
+        self.wound_armor_crush_duration = 0
                        
 
         self.armor_breaker_stacks = 0 # Track number of Armor Breaker applications
@@ -246,6 +250,9 @@ class Hero:
         self.agility_increased_amount_by_water_arrow = 0 # Track the amount of agility increased by water arrow
         self.scorchbrand_continuous_damage = 0
         self.fire_resistance_reduced_amount_by_scorchbrand = 0
+        self.bleeding_armor_crush_continuous_damage = 0
+        self.agility_reduced_amount_by_wound_armor_crush = 0
+
 
     @classmethod
     def random_in_range(cls, value_range):
