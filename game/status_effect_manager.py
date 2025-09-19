@@ -838,7 +838,7 @@ class StatusEffectManager:
                         elif debuff.duration == 0:
                             hero.status['fatal_strike'] = False
                             if 'fatal_strike' in hero.healing_reduction_effects:  # Ensure it is removed when expired
-                              del hero.healing_reduction_effects['necrotic_decay']
+                              del hero.healing_reduction_effects['fatal_strike']
                             hero.debuffs.remove(debuff)
                             hero.buffs_debuffs_recycle_pool.append(debuff)
                             self.game.display_status_updates(f"{BLUE}{hero.name} has recovered from Fatal Strike.{RESET}")
