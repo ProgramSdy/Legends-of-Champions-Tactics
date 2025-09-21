@@ -442,4 +442,43 @@ class Warrior_Weapon_Master(Warrior):
           self.game.display_battle_info(f"{self.name} uses Armor Crush on {other_hero.name}, reducing their defense from {defense_before_reducing} to {other_hero.defense}.")
         return other_hero.take_damage(damage_dealt)
 
+    def antivenom_potion(self):
+        self.status['antivenom_potion'] = True
+        self.poison_resistance_boost_amount['antivenom_potion'] = 45
+        basic_healing = 19
+        variation = random.randint(-1, 1)
+        actual_healing = basic_healing + variation
+        self.poison_resistance = self.poison_resistance + self.poison_resistance_boost_amount['antivenom_potion']
+        
+        for skill in self.skills:
+            if skill.name == "Antivenom Potion":
+              skill.if_cooldown = True
+              skill.cooldown = 3
+
+        for buff in self.buffs_debuffs_recycle_pool:
+                if buff.name == "Antivenom Potion" and buff.initiator == self:
+                    self.buffs_debuffs_recycle_pool.remove(buff)
+                    buff.duration = 2
+                    self.add_buff(buff)   
+                    break
+        else:
+            buff = Buff(
+                name='Antivenom Potion',
+                duration=2,
+                initiator=self,
+                effect=1
+            )
+            self.add_buff(buff)
+
+        hero_status_activated = [key for key, value in hero.status.items() if value == True]
+        set_comb = set(self.list_status_debuff_bleeding) | set(self.list_status_debuff_toxic)
+        equal_status = set(hero_status_activated) & set_comb
+        status_list_for_action = list(equal_status)
+        if status_list_for_action:
+          self.game.display_battle_info(f"{self.name} drinks Antivenom Potion.")
+          self.game.status_dispeller.dispell_status(status_list_for_action, hero)
+          return f"{self.take_healing(actual_healing)}. {self.name}'s poison resistance is boost."
+        return f"{self.name} drinks Antivenom Potion. {self.take_healing(actual_healing)}. {self.name}'s poison resistance is boost."
+
+
     # Battling Strategy_________________________________________________________

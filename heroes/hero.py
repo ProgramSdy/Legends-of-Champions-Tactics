@@ -143,8 +143,11 @@ class Hero:
         self.healing_boost_effects = {}
         self.fire_resistance_boost_amount = {}
         self.frost_resistance_boost_amount = {}
-        self.death_resistance_boost_amount = {}
+        self.arcane_resistance_boost_amount = {}
         self.nature_resistance_boost_amount = {}
+        self.death_resistance_boost_amount = {}
+        self.shadow_resistance_boost_amount = {}
+        self.poison_resistance_boost_amount = {}
 
         # Status buff and debuff
         self.status = self.status.copy() # Copy the status dictionary for individual management

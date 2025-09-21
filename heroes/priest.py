@@ -120,8 +120,10 @@ class Priest_Shelter(Priest):
       #self.game.display_battle_info(f"Status all: {status_list_for_action}")
       if len(status_list_for_action) > 3:
         status_list_for_action = status_list_for_action[:3]
-      healing_amount = 0
       if status_list_for_action:
+        variation = random.randint(-2, 2)
+        healing_amount_base = 10 * len(status_list_for_action)
+        healing_amount = healing_amount_base + variation
         #self.game.display_battle_info(f"Status purificable: {status_list_for_action}")
         self.game.display_battle_info(f"{self.name} casts Purification and Cure on {hero.name}.")
         self.game.status_dispeller.dispell_status(status_list_for_action, hero)

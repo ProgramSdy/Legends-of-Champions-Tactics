@@ -165,9 +165,9 @@ class Mage_Water(Mage):
            return f"{self.name} uses Water Arrow on {other_hero.name} again, but {other_hero.name} cannot be futher strenthened, {other_hero.name} will stay one more round in the battle field."
 
       else: # damage effect
-        variation = random.randint(-2, -2)
-        actual_damage = healing_amount_base + variation
-        damage_dealt = actual_damage #damage discard opponent's defense
+        variation = random.randint(-2, 2)
+        actual_damage = math.ceil((self.damage - other_hero.nature_resistance) * 2/5)
+        damage_dealt = actual_damage + variation
         damage_dealt = max(damage_dealt, 0) # Ensure damage dealt is at least 0
         self.game.display_battle_info(f"{self.name} casts Water Arrow at {other_hero.name}.")
         return f"{other_hero.take_damage(damage_dealt)}"
