@@ -56,7 +56,7 @@ def main():
     opponent_heroes = generator_ai.generate_heroes("Group_B", 1)
     '''
     #'''
-    Aldric = Paladin_Protection(sys_init, "Aldric", "Group_B", False)
+    Aldric = Rogue_Toxicology(sys_init, "Aldric", "Group_B", False)
     Deep_Seer = Mage_Water(sys_init,"Andonidas", "Group_B", False)
     Rohan = Mage_Water(sys_init, "Gandoff", "Group_B", False)
     opponent_heroes = [Aldric]

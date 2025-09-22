@@ -81,7 +81,8 @@ class Hero:
         'shield_lash': False,
         'fatal_strike': False,
         'bleeding_armor_crush': False,
-        'wound_armor_crush': False
+        'wound_armor_crush': False,
+        'antivenom_potion': False
     }
     list_status_debuff_magic = ['shadow_word_pain', 'cold', 'holy_word_punishment', \
                                 'shadow_word_insanity', 'unholy_frenzy', 'curse_of_agony', 'fear', 'shadow_bolt', \

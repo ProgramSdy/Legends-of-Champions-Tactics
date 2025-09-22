@@ -358,8 +358,8 @@ class Warrior_Weapon_Master(Warrior):
             self.probability_slash = 0
             self.preset_target = None
             self.add_skill(Skill(self, "Fatal Strike", self.fatal_strike, target_type = "single", skill_type= "damage",))
-            #self.add_skill(Skill(self, "Shield Bash", self.shield_bash, target_type = "single", skill_type= "damage", capable_interrupt_magic_casting = True))
             self.add_skill(Skill(self, "Armor Crush", self.armor_crush, target_type = "single", skill_type= "damage"))
+            self.add_skill(Skill(self, "Antivenom Potion", self.antivenom_potion, target_type = "single", skill_type= "buffs", target_qty= 0))
 
     def fatal_strike(self, other_hero):
       variation = random.randint(-3, 3)
@@ -470,13 +470,13 @@ class Warrior_Weapon_Master(Warrior):
             )
             self.add_buff(buff)
 
-        hero_status_activated = [key for key, value in hero.status.items() if value == True]
+        hero_status_activated = [key for key, value in self.status.items() if value == True]
         set_comb = set(self.list_status_debuff_bleeding) | set(self.list_status_debuff_toxic)
         equal_status = set(hero_status_activated) & set_comb
         status_list_for_action = list(equal_status)
         if status_list_for_action:
           self.game.display_battle_info(f"{self.name} drinks Antivenom Potion.")
-          self.game.status_dispeller.dispell_status(status_list_for_action, hero)
+          self.game.status_dispeller.dispell_status(status_list_for_action, self)
           return f"{self.take_healing(actual_healing)}. {self.name}'s poison resistance is boost."
         return f"{self.name} drinks Antivenom Potion. {self.take_healing(actual_healing)}. {self.name}'s poison resistance is boost."
 

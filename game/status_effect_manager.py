@@ -864,7 +864,21 @@ class StatusEffectManager:
                     hero.status['wound_armor_crush'] = False
                     self.game.display_status_updates(f"{BLUE}{hero.name} has recovered from Armor Crush wound. Their agility has returned to {hero.agility}.{RESET}")
 
-
+            # Handle Antivenom Potion Buff
+            if hero.status['antivenom_potion'] and hero.hp > 0:
+                for buff in hero.buffs:
+                    if buff.name == "Antivenom Potion":
+                        buff.duration -= 1
+                        if buff.duration > 0:
+                            self.game.display_status_updates(f"{BLUE}{hero.name}'s Antivenom Potion duration is {buff.duration} rounds. {hero.name}'s poison resistance is boost.{RESET}")
+                        elif buff.duration == 0:
+                            hero.status['antivenom_potion'] = False
+                            if 'antivenom_potion' in hero.poison_resistance_boost_amount:  
+                              hero.poison_resistance = hero.poison_resistance - hero.poison_resistance_boost_amount['antivenom_potion']
+                              del hero.poison_resistance_boost_amount['antivenom_potion']
+                            hero.buffs.remove(buff)
+                            hero.buffs_debuffs_recycle_pool.append(buff)
+                            self.game.display_status_updates(f"{BLUE}{hero.name}'s Antivenom Potion effect has disappeared. {hero.name}'s poison resistance has come back to normal.{RESET}")
 
 
 
