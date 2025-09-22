@@ -313,11 +313,23 @@ class Death_Knight_Blood(Death_Knight):
         self.add_skill(Skill(self, "Cumbrous Axe", self.cumbrous_axe, target_type = "single", skill_type= "damage"))
 
     def blood_plague(self, other_hero):
-        basic_damage = round((self.damage - other_hero.shadow_resistance) * 1/5)
-        variation = random.randint(-1, 1)
-        actual_damage = max(1, basic_damage + variation)
-        blood_drain = round(actual_damage * 0.8)
         results = []
+        # Check if any bleeding  or desease debuff is active on target
+        hero_status_activated = [key for key, value in self.status.items() if value == True]
+        set_comb = set(self.list_status_debuff_bleeding) | set(self.list_status_debuff_disease)
+        equal_status = set(hero_status_activated) & set_comb
+        status_list_for_action = list(equal_status)
+        if status_list_for_action:
+            basic_damage = round((self.damage - other_hero.shadow_resistance) * 1/4)
+            variation = random.randint(-1, 1)
+            actual_damage = max(1, basic_damage + variation)
+            blood_drain = round(actual_damage * 0.8)
+        else:
+            basic_damage = round((self.damage - other_hero.shadow_resistance) * 1/5)
+            variation = random.randint(-1, 1)
+            actual_damage = max(1, basic_damage + variation)
+            blood_drain = round(actual_damage * 0.8)
+        
         
         if not other_hero.status['blood_plague']:
             other_hero.status['blood_plague'] = True
@@ -357,12 +369,13 @@ class Death_Knight_Blood(Death_Knight):
     def crimson_cleave(self, other_hero):
         variation = random.randint(-2, 2)
         basic_damage_weapon = round((self.damage - other_hero.defense) * 1/3)
-        basic_damage_frost = round((self.damage - other_hero.shadow_resistance) * 1/3)
-        basic_damage = basic_damage_weapon + basic_damage_frost
+        basic_damage_shadow = round((self.damage - other_hero.shadow_resistance) * 1/3)
+        basic_damage = basic_damage_weapon + basic_damage_shadow
         actual_damage = max(1, basic_damage + variation)
         if other_hero.status['blood_plague'] == True:
           extra_shadow_damage = random.randint(3, 5)
           actual_damage += extra_shadow_damage
+          blood_drain = round(actual_damage * 0.25)
           accuracy = 100  # Bleeding effect has a 50% chance to succeed
           roll = random.randint(1, 100)  # Simulate a roll of 100-sided dice
           if roll <= accuracy and other_hero.status['bleeding_crimson_cleave'] == False:
@@ -370,7 +383,8 @@ class Death_Knight_Blood(Death_Knight):
             other_hero.status['normal'] = False
             other_hero.bleeding_crimson_cleave_duration = 3
             other_hero.bleeding_crimson_cleave_continuous_damage = random.randint(5, 10)
-            self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Crimson Cleave, {other_hero.name} is bleeding. This attack causes extra {extra_shadow_damage} shadow damage because {other_hero.name} is infected by Blood Plague.")
+            self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Crimson Cleave, {other_hero.name} is bleeding.")
+            self.game.display_battle_info(f"This attack causes extra {extra_shadow_damage} shadow damage because {other_hero.name} is infected by Blood Plague. {self.take_healing(blood_drain)}")
           else:
             self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Crimson Cleave. This attack causes extra {extra_shadow_damage} shadow damage because {other_hero.name} is infected by Blood Plague.")
         else:

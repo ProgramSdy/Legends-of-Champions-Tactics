@@ -600,19 +600,38 @@ class StatusEffectManager:
                         debuff.duration -= 1
                         if debuff.duration > 0:
                             # Apply continuous damage
-                            basic_damage = round((debuff.initiator.damage - hero.shadow_resistance) * 1/5)
-                            variation = random.randint(-1, 1)
-                            actual_damage = max(1, basic_damage + variation)
-                            hero.blood_plague_continuous_damage = round(actual_damage * debuff.effect)
-                            hero.blood_plague_blood_drain = hero.blood_plague_continuous_damage * debuff.effect
+                            hero_status_activated = [key for key, value in hero.status.items() if value == True]
+                            set_comb = set(hero.list_status_debuff_bleeding) | set(hero.list_status_debuff_disease)
+                            equal_status = set(hero_status_activated) & set_comb
+                            status_list_for_action = list(equal_status)
+                            if status_list_for_action:
+                                basic_damage = round((debuff.initiator.damage - hero.shadow_resistance) * 1/3)
+                                variation = random.randint(-1, 1)
+                                actual_damage = max(1, basic_damage + variation)
+                                hero.blood_plague_continuous_damage = round(actual_damage * debuff.effect)
+                                hero.blood_plague_blood_drain = hero.blood_plague_continuous_damage * debuff.effect
+                            else:
+                                basic_damage = round((debuff.initiator.damage - hero.shadow_resistance) * 1/5)
+                                variation = random.randint(-1, 1)
+                                actual_damage = max(1, basic_damage + variation)
+                                hero.blood_plague_continuous_damage = round(actual_damage * debuff.effect)
+                                hero.blood_plague_blood_drain = hero.blood_plague_continuous_damage * debuff.effect
+
                             self.game.display_status_updates(f"{BLUE}{hero.name}'s Blood Plague is {debuff.duration} rounds. {hero.take_damage(hero.blood_plague_continuous_damage)}.{RESET}")
                             if debuff.initiator.hp > 0:
                               self.game.display_status_updates(f"{BLUE}{debuff.initiator.name} is draining blood. {debuff.initiator.take_healing(hero.blood_plague_blood_drain)}{RESET}")
 
-                            # Spread Mechanic (odd rounds)
-                            if debuff.duration == 3 or debuff.duration == 1:  # Spread occurs on odd rounds
+                            # Spread Mechanic
+                            if debuff.duration == 3 or debuff.duration == 1:  
                                 possible_targets = [ally for ally in hero.allies if not ally.status['blood_plague'] and ally is not hero]
-                                definite_targets = [ally for ally in possible_targets if ally.status['bleeding_slash'] or ally.status['bleeding_sharp_blade'] or ally.status['bleeding_crimson_cleave'] ]
+
+                                # Build the debuff set once
+                                debuff_set = set(hero.list_status_debuff_bleeding)
+                                # Collect allies that have at least one active status from this debuff set
+                                definite_targets = [
+                                    ally for ally in possible_targets
+                                    if any(status in debuff_set and ally.status.get(status, False) for status in ally.status)
+                                ]
                                 
                                 if definite_targets:
                                    spread_target = random.choice(definite_targets)
