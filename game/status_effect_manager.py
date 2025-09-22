@@ -601,11 +601,12 @@ class StatusEffectManager:
                         if debuff.duration > 0:
                             # Apply continuous damage
                             hero_status_activated = [key for key, value in hero.status.items() if value == True]
-                            set_comb = set(hero.list_status_debuff_bleeding) | set(hero.list_status_debuff_disease)
+                            set_comb = set(hero.list_status_debuff_bleeding)
                             equal_status = set(hero_status_activated) & set_comb
                             status_list_for_action = list(equal_status)
                             if status_list_for_action:
-                                basic_damage = round((debuff.initiator.damage - hero.shadow_resistance) * 1/3)
+                                print(f"{RED}Debug: Blood Plague synergizes with {status_list_for_action}{RESET}")
+                                basic_damage = round((debuff.initiator.damage - hero.shadow_resistance) * 2/5)
                                 variation = random.randint(-1, 1)
                                 actual_damage = max(1, basic_damage + variation)
                                 hero.blood_plague_continuous_damage = round(actual_damage * debuff.effect)

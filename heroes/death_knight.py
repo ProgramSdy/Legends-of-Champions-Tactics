@@ -315,12 +315,13 @@ class Death_Knight_Blood(Death_Knight):
     def blood_plague(self, other_hero):
         results = []
         # Check if any bleeding  or desease debuff is active on target
-        hero_status_activated = [key for key, value in self.status.items() if value == True]
-        set_comb = set(self.list_status_debuff_bleeding) | set(self.list_status_debuff_disease)
+        hero_status_activated = [key for key, value in other_hero.status.items() if value == True]
+        set_comb = set(self.list_status_debuff_bleeding)
         equal_status = set(hero_status_activated) & set_comb
         status_list_for_action = list(equal_status)
         if status_list_for_action:
-            basic_damage = round((self.damage - other_hero.shadow_resistance) * 1/4)
+            print(f"{RED}Debug: Blood Plague synergizes with {status_list_for_action}{RESET}")
+            basic_damage = round((self.damage - other_hero.shadow_resistance) * 2/5)
             variation = random.randint(-1, 1)
             actual_damage = max(1, basic_damage + variation)
             blood_drain = round(actual_damage * 0.8)
@@ -386,7 +387,7 @@ class Death_Knight_Blood(Death_Knight):
             self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Crimson Cleave, {other_hero.name} is bleeding.")
             self.game.display_battle_info(f"This attack causes extra {extra_shadow_damage} shadow damage because {other_hero.name} is infected by Blood Plague. {self.take_healing(blood_drain)}")
           else:
-            self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Crimson Cleave. This attack causes extra {extra_shadow_damage} shadow damage because {other_hero.name} is infected by Blood Plague.")
+            self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Crimson Cleave. This attack causes extra {extra_shadow_damage} shadow damage because {other_hero.name} is infected by Blood Plague. {self.take_healing(blood_drain)}")
         else:
           accuracy = 100  # Bleeding effect has a 50% chance to succeed
           roll = random.randint(1, 100)  # Simulate a roll of 100-sided dice
