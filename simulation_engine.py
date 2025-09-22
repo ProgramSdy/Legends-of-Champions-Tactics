@@ -70,7 +70,7 @@ class BattleTester_1v1:
         self.sys_init = sys_init
         self.num_battles = num_battles
         self.professions = [
-            Warrior_Comprehensiveness, Warrior_Defence,
+            Warrior_Comprehensiveness, Warrior_Defence, Warrior_Weapon_Master,
             Mage_Comprehensiveness, Mage_Water, Mage_Frost, Mage_Arcane, Mage_Fire, 
             Paladin_Retribution, Paladin_Protection, Paladin_Holy,
             Priest_Comprehensiveness, Priest_Shelter, Priest_Shadow, Priest_Discipline, Priest_Devine,
