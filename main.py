@@ -44,23 +44,23 @@ def main():
     #'''
 
     Player_1 = Death_Knight_Blood(sys_init, "Arthas", "Group_A", True)
-    Player_2 = Warrior_Comprehensiveness(sys_init, "Black Heart", "Group_A", True)
+    Player_2 = Rogue_Assassination(sys_init, "Black Heart", "Group_A", True)
     Player_3 = Warlock_Destruction(sys_init, "Guldan", "Group_A", True)
-    player_heroes = [Player_1]
+    player_heroes = [Player_1, Player_2,]
     #'''
     
 
     # Opponent hero generator__________________________________________
-    '''
-    generator_ai = HeroGenerator(sys_init)
-    opponent_heroes = generator_ai.generate_heroes("Group_B", 1)
-    '''
     #'''
+    generator_ai = HeroGenerator(sys_init)
+    opponent_heroes = generator_ai.generate_heroes("Group_B", 2)
+    #'''
+    '''
     Aldric = Paladin_Retribution(sys_init, "Aldric", "Group_B", False)
     Deep_Seer = Mage_Water(sys_init,"Andonidas", "Group_B", False)
     Rohan = Mage_Water(sys_init, "Gandoff", "Group_B", False)
     opponent_heroes = [Aldric]
-    #'''
+    '''
     # Display heroes from both sides__________________________________________
     '''
     for player_hero in player_heroes:
