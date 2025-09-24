@@ -1077,7 +1077,8 @@ class Hero:
                           damage_skills = [skill for skill in self.skills if skill.target_type == "multi" and skill.skill_type in ["damage", "damage_healing"] and skill.target_qty == 2 and skill.if_cooldown == False]
                           chosen_skill = random.choice(damage_skills) if damage_skills else None
                           chosen_target = [debuff.initiator]
-                          other_opponents = [op for op in opponents if op != debuff.initiator and op.alive]
+                          #print(f"{RED}Debug: }{RESET}")
+                          other_opponents = [op for op in opponents if op != debuff.initiator and op.hp > 0]
                           if other_opponents:
                             chosen_target.append(random.choice(other_opponents))
                         return chosen_skill.execute(chosen_target)

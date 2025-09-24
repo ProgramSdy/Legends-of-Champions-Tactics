@@ -296,7 +296,7 @@ def main():
         battle_tester = BattleTester_1v1(sys_init, num_battles=100)
         battle_tester.run_profession_tests()
     elif mode == "2v2":
-        battle_tester = BattleTester_2v2(sys_init, num_battles=10, allow_duplicates=False)
+        battle_tester = BattleTester_2v2(sys_init, num_battles=30, allow_duplicates=False)
         battle_tester.run_profession_tests()
     else:
         print("Invalid mode. Use '1v1' or '2v2'.")

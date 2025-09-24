@@ -305,7 +305,7 @@ class Warrior_Defence(Warrior):
         for debuff in other_hero.debuffs:
           if debuff.name == "Scoff":
             other_hero.debuffs.remove(debuff)
-            other_hero.buffs_debuffs_recycle_pool.add(debuff)
+            other_hero.buffs_debuffs_recycle_pool.append(debuff)
         for debuff in other_hero.buffs_debuffs_recycle_pool:
           if debuff.name == "Scoff" and debuff.initiator == self:
               other_hero.buffs_debuffs_recycle_pool.remove(debuff)
