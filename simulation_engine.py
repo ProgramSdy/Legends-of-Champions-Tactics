@@ -8,6 +8,9 @@ from system.system_initialization import System_initialization
 from system.game_interface import GameInterface
 import os
 from tqdm import tqdm
+import itertools
+import random
+from multiprocessing import Pool, cpu_count
 
 RED = "\033[91m"
 GREEN = "\033[92m"
@@ -154,7 +157,7 @@ class BattleTester_1v1:
 
         #return overall_results, summary_results
         return None
-
+'''
 class BattleSimulator_2v2:
     def __init__(self, sys_init, allow_duplicates=False):
         self.sys_init = sys_init
@@ -281,7 +284,202 @@ class BattleTester_2v2:
         # --- Print formatted results ---
         self.format_results(overall_results, summary_results)
         return None
+'''
+class BattleSimulator_2v2:
+    def __init__(self, sys_init, allow_duplicates=False):
+        self.sys_init = sys_init
+        self.hero_generator = HeroGenerator(self.sys_init)
+        self.allow_duplicates = allow_duplicates
 
+    def simulate_battle(self, team_A, team_B, num_battles=3):
+        # team_A and team_B are tuples of 2 professions (e.g. (Warrior_Defence, Mage_Fire))
+        name_A = "_".join([p.__name__ for p in team_A])
+        name_B = "_".join([p.__name__ for p in team_B])
+
+        results = {
+            f"{name_A}_Wins": 0,
+            f"{name_B}_Wins": 0,
+            "Draws": 0
+        }
+
+        for _ in range(num_battles):
+            # --- Generate heroes ---
+            group_A_heroes = self.hero_generator.generate_heroes_specific_class("Group_A", list(team_A))
+            group_B_heroes = self.hero_generator.generate_heroes_specific_class("Group_B", list(team_B))
+
+            # --- Initialize game ---
+            game = Game(group_A_heroes, group_B_heroes, mode="simulation")
+            running = True
+            while running:
+                if game.game_state == "game_initialization":
+                    game.game_initialization()
+                elif game.game_state == "round_start":
+                    game.start_round()
+                elif game.game_state == "hero_action":
+                    game.hero_action()
+                elif game.game_state == "round_end":
+                    game.end_round()
+                elif game.game_state == "game_over":
+                    game.game_over()
+                    running = False
+
+            # --- Judge outcome ---
+            alive_groups = game.check_groups_status()
+            if "Group_A" in alive_groups and "Group_B" not in alive_groups:
+                results[f"{name_A}_Wins"] += 1
+            elif "Group_B" in alive_groups and "Group_A" not in alive_groups:
+                results[f"{name_B}_Wins"] += 1
+            else:
+                results["Draws"] += 1
+
+        return results
+
+
+class BattleTester_2v2:
+    def __init__(self, sys_init, num_battles=10, allow_duplicates=False, parallel=True):
+        self.sys_init = sys_init
+        self.num_battles = num_battles
+        self.allow_duplicates = allow_duplicates
+        self.parallel = parallel
+        self.professions = [
+            Warrior_Comprehensiveness, Warrior_Defence, Warrior_Weapon_Master,
+            Mage_Comprehensiveness, Mage_Water, Mage_Frost, Mage_Arcane, Mage_Fire, 
+            Paladin_Retribution, Paladin_Protection, Paladin_Holy,
+            Priest_Comprehensiveness, Priest_Shelter, Priest_Shadow, Priest_Discipline, Priest_Devine,
+            Rogue_Comprehensiveness, Rogue_Assassination, Rogue_Toxicology, 
+            Necromancer_Comprehensiveness, 
+            Warlock_Comprehensiveness, Warlock_Destruction, Warlock_Affliction,
+            Death_Knight_Frost, Death_Knight_Plague, Death_Knight_Blood
+        ]
+
+    # --- Generate all teams ---
+    def generate_teams(self):
+        if self.allow_duplicates:
+            return list(itertools.combinations_with_replacement(self.professions, 2))
+        else:
+            return list(itertools.combinations(self.professions, 2))
+
+    # --- Run group stage ---
+    def run_group_stage(self, group_teams, simulator):
+        standings = { "_".join([p.__name__ for p in team]): {"Total_Wins": 0, "Total_Losses": 0, "Total_Draws": 0}
+                     for team in group_teams }
+
+        for i, team_A in enumerate(group_teams):
+            for team_B in group_teams[i+1:]:
+                results = simulator.simulate_battle(team_A, team_B, self.num_battles)
+                name_A = "_".join([p.__name__ for p in team_A])
+                name_B = "_".join([p.__name__ for p in team_B])
+
+                standings[name_A]["Total_Wins"] += results[f"{name_A}_Wins"]
+                standings[name_A]["Total_Losses"] += results[f"{name_B}_Wins"]
+                standings[name_A]["Total_Draws"] += results["Draws"]
+
+                standings[name_B]["Total_Wins"] += results[f"{name_B}_Wins"]
+                standings[name_B]["Total_Losses"] += results[f"{name_A}_Wins"]
+                standings[name_B]["Total_Draws"] += results["Draws"]
+
+        return standings
+
+    # --- Knockout stage ---
+    def run_knockout(self, qualified_teams, simulator):
+        knockout_results = {}
+
+        while len(qualified_teams) > 1:
+            next_round = []
+            for i in range(0, len(qualified_teams), 2):
+                if i+1 >= len(qualified_teams):
+                    next_round.append(qualified_teams[i])
+                    continue
+
+                team_A = qualified_teams[i]
+                team_B = qualified_teams[i+1]
+                results = simulator.simulate_battle(team_A, team_B, self.num_battles * 2)
+
+                name_A = "_".join([p.__name__ for p in team_A])
+                name_B = "_".join([p.__name__ for p in team_B])
+
+                wins_A = results[f"{name_A}_Wins"]
+                wins_B = results[f"{name_B}_Wins"]
+
+                # store standings
+                if name_A not in knockout_results:
+                    knockout_results[name_A] = {"Total_Wins": 0, "Total_Losses": 0, "Total_Draws": 0}
+                if name_B not in knockout_results:
+                    knockout_results[name_B] = {"Total_Wins": 0, "Total_Losses": 0, "Total_Draws": 0}
+
+                knockout_results[name_A]["Total_Wins"] += wins_A
+                knockout_results[name_A]["Total_Losses"] += wins_B
+                knockout_results[name_A]["Total_Draws"] += results["Draws"]
+
+                knockout_results[name_B]["Total_Wins"] += wins_B
+                knockout_results[name_B]["Total_Losses"] += wins_A
+                knockout_results[name_B]["Total_Draws"] += results["Draws"]
+
+                winner = team_A if wins_A >= wins_B else team_B
+                next_round.append(winner)
+
+                print(f"KO Match: {name_A} vs {name_B} → Winner: {'_'.join([p.__name__ for p in winner])}")
+
+            qualified_teams = next_round
+
+        champion = qualified_teams[0]
+        print(f"\n🏆 Champion: {'_'.join([p.__name__ for p in champion])}\n")
+        return knockout_results
+
+    # --- Format top 40 rankings ---
+    def format_rankings(self, knockout_results):
+        sorted_summary = sorted(knockout_results.items(),
+                                key=lambda x: x[1]["Total_Wins"],
+                                reverse=True)
+
+        print("\n====== Knockout Rankings (Top 40) ======\n")
+        for i, (profession, summary) in enumerate(sorted_summary[:40], start=1):
+            # 🥇🥈🥉 medals
+            if i == 1:
+                rank_marker = f"{YELLOW}🥇{RESET}"
+            elif i == 2:
+                rank_marker = f"{CYAN}🥈{RESET}"
+            elif i == 3:
+                rank_marker = f"{MAGENTA}🥉{RESET}"
+            else:
+                rank_marker = f"{i}."
+
+            print(f"{rank_marker} {profession}:")
+            print(f"  {GREEN}Total Wins:   {summary['Total_Wins']}{RESET}")
+            print(f"  {RED}Total Losses: {summary['Total_Losses']}{RESET}")
+            print(f"  {BLUE}Total Draws:  {summary['Total_Draws']}{RESET}")
+            print("\n--------------------------------------\n")
+
+    # --- Master function ---
+    def run_profession_tests(self, group_size=16, top_n=2):
+        # ✅ create the simulator once (like in 1v1)
+        simulator = BattleSimulator_2v2(self.sys_init, allow_duplicates=self.allow_duplicates)
+
+        teams = self.generate_teams()
+        random.shuffle(teams)
+        groups = [teams[i:i+group_size] for i in range(0, len(teams), group_size)]
+
+        all_standings = {}
+        for g in tqdm(groups, desc="Running group stage"):
+            group_standing = self.run_group_stage(g, simulator)
+            all_standings.update(group_standing)
+
+        # Pick top_n from each group
+        qualified = []
+        for group in groups:
+            # Sort group directly using team objects
+            sorted_group = sorted(
+                group,
+                key=lambda team: all_standings["_".join([p.__name__ for p in team])]["Total_Wins"],
+                reverse=True
+            )
+            for team in sorted_group[:top_n]:
+                qualified.append(team)
+
+
+        print("\n=== Knockout Stage ===\n")
+        knockout_results = self.run_knockout(qualified, simulator)
+        self.format_rankings(knockout_results)
 
 
 def main():
@@ -296,7 +494,7 @@ def main():
         battle_tester = BattleTester_1v1(sys_init, num_battles=100)
         battle_tester.run_profession_tests()
     elif mode == "2v2":
-        battle_tester = BattleTester_2v2(sys_init, num_battles=30, allow_duplicates=False)
+        battle_tester = BattleTester_2v2(sys_init, num_battles=10, allow_duplicates=False)
         battle_tester.run_profession_tests()
     else:
         print("Invalid mode. Use '1v1' or '2v2'.")
