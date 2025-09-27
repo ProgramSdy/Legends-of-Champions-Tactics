@@ -482,3 +482,126 @@ class Warrior_Weapon_Master(Warrior):
 
 
     # Battling Strategy_________________________________________________________
+
+class Warrior_Berserker(Warrior):
+
+    major = "Berserker"
+
+    def __init__(self, sys_init, name, group, is_player_controlled):
+        super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major)
+        self.damage_type = "physical"
+        self.preset_target = None
+        self.blood_frenzy_duration = 0
+        self.blood_frenzy_active = False
+
+        # 技能
+        self.add_skill(Skill(self, "Moon Slash", self.moon_slash, target_type="multi", skill_type="damage", target_qty=2))
+        self.add_skill(Skill(self, "Warlust", self.warlust, target_type="self", skill_type="buffs", target_qty=0))
+        self.add_skill(Skill(self, "Meteor Hammer", self.meteor_hammer, target_type="single", skill_type="damage", capable_interrupt_magic_casting=True))
+
+    # ========== 特殊状态：Blood Frenzy ==========
+    def trigger_blood_frenzy(self):
+        if self.blood_frenzy_active:  # 已经激活就不重复
+            return
+
+        hp_percent = self.hp / self.hp_max
+        roll = random.randint(1, 100)
+
+        if hp_percent <= 0.5 and roll <= 50:
+            activate = True
+        elif hp_percent <= 0.75 and roll <= 75:
+            activate = True
+        elif hp_percent <= 0.9:  # 100% 触发
+            activate = True
+        else:
+            activate = False
+
+        if activate:
+            self.blood_frenzy_active = True
+            self.blood_frenzy_duration = 2
+            self.defense = max(1, int(self.defense * 0.5))  # 降低护甲
+            self.agility += 20  # 提升敏捷
+            self.game.display_battle_info(f"{RED}{self.name} enters Blood Frenzy! Defense halved, Agility boosted, gains lifesteal!{RESET}")
+
+    def blood_frenzy_effect(self, damage_dealt):
+        """每次攻击吸血"""
+        if self.blood_frenzy_active and damage_dealt > 0:
+            heal_amount = int(damage_dealt * 0.3)
+            self.take_healing(heal_amount)
+            self.game.display_battle_info(f"{self.name} drains {heal_amount} HP from Blood Frenzy!")
+
+    # ========== 技能 1：Moon Slash ==========
+    def moon_slash(self, other_heroes):
+        log_messages = []
+        for other_hero in other_heroes[:2]:  # 攻击两个目标
+            variation = random.randint(-3, 3)
+            actual_damage = self.damage + variation
+            damage_dealt = max(actual_damage - other_hero.defense, 0)
+
+            # 判断破甲状态 → 额外流血
+            if other_hero.status['armor_breaker']:
+                other_hero.status['bleeding_moon_slash'] = True
+                other_hero.bleeding_moon_slash_duration = 2
+                other_hero.bleeding_moon_slash_continuous_damage = random.randint(6, 10)
+                log_messages.append(f"{self.name} uses Moon Slash on {other_hero.name}, causing bleeding!")
+
+            log_messages.append(f"{self.name} slashes {other_hero.name} for {damage_dealt} damage.")
+            other_hero.take_damage(damage_dealt)
+            self.blood_frenzy_effect(damage_dealt)
+
+        return " ".join(log_messages)
+
+    # ========== 技能 2：Warlust ==========
+    def warlust(self):
+        atk_buff = 0.3  # +30%
+        lifesteal_bonus = 0
+        duration = 2
+
+        if self.blood_frenzy_active:  # 与 Blood Frenzy 联动
+            atk_buff = 0.5
+            lifesteal_bonus = 0.2
+            self.blood_frenzy_duration += 1  # 延长 1 回合
+
+        for buff in self.buffs_debuffs_recycle_pool:
+            if buff.name == "Warlust" and buff.initiator == self:
+                self.buffs_debuffs_recycle_pool.remove(buff)
+                buff.duration = duration
+                self.add_buff(buff)
+                break
+        else:
+            buff = Buff(name="Warlust", duration=duration, initiator=self, effect={"atk_bonus": atk_buff, "lifesteal_bonus": lifesteal_bonus, "control_immune": True})
+            self.add_buff(buff)
+
+        self.game.display_battle_info(f"{YELLOW}{self.name} activates Warlust! Attack +{int(atk_buff*100)}%, control immunity for {duration} turns.{RESET}")
+        return f"{self.name} is empowered by Warlust!"
+
+    # ========== 技能 3：Meteor Hammer ==========
+    def meteor_hammer(self, other_hero):
+        variation = random.randint(-3, 3)
+        actual_damage = self.damage + variation
+        damage_dealt = max(actual_damage - other_hero.defense, 0)
+
+        # 打断施法
+        if other_hero.status['magic_casting']:
+            result = self.interrupt_magic_casting(other_hero)
+            self.game.display_battle_info(f"{self.name} smashes {other_hero.name} with Meteor Hammer! {result}")
+        else:
+            self.game.display_battle_info(f"{self.name} smashes {other_hero.name} with Meteor Hammer!")
+
+        # 随机触发附加效果
+        roll = random.randint(1, 100)
+        if roll <= 30:
+            other_hero.status['armor_breaker'] = True
+            other_hero.armor_breaker_duration = 2
+            self.game.display_battle_info(f"{other_hero.name} suffers Armor Break from Meteor Hammer!")
+        elif roll <= 60:
+            other_hero.status['weakened'] = True
+            other_hero.weakened_duration = 2
+            other_hero.attack = int(other_hero.attack * 0.8)
+            self.game.display_battle_info(f"{other_hero.name}'s attack is reduced by Meteor Hammer!")
+
+        other_hero.take_damage(damage_dealt)
+        self.blood_frenzy_effect(damage_dealt)
+
+        return f"{self.name} hits {other_hero.name} with Meteor Hammer for {damage_dealt} damage."
+
