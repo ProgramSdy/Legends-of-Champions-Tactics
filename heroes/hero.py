@@ -95,6 +95,8 @@ class Hero:
                               'holy_fire', 'unholy_frenzy', 'holy_infusion', 'hell_flame', 'cumbrous_axe', 'purify_healing', \
                               'shield_of_protection', 'water_arrow', 'glacier', 'anti_magic_shield']
     list_status_buff_physical = ['shadow_evasion', 'vanish']
+    # status debuff control is repeated status with above status
+    list_status_debuff_control = ['shadow_word_insanity','fear', 'glacier','stunned', 'paralyzed','scoff']
 
     def __init__(self, sys_init, name, group, is_player_controlled, major, faculty):
         self.sys_init = sys_init

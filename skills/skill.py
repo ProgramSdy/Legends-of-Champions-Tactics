@@ -13,7 +13,7 @@ CYAN = "\033[96m"
 RESET = "\033[0m"
 
 class Skill:
-    def __init__(self, initiator, name, skill_action, target_type, skill_type, target_qty = 1, capable_interrupt_magic_casting = False, is_instant_skill = True, damage_nature = "NA", damage_type = "NA"):       
+    def __init__(self, initiator, name, skill_action, target_type, skill_type, target_qty = 1, capable_interrupt_magic_casting = False, is_control_skill = False, is_instant_skill = True, damage_nature = "NA", damage_type = "NA"):       
         self.initiator = initiator  # Reference to the hero instance who initiated the skill
         self.name = name            # Name of the skill, e.g., "Fireball"
         self.skill_action = skill_action   # This is a method reference that performs the skill's action
@@ -21,6 +21,7 @@ class Skill:
         self.skill_type = skill_type  # Indicates the skill type ("damage" or "healing" or "damage_healing"or "effect")
         self.target_qty = target_qty  # Number of targets for the skill
         self.capable_interrupt_magic_casting = capable_interrupt_magic_casting  # Flag to indicate if the skill can interrupt magic casting
+        self.is_control_skill = is_control_skill  # Flag to indicate if the skill is a control skill
         self.is_instant_skill = is_instant_skill  # Flag to indicate if the skill is instant
         self.if_cooldown = False  # Flag to indicate if the skill is on cooldown
         self.cooldown = 0  # Skill cooldown in rounds
@@ -28,6 +29,7 @@ class Skill:
         self.immunity_condition_all = ['shield_of_protection', 'glacier']
         self.immunity_condition_physical = []
         self.immunity_condition_magical = ['anti_magic_shield']
+        self.immunity_condition_control = ['warlust']
         self.active_state = None
         self.damage_nature = damage_nature
         self.damage_type = damage_type
@@ -55,6 +57,14 @@ class Skill:
                 self.active_state = state
                 return True
         return False
+    
+    def immunity_condition_control_check(self, opponent):
+        # Check for immunity to control effects
+        for state in getattr(self, 'immunity_condition_control', []):
+            if opponent.status[state] is True:
+                self.active_state = state
+                return True
+        return False
 
     def evasion_check(self, opponent):
         # Calculate the chance to evade based on agility;
@@ -78,6 +88,7 @@ class Skill:
             "immunity_condition_all": [],
             "immunity_condition_physical": [],
             "immunity_condition_magical": [],
+            "immunity_condition_control": [],
             "dead": []
         }
         for target in targets:
@@ -95,6 +106,9 @@ class Skill:
                 continue
             if self.immunity_condition_magical_check(target):
                 outcomes["immunity_condition_magical"].append(target)
+                continue
+            if self.immunity_condition_control_check(target):
+                outcomes["immunity_condition_control"].append(target)
                 continue
             outcomes["hit"].append(target)
         return outcomes
@@ -127,6 +141,8 @@ class Skill:
             immune_phy = outcomes["immunity_condition_physical"]
           if self.damage_nature == "magical":
             immune_mag = outcomes["immunity_condition_magical"]
+          if self.is_control_skill == True:
+            immune_ctrl = outcomes["immunity_condition_control"]
           dead = outcomes["dead"]
 
           if self.target_type == "multi": # Manage multi-targets damage skill
@@ -158,6 +174,9 @@ class Skill:
               if immune_mag:
                 target_names = ', '.join([t.name for t in immune_mag])
                 result_message += f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immuned to magical effect. \n"
+              if immune_ctrl:
+                target_names = ', '.join([t.name for t in immune_ctrl])
+                result_message += f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immuned to control effect. \n"
               
               # Special Condition Cool down skills
               if self.name == "Icy Squall":
@@ -188,6 +207,9 @@ class Skill:
               if immune_mag:
                 target_names = ', '.join([t.name for t in immune_mag])
                 result_message += f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immuned to magical effect. \n"
+              if immune_ctrl:
+                target_names = ', '.join([t.name for t in immune_ctrl])
+                result_message += f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immuned to control effect. \n"
               if result_message:
                 self.initiator.game.display_battle_info(result_message)
               return self.skill_action(hits)
@@ -209,6 +231,9 @@ class Skill:
                 if immune_mag:
                   target_names = ', '.join([t.name for t in immune_mag])
                   result_message = f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immunes to magical effect."
+                if immune_ctrl:
+                  target_names = ', '.join([t.name for t in immune_ctrl])
+                  result_message += f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immuned to control effect."
                 
                 # Special Condition
                 if self.initiator.status['magic_casting'] == True:

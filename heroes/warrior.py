@@ -532,47 +532,41 @@ class Warrior_Berserker(Warrior):
 
     # ========== 技能 1：Moon Slash ==========
     def moon_slash(self, other_heroes):
-        log_messages = []
-        for other_hero in other_heroes[:2]:  # 攻击两个目标
-            variation = random.randint(-3, 3)
-            actual_damage = self.damage + variation
-            damage_dealt = max(actual_damage - other_hero.defense, 0)
+        if not isinstance(other_heroes, list):
+          other_heroes = [other_heroes]
+        results = []
+        variation = random.randint(-3, 3)
+        actual_damage = self.damage + variation
+        selected_opponents = other_heroes
+        for opponent in selected_opponents:
+            damage_dealt = math.ceil((actual_damage - opponent.defence) * 2/3)
+            damage_dealt = max(damage_dealt, 1)
+            self.game.display_battle_info(f"{self.name} uses Moon Slash at {opponent.name}.")
+            results.append(opponent.take_damage(damage_dealt))
+            if opponent.status['armor_breaker']:
+                opponent.status['bleeding_moon_slash'] = True
+                opponent.bleeding_moon_slash_duration = 2
+                opponent.bleeding_moon_slash_continuous_damage = random.randint(6, 10)
+                results.append(f"{opponent.name} is bleeding!")
+        return "\n".join(results)
 
-            # 判断破甲状态 → 额外流血
-            if other_hero.status['armor_breaker']:
-                other_hero.status['bleeding_moon_slash'] = True
-                other_hero.bleeding_moon_slash_duration = 2
-                other_hero.bleeding_moon_slash_continuous_damage = random.randint(6, 10)
-                log_messages.append(f"{self.name} uses Moon Slash on {other_hero.name}, causing bleeding!")
-
-            log_messages.append(f"{self.name} slashes {other_hero.name} for {damage_dealt} damage.")
-            other_hero.take_damage(damage_dealt)
-            self.blood_frenzy_effect(damage_dealt)
-
-        return " ".join(log_messages)
 
     # ========== 技能 2：Warlust ==========
     def warlust(self):
-        atk_buff = 0.3  # +30%
-        lifesteal_bonus = 0
-        duration = 2
+        hero_status_activated = [key for key, value in self.status.items() if value == True]
+        set_comb = set(self.list_status_debuff_control)  
+        equal_status = set(hero_status_activated) & set_comb
+        status_list_for_action = list(equal_status)
+        self.game.display_battle_info(f"{self.name} uses Shield of Protection.")
+        self.game.status_dispeller.dispell_status(status_list_for_action, self)
 
-        if self.blood_frenzy_active:  # 与 Blood Frenzy 联动
-            atk_buff = 0.5
-            lifesteal_bonus = 0.2
-            self.blood_frenzy_duration += 1  # 延长 1 回合
-
-        for buff in self.buffs_debuffs_recycle_pool:
-            if buff.name == "Warlust" and buff.initiator == self:
-                self.buffs_debuffs_recycle_pool.remove(buff)
-                buff.duration = duration
-                self.add_buff(buff)
-                break
-        else:
-            buff = Buff(name="Warlust", duration=duration, initiator=self, effect={"atk_bonus": atk_buff, "lifesteal_bonus": lifesteal_bonus, "control_immune": True})
-            self.add_buff(buff)
-
-        self.game.display_battle_info(f"{YELLOW}{self.name} activates Warlust! Attack +{int(atk_buff*100)}%, control immunity for {duration} turns.{RESET}")
+        if self.status['warlust'] == False:
+            self.status['warlust'] = True
+        self.warlust_duration = 2
+        for skill in self.skills:
+            if skill.name == "Warlust":
+              skill.if_cooldown = True
+              skill.cooldown = 3
         return f"{self.name} is empowered by Warlust!"
 
     # ========== 技能 3：Meteor Hammer ==========
