@@ -481,6 +481,115 @@ class BattleTester_2v2:
         knockout_results = self.run_knockout(qualified, simulator)
         self.format_rankings(knockout_results)
 
+class BattleSimulator_3v3:
+    def __init__(self, sys_init, allow_duplicates=False):
+        self.sys_init = sys_init
+        self.hero_generator = HeroGenerator(self.sys_init)
+        self.allow_duplicates = allow_duplicates
+
+    def simulate_battle(self, team_A, team_B, num_battles=3):
+        # team_A and team_B are tuples of 3 professions
+        name_A = "_".join([p.__name__ for p in team_A])
+        name_B = "_".join([p.__name__ for p in team_B])
+
+        results = {
+            f"{name_A}_Wins": 0,
+            f"{name_B}_Wins": 0,
+            "Draws": 0
+        }
+
+        for i, _ in enumerate(range(num_battles), start=1):
+            # 🟢 DEBUG: show which matchup is running
+            print(f"[DEBUG] Battle {i}/{num_battles}: {name_A} vs {name_B}")
+
+            group_A_heroes = self.hero_generator.generate_heroes_specific_class("Group_A", list(team_A))
+            group_B_heroes = self.hero_generator.generate_heroes_specific_class("Group_B", list(team_B))
+
+            game = Game(group_A_heroes, group_B_heroes, mode="simulation")
+            running = True
+            while running:
+                if game.game_state == "game_initialization":
+                    game.game_initialization()
+                elif game.game_state == "round_start":
+                    game.start_round()
+                elif game.game_state == "hero_action":
+                    game.hero_action()
+                elif game.game_state == "round_end":
+                    game.end_round()
+                elif game.game_state == "game_over":
+                    game.game_over()
+                    running = False
+
+            alive_groups = game.check_groups_status()
+            if "Group_A" in alive_groups and "Group_B" not in alive_groups:
+                results[f"{name_A}_Wins"] += 1
+            elif "Group_B" in alive_groups and "Group_A" not in alive_groups:
+                results[f"{name_B}_Wins"] += 1
+            else:
+                results["Draws"] += 1
+
+        return results
+
+
+class BattleTester_3v3:
+    def __init__(self, sys_init, num_battles=5, allow_duplicates=False):
+        self.sys_init = sys_init
+        self.num_battles = num_battles
+        self.allow_duplicates = allow_duplicates
+        self.professions = [
+            Warrior_Comprehensiveness, Warrior_Defence, Warrior_Weapon_Master,
+            Mage_Comprehensiveness, Mage_Water, Mage_Frost, Mage_Arcane, Mage_Fire, 
+            Paladin_Retribution, Paladin_Protection, Paladin_Holy,
+            Priest_Comprehensiveness, Priest_Shelter, Priest_Shadow, Priest_Discipline, Priest_Devine,
+            Rogue_Comprehensiveness, Rogue_Assassination, Rogue_Toxicology, 
+            Necromancer_Comprehensiveness, 
+            Warlock_Comprehensiveness, Warlock_Destruction, Warlock_Affliction,
+            Death_Knight_Frost, Death_Knight_Plague, Death_Knight_Blood
+        ]
+
+    def generate_teams(self):
+        if self.allow_duplicates:
+            return list(itertools.combinations_with_replacement(self.professions, 3))
+        else:
+            return list(itertools.combinations(self.professions, 3))
+
+    def run_profession_tests(self, group_size=16, top_n=2):
+        simulator = BattleSimulator_3v3(self.sys_init, allow_duplicates=self.allow_duplicates)
+        teams = self.generate_teams()
+        random.shuffle(teams)
+        groups = [teams[i:i+group_size] for i in range(0, len(teams), group_size)]
+
+        all_standings = {}
+        for g in tqdm(groups, desc="Running 3v3 group stage"):
+            group_standing = {}
+            for i, team_A in enumerate(g):
+                for team_B in g[i+1:]:
+                    results = simulator.simulate_battle(team_A, team_B, self.num_battles)
+                    name_A = "_".join([p.__name__ for p in team_A])
+                    name_B = "_".join([p.__name__ for p in team_B])
+
+                    if name_A not in group_standing:
+                        group_standing[name_A] = {"Total_Wins": 0, "Total_Losses": 0, "Total_Draws": 0}
+                    if name_B not in group_standing:
+                        group_standing[name_B] = {"Total_Wins": 0, "Total_Losses": 0, "Total_Draws": 0}
+
+                    group_standing[name_A]["Total_Wins"] += results[f"{name_A}_Wins"]
+                    group_standing[name_A]["Total_Losses"] += results[f"{name_B}_Wins"]
+                    group_standing[name_A]["Total_Draws"] += results["Draws"]
+
+                    group_standing[name_B]["Total_Wins"] += results[f"{name_B}_Wins"]
+                    group_standing[name_B]["Total_Losses"] += results[f"{name_A}_Wins"]
+                    group_standing[name_B]["Total_Draws"] += results["Draws"]
+
+            all_standings.update(group_standing)
+
+        # Print quick summary
+        print("\n====== 3v3 Summary (Top 20 by Wins) ======\n")
+        sorted_summary = sorted(all_standings.items(), key=lambda x: x[1]["Total_Wins"], reverse=True)
+        for i, (team, summary) in enumerate(sorted_summary[:20], start=1):
+            print(f"{i}. {team}: W={summary['Total_Wins']} L={summary['Total_Losses']} D={summary['Total_Draws']}")
+
+
 
 def main():
     sys_init = System_initialization()
@@ -491,13 +600,16 @@ def main():
     mode = sys.argv[1] if len(sys.argv) > 1 else "1v1"
 
     if mode == "1v1":
-        battle_tester = BattleTester_1v1(sys_init, num_battles=100)
+        battle_tester = BattleTester_1v1(sys_init, num_battles=20)
         battle_tester.run_profession_tests()
     elif mode == "2v2":
         battle_tester = BattleTester_2v2(sys_init, num_battles=10, allow_duplicates=False)
         battle_tester.run_profession_tests()
+    elif mode == "3v3":
+        battle_tester = BattleTester_3v3(sys_init, num_battles=5, allow_duplicates=False)
+        battle_tester.run_profession_tests()
     else:
-        print("Invalid mode. Use '1v1' or '2v2'.")
+        print("Invalid mode. Use '1v1', '2v2', or '3v3'.")
 
 
 

@@ -57,9 +57,9 @@ class Necromancer_Comprehensiveness(Necromancer):
         return f"{self.name} uses Command Skeleton and summons a Skeleton Warrior in the battle field."
 
     def life_drain(self, other_hero):
-        variation = random.randint(-5, 0)
+        variation = random.randint(-2, 2)
         actual_damage = self.damage + variation
-        damage_dealt = actual_damage - other_hero.death_resistance
+        damage_dealt = math.ceil((actual_damage - other_hero.death_resistance) * 3/4)
         damage_dealt = max(damage_dealt, 0)
 
         if other_hero.status['holy_word_shell'] == True:

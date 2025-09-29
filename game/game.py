@@ -30,7 +30,7 @@ class Game:
         self.groups_hero = {}
         self.winner = []
         self.round_counter = 1
-        self.round_counter_max = 30
+        self.round_counter_max = 15
         self.output_buffer = []
         self.interface = interface  # New addition to hold GameInterface instance
         self.status_manager = StatusEffectManager(self)  # Instantiate the status manager
@@ -45,7 +45,11 @@ class Game:
 
 
     def clear_screen(self):
-        os.system('cls')
+        if self.mode =="manual":
+          os.system('cls')
+        elif self.mode == "simulation":
+          pass
+        
     
     def register_observer(self, observer):
         """Add an observer to the list."""

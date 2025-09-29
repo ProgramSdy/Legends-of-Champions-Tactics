@@ -320,7 +320,7 @@ class Death_Knight_Blood(Death_Knight):
         equal_status = set(hero_status_activated) & set_comb
         status_list_for_action = list(equal_status)
         if status_list_for_action:
-            print(f"{RED}Debug: Blood Plague synergizes with {status_list_for_action}{RESET}")
+            #print(f"{RED}Debug: Blood Plague synergizes with {status_list_for_action}{RESET}")
             basic_damage = round((self.damage - other_hero.shadow_resistance) * 2/5)
             variation = random.randint(-1, 1)
             actual_damage = max(1, basic_damage + variation)

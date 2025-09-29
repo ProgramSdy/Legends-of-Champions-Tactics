@@ -137,6 +137,7 @@ class Skill:
           immune_all = outcomes["immunity_condition_all"]
           immune_phy = []
           immune_mag = []
+          immune_ctrl = []
           if self.damage_nature == "physical":
             immune_phy = outcomes["immunity_condition_physical"]
           if self.damage_nature == "magical":
@@ -316,8 +317,8 @@ class Skill:
                   result_message +=  f"Holy light showers {self.initiator.name}. {self.initiator.take_healing(actual_healing)}."
                 if result_message:
                  return result_message
-                else:
-                   print(f"{RED}Debug Skill: skill name = {self.name}{RESET}")
+                #else:
+                   #print(f"{RED}Debug Skill: skill name = {self.name}{RESET}")
               else:
                 return self.skill_action(hits[0])
 

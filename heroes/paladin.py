@@ -442,13 +442,13 @@ class Paladin_Holy(Paladin):
         variation = random.randint(-2, 3)
         actual_damage = basic_damage + variation
         for i, opponent in enumerate(other_heros):
-          print(f"i = {i}")
+          #print(f"i = {i}")
           if i == 0:
               damage_multiplier = 3 / 3  # 100% damage for the first target
           else:
               damage_multiplier = 2 / 3  # 66.67% damage for subsequent targets
           damage = math.ceil(actual_damage * damage_multiplier)
-          print(f"damage = {damage}")
+          #print(f"damage = {damage}")
           self.game.display_battle_info(f"{self.name} casts Holy Blast at {opponent.name}.")
           results.append(opponent.take_damage(damage))
         return "\n".join(results)
