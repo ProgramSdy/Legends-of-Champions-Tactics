@@ -530,7 +530,8 @@ class Warrior_Berserker(Warrior):
             self.take_healing(heal_amount)
             self.game.display_battle_info(f"{self.name} drains {heal_amount} HP from Blood Frenzy!")
 
-    # ========== 技能 1：Moon Slash ==========
+    # ========== 技能 1：Moon Slash ========== 
+    # attack 2 targets, cause bleeding if target is armor broken
     def moon_slash(self, other_heroes):
         if not isinstance(other_heroes, list):
           other_heroes = [other_heroes]
@@ -543,6 +544,9 @@ class Warrior_Berserker(Warrior):
             damage_dealt = max(damage_dealt, 1)
             self.game.display_battle_info(f"{self.name} uses Moon Slash at {opponent.name}.")
             results.append(opponent.take_damage(damage_dealt))
+            if self.status['blood_frenzy']:
+               blood_drain = int(damage_dealt * 0.3)
+               results.append(f"{self.name} is draining blood due to Blood Frenzy. {self.take_healing(blood_drain)}")
             if opponent.status['armor_breaker']:
                 opponent.status['bleeding_moon_slash'] = True
                 opponent.bleeding_moon_slash_duration = 2
@@ -552,25 +556,31 @@ class Warrior_Berserker(Warrior):
 
 
     # ========== 技能 2：Warlust ==========
+    # Remove and then immune control type debuffs and gain damage increasement buff
     def warlust(self):
         hero_status_activated = [key for key, value in self.status.items() if value == True]
         set_comb = set(self.list_status_debuff_control)  
         equal_status = set(hero_status_activated) & set_comb
         status_list_for_action = list(equal_status)
-        self.game.display_battle_info(f"{self.name} uses Shield of Protection.")
+        self.game.display_battle_info(f"{self.name} is empowered by Warlust.")
         self.game.status_dispeller.dispell_status(status_list_for_action, self)
 
         if self.status['warlust'] == False:
             self.status['warlust'] = True
         self.warlust_duration = 2
+        damage_before_increasing = self.damage # damage increase
+        self.damage_increased_amount_by_warlust = round(self.original_damage * (1/3))  # Increase hero's damage by 30%
+        self.damage = self.damage + self.damage_increased_amount_by_warlust
+
         for skill in self.skills:
             if skill.name == "Warlust":
               skill.if_cooldown = True
               skill.cooldown = 3
-        return f"{self.name} is empowered by Warlust!"
+        return f"{self.name} is immune to any control skill! {self.name}'s damage increased from {damage_before_increasing} to {self.damage}."
 
-    # ========== 技能 3：Meteor Hammer ==========
-    def meteor_hammer(self, other_hero):
+    # ========== 技能 3：Hammer of Meteorite ==========
+    # Attack single target, chance to cause armor break or weaken, interrupt magic casting
+    def hammer_of_meteorite(self, other_hero):
         variation = random.randint(-3, 3)
         actual_damage = self.damage + variation
         damage_dealt = max(actual_damage - other_hero.defense, 0)
@@ -578,24 +588,39 @@ class Warrior_Berserker(Warrior):
         # 打断施法
         if other_hero.status['magic_casting']:
             result = self.interrupt_magic_casting(other_hero)
-            self.game.display_battle_info(f"{self.name} smashes {other_hero.name} with Meteor Hammer! {result}")
+            self.game.display_battle_info(f"{self.name} smashes {other_hero.name} with Hammer of the Meteorite! {result}")
         else:
-            self.game.display_battle_info(f"{self.name} smashes {other_hero.name} with Meteor Hammer!")
+            self.game.display_battle_info(f"{self.name} smashes {other_hero.name} with Hammer of the Meteorite!")
 
         # 随机触发附加效果
         roll = random.randint(1, 100)
         if roll <= 30:
-            other_hero.status['armor_breaker'] = True
-            other_hero.armor_breaker_duration = 2
-            self.game.display_battle_info(f"{other_hero.name} suffers Armor Break from Meteor Hammer!")
-        elif roll <= 60:
-            other_hero.status['weakened'] = True
-            other_hero.weakened_duration = 2
-            other_hero.attack = int(other_hero.attack * 0.8)
-            self.game.display_battle_info(f"{other_hero.name}'s attack is reduced by Meteor Hammer!")
+            if other_hero.status['armor_breaker'] == True:
+              if other_hero.armor_breaker_stacks < 3:
+                  defense_before_reducing = other_hero.defense
+                  defense_reduced_amount_by_armor_breaker_single = math.ceil(other_hero.original_defense * 0.15)  # Reduce target's defense by 15%
+                  other_hero.defense_reduced_amount_by_armor_breaker = other_hero.defense_reduced_amount_by_armor_breaker + defense_reduced_amount_by_armor_breaker_single  # Reduce target's defense by 15%
+                  other_hero.defense = other_hero.defense - defense_reduced_amount_by_armor_breaker_single  # Reduce target's defense by 15%
+                  other_hero.armor_breaker_stacks += 1
+                  other_hero.armor_breaker_duration = 2  # Effect lasts for 2 rounds
+                  self.game.display_battle_info(f"{other_hero.name} suffers Armor Break from Hammer of the Meteorite!, their defense reduce from {defense_before_reducing} to {other_hero.defense}.")
+              else:
+                  other_hero.armor_breaker_duration = 2  # Refresh armor breaker effect
+                  self.game.display_battle_info(f"{other_hero.name} suffers Armor Break from Hammer of the Meteorite!, but their Armor Breaker effect cannot be further stacked. Armor Breaker duration refreshed")
+            else:
+              other_hero.status['armor_breaker'] = True
+              defense_before_reducing = other_hero.defense
+              defense_reduced_amount_by_armor_breaker_single = math.ceil(other_hero.original_defense * 0.15)  # Reduce target's defense by 15%
+              other_hero.defense_reduced_amount_by_armor_breaker = other_hero.defense_reduced_amount_by_armor_breaker + defense_reduced_amount_by_armor_breaker_single  # Reduce target's defense by 15%
+              other_hero.defense = other_hero.defense - defense_reduced_amount_by_armor_breaker_single  # Reduce target's defense by 15%
+              other_hero.armor_breaker_stacks += 1
+              other_hero.armor_breaker_duration = 2  # Effect lasts for 2 rounds
+              self.game.display_battle_info(f"{other_hero.name} suffers Armor Break from Hammer of the Meteorite, their defense reduce from {defense_before_reducing} to {other_hero.defense}.")
 
-        other_hero.take_damage(damage_dealt)
-        self.blood_frenzy_effect(damage_dealt)
-
-        return f"{self.name} hits {other_hero.name} with Meteor Hammer for {damage_dealt} damage."
+        if self.status['blood_frenzy']:
+               blood_drain = int(damage_dealt * 0.3)
+               self.game.display_battle_info(f"{self.name} is draining blood due to Blood Frenzy. {self.take_healing(blood_drain)}")
+               return other_hero.take_damage(damage_dealt)
+        else:
+          return other_hero.take_damage(damage_dealt)
 

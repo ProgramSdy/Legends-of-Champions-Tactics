@@ -83,7 +83,9 @@ class Hero:
         'bleeding_armor_crush': False,
         'wound_armor_crush': False,
         'antivenom_potion': False,
-        'warlust': False
+        'bleeding_moon_slash': False,
+        'warlust': False,
+        'blood_frenzy': False
     }
     list_status_debuff_magic = ['shadow_word_pain', 'cold', 'holy_word_punishment', \
                                 'shadow_word_insanity', 'unholy_frenzy', 'curse_of_agony', 'fear', 'shadow_bolt', \
@@ -91,11 +93,11 @@ class Hero:
     list_status_debuff_disease = ['frost_fever', 'necrotic_decay', 'virulent_infection', 'blood_plague']
     list_status_debuff_toxic = ['poisoned_dagger', 'paralyze_blade', 'mixed_venom', 'acid_bomb', 'unstable_compound']                     
     list_status_debuff_physical  = ['armor_breaker', 'scoff', 'hammer_of_revenge', 'stunned', 'paralyzed', 'fatal_strike', 'wound_armor_crush']
-    list_status_debuff_bleeding = ['bleeding_slash','bleeding_sharp_blade', 'bleeding_crimson_cleave', 'wound_backstab', 'bleeding_armor_crush']
+    list_status_debuff_bleeding = ['bleeding_moon_slash','bleeding_sharp_blade', 'bleeding_crimson_cleave', 'wound_backstab', 'bleeding_armor_crush']
     list_status_buff_magic = ['shield_of_righteous','wrath_of_crusader','holy_word_shell','holy_word_redemption', \
                               'holy_fire', 'unholy_frenzy', 'holy_infusion', 'hell_flame', 'cumbrous_axe', 'purify_healing', \
                               'shield_of_protection', 'water_arrow', 'glacier', 'anti_magic_shield']
-    list_status_buff_physical = ['shadow_evasion', 'vanish']
+    list_status_buff_physical = ['shadow_evasion', 'vanish','warlust','blood_frenzy']
     # status debuff control is repeated status with above status
     list_status_debuff_control = ['shadow_word_insanity','fear', 'glacier','stunned', 'paralyzed','scoff']
 
@@ -203,6 +205,7 @@ class Hero:
         self.unstable_compound_debuff_duration = 0
         self.bleeding_armor_crush_duration = 0
         self.wound_armor_crush_duration = 0
+        self.warlust_duration = 0
                        
 
         self.armor_breaker_stacks = 0 # Track number of Armor Breaker applications
@@ -259,6 +262,7 @@ class Hero:
         self.fire_resistance_reduced_amount_by_scorchbrand = 0
         self.bleeding_armor_crush_continuous_damage = 0
         self.agility_reduced_amount_by_wound_armor_crush = 0
+        self.damage_increased_amount_by_warlust = 0
 
 
     @classmethod
@@ -567,6 +571,11 @@ class Hero:
           return results
 
     def take_damage(self, damage_dealt):
+      is_ally_priest_devine = False
+      for ally in self.allies:
+        if ally.major == "Devine" and not ally.status['holy_infusion'] and ally.holy_infusion_cooldown == 0:
+          ally_priest_devine = ally
+          is_ally_priest_devine = True
       #Check if void connection is activated
       if self.status['void_connection'] == True and self.summoned_unit != None and self.summoned_unit.hp > 0:
         results = []
@@ -585,6 +594,53 @@ class Hero:
           results.append(result_defeated_1)
           results.append(result_defeated_2)
           return "\n".join(results)
+      #Check if self is a warrior_berserker
+      elif self.major == "Berserker":
+          results = []
+          results.append(self.take_damage_action(damage_dealt))
+          result_defeated_1 = self.check_if_defeated()
+          hp_percent = self.hp / self.hp_max
+          roll = random.randint(1, 100)
+          if hp_percent <= 0.5 and roll <= 50:
+              blood_frenzy_activate = True
+          elif hp_percent <= 0.25 and roll <= 75:
+              blood_frenzy_activate = True
+          elif hp_percent <= 0.1:  # 100% 触发
+              blood_frenzy_activate = True
+          else:
+              blood_frenzy_activate = False
+
+          if result_defeated_1 == "0":
+            if blood_frenzy_activate:
+              self.status['blood_frenzy'] == True
+              self.blood_frenzy_duration = 2
+              agility_before_increasing = self.agility # agility increase
+              self.agility_increased_amount_by_blood_frenzy = 20  # Increase hero's agility by 20
+              self.agility += self.agility_increased_amount_by_blood_frenzy
+              defence_before_decreasing = self.defence # defense decrease
+              self.defense_decreased_amount_by_blood_frenzy = round(self.defense / 2)
+              self.defense = max(0, self.defense - self.defense_decreased_amount_by_blood_frenzy)
+              results.append(f"{RED}{self.name} enters Blood Frenzy Status! Defense halved, Agility boosted, gains lifesteal!{RESET}")
+              return "\n".join(results)
+            else:
+              return "".join(results)
+          else:
+            results.append(result_defeated_1)
+            return "\n".join(results)
+      #Check if self is a priest_devine
+      elif is_ally_priest_devine:
+          results = []
+          results.append(self.take_damage_action(damage_dealt))
+          result_defeated_1 = self.check_if_defeated()
+          if result_defeated_1 == "0":
+            if self.hp <= self.hp_max *0.35:
+              ally_priest_devine.status['holy_infusion'] = True
+              ally_priest_devine.holy_infusion_cooldown = 4  # Set cooldown for Holy Infusion
+              results.append(f"{YELLOW}{self.name} is in danger, {ally_priest_devine.name} enters Holy Infusion state! their next Powerful Healing becomes instant.{RESET}")
+            return "\n".join(results)
+          else:
+            results.append(result_defeated_1)
+            return "\n".join(results)
       else: # normal sitation
           results = []
           results.append(self.take_damage_action(damage_dealt))

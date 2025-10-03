@@ -769,83 +769,26 @@ class Priest_Devine(Priest):
     def holy_fire(self, other_hero, target_type):
       healing_amount_base = 13
       variation = random.randint(-2, 2)
-
-      # Check for Holy Infusion chance
-      if self.hp <= 0.50 * self.hp_max and not self.status['holy_infusion'] and self.holy_infusion_cooldown == 0:
-        accuracy = 90  # 90% chance activating Holy Infusion
-        roll = random.randint(1, 100)  # Simulate a roll of 100-sided dice
-        if roll <= accuracy:
-          self.status['holy_infusion'] = True
-          self.holy_infusion_cooldown = 4  # Set cooldown for Holy Infusion
-          results  = []
-          if target_type == "ally": # healing effect
-            if other_hero.status['holy_fire'] == False:
-              other_hero.status['holy_fire'] = True
-              other_hero.holy_fire_duration = 2
-              healing_amount = healing_amount_base + variation
-              other_hero.holy_fire_continuous_healing = round(healing_amount * 0.7)
-              self.game.display_battle_info(f"{self.name} casts Holy Fire on {other_hero.name}. {other_hero.name} is receiving continuous healing.")
-              results.append(other_hero.take_healing(healing_amount))
-              results.append(f"{YELLOW}Facing the critical situation, {self.name} enters Holy Infusion state! their next Powerful Healing becomes instant.{RESET}")
-              return "\n".join(results)
-            else:
-              healing_amount = healing_amount_base + variation
-              other_hero.holy_fire_duration = 2
-              self.game.display_battle_info(f"{self.name} casts Holy Fire on {other_hero.name}.")
-              results.append(other_hero.take_healing(healing_amount))
-              results.append(f"{YELLOW}Facing the critical situation, {self.name} enters Holy Infusion state! their next Powerful Healing becomes instant.{RESET}")
-              return "\n".join(results)
-          elif target_type =="opponent": # damage effect
-            variation = random.randint(-2, 2)
-            actual_damage = healing_amount_base + variation
-            damage_dealt = actual_damage #damage discard opponent's defense
-            damage_dealt = max(damage_dealt, 0) # Ensure damage dealt is at least 0
-            self.game.display_battle_info(f"{self.name} casts Holy Fire at {other_hero.name}.")
-            results.append(f"{other_hero.take_damage(damage_dealt)}")
-            results.append(f"{YELLOW}Facing the critical situation, {self.name} enters Holy Infusion state! their next Powerful Healing becomes instant.{RESET}")
-            return "\n".join(results)
+      if target_type == "ally": # healing effect
+        if other_hero.status['holy_fire'] == False:
+          other_hero.status['holy_fire'] = True
+          other_hero.holy_fire_duration = 2
+          healing_amount = healing_amount_base + variation
+          other_hero.holy_fire_continuous_healing = round(healing_amount * 0.7)
+          self.game.display_battle_info(f"{self.name} casts Holy Fire on {other_hero.name}. {other_hero.name} is receiving continuous healing.")
+          return other_hero.take_healing(healing_amount)
         else:
-          if target_type == "ally": # healing effect
-            if other_hero.status['holy_fire'] == False:
-              other_hero.status['holy_fire'] = True
-              other_hero.holy_fire_duration = 2
-              healing_amount = healing_amount_base + variation
-              other_hero.holy_fire_continuous_healing = round(healing_amount * 0.7)
-              self.game.display_battle_info(f"{self.name} casts Holy Fire on {other_hero.name}. {other_hero.name} is receiving continuous healing.")
-              return other_hero.take_healing(healing_amount)
-            else:
-              healing_amount = healing_amount_base + variation
-              other_hero.holy_fire_duration = 2
-              self.game.display_battle_info(f"{self.name} casts Holy Fire on {other_hero.name}.")
-              return other_hero.take_healing(healing_amount)
-          elif target_type =="opponent": # damage effect
-            variation = random.randint(-2, 2)
-            actual_damage = healing_amount_base + variation
-            damage_dealt = actual_damage #damage discard opponent's defense
-            damage_dealt = max(damage_dealt, 0) # Ensure damage dealt is at least 0
-            self.game.display_battle_info(f"{self.name} casts Holy Fire at {other_hero.name}.")
-            return f"{other_hero.take_damage(damage_dealt)}"
-      else:
-        if target_type == "ally": # healing effect
-          if other_hero.status['holy_fire'] == False:
-            other_hero.status['holy_fire'] = True
-            other_hero.holy_fire_duration = 2
-            healing_amount = healing_amount_base + variation
-            other_hero.holy_fire_continuous_healing = round(healing_amount * 0.7)
-            self.game.display_battle_info(f"{self.name} casts Holy Fire on {other_hero.name}. {other_hero.name} is receiving continuous healing.")
-            return other_hero.take_healing(healing_amount)
-          else:
-            healing_amount = healing_amount_base + variation
-            other_hero.holy_fire_duration = 2
-            self.game.display_battle_info(f"{self.name} casts Holy Fire on {other_hero.name}.")
-            return other_hero.take_healing(healing_amount)
-        elif target_type =="opponent": # damage effect
-          variation = random.randint(-2, 2)
-          actual_damage = healing_amount_base + variation
-          damage_dealt = actual_damage #damage discard opponent's defense
-          damage_dealt = max(damage_dealt, 0) # Ensure damage dealt is at least 0
-          self.game.display_battle_info(f"{self.name} casts Holy Fire at {other_hero.name}.")
-          return f"{other_hero.take_damage(damage_dealt)}"
+          healing_amount = healing_amount_base + variation
+          other_hero.holy_fire_duration = 2
+          self.game.display_battle_info(f"{self.name} casts Holy Fire on {other_hero.name}.")
+          return other_hero.take_healing(healing_amount)
+      elif target_type =="opponent": # damage effect
+        variation = random.randint(-2, 2)
+        actual_damage = healing_amount_base + variation
+        damage_dealt = actual_damage #damage discard opponent's defense
+        damage_dealt = max(damage_dealt, 0) # Ensure damage dealt is at least 0
+        self.game.display_battle_info(f"{self.name} casts Holy Fire at {other_hero.name}.")
+        return f"{other_hero.take_damage(damage_dealt)}"
 
     def powerful_healing(self, other_hero):
       healing_amount = round(self.hp_max * 0.5)
