@@ -22,6 +22,7 @@ class HeroGenerator:
             Warrior_Comprehensiveness: self.warrior_names_list,
             Warrior_Defence: self.warrior_names_list,
             Warrior_Weapon_Master: self.warrior_names_list,
+            Warrior_Berserker: self.warrior_names_list,
             # Mage
             Mage_Comprehensiveness: self.mage_names_list,
             Mage_Water: self.mage_names_list,
