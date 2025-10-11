@@ -23,7 +23,7 @@ def main():
     sys_init.initialize()
     interface.initialize_window(sys_init)
     # Player hero generator__________________________________________
-    #'''
+    '''
     generator_player = HeroGenerator(sys_init)
     name_list = ["Player 1", "Player 2", "Player 3"]
     #name_list = ["Yiquan", "Evelyn"]
@@ -37,17 +37,18 @@ def main():
       if hero.name == 'Player 1':
         hero.is_player_controlled = True
       if hero.name == 'Player 2':
-        hero.is_player_controlled = True
+        hero.is_player_controlled = False
       if hero.name == 'Player 3':
         hero.is_player_controlled = False
-    #'''
     '''
 
-    Player_1 = Death_Knight_Blood(sys_init, "Arthas", "Group_A", True)
+
+    #'''
+    Player_1 = Warrior_Berserker(sys_init, "Arthas", "Group_A", True)
     Player_2 = Rogue_Assassination(sys_init, "Black Heart", "Group_A", True)
     Player_3 = Warlock_Destruction(sys_init, "Guldan", "Group_A", True)
-    player_heroes = [Player_1, Player_2,]
-    '''
+    player_heroes = [Player_1, Player_2]
+    #'''
     
 
     # Opponent hero generator__________________________________________

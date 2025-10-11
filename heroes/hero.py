@@ -617,7 +617,7 @@ class Hero:
               agility_before_increasing = self.agility # agility increase
               self.agility_increased_amount_by_blood_frenzy = 20  # Increase hero's agility by 20
               self.agility += self.agility_increased_amount_by_blood_frenzy
-              defence_before_decreasing = self.defence # defense decrease
+              defense_before_decreasing = self.defense # defense decrease
               self.defense_decreased_amount_by_blood_frenzy = round(self.defense / 2)
               self.defense = max(0, self.defense - self.defense_decreased_amount_by_blood_frenzy)
               results.append(f"{RED}{self.name} enters Blood Frenzy Status! Defense halved, Agility boosted, gains lifesteal!{RESET}")
