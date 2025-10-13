@@ -900,7 +900,15 @@ class StatusEffectManager:
                             hero.buffs_debuffs_recycle_pool.append(buff)
                             self.game.display_status_updates(f"{BLUE}{hero.name}'s Antivenom Potion effect has disappeared. {hero.name}'s poison resistance has come back to normal.{RESET}")
 
-
+            # Handle War Lust Buff
+            if hero.status['warlust'] and hero.hp > 0:
+                hero.warlust_duration -= 1
+                if hero.warlust_duration > 0:
+                    self.game.display_status_updates(f"{BLUE}{hero.name}'s War Lust is {hero.warlust_duration} rounds. {hero.name} is eager for battle. {RESET}")
+                elif hero.warlust_duration == 0:
+                    hero.damage = hero.damage - hero.damage_increased_amount_by_warlust
+                    hero.status['warlust'] = False
+                    self.game.display_status_updates(f"{BLUE}{hero.name} has recovered from War Lust. Their damage has returned to {hero.damage}.{RESET}")
 
 
 

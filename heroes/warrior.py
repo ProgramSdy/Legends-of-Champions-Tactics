@@ -496,7 +496,7 @@ class Warrior_Berserker(Warrior):
 
         # 技能
         self.add_skill(Skill(self, "Moon Slash", self.moon_slash, target_type="multi", skill_type="damage", target_qty=2))
-        self.add_skill(Skill(self, "Warlust", self.warlust, target_type="self", skill_type="buffs", target_qty=0))
+        self.add_skill(Skill(self, "Warlust", self.warlust, target_type="single", skill_type="buffs", target_qty=0))
         self.add_skill(Skill(self, "Hammer of Meteorite", self.hammer_of_meteorite, target_type="single", skill_type="damage", capable_interrupt_magic_casting=True))
 
     # ========== 特殊状态：Blood Frenzy ==========

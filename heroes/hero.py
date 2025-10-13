@@ -612,7 +612,7 @@ class Hero:
 
           if result_defeated_1 == "0":
             if blood_frenzy_activate:
-              self.status['blood_frenzy'] == True
+              self.status['blood_frenzy'] = True
               self.blood_frenzy_duration = 2
               agility_before_increasing = self.agility # agility increase
               self.agility_increased_amount_by_blood_frenzy = 20  # Increase hero's agility by 20

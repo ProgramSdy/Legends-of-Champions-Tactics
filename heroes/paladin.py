@@ -59,7 +59,7 @@ class Paladin_Retribution(Paladin):
             self.agility = self.agility + agility_increased_amount_by_wrath_of_crusader_single
             self.wrath_of_crusader_stacks += 1
             self.wrath_of_crusader_duration = 3  # Effect lasts for 2 rounds
-            self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Crusader Strike, agility of {self.name} has increased from {agility_before_increasing} to {self.agility}.")
+            self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Crusader Strike, {self.name} is in Wrath of Crusader status, their agility has increased from {agility_before_increasing} to {self.agility}.")
           else:
             if self.wrath_of_crusader_stacks < 2: # wrath of crusader effect can stack for two times.
               agility_before_increasing = self.agility
@@ -68,7 +68,7 @@ class Paladin_Retribution(Paladin):
               self.agility = self.agility + agility_increased_amount_by_wrath_of_crusader_single
               self.wrath_of_crusader_stacks += 1
               self.wrath_of_crusader_duration = 3  # Effect lasts for 2 rounds
-              self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Crusader Strike, agility of {self.name} has increased from {agility_before_increasing} to {self.agility}.")
+              self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Crusader Strike, {self.name} is in Wrath of Crusader status, their agility has increased from {agility_before_increasing} to {self.agility}.")
             else:
               self.wrath_of_crusader_duration = 3
               self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Crusader Strike. Wrath of Crusader buff duration refreshed.")
@@ -86,11 +86,11 @@ class Paladin_Retribution(Paladin):
         if self.status['wrath_of_crusader'] == True and self.wrath_of_crusader_stacks == 1:
           extra_healing = random.randint(5, 7)
           healing_amount = healing_amount_base + extra_healing
-          self.game.display_battle_info(f"{self.name} casts Flash of Light on {other_hero.name}, due to Shield of Righteous, this spell gains an additional {extra_healing} healing.")
+          self.game.display_battle_info(f"{self.name} casts Flash of Light on {other_hero.name}, due to Wrath of Crusader, this spell gains an additional {extra_healing} healing.")
         elif self.status['wrath_of_crusader'] == True and self.wrath_of_crusader_stacks == 2:
           extra_healing = random.randint(11, 13)
           healing_amount = healing_amount_base + extra_healing
-          self.game.display_battle_info(f"{self.name} casts Flash of Light on {other_hero.name}, due to Shield of Righteous, this spell gains an additional {extra_healing} healing.")
+          self.game.display_battle_info(f"{self.name} casts Flash of Light on {other_hero.name}, due to Wrath of Crusader, this spell gains an additional {extra_healing} healing.")
         else:
           self.game.display_battle_info(f"{self.name} casts Flash of Light on {other_hero.name}.")
         return other_hero.take_healing(healing_amount)
