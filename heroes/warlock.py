@@ -104,7 +104,7 @@ class Warlock_Affliction(Warlock):
         super().__init__(sys_init, name, group, is_player_controlled, major = self.__class__.major)
         self.add_skill(Skill(self, "Curse of Agony", self.curse_of_agony, "single", skill_type= "damage"))
         self.add_skill(Skill(self, "Soul Siphon", self.soul_siphon, "single", skill_type= "damage"))
-        self.add_skill(Skill(self, "Curse of Fear", self.curse_of_fear, "single", skill_type= "damage"))
+        self.add_skill(Skill(self, "Curse of Fear", self.curse_of_fear, "single", skill_type= "damage", is_control_skill = True))
 
     def curse_of_agony(self, other_hero):
         initial_damage = random.randint(3, 8)

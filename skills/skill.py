@@ -233,9 +233,10 @@ class Skill:
                   target_names = ', '.join([t.name for t in immune_mag])
                   result_message = f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immunes to magical effect."
                 if immune_ctrl:
+                  print(f"{RED}Debug Skill: Immune Control{RESET}")
                   target_names = ', '.join([t.name for t in immune_ctrl])
                   result_message += f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immuned to control effect."
-                
+                print(f"{RED}Debug Skill: Immune Control = {immune_ctrl}{RESET}")
                 # Special Condition
                 if self.initiator.status['magic_casting'] == True:
                     self.initiator.status['magic_casting'] = False

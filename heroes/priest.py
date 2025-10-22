@@ -568,7 +568,7 @@ class Priest_Shadow(Priest):
             super().__init__(sys_init, name, group, is_player_controlled, major = self.__class__.major)
             self.add_skill(Skill(self, "Vampire Feast", self.vampire_feast, "single", skill_type= "damage"))
             self.add_skill(Skill(self, "Shadow Word Pain", self.shadow_word_pain, "single", skill_type= "damage"))
-            self.add_skill(Skill(self, "Shadow Word Insanity", self.shadow_word_insanity, "single", skill_type= "damage"))
+            self.add_skill(Skill(self, "Shadow Word Insanity", self.shadow_word_insanity, "single", skill_type= "damage", is_control_skill = True))
 
     def vampire_feast(self, other_hero):
         variation = random.randint(-3, 3)
