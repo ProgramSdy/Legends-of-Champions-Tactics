@@ -339,10 +339,10 @@ class Warrior_Defence(Warrior):
         if other_hero.status['magic_casting'] == True:
           result = self.interrupt_magic_casting(other_hero)
           other_hero.scoff_shield_lash_duration = 2
-          return f"{self.name} casts Shield Lash on {other_hero.name}. {result}. {other_hero.take_damage(actual_damage)}. {self.name}'s resistance is boost. {other_hero.name} developed a deep hatred toward {self.name}."
+          return f"{self.name} casts Shield Lash on {other_hero.name}. {result}. {other_hero.take_damage(actual_damage)}. {self.name}'s magical resistance is boost. {other_hero.name} developed a deep hatred toward {self.name}."
         else:
           other_hero.scoff_shield_lash_duration = 2
-          return f"{self.name} casts Shield Lash on {other_hero.name}. {other_hero.take_damage(actual_damage)}. {self.name}'s resistance is boost. {other_hero.name} developed a deep hatred toward {self.name}."
+          return f"{self.name} casts Shield Lash on {other_hero.name}. {other_hero.take_damage(actual_damage)}. {self.name}'s magical resistance is boost. {other_hero.name} developed a deep hatred toward {self.name}."
 
     # Battling Strategy_________________________________________________________
 
