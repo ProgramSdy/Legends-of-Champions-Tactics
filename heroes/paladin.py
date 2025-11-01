@@ -189,7 +189,7 @@ class Paladin_Protection(Paladin):
             super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major)
             self.add_skill(Skill(self, "Hammer of Revenge", self.hammer_of_revenge, target_type = "single", skill_type= "damage"))
             self.add_skill(Skill(self, "Shield of Righteous", self.shield_of_righteous, target_type = "single", skill_type= "damage"))
-            self.add_skill(Skill(self, "Heroric Charge", self.heroric_charge, target_type = "single", skill_type= "damage"))
+            self.add_skill(Skill(self, "Heroric Charge", self.heroric_charge, target_type = "single", skill_type= "damage", is_control_skill = True))
 
     def hammer_of_revenge(self, other_hero):
         variation = random.randint(-4, -1)
@@ -267,37 +267,44 @@ class Paladin_Protection(Paladin):
         basic_healing_heroric_charge = 22
         variation = random.randint(-2, 2)
         actual_healing = basic_healing_heroric_charge + variation
-        for debuff in other_hero.debuffs:
-          if debuff.name == "Scoff":
-            other_hero.debuffs.remove(debuff)
-            other_hero.buffs_debuffs_recycle_pool.append(debuff)
-        for debuff in other_hero.buffs_debuffs_recycle_pool:
-          if debuff.name == "Scoff" and debuff.initiator == self:
-              other_hero.buffs_debuffs_recycle_pool.remove(debuff)
-              debuff.duration = 1
-              other_hero.add_debuff(debuff)   
+        if other_hero.is_immunity_condition_control == True:
+           if other_hero.status['magic_casting'] == True:
+             result = self.interrupt_magic_casting(other_hero)
+             return f"{result}. {other_hero.take_damage(actual_damage)}."
+           else:
+             return f"{other_hero.take_damage(actual_damage)}."
         else:
-            debuff = Debuff(
-                name='Scoff',
-                duration=1,
-                initiator=self,
-                effect=1
-            )
-            other_hero.add_debuff(debuff)
+          for debuff in other_hero.debuffs:
+            if debuff.name == "Scoff":
+              other_hero.debuffs.remove(debuff)
+              other_hero.buffs_debuffs_recycle_pool.append(debuff)
+          for debuff in other_hero.buffs_debuffs_recycle_pool:
+            if debuff.name == "Scoff" and debuff.initiator == self:
+                other_hero.buffs_debuffs_recycle_pool.remove(debuff)
+                debuff.duration = 1
+                other_hero.add_debuff(debuff)   
+          else:
+              debuff = Debuff(
+                  name='Scoff',
+                  duration=1,
+                  initiator=self,
+                  effect=1
+              )
+              other_hero.add_debuff(debuff)
 
-        if other_hero.status['magic_casting'] == True:
-          result = self.interrupt_magic_casting(other_hero)
-          for skill in self.skills:
-            if skill.name == "Heroric Charge":
-              skill.if_cooldown = True
-              skill.cooldown = 3
-          return f"Holy light showers {self.name}. {self.take_healing(actual_healing)}. {self.name} casts Heroric Charge on {other_hero.name}. {other_hero.name}'s magic casting has been interupted. {other_hero.take_damage(actual_damage)}. {other_hero.name} developed a deep hatred toward {self.name}."
-        else:
-          for skill in self.skills:
-            if skill.name == "Heroric Charge":
-              skill.if_cooldown = True
-              skill.cooldown = 3
-          return f"Holy light showers {self.name}. {self.take_healing(actual_healing)}. {self.name} casts Heroric Charge on {other_hero.name}. {other_hero.take_damage(actual_damage)}. {other_hero.name} developed a deep hatred toward {self.name}."
+          if other_hero.status['magic_casting'] == True:
+            result = self.interrupt_magic_casting(other_hero)
+            for skill in self.skills:
+              if skill.name == "Heroric Charge":
+                skill.if_cooldown = True
+                skill.cooldown = 3
+            return f"Holy light showers {self.name}. {self.take_healing(actual_healing)}. {self.name} casts Heroric Charge on {other_hero.name}. {result}. {other_hero.take_damage(actual_damage)}. {other_hero.name} developed a deep hatred toward {self.name}."
+          else:
+            for skill in self.skills:
+              if skill.name == "Heroric Charge":
+                skill.if_cooldown = True
+                skill.cooldown = 3
+            return f"Holy light showers {self.name}. {self.take_healing(actual_healing)}. {self.name} casts Heroric Charge on {other_hero.name}. {other_hero.take_damage(actual_damage)}. {other_hero.name} developed a deep hatred toward {self.name}."
 
 # Battling Strategy_________________________________________________________
 '''

@@ -154,6 +154,7 @@ class Hero:
         self.death_resistance_boost_amount = {}
         self.shadow_resistance_boost_amount = {}
         self.poison_resistance_boost_amount = {}
+        self.is_immunity_condition_control = False
 
         # Status buff and debuff
         self.status = self.status.copy() # Copy the status dictionary for individual management

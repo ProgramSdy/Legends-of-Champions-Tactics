@@ -112,6 +112,7 @@ class Skill:
             if self.immunity_condition_control_check(target):
                 if self.is_control_skill == True:
                   outcomes["immunity_condition_control"].append(target)
+                  print(f"{RED}Debug Skill: immunity condition control target: {target}{RESET}")
                   continue
             outcomes["hit"].append(target)
         return outcomes
@@ -229,9 +230,11 @@ class Skill:
                   target_names = ', '.join([t.name for t in immune_mag])
                   result_message = f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immunes to magical effect."
                 if immune_ctrl:
+                  print(f"{RED}Debug Skill: immunity control!{RESET}")
                   if self.name == "Heroric Charge" or self.name == "Cumbrous Axe" or self.name == "Shield Lash":
                     target_names = ', '.join([t.name for t in immune_ctrl])
                     result_message += f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immuned to control effect. {target_names} avoids being scoffed."
+                    result_message += f" {self.skill_action(immune_ctrl[0])}"
                   else:
                     target_names = ', '.join([t.name for t in immune_ctrl])
                     result_message += f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immuned to control effect."

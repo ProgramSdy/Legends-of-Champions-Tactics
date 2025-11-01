@@ -226,7 +226,7 @@ class Warrior_Defence(Warrior):
             self.preset_target = None
             self.add_skill(Skill(self, "Devastate", self.devastate, target_type = "single", skill_type= "damage",))
             self.add_skill(Skill(self, "Shield Bash", self.shield_bash, target_type = "single", skill_type= "damage", capable_interrupt_magic_casting = True))
-            self.add_skill(Skill(self, "Shield Lash", self.shield_lash, target_type = "single", skill_type= "damage"))
+            self.add_skill(Skill(self, "Shield Lash", self.shield_lash, target_type = "single", skill_type= "damage", is_control_skill = True))
 
     def shield_bash(self, other_hero):
         accuracy = 100  # Shield Bash has a 100% chance to succeed
@@ -298,51 +298,58 @@ class Warrior_Defence(Warrior):
         self.death_resistance = self.death_resistance + self.death_resistance_boost_amount['shield_lash']
         self.nature_resistance = self.nature_resistance + self.nature_resistance_boost_amount['shield_lash']
         
-        for skill in self.skills:
-            if skill.name == "Shield Lash":
-              skill.if_cooldown = True
-              skill.cooldown = 3
-        for debuff in other_hero.debuffs:
-          if debuff.name == "Scoff":
-            other_hero.debuffs.remove(debuff)
-            other_hero.buffs_debuffs_recycle_pool.append(debuff)
-        for debuff in other_hero.buffs_debuffs_recycle_pool:
-          if debuff.name == "Scoff" and debuff.initiator == self:
-              other_hero.buffs_debuffs_recycle_pool.remove(debuff)
-              debuff.duration = 1
+        if other_hero.is_immunity_condition_control == True:
+           if other_hero.status['magic_casting'] == True:
+             result = self.interrupt_magic_casting(other_hero)
+             return f"{result}. {other_hero.take_damage(actual_damage)}."
+           else:
+             return f"{other_hero.take_damage(actual_damage)}."
+        else:
+          for skill in self.skills:
+              if skill.name == "Shield Lash":
+                skill.if_cooldown = True
+                skill.cooldown = 3
+          for debuff in other_hero.debuffs:
+            if debuff.name == "Scoff":
+              other_hero.debuffs.remove(debuff)
+              other_hero.buffs_debuffs_recycle_pool.append(debuff)
+          for debuff in other_hero.buffs_debuffs_recycle_pool:
+            if debuff.name == "Scoff" and debuff.initiator == self:
+                other_hero.buffs_debuffs_recycle_pool.remove(debuff)
+                debuff.duration = 1
+                other_hero.add_debuff(debuff)
+                break   
+          else:
+              debuff = Debuff(
+                  name='Scoff',
+                  duration=1,
+                  initiator=self,
+                  effect=1
+              )
               other_hero.add_debuff(debuff)
-              break   
-        else:
-            debuff = Debuff(
-                name='Scoff',
-                duration=1,
-                initiator=self,
-                effect=1
-            )
-            other_hero.add_debuff(debuff)
 
-        for buff in self.buffs_debuffs_recycle_pool:
-                if buff.name == "Shield Lash" and buff.initiator == self:
-                    self.buffs_debuffs_recycle_pool.remove(buff)
-                    buff.duration = 2
-                    self.add_buff(buff)   
-                    break
-        else:
-            buff = Buff(
-                name='Shield Lash',
-                duration=2,
-                initiator=self,
-                effect=1
-            )
-            self.add_buff(buff)
+          for buff in self.buffs_debuffs_recycle_pool:
+                  if buff.name == "Shield Lash" and buff.initiator == self:
+                      self.buffs_debuffs_recycle_pool.remove(buff)
+                      buff.duration = 2
+                      self.add_buff(buff)   
+                      break
+          else:
+              buff = Buff(
+                  name='Shield Lash',
+                  duration=2,
+                  initiator=self,
+                  effect=1
+              )
+              self.add_buff(buff)
 
-        if other_hero.status['magic_casting'] == True:
-          result = self.interrupt_magic_casting(other_hero)
-          other_hero.scoff_shield_lash_duration = 2
-          return f"{self.name} casts Shield Lash on {other_hero.name}. {result}. {other_hero.take_damage(actual_damage)}. {self.name}'s magical resistance is boost. {other_hero.name} developed a deep hatred toward {self.name}."
-        else:
-          other_hero.scoff_shield_lash_duration = 2
-          return f"{self.name} casts Shield Lash on {other_hero.name}. {other_hero.take_damage(actual_damage)}. {self.name}'s magical resistance is boost. {other_hero.name} developed a deep hatred toward {self.name}."
+          if other_hero.status['magic_casting'] == True:
+            result = self.interrupt_magic_casting(other_hero)
+            other_hero.scoff_shield_lash_duration = 2
+            return f"{self.name} casts Shield Lash on {other_hero.name}. {result}. {other_hero.take_damage(actual_damage)}. {self.name}'s magical resistance is boost. {other_hero.name} developed a deep hatred toward {self.name}."
+          else:
+            other_hero.scoff_shield_lash_duration = 2
+            return f"{self.name} casts Shield Lash on {other_hero.name}. {other_hero.take_damage(actual_damage)}. {self.name}'s magical resistance is boost. {other_hero.name} developed a deep hatred toward {self.name}."
 
     # Battling Strategy_________________________________________________________
 
@@ -567,6 +574,7 @@ class Warrior_Berserker(Warrior):
 
         if self.status['warlust'] == False:
             self.status['warlust'] = True
+            self.is_immunity_condition_control = True
         self.warlust_duration = 2
         damage_before_increasing = self.damage # damage increase
         self.damage_increased_amount_by_warlust = round(self.original_damage * (1/3))  # Increase hero's damage by 30%

@@ -44,7 +44,7 @@ def main():
 
 
     #'''
-    Player_1 = Mage_Arcane(sys_init, "Arthas", "Group_A", True)
+    Player_1 = Warrior_Berserker(sys_init, "Arthas", "Group_A", True)
     Player_2 = Warrior_Berserker(sys_init, "Black Heart", "Group_A", True)
     Player_3 = Warlock_Destruction(sys_init, "Guldan", "Group_A", True)
     player_heroes = [Player_1, Player_2,]
@@ -57,8 +57,8 @@ def main():
     opponent_heroes = generator_ai.generate_heroes("Group_B", 2)
     '''
     #'''
-    Aldric = Mage_Comprehensiveness(sys_init, "Sashein", "Group_B", False)
-    Deep_Seer = Mage_Comprehensiveness(sys_init,"Andonidas", "Group_B", False)
+    Aldric = Paladin_Protection(sys_init, "Sashein", "Group_B", True)
+    Deep_Seer = Death_Knight_Blood(sys_init,"Andonidas", "Group_B", True)
     Rohan = Mage_Water(sys_init, "Gandoff", "Group_B", False)
     opponent_heroes = [Aldric, Deep_Seer]
     #'''

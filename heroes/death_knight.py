@@ -310,7 +310,7 @@ class Death_Knight_Blood(Death_Knight):
         super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major)
         self.add_skill(Skill(self, "Blood Plague", self.blood_plague, target_type = "single", skill_type= "damage"))
         self.add_skill(Skill(self, "Crimson Cleave", self.crimson_cleave, target_type = "single", skill_type= "damage"))
-        self.add_skill(Skill(self, "Cumbrous Axe", self.cumbrous_axe, target_type = "single", skill_type= "damage"))
+        self.add_skill(Skill(self, "Cumbrous Axe", self.cumbrous_axe, target_type = "single", skill_type= "damage", is_control_skill = True))
 
     def blood_plague(self, other_hero):
         results = []
@@ -409,33 +409,40 @@ class Death_Knight_Blood(Death_Knight):
         basic_damage = round((self.damage - other_hero.defense) * 1/2)
         variation = random.randint(-1, 1)
         actual_damage = max(1, basic_damage + variation)
-        for debuff in other_hero.debuffs:
-          if debuff.name == "Scoff":
-            other_hero.debuffs.remove(debuff)
-            other_hero.buffs_debuffs_recycle_pool.append(debuff)
-
-        for debuff in other_hero.buffs_debuffs_recycle_pool:
-          if debuff.name == "Scoff" and debuff.initiator == self:
-            other_hero.buffs_debuffs_recycle_pool.remove(debuff)
-            debuff.duration = 1
-            other_hero.add_debuff(debuff)
-            break   
+        if other_hero.is_immunity_condition_control == True:
+          if other_hero.status['magic_casting'] == True:
+             result = self.interrupt_magic_casting(other_hero)
+             return f"{result}. {other_hero.take_damage(actual_damage)}."
+          else:
+             return f"{other_hero.take_damage(actual_damage)}."
         else:
-            debuff = Debuff(
-                name='Scoff',
-                duration=1,
-                initiator=self,
-                effect=1
-            )
-            other_hero.add_debuff(debuff)
+          for debuff in other_hero.debuffs:
+            if debuff.name == "Scoff":
+              other_hero.debuffs.remove(debuff)
+              other_hero.buffs_debuffs_recycle_pool.append(debuff)
 
-        for buff in self.buffs_debuffs_recycle_pool:
+          for debuff in other_hero.buffs_debuffs_recycle_pool:
+            if debuff.name == "Scoff" and debuff.initiator == self:
+              other_hero.buffs_debuffs_recycle_pool.remove(debuff)
+              debuff.duration = 1
+              other_hero.add_debuff(debuff)
+              break   
+          else:
+              debuff = Debuff(
+                  name='Scoff',
+                  duration=1,
+                  initiator=self,
+                  effect=1
+              )
+              other_hero.add_debuff(debuff)
+
+          for buff in self.buffs_debuffs_recycle_pool:
                 if buff.name == "Cumbrous Axe" and buff.initiator == self:
                     self.buffs_debuffs_recycle_pool.remove(buff)
                     buff.duration = 2
                     self.add_buff(buff)   
                     break
-        else:
+          else:
             buff = Buff(
                 name='Cumbrous Axe',
                 duration=2,
@@ -444,18 +451,18 @@ class Death_Knight_Blood(Death_Knight):
             )
             self.add_buff(buff)
 
-        if other_hero.status['magic_casting'] == True:
-          result = self.interrupt_magic_casting(other_hero)
-          other_hero.scoff_cumbrous_axe_duration = 2
-          for skill in self.skills:
-            if skill.name == "Cumbrous Axe":
-              skill.if_cooldown = True
-              skill.cooldown = 3
-          return f"{self.name} casts Cumbrous Axe on {other_hero.name}. {result}. {other_hero.take_damage(actual_damage)}. The healing {self.name} receives is boost. {other_hero.name} developed a deep hatred toward {self.name}."
-        else:
-          other_hero.scoff_cumbrous_axe_duration = 2
-          for skill in self.skills:
-            if skill.name == "Cumbrous Axe":
-              skill.if_cooldown = True
-              skill.cooldown = 3
-          return f"{self.name} casts Cumbrous Axe on {other_hero.name}. {other_hero.take_damage(actual_damage)}. The healing {self.name} receives is boost. {other_hero.name} developed a deep hatred toward {self.name}."
+          if other_hero.status['magic_casting'] == True:
+            result = self.interrupt_magic_casting(other_hero)
+            other_hero.scoff_cumbrous_axe_duration = 2
+            for skill in self.skills:
+              if skill.name == "Cumbrous Axe":
+                skill.if_cooldown = True
+                skill.cooldown = 3
+            return f"{self.name} casts Cumbrous Axe on {other_hero.name}. {result}. {other_hero.take_damage(actual_damage)}. The healing {self.name} receives is boost. {other_hero.name} developed a deep hatred toward {self.name}."
+          else:
+            other_hero.scoff_cumbrous_axe_duration = 2
+            for skill in self.skills:
+              if skill.name == "Cumbrous Axe":
+                skill.if_cooldown = True
+                skill.cooldown = 3
+            return f"{self.name} casts Cumbrous Axe on {other_hero.name}. {other_hero.take_damage(actual_damage)}. The healing {self.name} receives is boost. {other_hero.name} developed a deep hatred toward {self.name}."

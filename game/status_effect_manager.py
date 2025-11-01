@@ -908,6 +908,7 @@ class StatusEffectManager:
                 elif hero.warlust_duration == 0:
                     hero.damage = hero.damage - hero.damage_increased_amount_by_warlust
                     hero.status['warlust'] = False
+                    hero.is_immunity_condition_control = False
                     self.game.display_status_updates(f"{BLUE}{hero.name} has recovered from War Lust. Their damage has returned to {hero.damage}.{RESET}")
 
 
