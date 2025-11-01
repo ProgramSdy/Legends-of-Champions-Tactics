@@ -45,9 +45,9 @@ def main():
 
     #'''
     Player_1 = Mage_Arcane(sys_init, "Arthas", "Group_A", True)
-    Player_2 = Rogue_Assassination(sys_init, "Black Heart", "Group_A", True)
+    Player_2 = Warrior_Berserker(sys_init, "Black Heart", "Group_A", True)
     Player_3 = Warlock_Destruction(sys_init, "Guldan", "Group_A", True)
-    player_heroes = [Player_1]
+    player_heroes = [Player_1, Player_2,]
     #'''
     
 
@@ -57,10 +57,10 @@ def main():
     opponent_heroes = generator_ai.generate_heroes("Group_B", 2)
     '''
     #'''
-    Aldric = Rogue_Assassination(sys_init, "Aldric", "Group_B", True)
-    Deep_Seer = Mage_Water(sys_init,"Andonidas", "Group_B", False)
+    Aldric = Mage_Comprehensiveness(sys_init, "Sashein", "Group_B", False)
+    Deep_Seer = Mage_Comprehensiveness(sys_init,"Andonidas", "Group_B", False)
     Rohan = Mage_Water(sys_init, "Gandoff", "Group_B", False)
-    opponent_heroes = [Aldric]
+    opponent_heroes = [Aldric, Deep_Seer]
     #'''
     # Display heroes from both sides__________________________________________
     '''

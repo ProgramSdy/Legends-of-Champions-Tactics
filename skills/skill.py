@@ -185,7 +185,6 @@ class Skill:
                 self.cooldown = 2
               if self.initiator.status['magic_casting'] == True:
                 self.initiator.status['magic_casting'] = False
-
               return result_message
             
             else:
@@ -230,10 +229,12 @@ class Skill:
                   target_names = ', '.join([t.name for t in immune_mag])
                   result_message = f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immunes to magical effect."
                 if immune_ctrl:
-                  print(f"{RED}Debug Skill: Immune Control{RESET}")
-                  target_names = ', '.join([t.name for t in immune_ctrl])
-                  result_message += f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immuned to control effect."
-                print(f"{RED}Debug Skill: Immune Control = {immune_ctrl}{RESET}")
+                  if self.name == "Heroric Charge" or self.name == "Cumbrous Axe" or self.name == "Shield Lash":
+                    target_names = ', '.join([t.name for t in immune_ctrl])
+                    result_message += f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immuned to control effect. {target_names} avoids being scoffed."
+                  else:
+                    target_names = ', '.join([t.name for t in immune_ctrl])
+                    result_message += f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immuned to control effect."
                 # Special Condition
                 if self.initiator.status['magic_casting'] == True:
                     self.initiator.status['magic_casting'] = False
@@ -313,6 +314,33 @@ class Skill:
                   self.if_cooldown = True
                   self.cooldown = 3
                   result_message +=  f"Holy light showers {self.initiator.name}. {self.initiator.take_healing(actual_healing)}."
+                if self.name == "Shield Lash":
+                  self.initiator.status['shield_lash'] = True
+                  self.initiator.fire_resistance_boost_amount['shield_lash'] = 45
+                  self.initiator.frost_resistance_boost_amount['shield_lash'] = 45
+                  self.initiator.death_resistance_boost_amount['shield_lash'] = 45
+                  self.initiator.nature_resistance_boost_amount['shield_lash'] = 45
+                  self.initiator.fire_resistance = self.initiator.fire_resistance + self.initiator.fire_resistance_boost_amount['shield_lash']
+                  self.initiator.frost_resistance = self.initiator.frost_resistance + self.initiator.frost_resistance_boost_amount['shield_lash']
+                  self.initiator.death_resistance = self.initiator.death_resistance + self.initiator.death_resistance_boost_amount['shield_lash']
+                  self.initiator.nature_resistance = self.initiator.nature_resistance + self.initiator.nature_resistance_boost_amount['shield_lash']
+                  self.if_cooldown = True
+                  self.cooldown = 3
+                  for buff in self.initiator.buffs_debuffs_recycle_pool:
+                          if buff.name == "Shield Lash" and buff.initiator == self:
+                              self.initiator.buffs_debuffs_recycle_pool.remove(buff)
+                              buff.duration = 2
+                              self.initiator.add_buff(buff)   
+                              break
+                  else:
+                      buff = Buff(
+                          name='Shield Lash',
+                          duration=2,
+                          initiator=self,
+                          effect=1
+                      )
+                      self.initiator.add_buff(buff)
+                  result_message +=  f"{self.initiator.name}'s magical resistance is boost."
                 if result_message:
                  return result_message
                 #else:

@@ -289,10 +289,10 @@ class Warrior_Defence(Warrior):
         variation = random.randint(-1, 1)
         actual_damage = max(1, basic_damage + variation)
 
-        fire_resistance_before_increasing = other_hero.fire_resistance
-        frost_resistance_before_increasing = other_hero.frost_resistance 
-        death_resistance_before_increasing = other_hero.death_resistance
-        nature_resistance_before_increasing = other_hero.nature_resistance
+        fire_resistance_before_increasing = self.fire_resistance
+        frost_resistance_before_increasing = self.frost_resistance 
+        death_resistance_before_increasing = self.death_resistance
+        nature_resistance_before_increasing = self.nature_resistance
         self.fire_resistance = self.fire_resistance + self.fire_resistance_boost_amount['shield_lash']
         self.frost_resistance = self.frost_resistance + self.frost_resistance_boost_amount['shield_lash']
         self.death_resistance = self.death_resistance + self.death_resistance_boost_amount['shield_lash']
