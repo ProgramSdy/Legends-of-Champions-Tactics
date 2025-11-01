@@ -102,14 +102,17 @@ class Skill:
                 outcomes["immunity_condition_all"].append(target)
                 continue
             if self.immunity_condition_physical_check(target):
-                outcomes["immunity_condition_physical"].append(target)
-                continue
+                if self.damage_nature == "physical":
+                  outcomes["immunity_condition_physical"].append(target)
+                  continue
             if self.immunity_condition_magical_check(target):
-                outcomes["immunity_condition_magical"].append(target)
-                continue
+                if self.damage_nature == "magical":
+                  outcomes["immunity_condition_magical"].append(target)
+                  continue
             if self.immunity_condition_control_check(target):
-                outcomes["immunity_condition_control"].append(target)
-                continue
+                if self.is_control_skill == True:
+                  outcomes["immunity_condition_control"].append(target)
+                  continue
             outcomes["hit"].append(target)
         return outcomes
 
@@ -134,17 +137,11 @@ class Skill:
           outcomes = self.resolve_targets(opponents)
           hits = outcomes["hit"]
           evaded = outcomes["evaded"]
-          immune_all = outcomes["immunity_condition_all"]
-          immune_phy = []
-          immune_mag = []
-          immune_ctrl = []
-          if self.damage_nature == "physical":
-            immune_phy = outcomes["immunity_condition_physical"]
-          if self.damage_nature == "magical":
-            immune_mag = outcomes["immunity_condition_magical"]
-          if self.is_control_skill == True:
-            immune_ctrl = outcomes["immunity_condition_control"]
           dead = outcomes["dead"]
+          immune_all = outcomes["immunity_condition_all"]
+          immune_phy = outcomes["immunity_condition_physical"]
+          immune_mag = outcomes["immunity_condition_magical"]
+          immune_ctrl = outcomes["immunity_condition_control"]
 
           if self.target_type == "multi": # Manage multi-targets damage skill
 
