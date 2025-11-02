@@ -73,7 +73,7 @@ class BattleTester_1v1:
         self.sys_init = sys_init
         self.num_battles = num_battles
         self.professions = [
-            Warrior_Comprehensiveness, Warrior_Defence, Warrior_Weapon_Master,
+            Warrior_Comprehensiveness, Warrior_Defence, Warrior_Weapon_Master, Warrior_Berserker,
             Mage_Comprehensiveness, Mage_Water, Mage_Frost, Mage_Arcane, Mage_Fire, 
             Paladin_Retribution, Paladin_Protection, Paladin_Holy,
             Priest_Comprehensiveness, Priest_Shelter, Priest_Shadow, Priest_Discipline, Priest_Devine,
@@ -342,7 +342,7 @@ class BattleTester_2v2:
         self.allow_duplicates = allow_duplicates
         self.parallel = parallel
         self.professions = [
-            Warrior_Comprehensiveness, Warrior_Defence, Warrior_Weapon_Master,
+            Warrior_Comprehensiveness, Warrior_Defence, Warrior_Weapon_Master, Warrior_Berserker,
             Mage_Comprehensiveness, Mage_Water, Mage_Frost, Mage_Arcane, Mage_Fire, 
             Paladin_Retribution, Paladin_Protection, Paladin_Holy,
             Priest_Comprehensiveness, Priest_Shelter, Priest_Shadow, Priest_Discipline, Priest_Devine,
@@ -537,7 +537,7 @@ class BattleTester_3v3:
         self.num_battles = num_battles
         self.allow_duplicates = allow_duplicates
         self.professions = [
-            Warrior_Comprehensiveness, Warrior_Defence, Warrior_Weapon_Master,
+            Warrior_Comprehensiveness, Warrior_Defence, Warrior_Weapon_Master, Warrior_Berserker,
             Mage_Comprehensiveness, Mage_Water, Mage_Frost, Mage_Arcane, Mage_Fire, 
             Paladin_Retribution, Paladin_Protection, Paladin_Holy,
             Priest_Comprehensiveness, Priest_Shelter, Priest_Shadow, Priest_Discipline, Priest_Devine,
