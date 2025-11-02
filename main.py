@@ -44,8 +44,8 @@ def main():
 
 
     #'''
-    Player_1 = Warrior_Berserker(sys_init, "Arthas", "Group_A", True)
-    Player_2 = Warrior_Berserker(sys_init, "Black Heart", "Group_A", True)
+    Player_1 = Mage_Frost(sys_init, "Arthas", "Group_A", True)
+    Player_2 = Warlock_Affliction(sys_init, "Black Heart", "Group_A", True)
     Player_3 = Warlock_Destruction(sys_init, "Guldan", "Group_A", True)
     player_heroes = [Player_1, Player_2]
     #'''
@@ -57,10 +57,10 @@ def main():
     opponent_heroes = generator_ai.generate_heroes("Group_B", 2)
     '''
     #'''
-    Aldric = Warrior_Defence(sys_init, "Sashein", "Group_B", True)
-    Deep_Seer = Death_Knight_Blood(sys_init,"Andonidas", "Group_B", True)
+    Aldric = Warrior_Berserker(sys_init, "Sashein", "Group_B", False)
+    Deep_Seer = Paladin_Retribution(sys_init,"Andonidas", "Group_B", False)
     Rohan = Paladin_Protection(sys_init, "Gandoff", "Group_B", True)
-    opponent_heroes = [Aldric, Deep_Seer, Rohan]
+    opponent_heroes = [Aldric, Deep_Seer]
     #'''
     # Display heroes from both sides__________________________________________
     '''
