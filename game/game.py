@@ -248,7 +248,6 @@ class Game:
         self.sorted_heroes = sorted(self.heroes, key=lambda hero: hero.agility, reverse=True)
         # All hero unactioned in the begining of each round
         self.unactioned_sorted_heroes = self.sorted_heroes.copy()
-
         self.game_state = "hero_action"
 
       
@@ -270,7 +269,6 @@ class Game:
 
         # Update allies and opponents list
         self.update_allies_opponents_list()
-
         if hero.status['shadow_word_insanity'] == True:
           hero_opponents = hero.allies
           hero_allies = hero.opponents

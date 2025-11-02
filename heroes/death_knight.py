@@ -403,7 +403,6 @@ class Death_Knight_Blood(Death_Knight):
         return other_hero.take_damage(actual_damage)
     
     def cumbrous_axe(self, other_hero):
-        other_hero.status['scoff'] = True
         self.status['cumbrous_axe'] = True
         self.healing_boost_effects['cumbrous_axe'] = 1.0
         basic_damage = round((self.damage - other_hero.defense) * 1/2)
@@ -416,6 +415,7 @@ class Death_Knight_Blood(Death_Knight):
           else:
              return f"{other_hero.take_damage(actual_damage)}."
         else:
+          other_hero.status['scoff'] = True
           for debuff in other_hero.debuffs:
             if debuff.name == "Scoff":
               other_hero.debuffs.remove(debuff)

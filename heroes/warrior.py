@@ -279,7 +279,6 @@ class Warrior_Defence(Warrior):
         return other_hero.take_damage(damage_dealt)
 
     def shield_lash(self, other_hero):
-        other_hero.status['scoff'] = True
         self.status['shield_lash'] = True
         self.fire_resistance_boost_amount['shield_lash'] = 45
         self.frost_resistance_boost_amount['shield_lash'] = 45
@@ -305,6 +304,7 @@ class Warrior_Defence(Warrior):
            else:
              return f"{other_hero.take_damage(actual_damage)}."
         else:
+          other_hero.status['scoff'] = True
           for skill in self.skills:
               if skill.name == "Shield Lash":
                 skill.if_cooldown = True
