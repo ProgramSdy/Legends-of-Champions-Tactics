@@ -78,7 +78,7 @@ class BattleTester_1v1:
             Paladin_Retribution, Paladin_Protection, Paladin_Holy,
             Priest_Comprehensiveness, Priest_Shelter, Priest_Shadow, Priest_Discipline, Priest_Devine,
             Rogue_Comprehensiveness, Rogue_Assassination, Rogue_Toxicology, 
-            Necromancer_Comprehensiveness, 
+            Necromancer_Necromancy, 
             Warlock_Comprehensiveness, Warlock_Destruction, Warlock_Affliction,
             Death_Knight_Frost, Death_Knight_Plague, Death_Knight_Blood
         ]
@@ -347,7 +347,7 @@ class BattleTester_2v2:
             Paladin_Retribution, Paladin_Protection, Paladin_Holy,
             Priest_Comprehensiveness, Priest_Shelter, Priest_Shadow, Priest_Discipline, Priest_Devine,
             Rogue_Comprehensiveness, Rogue_Assassination, Rogue_Toxicology, 
-            Necromancer_Comprehensiveness, 
+            Necromancer_Necromancy, 
             Warlock_Comprehensiveness, Warlock_Destruction, Warlock_Affliction,
             Death_Knight_Frost, Death_Knight_Plague, Death_Knight_Blood
         ]
@@ -542,7 +542,7 @@ class BattleTester_3v3:
             Paladin_Retribution, Paladin_Protection, Paladin_Holy,
             Priest_Comprehensiveness, Priest_Shelter, Priest_Shadow, Priest_Discipline, Priest_Devine,
             Rogue_Comprehensiveness, Rogue_Assassination, Rogue_Toxicology, 
-            Necromancer_Comprehensiveness, 
+            Necromancer_Necromancy, 
             Warlock_Comprehensiveness, Warlock_Destruction, Warlock_Affliction,
             Death_Knight_Frost, Death_Knight_Plague, Death_Knight_Blood
         ]

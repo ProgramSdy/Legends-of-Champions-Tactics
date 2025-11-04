@@ -911,6 +911,25 @@ class StatusEffectManager:
                     hero.is_immunity_condition_control = False
                     self.game.display_status_updates(f"{BLUE}{hero.name} has recovered from War Lust. Their damage has returned to {hero.damage}.{RESET}")
 
+            # Handle Death Bolt Debuff Duration
+            if hero.status['death_bolt'] and hero.hp > 0:
+                hero.death_bolt_duration -=1
+                if hero.death_bolt_duration > 0:
+                    self.game.display_status_updates(f"{BLUE}{hero.name} is vulnerable towards death attack. {hero.name}'s death Bolt debuff duration is {hero.death_bolt_duration} rounds{RESET}")
+                elif hero.death_bolt_duration == 0:
+                    hero.death_resistance = hero.death_resistance + hero.death_resistance_reduced_amount_by_death_bolt
+                    hero.death_resistance_reduced_amount_by_death_bolt = 0
+                    hero.status['death_bolt'] = False
+                    self.game.display_status_updates(f"{BLUE}{hero.name} is no longer vulnerable towards death attack. {hero.name}'s death resistance has returned to {hero.death_resistance}.{RESET}")
 
-
+            # Handle Corroded Blade Debuff Duration
+            if hero.status['bleeding_corroded_blade'] and hero.hp > 0:
+                hero.corroded_blade_debuff_duration -=1
+                if hero.corroded_blade_debuff_duration > 0:
+                    variation = random.randint(-2, 2)
+                    self.game.display_status_updates(f"{BLUE}{hero.name}'s bleeding effect from Corroded Blade is {hero.corroded_blade_debuff_duration} rounds. {hero.take_damage(hero.corroded_blade_continuous_damage + variation)}{RESET}")
+                elif hero.corroded_blade_debuff_duration == 0:
+                    hero.corroded_blade_continuous_damage = 0 # Reset shadow word pain continuous_damage
+                    hero.status['bleeding_corroded_blade'] = False
+                    self.game.display_status_updates(f"{BLUE}{hero.name} is no longer bleeding. Their wound from Corroded Blade has recovered.{RESET}")
 

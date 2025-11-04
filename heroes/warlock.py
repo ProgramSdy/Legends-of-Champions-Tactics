@@ -33,8 +33,7 @@ class Warlock_Comprehensiveness(Warlock):
         self.add_skill(Skill(self, "Summon Void Rambler", self.summon_void_rambler, target_type="single", skill_type="summon", target_qty= 0))
 
     def shadow_bolt(self, other_hero):
-        #variation = random.randint(-3, 3)
-        variation = 0
+        variation = random.randint(-1, 1)
         actual_damage = self.damage + variation
         damage_dealt = round((actual_damage - other_hero.shadow_resistance) * (4/5))
         damage_dealt = max(damage_dealt, 0)
@@ -229,7 +228,7 @@ class Warlock_Destruction(Warlock):
         self.hell_flame_threshold = round(self.hp_max * 0.4)
 
     def shadow_bolt(self, other_hero):
-        variation = random.randint(-2, 2)
+        variation = random.randint(-1, 1)
         actual_damage = self.damage + variation
         damage_dealt = round((actual_damage - other_hero.shadow_resistance) * (4/5))
         damage_dealt = max(damage_dealt, 0)
