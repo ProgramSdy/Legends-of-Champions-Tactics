@@ -45,6 +45,7 @@ class HeroGenerator:
             Rogue_Toxicology: self.rogue_names_list,
             # Necromancer
             Necromancer_Necromancy: self.necromancer_names_list,
+            Necromancer_Bone_Master: self.necromancer_names_list,
             # Warlock
             Warlock_Comprehensiveness: self.warlock_names_list,
             Warlock_Affliction: self.warlock_names_list,
