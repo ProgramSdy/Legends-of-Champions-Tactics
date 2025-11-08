@@ -44,7 +44,7 @@ def main():
 
 
     #'''
-    Player_1 = Necromancer_Necromancy(sys_init, "Arthas", "Group_A", True)
+    Player_1 = Necromancer_Bone_Master(sys_init, "Arthas", "Group_A", True)
     Player_2 = Death_Knight_Plague(sys_init, "Black Heart", "Group_A", True)
     Player_3 = Warlock_Destruction(sys_init, "Guldan", "Group_A", True)
     player_heroes = [Player_1, Player_2]
