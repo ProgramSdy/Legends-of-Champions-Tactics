@@ -43,14 +43,24 @@ class SummonableWarrior(Warrior, Summonable):
         summon_info = self.show_summon_info()
         return base_info + "\n" + summon_info
     
+class SummonableMage(Mage, Summonable):
+    def __init__(self, sys_init, name, group, master, duration, summon_unit_race, is_player_controlled, major):
+        Mage.__init__(self, sys_init, name, group, is_player_controlled, major)
+        Summonable.__init__(self, master, duration, summon_unit_race)
+
+    def show_info(self):
+        base_info = super().show_info()
+        summon_info = self.show_summon_info()
+        return base_info + "\n" + summon_info
+
 class SkeletonWarrior(SummonableWarrior):
 
     major = "Skeleton"
 
     def __init__(self, sys_init, name, group, master, duration, summon_unit_race, is_player_controlled=False):
         super().__init__(sys_init, name, group, master, duration, summon_unit_race, is_player_controlled, major = self.__class__.major)
-        self.probability_armor_breaker = 0.25
-        self.probability_slash = 0.5
+        self.probability_corroded_blade = 0.5
+        self.probability_devastate = 0.5
         self.preset_target = None
         self.summon_unit_race = summon_unit_race
         self.add_skill(Skill(self, "Devastate", self.devastate, target_type = "single", skill_type= "damage",))
@@ -154,6 +164,61 @@ class SkeletonWarrior(SummonableWarrior):
     def ai_choose_target(self, chosen_skill, opponents, allies):
           chosen_opponent = self.preset_target
           return chosen_opponent
+
+class SkeletonMage(SummonableMage):
+
+    major = "Skeleton"
+
+    def __init__(self, sys_init, name, group, master, duration, summon_unit_race, is_player_controlled=False):
+        super().__init__(sys_init, name, group, master, duration, summon_unit_race, is_player_controlled, major = self.__class__.major)
+        self.probability_armor_breaker = 0.25
+        self.probability_slash = 0.5
+        self.preset_target = None
+        self.summon_unit_race = summon_unit_race
+        self.add_skill(Skill(self, "Devastate", self.devastate, target_type = "single", skill_type= "damage",))
+        self.add_skill(Skill(self, "Corroded Blade", self.corroded_blade, target_type = "single", skill_type= "damage"))
+
+    def show_info(self):
+        base_info = super().show_info()
+        summon_info = self.show_summon_info()
+        return base_info + "\n" + summon_info
+
+    def arcane_bolt(self, other_hero):
+        variation = random.randint(-1, 1)
+        actual_damage = self.damage + variation
+        damage_dealt = round((actual_damage - other_hero.arcane_resistance) * (1/2))
+        damage_dealt = max(damage_dealt, 1)
+        if other_hero.status['arcane_bolt'] == False:
+          arcane_resistance_before_reducing = other_hero.arcane_resistance
+          other_hero.arcane_resistance_reduced_amount_by_arcane_bolt = round(other_hero.original_arcane_resistance * 0.20)  # Reduce target's magic resisance by 20%
+          other_hero.arcane_resistance = other_hero.arcane_resistance - other_hero.arcane_resistance_reduced_amount_by_arcane_bolt
+          other_hero.status['arcane_bolt'] = True
+          other_hero.status['normal'] = False
+          other_hero.arcane_bolt_duration = 2
+          self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Arcane Bolt, {other_hero.name} is vulnerable towards arcane attack, their arcane resistance is reduced from {arcane_resistance_before_reducing} to {other_hero.arcane_resistance}.")
+        else:
+          self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Arcane Bolt.")
+        return other_hero.take_damage(damage_dealt)
+
+    def death_bolt(self, other_hero):
+        variation = random.randint(-1, 1)
+        actual_damage = self.damage + variation
+        damage_dealt = round((actual_damage - other_hero.death_resistance) * (1/2))
+        damage_dealt = max(damage_dealt, 0)
+        if other_hero.status['death_bolt'] == False:
+          death_resistance_before_reducing = other_hero.death_resistance
+          other_hero.death_resistance_reduced_amount_by_death_bolt = round(other_hero.original_death_resistance * 0.20)  # Reduce target's magic resisance by 20%
+          other_hero.death_resistance = other_hero.death_resistance - other_hero.death_resistance_reduced_amount_by_death_bolt
+          other_hero.status['death_bolt'] = True
+          other_hero.status['normal'] = False
+          other_hero.death_bolt_duration = 2
+          self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with death Bolt, {other_hero.name} is vulnerable towards death attack, their death resistance is reduced from {death_resistance_before_reducing} to {other_hero.death_resistance}.")
+        else:
+          self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with death Bolt.")
+        return other_hero.take_damage(damage_dealt)
+    # Battling Strategy_________________________________________________________
+
+    
 
 class VoidRambler(SummonableWarrior):
 

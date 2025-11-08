@@ -87,17 +87,19 @@ class Hero:
         'warlust': False,
         'blood_frenzy': False,
         'death_bolt': False,
-        'bleeding_corroded_blade': False
+        'bleeding_corroded_blade': False,
+        'arcane_bolt': False,
+        'bone_armor': False
     }
     list_status_debuff_magic = ['shadow_word_pain', 'cold', 'holy_word_punishment', \
-                                'shadow_word_insanity', 'unholy_frenzy', 'curse_of_agony', 'fear', 'shadow_bolt', \
-                                'corrosion','soul_siphon', 'immolate', 'icy_squall', 'glacier', 'scorchbrand', 'death_bolt']
+                                'shadow_word_insanity', 'unholy_frenzy', 'bone_armor', 'curse_of_agony', 'fear', 'shadow_bolt', \
+                                'corrosion','soul_siphon', 'immolate', 'icy_squall', 'glacier', 'scorchbrand', 'death_bolt', 'arcane_bolt']
     list_status_debuff_disease = ['frost_fever', 'necrotic_decay', 'virulent_infection', 'blood_plague']
     list_status_debuff_toxic = ['poisoned_dagger', 'paralyze_blade', 'mixed_venom', 'acid_bomb', 'unstable_compound']                     
     list_status_debuff_physical  = ['armor_breaker', 'scoff', 'hammer_of_revenge', 'stunned', 'paralyzed', 'fatal_strike', 'wound_armor_crush']
     list_status_debuff_bleeding = ['bleeding_moon_slash','bleeding_sharp_blade', 'bleeding_crimson_cleave', 'wound_backstab', 'bleeding_armor_crush', 'bleeding_corroded_blade']
     list_status_buff_magic = ['shield_of_righteous','wrath_of_crusader','holy_word_shell','holy_word_redemption', \
-                              'holy_fire', 'unholy_frenzy', 'holy_infusion', 'hell_flame', 'cumbrous_axe', 'purify_healing', \
+                              'holy_fire', 'unholy_frenzy', 'bone_armor', 'holy_infusion', 'hell_flame', 'cumbrous_axe', 'purify_healing', \
                               'shield_of_protection', 'water_arrow', 'glacier', 'anti_magic_shield']
     list_status_buff_physical = ['shadow_evasion', 'vanish','warlust','blood_frenzy']
     # status debuff control is repeated status with above status
@@ -211,6 +213,7 @@ class Hero:
         self.warlust_duration = 0
         self.death_bolt_duration = 0
         self.corroded_blade_debuff_duration = 0
+        self.arcane_bolt_duration = 0
                        
 
         self.armor_breaker_stacks = 0 # Track number of Armor Breaker applications
@@ -270,6 +273,9 @@ class Hero:
         self.damage_increased_amount_by_warlust = 0
         self.death_resistance_reduced_amount_by_death_bolt = 0
         self.corroded_blade_continuous_damage = 0
+        self.arcane_resistance_reduced_amount_by_arcane_bolt = 0
+        self.defence_increased_amount_by_bone_armor = 0
+        self.agility_reduced_amount_by_bone_armor = 0
 
 
     @classmethod

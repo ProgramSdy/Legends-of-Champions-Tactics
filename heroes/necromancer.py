@@ -234,6 +234,88 @@ class Necromancer_Necromancy(Necromancer):
         chosen_opponent = self.preset_target
         return chosen_opponent
 
+class Necromancer_Necromancy(Necromancer):
+
+    major = "Bone_Master"
+
+    def __init__(self, sys_init, name, group, is_player_controlled):
+        super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major)
+        self.sys_init = sys_init
+        self.add_skill(Skill(self, "Command Skeleton", self.command_skeleton, target_type="single", skill_type="summon", target_qty= 0))
+        self.add_skill(Skill(self, "Death Bolt", self.death_bolt, "single", skill_type= "damage"))
+        self.add_skill(Skill(self, "Unholy Frenzy", self.unholy_frenzy, "single", skill_type= "damage_healing"))
+
+    def command_skeleton_mage(self):
+        skeleton_name = f"{self.name}'s Skeleton Mage"
+        skeleton_group = self.group
+        skeleton_duration = 4  # The skeleton will last for 4 rounds
+        skeleton_race = 'undead'
+        skeleton_mage = SkeletonMage(self.sys_init, skeleton_name, skeleton_group, self, skeleton_duration, skeleton_race, is_player_controlled=False)
+        skeleton_mage.take_game_instance(self.game)
+        self.summoned_unit = skeleton_mage
+        for hero in self.game.player_heroes:
+          if self.name == hero.name:
+            self.game.player_heroes.append(skeleton_mage)
+            self.game.heroes.append(skeleton_mage)
+            self.game.unactioned_sorted_heroes.append(skeleton_mage)
+            break
+        else:
+          self.game.opponent_heroes.append(skeleton_mage)
+          self.game.heroes.append(skeleton_mage)
+          self.game.unactioned_sorted_heroes.append(skeleton_mage)
+        for skill in self.skills:
+          if skill.name == "Command Skeleton Mage":
+            skill.if_cooldown = True
+            skill.cooldown = 3
+        return f"{self.name} uses Command Skeleton Mage and summons a Skeleton Mage in the battle field."
+
+    def bone_sword(self, other_hero):
+        variation = random.randint(-3, 3)
+        actual_damage = self.damage + variation
+        damage_dealt_pysical = round((actual_damage - other_hero.defence) * (1/2))
+        damage_dealt_death = round((actual_damage - other_hero.death_resistance) * (1/2))
+        damage_dealt = max(damage_dealt_pysical + damage_dealt_death, 0)
+        self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Bone Sword.")
+        return other_hero.take_damage(damage_dealt)
+
+    def bone_armor(self, other_hero, target_type):
+        if other_hero.status['bone_armor'] == False:
+            other_hero.status['bone_armor'] = True
+            variation = random.randint(0, 5)
+            for buff in other_hero.buffs_debuffs_recycle_pool:
+                if buff.name == "Bone Armor" and buff.initiator == self:
+                    other_hero.buffs_debuffs_recycle_pool.remove(buff)
+                    buff.duration = 3   # Effect lasts for 3 rounds
+                    other_hero.add_buff(buff)
+                    defence_before_increasing = other_hero.defence # defence increase
+                    other_hero.defence_increased_amount_by_bone_armor = 70 - defence_before_increasing + variation  # Increase hero's defence till 70
+                    other_hero.defence = other_hero.defence + other_hero.defence_increased_amount_by_bone_armor
+                    agility_before_reducing = other_hero.agility
+                    other_hero.agility_reduced_amount_by_bone_armor =  agility_before_reducing - (variation + 1) # reducing hero's agility till 5
+                    other_hero.agility = other_hero.agility - other_hero.agility_reduced_amount_by_bone_armor
+                    self.game.display_battle_info(f"{self.name} applies Bone Armor on {other_hero.name}.")
+                    return f"{other_hero.name}'s defence has increased from {defence_before_increasing} to {other_hero.defence}, agility has reduced from {agility_before_reducing} to {other_hero.agility}."
+
+            buff = Buff(
+                name='Bone Armor',
+                duration = 3,
+                initiator = self,
+                effect = 0.15
+            )
+            other_hero.add_buff(buff)
+            defence_before_increasing = other_hero.defence # defence increase
+            other_hero.defence_increased_amount_by_bone_armor = 70 - defence_before_increasing + variation  # Increase hero's defence till 70
+            other_hero.defence = other_hero.defence + other_hero.defence_increased_amount_by_bone_armor
+            agility_before_reducing = other_hero.agility
+            other_hero.agility_reduced_amount_by_bone_armor =  agility_before_reducing - (variation + 1) # reducing hero's agility till 5
+            other_hero.agility = other_hero.agility - other_hero.agility_reduced_amount_by_bone_armor
+            self.game.display_battle_info(f"{self.name} applies Bone Armor on {other_hero.name}.")
+            return f"{other_hero.name}'s defence has increased from {defence_before_increasing} to {other_hero.defence}, agility has reduced from {agility_before_reducing} to {other_hero.agility}."
+        else:
+            return f"{self.name} tries to use Bone Armor on {other_hero.name}. But {other_hero.name} has already gotten Bone Armor effect"
+
+# Battling Strategy_________________________________________________________
+
 
 class Necromancer_Comprehensiveness(Necromancer):
 

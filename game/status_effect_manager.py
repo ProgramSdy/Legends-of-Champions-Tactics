@@ -933,3 +933,30 @@ class StatusEffectManager:
                     hero.status['bleeding_corroded_blade'] = False
                     self.game.display_status_updates(f"{BLUE}{hero.name} is no longer bleeding. Their wound from Corroded Blade has recovered.{RESET}")
 
+            # Handle Arcane Bolt Debuff Duration
+            if hero.status['arcane_bolt'] and hero.hp > 0:
+                hero.arcane_bolt_duration -=1
+                if hero.arcane_bolt_duration > 0:
+                    self.game.display_status_updates(f"{BLUE}{hero.name} is vulnerable towards arcane attack. {hero.name}'s Arcane Bolt debuff duration is {hero.arcane_bolt_duration} rounds{RESET}")
+                elif hero.arcane_bolt_duration == 0:
+                    hero.arcane_resistance = hero.arcane_resistance + hero.arcane_resistance_reduced_amount_by_arcane_bolt
+                    hero.arcane_resistance_reduced_amount_by_arcane_bolt = 0
+                    hero.status['arcane_bolt'] = False
+                    self.game.display_status_updates(f"{BLUE}{hero.name} is no longer vulnerable towards arcane attack. {hero.name}'s arcane resistance has returned to {hero.arcane_resistance}.{RESET}")
+
+            # Bone Armor Duration
+            if hero.status['bone_armor'] and hero.hp > 0:
+                for buff in hero.buffs:
+                  if buff.name == "Bone Armor":
+                      buff.duration -= 1
+                      if buff.duration > 0:
+                        self.game.display_status_updates(f"{BLUE}{hero.name}'s Bone Armor duration is {buff.duration} rounds.{RESET}")
+                      elif buff.duration == 0:
+                          hero.status['bone_armor'] = False
+                          hero.defence = hero.defence - hero.defence_increased_amount_by_bone_armor 
+                          hero.defence_increased_amount_by_bone_armor = 0 
+                          hero.agility = hero.agility + hero.agility_reduced_amount_by_bone_armor
+                          hero.agility_reduced_amount_by_bone_armor = 0 
+                          hero.buffs.remove(buff)
+                          hero.buffs_debuffs_recycle_pool.append(buff)
+                          self.game.display_status_updates(f"{BLUE}{hero.name}'s Bone Armor has disappeared. {hero.name}'s defence has returned to {hero.defence}, {hero.name}'s agility has returned to {hero.agility}{RESET}")
