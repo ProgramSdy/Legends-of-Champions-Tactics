@@ -2,7 +2,9 @@ import math
 import random
 from heroes import *
 from skills import *
-from .summon_unit import WaterElemental
+from heroes.summon_factory import SummonFactory
+
+
 
 ORANGE = "\033[38;5;208m"
 RED = "\033[91m"
@@ -80,11 +82,18 @@ class Mage_Water(Mage):
         self.add_skill(Skill(self, "Aqua Ring", self.aqua_ring, target_type = "single", skill_type= "healing"))
 
     def summon_water_elemental(self):
-        unit_name = f"{self.name}'s Water Elemental"
         unit_group = self.group
         unit_duration = 3  # The summoning unit will last for 3 rounds
         unit_race = 'element'
-        waterelemental = WaterElemental(self.sys_init, unit_name, unit_group, self, unit_duration, unit_race, is_player_controlled=False)
+        waterelemental = SummonFactory.create_summon(
+        name="WaterElemental",
+        sys_init=self.sys_init,
+        group=unit_group,
+        master=self,
+        duration=unit_duration,
+        summon_unit_race=unit_race,
+        is_player_controlled=False
+        )
         waterelemental.take_game_instance(self.game)
         self.summoned_unit = waterelemental
         for hero in self.game.player_heroes:

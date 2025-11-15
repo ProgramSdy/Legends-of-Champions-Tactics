@@ -1,7 +1,8 @@
 import math
 import random
-from heroes import *
 from skills import *
+from heroes.warrior import Warrior
+from heroes.mage_summon import Mage_Summon
 
 
 ORANGE = "\033[38;5;208m"
@@ -44,9 +45,9 @@ class SummonableWarrior(Warrior, Summonable):
         summon_info = self.show_summon_info()
         return base_info + "\n" + summon_info
     
-class SummonableMage(Mage, Summonable):
+class SummonableMage(Mage_Summon, Summonable):
     def __init__(self, sys_init, name, group, master, duration, summon_unit_race, is_player_controlled, major):
-        Mage.__init__(self, sys_init, name, group, is_player_controlled, major)
+        Mage_Summon.__init__(self, sys_init, name, group, is_player_controlled, major)
         Summonable.__init__(self, master, duration, summon_unit_race)
 
     def show_info(self):
@@ -176,8 +177,8 @@ class SkeletonMage(SummonableMage):
         self.probability_slash = 0.5
         self.preset_target = None
         self.summon_unit_race = summon_unit_race
-        self.add_skill(Skill(self, "Devastate", self.devastate, target_type = "single", skill_type= "damage",))
-        self.add_skill(Skill(self, "Corroded Blade", self.corroded_blade, target_type = "single", skill_type= "damage"))
+        self.add_skill(Skill(self, "Arcane Bolt", self.arcane_bolt, target_type = "single", skill_type= "damage",))
+        self.add_skill(Skill(self, "Death Bolt", self.death_bolt, target_type = "single", skill_type= "damage"))
 
     def show_info(self):
         base_info = super().show_info()
