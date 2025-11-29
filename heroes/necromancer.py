@@ -331,41 +331,49 @@ class Necromancer_Bone_Master(Necromancer):
 # Battling Strategy_________________________________________________________
 
 
-class Necromancer_Comprehensiveness(Necromancer):
 
-    major = "Comprehensiveness"
+class Necromancer_Flesh_Puppeteer(Necromancer):
+
+    major = "Flesh_Puppeteer"
 
     def __init__(self, sys_init, name, group, is_player_controlled):
         super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major)
         self.sys_init = sys_init
-        self.add_skill(Skill(self, "Command Skeleton", self.command_skeleton, target_type="single", skill_type="summon", target_qty= 0))
-        self.add_skill(Skill(self, "Life Drain", self.life_drain, "single", skill_type= "damage"))
-        self.add_skill(Skill(self, "Unholy Frenzy", self.unholy_frenzy, "single", skill_type= "damage_healing"))
+        self.add_skill(Skill(self, "Command Skeleton Mage", self.command_skeleton_mage, target_type="single", skill_type="summon", target_qty= 0))
+        self.add_skill(Skill(self, "Bone Sword", self.bone_sword, "single", skill_type= "damage"))
+        self.add_skill(Skill(self, "Bone Armor", self.bone_armor, "single", skill_type= "damage_healing"))
 
-    def command_skeleton(self):
-        skeleton_name = f"{self.name}'s Skeleton Warrior"
-        skeleton_group = self.group
-        skeleton_duration = 4  # The skeleton will last for 4 rounds
-        skeleton_race = 'undead'
-        skeleton = SkeletonWarrior(self.sys_init, skeleton_name, skeleton_group, self, skeleton_duration, skeleton_race, is_player_controlled=False)
-        skeleton.take_game_instance(self.game)
-        self.summoned_unit = skeleton
+    def summon_flesh_puppet(self):
+        unit_group = self.group
+        unit_duration = 4  # The summoning unit will last for 4 rounds
+        unit_race = 'undead'
+        flesh_puppet = SummonFactory.create_summon(
+        name="FleshPuppet",
+        sys_init=self.sys_init,
+        group=unit_group,
+        master=self,
+        duration=unit_duration,
+        summon_unit_race=unit_race,
+        is_player_controlled=False
+        )
+        flesh_puppet.take_game_instance(self.game)
+        self.summoned_unit = flesh_puppet
         for hero in self.game.player_heroes:
           if self.name == hero.name:
-            self.game.player_heroes.append(skeleton)
-            self.game.heroes.append(skeleton)
-            self.game.unactioned_sorted_heroes.append(skeleton)
+            self.game.player_heroes.append(flesh_puppet)
+            self.game.heroes.append(flesh_puppet)
+            self.game.unactioned_sorted_heroes.append(flesh_puppet)
             break
         else:
-          self.game.opponent_heroes.append(skeleton)
-          self.game.heroes.append(skeleton)
-          self.game.unactioned_sorted_heroes.append(skeleton)
+          self.game.opponent_heroes.append(flesh_puppet)
+          self.game.heroes.append(flesh_puppet)
+          self.game.unactioned_sorted_heroes.append(flesh_puppet)
         for skill in self.skills:
-          if skill.name == "Command Skeleton":
+          if skill.name == "Command Skeleton Warrior":
             skill.if_cooldown = True
             skill.cooldown = 3
-        return f"{self.name} uses Command Skeleton and summons a Skeleton Warrior in the battle field."
-
+        return f"{self.name} uses Command Skeleton Warrior and summons a Skeleton Warrior in the battle field."
+    
     def life_drain(self, other_hero):
         variation = random.randint(-2, 2)
         actual_damage = self.damage + variation
@@ -385,49 +393,8 @@ class Necromancer_Comprehensiveness(Necromancer):
         self.game.display_battle_info(f"{self.name} casts Life Drain at {other_hero.name}.")
         self.game.display_battle_info(f"{other_hero.take_damage(damage_dealt)}")
 
-        for hero in self.allies_self_excluded:
-          if hero.is_summoned == True and hero.master == self:
-            self.game.display_battle_info(f"{hero.take_healing(healing_amount_extra_hero)}")
+        for unit in self.allies_self_excluded:
+          if unit.is_summoned == True and unit.master == self:
+            self.game.display_battle_info(f"{unit.take_healing(healing_amount_extra_hero)}")
         else:
           return self.take_healing(healing_amount)
-
-    def unholy_frenzy(self, other_hero, target_type):
-        if other_hero.status['unholy_frenzy'] == False:
-            other_hero.status['unholy_frenzy'] = True
-            for buff in other_hero.buffs_debuffs_recycle_pool:
-                if buff.name == "Unholy Frenzy" and buff.initiator == self:
-                    other_hero.buffs_debuffs_recycle_pool.remove(buff)
-                    buff.duration = 3   # Effect lasts for 2 rounds
-                    other_hero.add_buff(buff)
-                    damage_before_increasing = other_hero.damage # damage increase
-                    other_hero.damage_increased_amount_by_unholy_frenzy = round(other_hero.original_damage * buff.effect)  # Increase hero's damage by 15%
-                    other_hero.damage = other_hero.damage + other_hero.damage_increased_amount_by_unholy_frenzy
-                    agility_before_increasing = other_hero.agility
-                    other_hero.agility_increased_amount_by_unholy_frenzy = round(other_hero.original_agility * buff.effect * 13)  # Increase hero's agility by 200%
-                    other_hero.agility = other_hero.agility + other_hero.agility_increased_amount_by_unholy_frenzy
-                    damage_dealt = round(other_hero.hp_max * buff.effect) # Hero loose 15% of hp each round
-                    other_hero.unholy_frenzy_continuous_damage = damage_dealt
-                    self.game.display_battle_info(f"{self.name} uses Unholy Frenzy on {other_hero.name}. {other_hero.name}'s damage and agility has increased, but their life will be taken away.")
-                    return f"{other_hero.name}'s damage has increased from {damage_before_increasing} to {other_hero.damage}, agility has increased from {agility_before_increasing} to {other_hero.agility}. {other_hero.take_damage(damage_dealt)}"
-
-            buff = Buff(
-                name='Unholy Frenzy',
-                duration = 3,
-                initiator = self,
-                effect = 0.15
-            )
-            other_hero.add_buff(buff)
-            damage_before_increasing = other_hero.damage # damage increase
-            other_hero.damage_increased_amount_by_unholy_frenzy = round(other_hero.original_damage * buff.effect)  # Increase hero's damage by 15%
-            other_hero.damage = other_hero.damage + other_hero.damage_increased_amount_by_unholy_frenzy
-            agility_before_increasing = other_hero.agility
-            other_hero.agility_increased_amount_by_unholy_frenzy = round(other_hero.original_agility * buff.effect * 13)  # Increase hero's agility by 200%
-            other_hero.agility = other_hero.agility + other_hero.agility_increased_amount_by_unholy_frenzy
-            damage_dealt = round(other_hero.hp_max * buff.effect) # Hero loose 15% of hp each round
-            other_hero.unholy_frenzy_continuous_damage = damage_dealt
-            self.game.display_battle_info(f"{self.name} uses Unholy Frenzy on {other_hero.name}. {other_hero.name}'s damage and agility has increased, but will continuous loose HP.")
-            return f"{other_hero.name}'s damage has increased from {damage_before_increasing} to {other_hero.damage}, agility has increased from {agility_before_increasing} to {other_hero.agility}. {other_hero.take_damage(damage_dealt)}"
-        else:
-            return f"{self.name} tries to use Unholy Frenzy on {other_hero.name}. But {other_hero.name} has already been in frenzy"
-
-# Battling Strategy_________________________________________________________

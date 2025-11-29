@@ -20,5 +20,8 @@ class SummonFactory:
         elif name == "VoidRambler":
             return VoidRambler(sys_init, f"{master.name}'s Void Rambler", group, master, duration, summon_unit_race, is_player_controlled)
 
+        elif name == "FleshPuppet":
+            return FleshPuppet(sys_init, f"{master.name}'s Flesh Puppet", group, master, duration, summon_unit_race, is_player_controlled)
+
         else:
             raise ValueError(f"Unknown summon type: {name}")
