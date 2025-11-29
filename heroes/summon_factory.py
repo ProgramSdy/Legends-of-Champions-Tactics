@@ -1,5 +1,5 @@
 # Summon factory to avoid circular imports from Mage and SummonUnit
-from heroes.summon_unit import WaterElemental, SkeletonWarrior, SkeletonMage, VoidRambler
+from heroes.summon_unit import WaterElemental, SkeletonWarrior, SkeletonMage, VoidRambler, FleshPuppet
 
 class SummonFactory:
     @staticmethod
