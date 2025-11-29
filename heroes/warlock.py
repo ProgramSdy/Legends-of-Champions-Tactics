@@ -2,7 +2,7 @@ import math
 import random
 from heroes import *
 from skills import *
-from .summon_unit import VoidRambler
+from heroes.summon_factory import SummonFactory
 
 ORANGE = "\033[38;5;208m"
 RED = "\033[91m"
@@ -71,13 +71,19 @@ class Warlock_Comprehensiveness(Warlock):
           self.game.display_battle_info(f"{self.name} casts Corrosion on {other_hero.name}.")
         return other_hero.take_damage(damage_dealt)
 
-
-    def summon_void_rambler(self):
-        unit_name = f"{self.name}'s Void Rambler"
+    def summon_void_rambler(self):      
         unit_group = self.group
-        unit_duration = 4  # The skeleton will last for 4 rounds
+        unit_duration = 4  # The summoning unit will last for 4 rounds
         unit_race = 'devil'
-        voidrambler = VoidRambler(self.sys_init, unit_name, unit_group, self, unit_duration, unit_race, is_player_controlled=False)
+        voidrambler = SummonFactory.create_summon(
+        name="VoidRambler",
+        sys_init=self.sys_init,
+        group=unit_group,
+        master=self,
+        duration=unit_duration,
+        summon_unit_race=unit_race,
+        is_player_controlled=False
+        )
         voidrambler.take_game_instance(self.game)
         self.summoned_unit = voidrambler
         for hero in self.game.player_heroes:

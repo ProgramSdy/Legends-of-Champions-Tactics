@@ -28,33 +28,40 @@ class Necromancer_Necromancy(Necromancer):
     def __init__(self, sys_init, name, group, is_player_controlled):
         super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major)
         self.sys_init = sys_init
-        self.add_skill(Skill(self, "Command Skeleton", self.command_skeleton, target_type="single", skill_type="summon", target_qty= 0))
+        self.add_skill(Skill(self, "Command Skeleton Warrior", self.command_skeleton, target_type="single", skill_type="summon", target_qty= 0))
         self.add_skill(Skill(self, "Death Bolt", self.death_bolt, "single", skill_type= "damage"))
         self.add_skill(Skill(self, "Unholy Frenzy", self.unholy_frenzy, "single", skill_type= "damage_healing"))
 
     def command_skeleton(self):
-        skeleton_name = f"{self.name}'s Skeleton Warrior"
-        skeleton_group = self.group
-        skeleton_duration = 4  # The skeleton will last for 4 rounds
-        skeleton_race = 'undead'
-        skeleton = SkeletonWarrior(self.sys_init, skeleton_name, skeleton_group, self, skeleton_duration, skeleton_race, is_player_controlled=False)
-        skeleton.take_game_instance(self.game)
-        self.summoned_unit = skeleton
+        unit_group = self.group
+        unit_duration = 4  # The summoning unit will last for 4 rounds
+        unit_race = 'undead'
+        skeleton_warrior = SummonFactory.create_summon(
+        name="SkeletonWarrior",
+        sys_init=self.sys_init,
+        group=unit_group,
+        master=self,
+        duration=unit_duration,
+        summon_unit_race=unit_race,
+        is_player_controlled=False
+        )
+        skeleton_warrior.take_game_instance(self.game)
+        self.summoned_unit = skeleton_warrior
         for hero in self.game.player_heroes:
           if self.name == hero.name:
-            self.game.player_heroes.append(skeleton)
-            self.game.heroes.append(skeleton)
-            self.game.unactioned_sorted_heroes.append(skeleton)
+            self.game.player_heroes.append(skeleton_warrior)
+            self.game.heroes.append(skeleton_warrior)
+            self.game.unactioned_sorted_heroes.append(skeleton_warrior)
             break
         else:
-          self.game.opponent_heroes.append(skeleton)
-          self.game.heroes.append(skeleton)
-          self.game.unactioned_sorted_heroes.append(skeleton)
+          self.game.opponent_heroes.append(skeleton_warrior)
+          self.game.heroes.append(skeleton_warrior)
+          self.game.unactioned_sorted_heroes.append(skeleton_warrior)
         for skill in self.skills:
-          if skill.name == "Command Skeleton":
+          if skill.name == "Command Skeleton Warrior":
             skill.if_cooldown = True
             skill.cooldown = 3
-        return f"{self.name} uses Command Skeleton and summons a Skeleton Warrior in the battle field."
+        return f"{self.name} uses Command Skeleton Warrior and summons a Skeleton Warrior in the battle field."
 
     def death_bolt(self, other_hero):
         variation = random.randint(-1, 1)
@@ -181,8 +188,8 @@ class Necromancer_Necromancy(Necromancer):
 
         # High chance 85% summon skeleton warrior if not existed
         if self.summoned_unit is None:
-          # Find the "Command Skeleton" skill in the list of skills
-          summon_skill = next((skill for skill in self.skills if skill.name == "Command Skeleton"), None)
+          # Find the "Command Skeleton Warrior" skill in the list of skills
+          summon_skill = next((skill for skill in self.skills if skill.name == "Command Skeleton Warrior"), None)
           # Check if the skill is off cooldown
           if summon_skill and not summon_skill.if_cooldown:
             self.strategy_0()

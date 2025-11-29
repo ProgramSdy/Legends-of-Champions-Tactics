@@ -157,7 +157,7 @@ class SkeletonWarrior(SummonableWarrior):
     def ai_choose_skill(self, opponents, allies):
         self.strategy_0()
         self.preset_target = self.battle_analysis(opponents, allies)
-        skill_weights = [self.probability_slash, self.probability_armor_breaker]
+        skill_weights = [self.probability_devastate, self.probability_corroded_blade]
         #available_skills = [skill for skill in self.skills if not skill.if_cooldown and skill.is_available]
         chosen_skill = random.choices(self.skills, weights = skill_weights)[0]
         #chosen_skill = random.choice(available_skills)
