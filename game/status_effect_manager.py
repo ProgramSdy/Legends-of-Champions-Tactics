@@ -971,3 +971,18 @@ class StatusEffectManager:
                           hero.buffs.remove(buff)
                           hero.buffs_debuffs_recycle_pool.append(buff)
                           self.game.display_status_updates(f"{BLUE}{hero.name}'s Bone Armor has disappeared. {hero.name}'s defense has returned to {hero.defense}, {hero.name}'s agility has returned to {hero.agility}{RESET}")
+
+            # Handle Stitch of Agony Duration
+            if hero.status['stitch_of_agony'] and hero.hp > 0:
+                hero.stitch_of_agony_duration -=1
+                if hero.stitch_of_agony_duration > 0:
+                    if hero.faculty == "Necromancer" or hero.faculty == "Death Knight":
+                        hero.stitch_of_agony_continuous_damage = 5
+                    variation = random.randint(-2, 2)
+                    self.game.display_status_updates(f"{BLUE}{hero.name}'s Stitch of Agony debuff duration is {hero.stitch_of_agony_duration} rounds. {hero.take_damage(hero.stitch_of_agony_continuous_damage + variation)}{RESET}")
+                elif hero.stitch_of_agony_duration == 0:
+                    hero.stitch_of_agony_continuous_damage = 0 
+                    hero.status['stitch_of_agony'] = False
+                    self.game.display_status_updates(f"{BLUE}Stitch of Agony effect has faded away from {hero.name}.{RESET}")
+
+

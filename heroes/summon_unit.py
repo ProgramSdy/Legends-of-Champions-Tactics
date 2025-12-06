@@ -230,56 +230,138 @@ class FleshPuppet(SummonableWarrior):
         self.probability_devastate = 0.5
         self.preset_target = None
         self.summon_unit_race = summon_unit_race
-        self.add_skill(Skill(self, "Devastate", self.devastate, target_type = "single", skill_type= "damage",))
-        self.add_skill(Skill(self, "Corroded Blade", self.corroded_blade, target_type = "single", skill_type= "damage"))
+        self.add_skill(Skill(self, "Butcher's Hook", self.butchers_hook, target_type = "single", skill_type= "damage",))
+        self.add_skill(Skill(self, "Flesh Slam Single", self.flesh_slam_single, target_type = "single", skill_type= "damage"))
+        self.add_skill(Skill(self, "Flesh Slam Multi", self.flesh_slam_multi, target_type = "multi", skill_type= "damage", target_qty= 2, damage_nature = "physical"))
 
     def show_info(self):
         base_info = super().show_info()
         summon_info = self.show_summon_info()
         return base_info + "\n" + summon_info
 
-    def devastate(self, other_hero):
-        variation = random.randint(-1, 1)
-        actual_damage = self.damage + variation
-        damage_dealt = math.ceil((actual_damage - other_hero.defense) * 0.55)
-        damage_dealt = max(damage_dealt, 1)
-        if other_hero.status['armor_breaker'] == True:
-           other_hero.armor_breaker_duration = 2  # Refresh armor breaker effect
-           self.game.display_battle_info(f"{self.name} uses Devastate on {other_hero.name}, refreshes their duration of Armor Breaker")
+    def butchers_hook(self, other_hero):
+        accuracy = 100  # Butcher's Hook has a 100% chance to succeed
+        roll = random.randint(1, 100)  # Simulate a roll of 100-sided dice
+        if other_hero.status['magic_casting'] == True:
+          result = self.interrupt_magic_casting(other_hero)
+          if roll <= accuracy:
+              other_hero.status['stunned'] = True
+              other_hero.status['normal'] = False
+              other_hero.stun_duration += 1
+              self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Butcher's Hook, {other_hero.name} is stunned. {result}")
+          else:
+              self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Butcher's Hook. {result}")
         else:
-          other_hero.status['armor_breaker'] = True
-          defense_before_reducing = other_hero.defense
-          defense_reduced_amount_by_armor_breaker_single = math.ceil(other_hero.original_defense * 0.15)  # Reduce target's defense by 15%
-          other_hero.defense_reduced_amount_by_armor_breaker = other_hero.defense_reduced_amount_by_armor_breaker + defense_reduced_amount_by_armor_breaker_single  # Reduce target's defense by 15%
-          other_hero.defense = other_hero.defense - defense_reduced_amount_by_armor_breaker_single  # Reduce target's defense by 15%
-          other_hero.armor_breaker_stacks += 1
-          other_hero.armor_breaker_duration = 2  # Effect lasts for 2 rounds
-          self.game.display_battle_info(f"{self.name} uses Devastate on {other_hero.name}, reducing their defense from {defense_before_reducing} to {other_hero.defense}.")
-        return other_hero.take_damage(damage_dealt)
-
-    def corroded_blade(self, other_hero):
+          if roll <= accuracy:
+            other_hero.status['stunned'] = True
+            other_hero.status['normal'] = False
+            other_hero.stun_duration += 1
+            self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Butcher's Hook, {other_hero.name} is stunned.")
+          else:
+              self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Butcher's Hook")
+        for skill in self.skills:
+            if skill.name == "Butcher's Hook":
+              skill.if_cooldown = True
+              skill.cooldown = 4
         variation = random.randint(-2, 2)
         actual_damage = self.damage + variation
-        damage_dealt = math.ceil((actual_damage - other_hero.defense) * 0.45)
-        damage_dealt = max(damage_dealt, 1)
-        accuracy = 95  # Bleeding effect has a 95% chance to succeed
-        roll = random.randint(1, 100)  # Simulate a roll of 100-sided dice
-        if roll <= accuracy and other_hero.status['bleeding_corroded_blade'] == False:
-            other_hero.status['bleeding_corroded_blade'] = True
-            other_hero.status['normal'] = False
-            other_hero.corroded_blade_debuff_duration = 3
-            if damage_dealt > 10:
-              other_hero.corroded_blade_continuous_damage = random.randint(9, 12)
-            else:
-              other_hero.corroded_blade_continuous_damage = random.randint(5, 7)
-            self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Corroded Blade, {other_hero.name} is bleeding.")
-        else:
-            self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Corroded Blade")
-        # Ensure damage dealt is at least 1
-        damage_dealt = max(damage_dealt, 1)
-        # Apply damage to the other hero's HP
+        damage_dealt = int((actual_damage - other_hero.defense)/4)
+        damage_dealt = max(damage_dealt, 0)
         return other_hero.take_damage(damage_dealt)
+
+    def flesh_slam_single(self, other_hero):
+        variation = random.randint(-1, 1)
+        actual_damage = self.damage + variation
+        damage_dealt_pysical = round((actual_damage - other_hero.defense) * (1/2))
+        damage_dealt_death = round((actual_damage - other_hero.death_resistance) * (1/2))
+        damage_dealt = max(damage_dealt_pysical + damage_dealt_death, 0)
+        self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Flash Slam.")
+        return other_hero.take_damage(damage_dealt)
+
+    def flesh_slam_multi(self, other_heros): # Cause damage to self.
+        if not isinstance(other_heros, list):
+          other_heros = [other_heros]
+        results = []
+        variation = random.randint(-1, 1)
+        actual_damage = self.damage + variation
+        self_damage = math.ceil(self.hp_max * 0.30) + variation
+        selected_opponents = other_heros
+        for opponent in selected_opponents:
+            damage_dealt_pysical = round((actual_damage - opponent.defense) * (1/3))
+            damage_dealt_death = round((actual_damage - opponent.death_resistance) * (1/3))
+            damage_dealt = max(damage_dealt_pysical + damage_dealt_death, 0)
+            self.game.display_battle_info(f"{self.name} casts Flash Slam at {opponent.name}.")
+            results.append(opponent.take_damage(damage_dealt))
+        self.game.display_battle_info(f"{self.name} looses Hp for casting Flash Slam")
+        results.append(self.take_damage(self_damage))
+        return "\n".join(results)
     # Battling Strategy_________________________________________________________
+
+    def strategy_0(self):
+      self.probability_butchers_hook = 0
+      self.probability_flesh_slam_single = 1
+      self.probability_flesh_slam_multi = 0
+
+    def strategy_1(self):
+      self.probability_butchers_hook = 0
+      self.probability_flesh_slam_single = 0
+      self.probability_flesh_slam_multi = 1
+
+    def strategy_2(self):
+      self.probability_butchers_hook = 1
+      self.probability_flesh_slam_single = 0
+      self.probability_flesh_slam_multi = 0
+
+    def strategy_3(self):
+      self.probability_butchers_hook = 0.95
+      self.probability_flesh_slam_single = 0.05
+      self.probability_flesh_slam_multi = 0
+
+    def battle_analysis(self, opponents, allies):
+      # Sort hp from low to high
+      sorted_opponents = sorted(opponents, key=lambda hero: hero.hp, reverse=False)
+      sorted_allies = sorted(allies, key=lambda hero: hero.hp, reverse=False)
+      sorted_allies_excludes_self = sorted_allies.copy()
+      for ally in sorted_allies_excludes_self:
+        if ally == self:
+          sorted_allies_excludes_self.remove(ally)
+
+      # Priority targets tackling strategy
+      if self.status['stitch_of_agony'] == True:
+         if len(sorted_allies_excludes_self) >= 2:
+            opponent = sorted_opponents[:2]
+         else:
+            opponent = sorted_opponents
+         self.strategy_1()
+         return opponent
+         
+      # Terminate low Hp target
+      for opponent in sorted_opponents:
+        if opponent.hp <= 0.25:
+          self.strategy_0()
+          return opponent
+
+      # Interrupt magic casting
+      for opponent in opponents:
+        if opponent.status['magic_casting'] == True:
+          for skill in self.skills:
+            if skill.name == "Butcher's Hook":
+              if skill.if_cooldown == False:
+                self.strategy_2()
+                return opponent
+
+      # If Butcher's Hook is available, use it on a random target
+      for skill in self.skills:
+        if skill.name == "Butcher's Hook":
+          if skill.if_cooldown == False:
+            self.strategy_3()
+            opponent = random.choice(opponents)
+            return opponent
+          
+      # Default to attacking the lowest HP opponent
+      self.strategy_0()
+      opponent = sorted_opponents[0]
+      return opponent
 
 class VoidRambler(SummonableWarrior):
 

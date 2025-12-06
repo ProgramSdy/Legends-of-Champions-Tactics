@@ -89,9 +89,10 @@ class Hero:
         'death_bolt': False,
         'bleeding_corroded_blade': False,
         'arcane_bolt': False,
-        'bone_armor': False
+        'bone_armor': False,
+        'stitch_of_agony': False
     }
-    list_status_debuff_magic = ['shadow_word_pain', 'cold', 'holy_word_punishment', \
+    list_status_debuff_magic = ['shadow_word_pain', 'cold', 'holy_word_punishment', 'stitch_of_agony'\
                                 'shadow_word_insanity', 'unholy_frenzy', 'bone_armor', 'curse_of_agony', 'fear', 'shadow_bolt', \
                                 'corrosion','soul_siphon', 'immolate', 'icy_squall', 'glacier', 'scorchbrand', 'death_bolt', 'arcane_bolt']
     list_status_debuff_disease = ['frost_fever', 'necrotic_decay', 'virulent_infection', 'blood_plague']
@@ -214,6 +215,7 @@ class Hero:
         self.death_bolt_duration = 0
         self.corroded_blade_debuff_duration = 0
         self.arcane_bolt_duration = 0
+        self.stitch_of_agony_duration = 0
                        
 
         self.armor_breaker_stacks = 0 # Track number of Armor Breaker applications
@@ -276,6 +278,7 @@ class Hero:
         self.arcane_resistance_reduced_amount_by_arcane_bolt = 0
         self.defence_increased_amount_by_bone_armor = 0
         self.agility_reduced_amount_by_bone_armor = 0
+        self.stitch_of_agony_continuous_damage = 0
 
 
     @classmethod

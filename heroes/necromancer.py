@@ -398,3 +398,18 @@ class Necromancer_Flesh_Puppeteer(Necromancer):
             self.game.display_battle_info(f"{unit.take_healing(healing_amount_extra_hero)}")
         else:
           return self.take_healing(healing_amount)
+        
+    def stitch_of_agony(self, other_hero):
+        if other_hero.status['stitch_of_agony'] == False:
+            other_hero.status['stitch_of_agony'] = True
+            other_hero.stitch_of_agony_duration = 3  # Effect lasts for 3 rounds
+            other_hero.stitch_of_agony_continuous_damage = 10
+
+        variation = random.randint(-2, 2)
+        if self.status['stitch_of_agony'] == True:
+          healing_amount_base = 10
+        else:
+          healing_amount_base = 19
+        healing_amount = healing_amount_base + variation
+        self.game.display_battle_info(f"{self.name} casts Stitch of Agony on {other_hero.name}.")
+        return other_hero.take_healing(healing_amount)
