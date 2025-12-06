@@ -976,7 +976,7 @@ class StatusEffectManager:
             if hero.status['stitch_of_agony'] and hero.hp > 0:
                 hero.stitch_of_agony_duration -=1
                 if hero.stitch_of_agony_duration > 0:
-                    if hero.faculty == "Necromancer" or hero.faculty == "Death Knight":
+                    if hero.faculty in ["Necromancer", "Death Knight"] or hero.major in ["FleshPuppet", "Skeleton"]:
                         hero.stitch_of_agony_continuous_damage = 5
                     variation = random.randint(-2, 2)
                     self.game.display_status_updates(f"{BLUE}{hero.name}'s Stitch of Agony debuff duration is {hero.stitch_of_agony_duration} rounds. {hero.take_damage(hero.stitch_of_agony_continuous_damage + variation)}{RESET}")

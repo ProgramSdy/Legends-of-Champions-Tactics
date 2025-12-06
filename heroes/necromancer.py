@@ -339,9 +339,9 @@ class Necromancer_Flesh_Puppeteer(Necromancer):
     def __init__(self, sys_init, name, group, is_player_controlled):
         super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major)
         self.sys_init = sys_init
-        self.add_skill(Skill(self, "Command Skeleton Mage", self.command_skeleton_mage, target_type="single", skill_type="summon", target_qty= 0))
-        self.add_skill(Skill(self, "Bone Sword", self.bone_sword, "single", skill_type= "damage"))
-        self.add_skill(Skill(self, "Bone Armor", self.bone_armor, "single", skill_type= "damage_healing"))
+        self.add_skill(Skill(self, "Summon Flesh Puppet", self.summon_flesh_puppet, target_type="single", skill_type="summon", target_qty= 0))
+        self.add_skill(Skill(self, "Life Drain", self.life_drain, "single", skill_type= "damage"))
+        self.add_skill(Skill(self, "Stitch of Agony", self.stitch_of_agony, "single", skill_type= "damage_healing"))
 
     def summon_flesh_puppet(self):
         unit_group = self.group
