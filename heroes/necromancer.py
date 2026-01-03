@@ -369,11 +369,11 @@ class Necromancer_Flesh_Puppeteer(Necromancer):
           self.game.heroes.append(flesh_puppet)
           self.game.unactioned_sorted_heroes.append(flesh_puppet)
         for skill in self.skills:
-          if skill.name == "Command Skeleton Warrior":
+          if skill.name == "Summon Flesh Puppet":
             skill.if_cooldown = True
             skill.cooldown = 3
-        return f"{self.name} uses Command Skeleton Warrior and summons a Skeleton Warrior in the battle field."
-    
+        return f"{self.name} summons a Flesh Puppet in the battle field."
+
     def life_drain(self, other_hero):
         variation = random.randint(-2, 2)
         actual_damage = self.damage + variation
@@ -403,7 +403,7 @@ class Necromancer_Flesh_Puppeteer(Necromancer):
         if other_hero.status['stitch_of_agony'] == False:
             other_hero.status['stitch_of_agony'] = True
             other_hero.stitch_of_agony_duration = 3  # Effect lasts for 3 rounds
-            other_hero.stitch_of_agony_continuous_damage = 10
+            other_hero.stitch_of_agony_continuous_damage = 15
 
         variation = random.randint(-2, 2)
         if self.status['stitch_of_agony'] == True:

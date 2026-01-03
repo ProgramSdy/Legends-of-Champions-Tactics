@@ -222,7 +222,7 @@ class SkeletonMage(SummonableMage):
 
 class FleshPuppet(SummonableWarrior):
 
-    major = "FleshPuppet"
+    major = "Flesh_Puppet"
 
     def __init__(self, sys_init, name, group, master, duration, summon_unit_race, is_player_controlled=False):
         super().__init__(sys_init, name, group, master, duration, summon_unit_race, is_player_controlled, major = self.__class__.major)
