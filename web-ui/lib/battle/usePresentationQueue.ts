@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { BattleEvent, BattleProvider, BattleSnapshot, PresentationScript } from "./types";
+import { BattleProviderError, type BattleEvent, type BattleProvider, type BattleSnapshot, type PresentationScript, type ProviderErrorKind } from "./types";
 
 const BASE_DELAY = 620;
 
@@ -14,19 +14,26 @@ export function usePresentationQueue(provider: BattleProvider) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [canSkip, setCanSkip] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorKind, setErrorKind] = useState<ProviderErrorKind | null>(null);
   const generation = useRef(0);
   const busy = useRef(false);
   const pending = useRef<PresentationScript | null>(null);
 
+  const [loadAttempt, setLoadAttempt] = useState(0);
   useEffect(() => {
     const token = ++generation.current;
     provider.getState().then((state) => {
       if (generation.current !== token) return;
       setVisibleSnapshot(structuredClone(state.snapshot));
       setRevision(state.revision);
-    }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "Unable to load battle."));
+      setError(null);
+      setErrorKind(null);
+    }).catch((reason: unknown) => {
+      setError(reason instanceof Error ? reason.message : "Unable to load battle.");
+      setErrorKind(reason instanceof BattleProviderError ? reason.kind : "adapter");
+    });
     return () => { generation.current += 1; };
-  }, [provider]);
+  }, [provider, loadAttempt]);
 
   const applyEvent = useCallback((event: BattleEvent) => {
     setVisibleSnapshot((current) => {
@@ -54,6 +61,7 @@ export function usePresentationQueue(provider: BattleProvider) {
     const token = ++generation.current;
     setIsPlaying(true);
     setError(null);
+    setErrorKind(null);
     try {
       const script = await request();
       if (generation.current !== token) return;
@@ -72,7 +80,14 @@ export function usePresentationQueue(provider: BattleProvider) {
       pending.current = null;
       setCanSkip(false);
     } catch (reason) {
-      if (generation.current === token) setError(reason instanceof Error ? reason.message : "The command could not be submitted.");
+      if (generation.current === token) {
+        if (reason instanceof BattleProviderError && reason.snapshot && reason.revision !== undefined) {
+          setVisibleSnapshot(structuredClone(reason.snapshot));
+          setRevision(reason.revision);
+        }
+        setError(reason instanceof Error ? reason.message : "The command could not be submitted.");
+        setErrorKind(reason instanceof BattleProviderError ? reason.kind : "adapter");
+      }
     } finally {
       if (generation.current === token) {
         busy.current = false;
@@ -97,5 +112,11 @@ export function usePresentationQueue(provider: BattleProvider) {
     setCanSkip(false);
   }, []);
 
-  return { snapshot: visibleSnapshot, revision, activeEvent, log, setLog, speed, setSpeed, isPlaying, canSkip, error, present, skip };
+  const retry = useCallback(() => {
+    setError(null);
+    setErrorKind(null);
+    setLoadAttempt((attempt) => attempt + 1);
+  }, []);
+
+  return { snapshot: visibleSnapshot, revision, activeEvent, log, setLog, speed, setSpeed, isPlaying, canSkip, error, errorKind, present, skip, retry };
 }

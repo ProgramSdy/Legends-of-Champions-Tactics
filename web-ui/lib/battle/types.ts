@@ -13,7 +13,7 @@ export interface StatusState {
 export interface SkillState {
   id: string;
   displayName: string;
-  description: string;
+  description?: string;
   targetMode: "none" | "self" | "singleAlly" | "singleEnemy" | "multipleAllies" | "multipleEnemies" | "flexible";
   maximumTargets: number;
   cooldownRemaining: number;
@@ -106,4 +106,18 @@ export interface BattleState {
 export interface BattleProvider {
   getState(): Promise<BattleState>;
   submitCommand(command: BattleCommand): Promise<PresentationScript>;
+}
+
+export type ProviderErrorKind = "disconnected" | "rejected" | "stale" | "adapter";
+
+export class BattleProviderError extends Error {
+  constructor(
+    message: string,
+    public readonly kind: ProviderErrorKind,
+    public readonly snapshot?: BattleSnapshot,
+    public readonly revision?: number,
+  ) {
+    super(message);
+    this.name = "BattleProviderError";
+  }
 }

@@ -64,6 +64,57 @@ export const initialSnapshot: BattleSnapshot = {
   ],
 };
 
+const ragnar = combatant({
+  id: "friendly.ragnar", definitionId: "hero.warrior.weapon_master", displayName: "Ragnar",
+  faculty: "Warrior", specialization: "Weapon Master", sideId: "friendly", slot: 0,
+  hp: { current: 102, maximum: 102 },
+  skills: [
+    skill("skill.warrior.fatal_strike", "Fatal Strike", "A decisive weapon strike that can hinder healing."),
+    skill("skill.warrior.armor_crush", "Armor Crush", "A crushing attack that can break armour."),
+    { ...skill("skill.warrior.antivenom_potion", "Antivenom Potion", "Recover and resist poison."), targetMode: "none", maximumTargets: 0 },
+  ],
+});
+
+const nighthawk = combatant({
+  id: "enemy.nighthawk", definitionId: "hero.rogue.comprehensiveness", displayName: "Nighthawk",
+  faculty: "Rogue", specialization: "Comprehensiveness", sideId: "enemy", slot: 0,
+  hp: { current: 84, maximum: 84 }, isPlayerControlled: false,
+  skills: [
+    skill("skill.rogue.sharp_blade", "Sharp Blade", "A swift blade attack that can cause bleeding."),
+    skill("skill.rogue.poisoned_dagger", "Poisoned Dagger", "A poisoned attack that can apply or stack poison."),
+    { ...skill("skill.rogue.shadow_evasion", "Shadow Evasion", "Enter a heightened evasive stance."), targetMode: "none", maximumTargets: 0 },
+  ],
+});
+
+export function createFormatFixture(size: 1 | 2 | 3): BattleSnapshot {
+  const snapshot = clone(initialSnapshot);
+  const friendlyIds = ["friendly.ragnar", "friendly.black_heart", "friendly.arthas"].slice(0, size);
+  const enemyIds = ["enemy.nighthawk", "enemy.andonidas", "enemy.sashein"].slice(0, size);
+  snapshot.combatants["friendly.ragnar"] = clone(ragnar);
+  snapshot.combatants["enemy.nighthawk"] = clone(nighthawk);
+  [...friendlyIds, ...enemyIds].forEach((id, index) => {
+    snapshot.combatants[id].slot = index % size;
+  });
+  snapshot.sides = [
+    { id: "friendly", combatantIds: friendlyIds, maxSlots: size },
+    { id: "enemy", combatantIds: enemyIds, maxSlots: size },
+  ];
+  snapshot.activeCombatantId = "friendly.ragnar";
+  snapshot.turnOrder = Array.from({ length: size }, (_, index) => [
+    { combatantId: friendlyIds[index], hasActed: false, isCurrent: index === 0 },
+    { combatantId: enemyIds[index], hasActed: false, isCurrent: false },
+  ]).flat();
+  snapshot.turn = { index: 1, total: size * 2 };
+  snapshot.legalActions = ragnar.skills.map((item) => ({
+    skillId: item.id,
+    actorId: ragnar.id,
+    minimumTargets: item.targetMode === "none" ? 0 : 1,
+    maximumTargets: item.targetMode === "none" ? 0 : 1,
+    validTargetIds: item.targetMode === "none" ? [] : enemyIds,
+  }));
+  return snapshot;
+}
+
 const clone = <T,>(value: T): T => structuredClone(value);
 const event = (sequence: number, type: BattleEvent["type"], message: string, rest: Partial<BattleEvent> = {}): BattleEvent =>
   ({ id: `evt.demo.${sequence}`, sequence, type, message, ...rest });
@@ -135,8 +186,12 @@ function script(id: string, current: BattleSnapshot, revision: number, selectedT
 }
 
 export class MockBattleProvider implements BattleProvider {
-  private snapshot = clone(initialSnapshot);
+  private snapshot: BattleSnapshot;
   private revision = 1;
+
+  constructor(snapshot: BattleSnapshot = initialSnapshot) {
+    this.snapshot = clone(snapshot);
+  }
 
   async getState() { return { snapshot: clone(this.snapshot), revision: this.revision }; }
 

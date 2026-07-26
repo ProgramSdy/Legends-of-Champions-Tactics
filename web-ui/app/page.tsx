@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { MockBattleScreen } from "@/components/battle/MockBattleScreen";
+import { BattleExperience } from "@/components/battle/BattleExperience";
 
 export const metadata: Metadata = {
   title: "Battle · Legends of Champions Tactics",
-  description: "Stage 1 battle presentation vertical slice.",
+  description: "Engine-backed tactical battle interface.",
 };
 
 export default function Home() {
-  return <MockBattleScreen />;
+  return <BattleExperience />;
 }

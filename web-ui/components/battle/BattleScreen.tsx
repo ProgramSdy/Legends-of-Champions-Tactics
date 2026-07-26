@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { usePresentationQueue } from "@/lib/battle/usePresentationQueue";
 import type { BattleEventType, BattleProvider, CombatantState, PresentationScript } from "@/lib/battle/types";
@@ -8,6 +8,7 @@ import { AssetImage } from "./AssetImage";
 import { HeroCard, Meter } from "./HeroCard";
 import { SkillCard } from "./SkillCard";
 import { StatusIcon } from "./StatusIcon";
+import { formationFor, getBattleFormat } from "@/lib/battle/formations";
 
 const logGlyph: Record<BattleEventType, string> = {
   battleStarted: "◆", roundStarted: "◎", turnStarted: "▶", skillStarted: "✦",
@@ -33,12 +34,13 @@ function BattlefieldFigure({ hero, active, eventType, eventAmount, eventTarget, 
   selectable: boolean; selected: boolean; onSelect: () => void;
 }) {
   const effect = eventTarget ? eventType : null;
+  const assetKey = hero.definitionId;
   return (
     <button className={`battle-figure slot-${hero.slot} ${hero.sideId} ${active ? "acting" : ""} ${effect ? `fx-${effect}` : ""} ${selectable ? "selectable" : ""} ${selected ? "targeted" : ""}`}
       onClick={onSelect} disabled={!selectable} aria-label={`${hero.displayName}${selectable ? ", selectable target" : ""}`}>
       <div className="overhead"><Meter value={hero.hp.current} maximum={hero.hp.maximum} kind="hp" label={`${hero.displayName} health`} /><div>{hero.statuses.map((status) => <StatusIcon key={status.instanceId} status={status} />)}</div></div>
       <span className="figure-aura" />
-      <AssetImage request={{ kind: "figure", key: hero.id, name: hero.displayName, className: hero.specialization }} className="figure-art" />
+      <AssetImage request={{ kind: "figure", key: assetKey, name: hero.displayName, className: hero.faculty }} className="figure-art" />
       <span className="figure-name">{hero.displayName}</span>
       {effect === "damageApplied" && showAmount && eventAmount !== undefined && <span className="combat-text damage">−{eventAmount}</span>}
       {effect === "healingApplied" && showAmount && eventAmount !== undefined && <span className="combat-text heal">+{eventAmount}</span>}
@@ -50,10 +52,11 @@ function BattlefieldFigure({ hero, active, eventType, eventAmount, eventTarget, 
 interface BattleScreenProps {
   provider: BattleProvider;
   mockDemos?: ReadonlyArray<{ id: string; label: string; run: () => Promise<PresentationScript> }>;
+  mode?: "live" | "mock";
 }
 
-export function BattleScreen({ provider, mockDemos }: BattleScreenProps) {
-  const { snapshot, revision, activeEvent, log, setLog, speed, setSpeed, isPlaying, canSkip, error, present, skip } = usePresentationQueue(provider);
+export function BattleScreen({ provider, mockDemos, mode = "mock" }: BattleScreenProps) {
+  const { snapshot, revision, activeEvent, log, setLog, speed, setSpeed, isPlaying, canSkip, error, errorKind, present, skip, retry } = usePresentationQueue(provider);
   const [selectedSkill, setSelectedSkill] = useState<string | null>(null);
   const [selectedTarget, setSelectedTarget] = useState<string | null>(null);
   const [autoBattle, setAutoBattle] = useState(false);
@@ -67,9 +70,18 @@ export function BattleScreen({ provider, mockDemos }: BattleScreenProps) {
     const items = definition?.combatantIds.map((id) => combatants[id]) ?? [];
     return [...items, ...Array(Math.max(0, (definition?.maxSlots ?? 3) - items.length)).fill(null)] as Array<CombatantState | null>;
   };
-  const battlefield = Object.values(combatants).filter((hero) => hero.alive);
+  const battlefieldIds = [...new Set(snapshot?.sides.flatMap((side) => side.combatantIds) ?? [])];
+  const battlefield = battlefieldIds
+    .map((id) => combatants[id])
+    .filter((hero): hero is CombatantState => Boolean(hero?.alive));
 
-  if (!snapshot || !active) return <main className="loading-screen">Opening the battlefield…</main>;
+  if (!snapshot) return <main className="loading-screen" aria-live="polite">
+    {error ? <section className={`connection-state ${errorKind ?? "adapter"}`} role="alert"><strong>{errorKind === "disconnected" ? "BATTLE SERVICE OFFLINE" : "BATTLE COULD NOT OPEN"}</strong><p>{error}</p><button onClick={retry}>Retry connection</button></section> : <><span className="loading-rune">◇</span>Opening the battlefield…</>}
+  </main>;
+
+  const outcomeLabel = snapshot.outcome?.kind === "victory"
+    ? `${snapshot.outcome.winningSideId === "friendly" ? "YOUR TEAM" : "ENEMY TEAM"} VICTORIOUS`
+    : snapshot.outcome?.kind === "roundLimit" ? "ROUND LIMIT REACHED" : "BATTLE ENDED IN A DRAW";
 
   const triggerSkill = () => {
     if (!selectedSkill || !snapshot.activeCombatantId) return;
@@ -96,7 +108,7 @@ export function BattleScreen({ provider, mockDemos }: BattleScreenProps) {
   };
 
   return (
-    <main className="battle-shell">
+    <main className={`battle-shell format-${getBattleFormat(snapshot)}`} data-format={getBattleFormat(snapshot)}>
       <header className="battle-header">
         <div className="header-tools"><button aria-label="Open menu">☰</button><button aria-label="Settings">⚙</button></div>
         <div className="side-banner friendly"><span className="crest">L</span><strong>YOUR TEAM</strong><i>READY</i></div>
@@ -106,7 +118,7 @@ export function BattleScreen({ provider, mockDemos }: BattleScreenProps) {
         <nav className="turn-order" aria-label="Turn order">
           {snapshot.turnOrder.map((turn, index) => {
             const hero = combatants[turn.combatantId];
-            return <span className={`${turn.isCurrent ? "current" : ""} ${turn.hasActed ? "acted" : ""}`} key={turn.combatantId}><AssetImage request={{ kind: "thumbnail", key: hero.id, name: hero.displayName, className: hero.specialization }} /><b>{index + 1}</b><small>{hero.displayName}</small></span>;
+            return <span className={`${turn.isCurrent ? "current" : ""} ${turn.hasActed ? "acted" : ""}`} key={turn.combatantId}><AssetImage request={{ kind: "thumbnail", key: hero.definitionId, name: hero.displayName, className: hero.faculty }} /><b>{index + 1}</b><small>{hero.displayName}</small></span>;
           })}
         </nav>
       </header>
@@ -116,22 +128,28 @@ export function BattleScreen({ provider, mockDemos }: BattleScreenProps) {
         <section className={`battlefield ${activeEvent ? "event-active" : ""}`} aria-label="Battlefield">
           <div className="sky-glow" /><div className="moon" /><div className="ruins left" /><div className="ruins right" />
           <div className={`effect-layer ${activeEvent?.effectHint ?? ""}`} aria-hidden="true"><span /></div>
-          {battlefield.map((hero) => (
-            <BattlefieldFigure key={hero.id} hero={hero} active={hero.id === snapshot.activeCombatantId}
-              eventType={activeEvent?.type ?? null} eventAmount={activeEvent?.amount} eventTarget={activeEvent?.targetId === hero.id || activeEvent?.sourceId === hero.id}
+          {battlefield.map((hero) => {
+            const position = formationFor(snapshot, hero.sideId, hero.slot);
+            return <div className="formation-slot" key={hero.id} data-slot={position.slot} style={{ left: `${position.x}%`, top: `${position.y}%`, "--figure-scale": position.scale } as CSSProperties}>
+            <BattlefieldFigure hero={hero} active={hero.id === snapshot.activeCombatantId}
+              eventType={activeEvent?.type ?? null} eventAmount={activeEvent?.amount}
+              eventTarget={activeEvent?.targetId === hero.id || (activeEvent?.type === "characterMoved" && activeEvent.sourceId === hero.id)}
               showAmount={activeEvent?.targetId === hero.id}
               selectable={Boolean(legal?.validTargetIds.includes(hero.id)) && !isPlaying} selected={selectedTarget === hero.id}
               onSelect={() => setSelectedTarget(hero.id)} />
-          ))}
-          <div className="battlefield-caption"><span>THE FALLEN CITADEL</span><small>STAGE 1 · MOCK PROVIDER</small></div>
+            </div>;
+          })}
+          <div className="battlefield-caption"><span>THE FALLEN CITADEL</span><small>{getBattleFormat(snapshot).toUpperCase()} FORMATION</small></div>
         </section>
         <TeamPanel side="enemy" heroes={sideHeroes("enemy")} activeId={snapshot.activeCombatantId} />
       </section>
 
       <section className="command-deck">
-        <div className="acting-card"><AssetImage request={{ kind: "portrait", key: active.id, name: active.displayName, className: active.specialization }} className="portrait" /><div><small>ACTING HERO</small><h2>{active.displayName}</h2><p>{active.specialization}</p><span className="focus-pips">◆ ◆ ◇</span></div></div>
+        {active
+          ? <div className="acting-card"><AssetImage request={{ kind: "portrait", key: active.definitionId, name: active.displayName, className: active.faculty }} className="portrait" /><div><small>ACTING HERO</small><h2>{active.displayName}</h2><p>{active.faculty} · {active.specialization}</p><span className="turn-intent">{selectedSkill ? `READYING ${active.skills.find((skill) => skill.id === selectedSkill)?.displayName}` : "CHOOSE AN AUTHORIZED SKILL"}</span></div></div>
+          : <div className="acting-card battle-ended" role="status"><div className="ended-crest">◇</div><div><small>BATTLE COMPLETE</small><h2>{outcomeLabel}</h2><p>The final board reflects the authoritative Python result.</p><span className="turn-intent">NO FURTHER COMMANDS ARE LEGAL</span></div></div>}
         <div className="skills" aria-label="Skills">
-          {active.skills.map((item) => (
+          {active?.skills.map((item) => (
             <SkillCard key={item.id} skill={item} selected={selectedSkill === item.id}
               legal={snapshot.legalActions.some((action) => action.skillId === item.id)}
               disabled={isPlaying} onSelect={() => { setSelectedSkill(item.id); setSelectedTarget(null); }} />
@@ -152,10 +170,10 @@ export function BattleScreen({ provider, mockDemos }: BattleScreenProps) {
           <span>MOCK EVENT DEMOS</span>{mockDemos.map((demo) => <button key={demo.id} disabled={isPlaying} onClick={() => void present(demo.run)}>{demo.label}</button>)}
         </div>}
         <label className="toggle">AUTO BATTLE <input type="checkbox" checked={autoBattle} onChange={(event) => setAutoBattle(event.target.checked)} /><span /></label>
-        {isPlaying ? <button className="end-turn" onClick={skip} disabled={!canSkip}>{canSkip ? "SKIP EFFECT" : "RESOLVING…"}</button> : <button className="end-turn" onClick={triggerSkill} disabled={!selectedSkill || Boolean(legal && legal.minimumTargets > 0 && !selectedTarget)}>{selectedSkill ? "CAST SKILL" : "END TURN"}</button>}
+        {!active ? <button className="end-turn" disabled>BATTLE ENDED</button> : isPlaying ? <button className="end-turn" onClick={skip} disabled={!canSkip}>{canSkip ? "SKIP EFFECT" : "RESOLVING…"}</button> : <button className="end-turn" onClick={triggerSkill} disabled={!selectedSkill || Boolean(legal && legal.minimumTargets > 0 && !selectedTarget)}>{selectedSkill ? "CAST SKILL" : "SELECT SKILL"}</button>}
       </footer>
-      {(error || fullscreenError) && <p className="ui-error" role="alert">{error ?? fullscreenError}</p>}
-      <p className="fixture-note">MOCK MODE · Values, outcomes, and placeholder focus are fixture data. Python remains gameplay authority.</p>
+      {(error || fullscreenError) && <div className={`ui-error ${errorKind ?? ""}`} role="alert"><strong>{errorKind === "stale" ? "STATE RECONCILED" : errorKind === "rejected" ? "COMMAND REJECTED" : "BATTLE NOTICE"}</strong><span>{error ?? fullscreenError}</span></div>}
+      {mode === "mock" && <p className="fixture-note">FIXTURE PREVIEW · Outcomes are scripted; Python remains gameplay authority.</p>}
     </main>
   );
 }

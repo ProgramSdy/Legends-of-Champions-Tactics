@@ -13,6 +13,7 @@ export function MockBattleScreen() {
   return (
     <BattleScreen
       provider={provider}
+      mode="mock"
       mockDemos={demos.map(([id, label]) => ({ id, label, run: () => provider.runDemo(id) }))}
     />
   );

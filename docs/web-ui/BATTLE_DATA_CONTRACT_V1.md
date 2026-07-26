@@ -1,7 +1,7 @@
 # Web UI Battle Data Contract v1
 
-Status: Stage 1 proposal for the mock vertical slice. This document does not
-change the Python engine. The existing engine remains authoritative.
+Status: Frozen v1 contract, implemented by both the Stage 1 mock provider and
+the Stage 2 Python adapter. The existing engine remains authoritative.
 
 ## Scope and evidence
 
@@ -42,8 +42,9 @@ type BattleEnvelope<T> = {
 };
 ```
 
-The Stage 1 mock provider implements this shape locally. A later Python adapter
-may expose it over HTTP, WebSocket, IPC, or an in-process bridge without
+The Stage 1 mock provider implements this shape locally. The Stage 2 Python
+adapter now exposes it over JSON HTTP. Future transports may also expose the
+same versioned envelope over WebSocket, IPC, or an in-process bridge without
 changing component props.
 
 ## Stable identifiers
@@ -107,7 +108,7 @@ type BattleSnapshot = {
     hasActed: boolean;
     isCurrent: boolean;
   }>;
-  legalActions: LegalAction[]; // empty unless a player command is accepted
+  legalActions: LegalAction[]; // commands currently available to the client
 };
 
 type CombatantState = {
@@ -163,6 +164,13 @@ Only `legalActions` determines whether a skill/target can be commanded. The
 client may calculate bar width from authoritative current/maximum values and
 may disable controls using `legalActions`; it may not derive legality from
 skill labels, status names, cooldown math, or HP.
+
+An `awaitingCommand` snapshot may expose legal actions before command
+submission; these entries communicate the actor, skills, and targets the client
+can currently submit. After an accepted command, the returned final snapshot
+contains the legal actions for the next authoritative actor when another
+command is available, or an empty array when no command is currently legal,
+including after the battle has ended.
 
 The adapter maps the engine's five string states onto `phase`. `turn.index` is
 the current completed/active position in the round and is adapter-owned because
@@ -321,14 +329,28 @@ Fixture numbers are intentionally test data, not duplicated formulas. Every
 script terminates with a complete snapshot so event-sequencer tests can verify
 reconciliation.
 
-## Deferred integration work
+## Stage 2 live adapter
 
-No thin Python adapter is needed to build Stage 1 mock mode safely. Before live
-integration, add mutation-boundary instrumentation around `Game`, `Skill`,
-`Hero.take_damage`, `Hero.take_healing`, status application/removal, and summon
-insertion. That work should preserve the existing rule path and replace direct
-sleep/UI calls incrementally; it should not reimplement combat in an API layer.
+`battle_api.adapter.BattleAdapter` implements this contract for the whitelisted
+`ragnar-vs-nighthawk` scenario. Accepted commands invoke the repository's
+existing `Skill.execute` method; the adapter does not reproduce damage, evade,
+cooldown, status, or round formulas. Semantic events are built from typed
+pre/post engine state captured around skill and round-start mutation boundaries,
+never from `Game.output_buffer`.
 
-Open design decisions remain: transport/process topology, hidden-information
-policy, localization ownership, replay/RNG requirements, canonical Mage
-specialization for Andonidas, and whether a real resource system is planned.
+The development transport is JSON HTTP:
+
+- `GET /api/v1/health`
+- `POST /api/v1/battles`
+- `GET /api/v1/battles/{battleId}`
+- `POST /api/v1/battles/{battleId}/commands`
+
+Sessions are process-local and disappear on restart. A session stores its own
+Python `random` state; the adapter swaps that state around engine calls under a
+session lock. This makes seeded single-session tests reproducible without
+changing rule probabilities, but it is not a substitute for durable replay or
+multi-process persistence.
+
+Open design decisions remain: durable session storage, cross-process locking,
+hidden-information policy, localization ownership, durable replay/audit,
+production authentication, and whether a real resource system is planned.
