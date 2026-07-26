@@ -15,16 +15,17 @@ npm run lint
 npm run build
 ```
 
-Open `/` for the battle and `/assets` for the asset/fallback gallery.
+The development server defaults to `http://localhost:3001`. Open `/` for the
+battle and `/assets` for the asset/fallback gallery.
 
 Start the live adapter from the repository root:
 
 ```bash
-uvicorn battle_api.app:app --reload --port 8000
+uvicorn battle_api.app:app --reload --port 8001
 ```
 
 `/` defaults to live Ragnar versus Nighthawk. Override the adapter origin with
-`NEXT_PUBLIC_BATTLE_API_URL` (default `http://localhost:8000`). In development,
+`NEXT_PUBLIC_BATTLE_API_URL` (default `http://localhost:8001`). In development,
 the isolated toolbar exposes live 1v1 and fixture-backed 1v1/2v2/3v3. Direct
 queries are `?provider=live&format=1` and `?provider=mock&format=1|2|3`.
 

@@ -148,13 +148,13 @@ def test_cors_allows_default_local_frontend_preflight():
     response = client.options(
         "/api/v1/battles",
         headers={
-            "Origin": "http://localhost:3000",
+            "Origin": "http://localhost:3001",
             "Access-Control-Request-Method": "POST",
             "Access-Control-Request-Headers": "content-type",
         },
     )
     assert response.status_code == 200
-    assert response.headers["access-control-allow-origin"] == "http://localhost:3000"
+    assert response.headers["access-control-allow-origin"] == "http://localhost:3001"
     assert response.headers.get("access-control-allow-credentials") is None
     assert "POST" in response.headers["access-control-allow-methods"]
 

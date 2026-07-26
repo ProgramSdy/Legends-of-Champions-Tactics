@@ -14,8 +14,8 @@ from .models import CreateBattleRequest, HttpErrorResponse, UseSkillCommand
 app = FastAPI(title="Legends of Champions Tactics Battle API", version="1.0.0")
 
 DEFAULT_CORS_ORIGINS = (
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
 )
 
 

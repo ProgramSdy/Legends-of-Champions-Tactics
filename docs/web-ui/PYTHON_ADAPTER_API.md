@@ -6,16 +6,16 @@ Install `requirements.txt` plus `requirements-api.txt`, then start the
 development API from the repository root:
 
 ```bash
-uvicorn battle_api.app:app --reload --port 8000
+uvicorn battle_api.app:app --reload --port 8001
 ```
 
-Development CORS allows exactly `http://localhost:3000` and
-`http://127.0.0.1:3000` by default. Override the exact allowlist with a
+Development CORS allows exactly `http://localhost:3001` and
+`http://127.0.0.1:3001` by default. Override the exact allowlist with a
 comma-separated environment variable:
 
 ```bash
 BATTLE_API_CORS_ORIGINS=http://localhost:3001,http://127.0.0.1:3001 \
-  uvicorn battle_api.app:app --reload --port 8000
+  uvicorn battle_api.app:app --reload --port 8001
 ```
 
 Wildcard origins are ignored and credentials are disabled. Production origins

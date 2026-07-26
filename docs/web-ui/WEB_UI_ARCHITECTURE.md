@@ -50,7 +50,7 @@ presentation metadata and never determine outcomes.
 
 ## Runtime caveat
 
-The browser adapter defaults to `http://localhost:8000`; override it with
+The browser adapter defaults to `http://localhost:8001`; override it with
 `NEXT_PUBLIC_BATTLE_API_URL`. A separately hosted frontend requires adapter
 CORS configuration or a same-origin proxy. The process-local Python registry
 has no persistence or multi-worker consistency, so this milestone uses one API

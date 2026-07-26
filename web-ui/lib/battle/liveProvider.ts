@@ -41,7 +41,7 @@ export class LiveBattleProvider implements BattleProvider {
   private state: BattleState | null = null;
 
   constructor(
-    private readonly baseUrl = process.env.NEXT_PUBLIC_BATTLE_API_URL ?? "http://localhost:8000",
+    private readonly baseUrl = process.env.NEXT_PUBLIC_BATTLE_API_URL ?? "http://localhost:8001",
     private readonly seed?: number,
   ) {}
 
