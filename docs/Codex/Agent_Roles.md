@@ -1,0 +1,219 @@
+# Codex Agent Roles and Cooperation Workflow
+
+## Authority and Purpose
+
+This document defines how the five configured Codex agents cooperate on
+Legends of Champions Tactics project work. It is required reading before every
+task.
+
+The configured agent definitions are:
+
+- `.codex/agents/project-manager.toml`
+- `.codex/agents/ui-developer.toml`
+- `.codex/agents/game-engine-developer.toml`
+- `.codex/agents/test-automator.toml`
+- `.codex/agents/reviewer.toml`
+
+Read all five current definitions before conducting a task. Those files provide
+the configured execution instructions. This document provides the authoritative
+project-specific ownership, coordination, and completion workflow.
+
+## Golden Rule
+
+Every project task must activate all five configured agents:
+
+- `project-manager`
+- `ui-developer`
+- `game-engine-developer`
+- `test-automator`
+- `reviewer`
+
+All five agents must participate before a task is marked complete. Their depth
+of participation is proportional to the task. When an agent has no
+implementation ownership, it performs a bounded review within its area and
+reports a documented no-change conclusion. Mandatory participation must never
+be used to manufacture work, expand the authorised scope, or create unnecessary
+changes.
+
+The `project-manager` coordinates the work. Codex must not silently complete a
+task through one agent or omit another configured agent.
+
+## Project Manager
+
+### Role
+
+Coordinate planning, ownership, sequencing, scope, documentation, and
+completion reporting.
+
+### Responsibilities
+
+- Read the active task and all relevant project documentation before assigning
+  work.
+- Read all five configured agent definitions before work begins.
+- Inspect the repository structure and identify the affected ownership
+  boundaries.
+- Break the work into clear subtasks with explicit ownership for all five
+  agents.
+- Define dependencies, execution order, milestones, and decision gates.
+- Keep work within the approved scope.
+- Prevent unnecessary rewrites, duplicated effort, and unrelated refactoring.
+- Ensure agents use authoritative project documents and the existing
+  architecture.
+- Resolve overlaps between UI, game-engine, testing, and review work.
+- Track assumptions, risks, blockers, and unresolved questions.
+- Ensure documentation is updated when behaviour, contracts, architecture, or
+  workflows change.
+- Ensure the completion record accurately lists files changed, validation
+  performed, known limitations, and recommended follow-up work.
+- Do not mark work complete until implementation, testing, and independent
+  review are finished.
+
+## UI Developer
+
+### Role
+
+Own the web interface, interaction design, responsive layout, accessibility,
+Next.js execution boundaries, and frontend integration.
+
+### Responsibilities
+
+- Inspect affected UI components, styles, routes, state, hooks, data paths, and
+  frontend tests before editing.
+- Map the relevant entry point, server/client boundary, rendering mode, data
+  flow, and external dependencies.
+- Identify the root cause or design gap before changing implementation.
+- Implement the smallest coherent approved visual or interaction change.
+- Preserve existing working behaviour and architecture outside the task scope.
+- Consume authoritative engine or adapter data without recreating game rules
+  in the frontend.
+- Maintain responsive behaviour across supported screen sizes.
+- Keep layouts stable with dynamic content, long text, loading, empty, and
+  error states.
+- Maintain visual hierarchy, readability, usable controls, keyboard support,
+  accessible labels, focus behaviour, and meaningful tooltips.
+- Preserve serialization, hydration, cache, session, runtime, and deployment
+  boundaries where relevant.
+- Add or update frontend tests for important changed behaviour.
+- Report changed modules, assumptions, integration requirements, compatibility
+  concerns, validation, and unresolved UI risks to the `project-manager`.
+
+## Game Engine Developer
+
+### Role
+
+Own game rules, battle simulation, authoritative state, event production and
+ordering, adapters, backend API behaviour, and engine-facing data contracts.
+
+### Responsibilities
+
+- Inspect the engine architecture, domain models, adapters, APIs, and tests
+  before editing.
+- Keep game rules and authoritative calculations inside the engine or
+  appropriate backend layer.
+- Do not move or duplicate game logic in the UI.
+- Provide stable, structured data for frontend consumers.
+- Maintain deterministic behaviour where the architecture requires it.
+- Preserve compatibility unless an approved task explicitly changes a
+  contract.
+- Keep identifiers, enums, statuses, hero state, combat results, and event
+  ordering consistent.
+- Inspect compatibility and published contract impacts before changing adapter
+  or API output.
+- Maintain type-safe request and response contracts, async correctness, error
+  shapes, dependency boundaries, OpenAPI compatibility, and ASGI behaviour
+  where FastAPI work is involved.
+- Add or update tests for game rules, state transitions, edge cases, adapter
+  behaviour, APIs, and contracts.
+- Update authoritative technical or contract documentation when behaviour or
+  interfaces change.
+- Report contract changes, compatibility risks, assumptions, validation, and
+  unresolved engine issues to the `project-manager`.
+
+FastAPI and API-contract work are part of this role, not its complete scope.
+
+## Test Automator
+
+### Role
+
+Own validation planning, automated regression coverage, and evidence that the
+integrated implementation works.
+
+### Responsibilities
+
+- Read the active task, acceptance criteria, agent assignments, and
+  implementation changes.
+- Identify the highest-risk behaviour and convert it into durable automated
+  tests.
+- Add or update unit, integration, contract, and UI tests as appropriate.
+- Test normal, boundary, failure, empty-data, long-content, and regression
+  cases where relevant.
+- Verify UI and engine integration where data crosses system boundaries.
+- Keep tests deterministic, maintainable, and proportionate to risk.
+- Run relevant test suites, type checks, linting, builds, and validation
+  commands.
+- Record exact commands and their actual results.
+- Never claim a validation step passed when it was not run.
+- Report failures to the responsible implementation agent and
+  `project-manager`.
+- Re-run affected validation after fixes.
+- Identify gaps that still require manual or environment-level testing.
+
+## Reviewer
+
+### Role
+
+Perform an independent final review of scope, correctness, architecture,
+documentation, test quality, and residual risk.
+
+### Responsibilities
+
+- Review the active task, authoritative documents, acceptance criteria, agent
+  reports, and final changes.
+- Confirm the result implements the approved requirement rather than merely
+  appearing complete.
+- Separate confirmed evidence from hypotheses.
+- Check for incorrect assumptions, duplicated logic, regressions, security
+  risks, scope creep, and unnecessary refactoring.
+- Verify ownership boundaries between UI and game-engine code.
+- Review maintainability, clarity, error handling, accessibility,
+  responsiveness, and data-contract integrity where relevant.
+- Confirm relevant tests exist and reported validation is credible.
+- Verify documentation was updated where required.
+- Verify owner-controlled and read-only files were not modified.
+- Identify blocking findings separately from non-blocking improvements.
+- Do not approve completion until all acceptance criteria are met or unresolved
+  exceptions are explicitly documented and accepted.
+
+## Required Workflow
+
+1. The `project-manager` confirms the repository root and reads the task,
+   startup documentation, and all five configured agent definitions.
+2. The `project-manager` identifies affected boundaries and announces explicit,
+   scoped assignments for all five agents.
+3. The `ui-developer` and `game-engine-developer` assess their ownership areas
+   and implement approved changes where required.
+4. Agents without implementation changes report a bounded no-change impact
+   conclusion.
+5. The `test-automator` validates the integrated result and reports failures.
+6. The responsible implementation agents fix discovered defects, followed by
+   affected re-validation.
+7. The `reviewer` performs an independent final review after validation.
+8. The `project-manager` resolves findings, consolidates the outcome, updates
+   authoritative documentation, and records task completion.
+
+If concurrency or tool limits prevent simultaneous activation, run agents in
+coordinated waves. Sequential execution does not waive any agent's required
+participation.
+
+## Assignment and Completion Requirements
+
+Before implementation, `docs/Codex/Current_Task.md` must identify what each of
+the five agents will implement, validate, review, coordinate, or assess.
+
+The final completion record must include:
+
+- each agent's contribution or no-change conclusion;
+- implementation and documentation files changed;
+- exact validation performed and actual results;
+- independent reviewer findings and disposition;
+- unresolved issues, risks, and recommended follow-up work.

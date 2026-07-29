@@ -101,6 +101,7 @@ export type BattleCommand =
 export interface BattleState {
   revision: number;
   snapshot: BattleSnapshot;
+  events?: BattleEvent[];
 }
 
 export interface BattleProvider {

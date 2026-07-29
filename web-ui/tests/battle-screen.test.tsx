@@ -31,7 +31,7 @@ describe("battle screen integration", () => {
     expect(screen.getByRole("button", { name: "Settings" })).toBeEnabled();
     expect(screen.getByRole("link", { name: "Open asset gallery" })).toHaveAttribute("href", "/assets");
     expect(screen.getByRole("article", { name: /Arthas, Necromancer, active hero/i })).toHaveClass("active");
-    expect(screen.getByText("Choose a demo or select a skill.")).toBeVisible();
+    expect(screen.queryByText("Choose a demo or select a skill.")).not.toBeInTheDocument();
   });
 
   it("selects a skill using keyboard interaction and exposes valid targets", async () => {
@@ -67,14 +67,36 @@ describe("battle screen integration", () => {
 
   it("renders ordered battle-log messages and allows clearing them", async () => {
     await renderBattle();
+    const log = screen.getByRole("list", { name: "Battle events" });
+    Object.defineProperty(log, "scrollHeight", { configurable: true, value: 480 });
     const hpBefore = screen.getAllByText("49/76").length;
     fireEvent.click(screen.getByRole("button", { name: "×2" }));
     fireEvent.click(screen.getByRole("button", { name: "Evade" }));
     expect(await screen.findByText("Black Heart launches Shadow Bolt.")).toBeVisible();
     expect(await screen.findByText("Andonidas evades Shadow Bolt.")).toBeVisible();
+    await waitFor(() => expect(log.scrollTop).toBe(480));
     expect(screen.getAllByText("49/76")).toHaveLength(hpBefore);
     fireEvent.click(screen.getByRole("button", { name: "Clear" }));
-    expect(screen.getByText("Choose a demo or select a skill.")).toBeVisible();
+    expect(screen.queryByText("Choose a demo or select a skill.")).not.toBeInTheDocument();
+  });
+
+  it("keeps battlefield status interaction separate from target selection", async () => {
+    const user = userEvent.setup();
+    await renderBattle();
+    await user.click(screen.getByRole("button", { name: /Life Drain/i }));
+    const target = screen.getByRole("button", { name: "Sashein, selectable target" });
+    const status = target.closest(".battle-figure")!.querySelector<HTMLElement>(".status-icon")!;
+
+    expect(target).not.toContainElement(status);
+    expect(status).toHaveAccessibleName(/Stitch of Agony.*2 rounds remaining/i);
+    status.focus();
+    await user.keyboard("{Enter} ");
+    expect(status).toHaveFocus();
+    expect(screen.getByRole("button", { name: "CAST SKILL" })).toBeDisabled();
+
+    target.focus();
+    await user.keyboard("{Enter}");
+    expect(screen.getByRole("button", { name: "CAST SKILL" })).toBeEnabled();
   });
 
   it("plays supplied events in sequence and reconciles HP presentation", async () => {
@@ -125,7 +147,11 @@ describe("battle screen integration", () => {
     fireEvent.click(screen.getByRole("button", { name: "×2" }));
     fireEvent.click(screen.getByRole("button", { name: "Magic attack" }));
     const skip = await screen.findByRole("button", { name: "SKIP EFFECT" });
+    const log = screen.getByRole("list", { name: "Battle events" });
+    Object.defineProperty(log, "scrollHeight", { configurable: true, value: 720 });
     fireEvent.click(skip);
+    expect(await screen.findByText("Life Drain restores 12 health to Arthas.")).toBeVisible();
+    await waitFor(() => expect(log.scrollTop).toBe(720));
     fireEvent.click(screen.getByRole("button", { name: "Summon" }));
 
     expect(await screen.findByText("Flesh Puppet joins the friendly team.")).toBeVisible();

@@ -35,7 +35,7 @@ describe("live provider boundary", () => {
       contractVersion: "1.0", battleId: "battle.1", revision: 0, data: { events: [], snapshot },
     }), { status: 200, headers: { "Content-Type": "application/json" } }));
     const provider = new LiveBattleProvider("http://adapter.test", 42);
-    expect(await provider.getState()).toEqual({ revision: 0, snapshot });
+    expect(await provider.getState()).toEqual({ revision: 0, snapshot, events: [] });
     expect(fetchMock).toHaveBeenCalledWith("http://adapter.test/api/v1/battles", expect.objectContaining({
       method: "POST",
       body: JSON.stringify({ scenarioId: "ragnar-vs-nighthawk", seed: 42 }),
@@ -86,6 +86,66 @@ describe("live provider boundary", () => {
     expect(replay.revision).toBe(2);
     expect(replay.events).toEqual([]);
     expect(replay.snapshot).toEqual(revisionTwo);
+    fetchMock.mockRestore();
+  });
+
+  it("does not replay events when an accepted command is immediately repeated", async () => {
+    const initial = createFormatFixture(1);
+    const resolved = structuredClone(initial);
+    resolved.combatants["enemy.nighthawk"].hp.current = 70;
+    const events = [{
+      id: "battle.1.evt.000004",
+      sequence: 4,
+      type: "damageApplied" as const,
+      targetId: "enemy.nighthawk",
+      amount: 14,
+      hpAfter: { current: 70, maximum: 84 },
+      message: "Nighthawk took 14 damage.",
+    }];
+    const accepted = {
+      contractVersion: "1.0",
+      battleId: "battle.1",
+      revision: 1,
+      data: {
+        accepted: true,
+        commandId: "cmd.same",
+        revision: 1,
+        events,
+        snapshot: resolved,
+      },
+    };
+    const fetchMock = vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        contractVersion: "1.0",
+        battleId: "battle.1",
+        revision: 0,
+        data: { events: [], snapshot: initial },
+      }), { status: 200, headers: { "Content-Type": "application/json" } }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(accepted), { status: 200, headers: { "Content-Type": "application/json" } }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(accepted), { status: 200, headers: { "Content-Type": "application/json" } }));
+    const provider = new LiveBattleProvider("http://adapter.test");
+    const command = {
+      type: "useSkill" as const,
+      commandId: "cmd.same",
+      expectedRevision: 0,
+      actorId: "friendly.ragnar",
+      skillId: "skill.warrior.fatal_strike",
+      targetIds: ["enemy.nighthawk"],
+    };
+
+    await provider.getState();
+    const first = await provider.submitCommand(command);
+    const replay = await provider.submitCommand(command);
+
+    expect(first.events).toEqual(events);
+    expect(replay).toMatchObject({
+      id: "cmd.same",
+      label: "Command already applied",
+      events: [],
+      revision: 1,
+      snapshot: resolved,
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
     fetchMock.mockRestore();
   });
 });

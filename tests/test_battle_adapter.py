@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from copy import deepcopy
+import re
 
 import pytest
 
-from battle_api.adapter import BattleAdapter, BattleRegistry
+from battle_api.adapter import ROOT, STATUS_KINDS, BattleAdapter, BattleRegistry
 
 
 @pytest.fixture()
@@ -204,6 +205,65 @@ def test_event_ids_remain_unique_across_multiple_commands(adapter_session):
         event_ids.extend(event["id"] for event in result["events"])
 
     assert len(event_ids) == len(set(event_ids))
+
+
+def test_status_delta_events_have_deterministic_status_id_order(adapter_session):
+    adapter, session, _ = adapter_session
+    actor = session.game.player_heroes[0]
+    skill = actor.skills[0]
+    combatant_id = adapter._combatant_id(session, actor)
+    base = {"hp": actor.hp, "maximum": actor.hp_max}
+    before = {
+        combatant_id: {
+            **base,
+            "statuses": {
+                "status.z_removed": {"roundsRemaining": 1},
+                "status.y_removed": {"roundsRemaining": 1},
+            },
+        }
+    }
+    after = {
+        combatant_id: {
+            **base,
+            "statuses": {
+                "status.b_applied": {"roundsRemaining": 2},
+                "status.a_applied": {"roundsRemaining": 3},
+            },
+        }
+    }
+
+    command_events = adapter._mutation_events(
+        session, actor, skill, [], before, after
+    )
+    round_events = adapter._state_delta_events(session, before, after)
+
+    assert [
+        event["statusId"] for event in command_events
+    ] == [
+        "status.a_applied",
+        "status.b_applied",
+        "status.y_removed",
+        "status.z_removed",
+    ]
+    assert [
+        event["statusId"] for event in round_events
+    ] == [
+        "status.a_applied",
+        "status.b_applied",
+        "status.y_removed",
+        "status.z_removed",
+    ]
+
+
+def test_every_adapter_status_has_frontend_tooltip_metadata():
+    registry_source = (
+        ROOT / "web-ui" / "lib" / "battle" / "assets.ts"
+    ).read_text(encoding="utf-8")
+    registry_ids = set(
+        re.findall(r'^\s*"(?P<id>status\.[^"]+)":\s*\{', registry_source, re.MULTILINE)
+    )
+
+    assert {f"status.{status_key}" for status_key in STATUS_KINDS} <= registry_ids
 
 
 def test_legal_actions_reference_current_actor_and_only_living_targets(adapter_session):

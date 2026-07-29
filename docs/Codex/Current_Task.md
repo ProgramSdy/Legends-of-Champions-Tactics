@@ -6,9 +6,12 @@ No active task.
 
 ## Instructions for Codex
 
-- Do not select a backlog item automatically unless the project owner has authorised it.
+- Do not select a backlog item automatically unless the project owner has
+  authorised it.
 - When a task is assigned, replace the placeholder sections below.
 - Keep the scope focused and update the completion record when finished.
+- Read `docs/Codex/Agent_Roles.md` and assign all five configured agents before
+  implementation or review work begins.
 
 ---
 
@@ -47,6 +50,14 @@ _Not assigned._
 ## Validation Required
 
 - _Not assigned._
+
+## Agent Assignments
+
+- `project-manager` — _Not assigned._
+- `ui-developer` — _Not assigned._
+- `game-engine-developer` — _Not assigned._
+- `test-automator` — _Not assigned._
+- `reviewer` — _Not assigned._
 
 ## Completion Notes
 

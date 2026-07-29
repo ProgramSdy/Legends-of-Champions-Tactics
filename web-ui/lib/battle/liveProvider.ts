@@ -73,7 +73,11 @@ export class LiveBattleProvider implements BattleProvider {
       body: JSON.stringify({ scenarioId: "ragnar-vs-nighthawk", ...(this.seed === undefined ? {} : { seed: this.seed }) }),
     });
     this.battleId = envelope.battleId;
-    this.state = { revision: envelope.revision, snapshot: envelope.data.snapshot };
+    this.state = {
+      revision: envelope.revision,
+      snapshot: envelope.data.snapshot,
+      events: envelope.data.events ?? [],
+    };
     return structuredClone(this.state);
   }
 
@@ -84,15 +88,7 @@ export class LiveBattleProvider implements BattleProvider {
       { method: "POST", body: JSON.stringify(command) },
     );
     const result = envelope.data;
-    if (this.state && result.revision < this.state.revision) {
-      if (!result.accepted) {
-        throw new BattleProviderError(
-          result.message,
-          result.code === "staleRevision" ? "stale" : "rejected",
-          this.state.snapshot,
-          this.state.revision,
-        );
-      }
+    if (this.state && result.accepted && result.revision <= this.state.revision) {
       return {
         id: command.commandId,
         label: "Command already applied",
@@ -101,6 +97,14 @@ export class LiveBattleProvider implements BattleProvider {
         snapshot: structuredClone(this.state.snapshot),
         revision: this.state.revision,
       };
+    }
+    if (this.state && !result.accepted && result.revision < this.state.revision) {
+      throw new BattleProviderError(
+        result.message,
+        result.code === "staleRevision" ? "stale" : "rejected",
+        this.state.snapshot,
+        this.state.revision,
+      );
     }
     this.state = { revision: result.revision, snapshot: result.snapshot };
     if (!result.accepted) {

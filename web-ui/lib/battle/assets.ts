@@ -64,6 +64,14 @@ export const statusRegistry: Record<string, { glyph: string; name: string; descr
   "status.stitch_of_agony": { glyph: "✦", name: "Stitch of Agony", description: "Suffers authoritative damage at round start.", harmful: true },
   "status.shadow_bolt": { glyph: "◈", name: "Shadow Mark", description: "A hostile shadow effect supplied by the battle engine.", harmful: true },
   "status.arcane_guard": { glyph: "⬡", name: "Arcane Guard", description: "Protected by an arcane ward.", harmful: false },
+  "status.fatal_strike": { glyph: "✕", name: "Fatal Strike", description: "Healing received is reduced while this wound persists.", harmful: true },
+  "status.armor_breaker": { glyph: "⬢", name: "Armor Breaker", description: "Armor is reduced by Armor Crush.", harmful: true },
+  "status.bleeding_armor_crush": { glyph: "◒", name: "Armor Crush Bleeding", description: "Bleeding damage from Armor Crush remains active.", harmful: true },
+  "status.wound_armor_crush": { glyph: "⌁", name: "Armor Crush Wound", description: "A wound inflicted by Armor Crush remains active.", harmful: true },
+  "status.antivenom_potion": { glyph: "✚", name: "Antivenom Potion", description: "Antivenom protection is currently active.", harmful: false },
+  "status.bleeding_sharp_blade": { glyph: "╱", name: "Sharp Blade Bleeding", description: "Bleeding damage from Sharp Blade remains active.", harmful: true },
+  "status.poisoned_dagger": { glyph: "◆", name: "Poisoned Dagger", description: "Poison from Poisoned Dagger remains active.", harmful: true },
+  "status.shadow_evasion": { glyph: "◐", name: "Shadow Evasion", description: "Evasion is increased by Shadow Evasion.", harmful: false },
 };
 
 export const effectRegistry = {

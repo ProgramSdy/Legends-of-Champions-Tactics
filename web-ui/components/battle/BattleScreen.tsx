@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { usePresentationQueue } from "@/lib/battle/usePresentationQueue";
 import type { BattleEventType, BattleProvider, CombatantState, PresentationScript } from "@/lib/battle/types";
@@ -36,16 +36,28 @@ function BattlefieldFigure({ hero, active, eventType, eventAmount, eventTarget, 
   const effect = eventTarget ? eventType : null;
   const assetKey = hero.definitionId;
   return (
-    <button className={`battle-figure slot-${hero.slot} ${hero.sideId} ${active ? "acting" : ""} ${effect ? `fx-${effect}` : ""} ${selectable ? "selectable" : ""} ${selected ? "targeted" : ""}`}
-      onClick={onSelect} disabled={!selectable} aria-label={`${hero.displayName}${selectable ? ", selectable target" : ""}`}>
-      <div className="overhead"><Meter value={hero.hp.current} maximum={hero.hp.maximum} kind="hp" label={`${hero.displayName} health`} /><div>{hero.statuses.map((status) => <StatusIcon key={status.instanceId} status={status} />)}</div></div>
-      <span className="figure-aura" />
-      <AssetImage request={{ kind: "figure", key: assetKey, name: hero.displayName, className: hero.faculty }} className="figure-art" />
-      <span className="figure-name">{hero.displayName}</span>
-      {effect === "damageApplied" && showAmount && eventAmount !== undefined && <span className="combat-text damage">−{eventAmount}</span>}
-      {effect === "healingApplied" && showAmount && eventAmount !== undefined && <span className="combat-text heal">+{eventAmount}</span>}
-      {effect === "attackEvaded" && <span className="combat-text evade">EVADE</span>}
-    </button>
+    <div className={`battle-figure slot-${hero.slot} ${hero.sideId} ${active ? "acting" : ""} ${effect ? `fx-${effect}` : ""} ${selectable ? "selectable" : ""} ${selected ? "targeted" : ""}`}
+    >
+      <div className="overhead">
+        <Meter value={hero.hp.current} maximum={hero.hp.maximum} kind="hp" label={`${hero.displayName} health`} />
+        <div className="battlefield-statuses">{hero.statuses.map((status) => <StatusIcon key={status.instanceId} status={status} />)}</div>
+      </div>
+      <button className="battle-target-control" type="button" disabled={!selectable} onClick={onSelect}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            onSelect();
+          }
+        }}
+        aria-label={`${hero.displayName}${selectable ? ", selectable target" : ""}`}>
+        <span className="figure-aura" />
+        <AssetImage request={{ kind: "figure", key: assetKey, name: hero.displayName, className: hero.faculty }} className="figure-art" />
+        <span className="figure-name">{hero.displayName}</span>
+        {effect === "damageApplied" && showAmount && eventAmount !== undefined && <span className="combat-text damage">−{eventAmount}</span>}
+        {effect === "healingApplied" && showAmount && eventAmount !== undefined && <span className="combat-text heal">+{eventAmount}</span>}
+        {effect === "attackEvaded" && <span className="combat-text evade">EVADE</span>}
+      </button>
+    </div>
   );
 }
 
@@ -61,6 +73,12 @@ export function BattleScreen({ provider, mockDemos, mode = "mock" }: BattleScree
   const [selectedTarget, setSelectedTarget] = useState<string | null>(null);
   const [autoBattle, setAutoBattle] = useState(false);
   const [fullscreenError, setFullscreenError] = useState<string | null>(null);
+  const logListRef = useRef<HTMLOListElement>(null);
+
+  useEffect(() => {
+    const list = logListRef.current;
+    if (list) list.scrollTop = list.scrollHeight;
+  }, [log.length]);
 
   const combatants = snapshot?.combatants ?? {};
   const active = snapshot?.activeCombatantId ? combatants[snapshot.activeCombatantId] : null;
@@ -157,8 +175,7 @@ export function BattleScreen({ provider, mockDemos, mode = "mock" }: BattleScree
         </div>
         <div className="battle-log">
           <header><strong>BATTLE LOG</strong><button onClick={() => setLog([])}>Clear</button></header>
-          <ol aria-live="polite">
-            {log.length === 0 && <li className="system"><span>◎</span>Choose a demo or select a skill.</li>}
+          <ol ref={logListRef} aria-live="polite" aria-label="Battle events">
             {log.map((item, index) => <li className={item.type} key={`${item.id}.${index}`}><span>{logGlyph[item.type]}</span>{item.message}</li>)}
           </ol>
         </div>

@@ -410,7 +410,9 @@ class BattleAdapter:
                         message=f"{combatant_id} recovered {new['hp'] - old['hp']} HP.",
                     )
                 )
-            for status_id in new["statuses"].keys() - old["statuses"].keys():
+            for status_id in sorted(
+                new["statuses"].keys() - old["statuses"].keys()
+            ):
                 status = new["statuses"][status_id]
                 events.append(
                     self._event(
@@ -425,7 +427,9 @@ class BattleAdapter:
                         message=f"{status_id} was applied to {combatant_id}.",
                     )
                 )
-            for status_id in old["statuses"].keys() - new["statuses"].keys():
+            for status_id in sorted(
+                old["statuses"].keys() - new["statuses"].keys()
+            ):
                 events.append(
                     self._event(
                         session,
@@ -479,7 +483,9 @@ class BattleAdapter:
                         message=f"{combatant_id} recovered {new['hp'] - old['hp']} HP.",
                     )
                 )
-            for status_id in new["statuses"].keys() - old["statuses"].keys():
+            for status_id in sorted(
+                new["statuses"].keys() - old["statuses"].keys()
+            ):
                 status = new["statuses"][status_id]
                 events.append(
                     self._event(
@@ -492,7 +498,9 @@ class BattleAdapter:
                         message=f"{status_id} was applied to {combatant_id}.",
                     )
                 )
-            for status_id in old["statuses"].keys() - new["statuses"].keys():
+            for status_id in sorted(
+                old["statuses"].keys() - new["statuses"].keys()
+            ):
                 events.append(
                     self._event(
                         session,

@@ -4,8 +4,20 @@ import { AssetImage } from "@/components/battle/AssetImage";
 import { HeroCard, Meter } from "@/components/battle/HeroCard";
 import { SkillCard } from "@/components/battle/SkillCard";
 import { StatusIcon } from "@/components/battle/StatusIcon";
+import { statusRegistry } from "@/lib/battle/assets";
 import { initialSnapshot } from "@/lib/battle/fixture";
 import type { SkillState, StatusState } from "@/lib/battle/types";
+
+const adapterStatusIds = [
+  "status.fatal_strike",
+  "status.armor_breaker",
+  "status.bleeding_armor_crush",
+  "status.wound_armor_crush",
+  "status.antivenom_potion",
+  "status.bleeding_sharp_blade",
+  "status.poisoned_dagger",
+  "status.shadow_evasion",
+] as const;
 
 describe("battle components", () => {
   it("renders hero identity, active state, HP, resource, and bounded meter widths", () => {
@@ -59,6 +71,24 @@ describe("battle components", () => {
     const icon = screen.getByLabelText(/Stitch of Agony.*2 rounds remaining/i);
     expect(icon).toHaveAttribute("tabindex", "0");
     expect(screen.getByRole("tooltip")).toHaveTextContent("Suffers authoritative damage at round start.");
+  });
+
+  it.each(adapterStatusIds)("maps adapter status %s to useful tooltip metadata", (statusId) => {
+    const definition = statusRegistry[statusId];
+    const status: StatusState = {
+      id: statusId, instanceId: `${statusId}.test`, kind: definition.harmful ? "debuff" : "buff",
+      roundsRemaining: 2, stacks: null, sourceCombatantId: null,
+    };
+    render(<StatusIcon status={status} />);
+
+    expect(definition.name).not.toMatch(/unknown/i);
+    expect(definition.description.trim().length).toBeGreaterThan(0);
+    expect(screen.getByLabelText(
+      `${definition.name}. ${definition.description} 2 rounds remaining.`,
+    )).toBeVisible();
+    expect(screen.getByRole("tooltip")).toHaveTextContent(definition.name);
+    expect(screen.getByRole("tooltip")).toHaveTextContent(definition.description);
+    expect(screen.queryByText("Unknown status")).not.toBeInTheDocument();
   });
 
   it("falls back for missing and failed artwork with readable identity", () => {

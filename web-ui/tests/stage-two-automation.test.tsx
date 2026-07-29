@@ -59,6 +59,26 @@ describe("independent live battle UI coverage", () => {
     expect(screen.getByRole("region", { name: "Battlefield" }).querySelectorAll(".battle-figure")).toHaveLength(2);
   });
 
+  it("renders authoritative session-opening events in sequence without placeholder log text", async () => {
+    const provider: BattleProvider = {
+      getState: async () => ({
+        revision: 0,
+        snapshot: structuredClone(initial),
+        events: [
+          { id: "event.2", sequence: 2, type: "roundStarted", message: "Round 1 started." },
+          { id: "event.1", sequence: 1, type: "battleStarted", message: "Battle started." },
+        ],
+      }),
+      submitCommand: vi.fn(),
+    };
+    const { container } = render(<BattleScreen provider={provider} mode="live" />);
+
+    await screen.findByText("Battle started.");
+    const entries = [...container.querySelectorAll(".battle-log li")].map((item) => item.textContent);
+    expect(entries).toEqual(["◆Battle started.", "◎Round 1 started."]);
+    expect(screen.queryByText("Choose a demo or select a skill.")).not.toBeInTheDocument();
+  });
+
   it("submits selected intent without optimistic HP mutation, then reconciles", async () => {
     const user = userEvent.setup();
     const provider = new ControlledProvider();
@@ -203,6 +223,20 @@ describe("provider failure and contract edges", () => {
       targetIds: ["enemy.nighthawk"],
     })).rejects.toMatchObject({ kind: "stale", snapshot, revision: 2 });
     expect(fetchMock).toHaveBeenCalledTimes(2);
+    fetchMock.mockRestore();
+  });
+
+  it("preserves create-response events in provider state", async () => {
+    const snapshot = structuredClone(initial);
+    const events = [
+      { id: "event.1", sequence: 1, type: "battleStarted" as const, message: "Battle started." },
+    ];
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(new Response(JSON.stringify({
+      contractVersion: "1.0", battleId: "battle.1", revision: 0,
+      data: { events, snapshot },
+    }), { status: 200, headers: { "Content-Type": "application/json" } }));
+
+    await expect(new LiveBattleProvider("http://adapter.test").getState()).resolves.toMatchObject({ events });
     fetchMock.mockRestore();
   });
 });

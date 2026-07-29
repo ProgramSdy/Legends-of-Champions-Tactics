@@ -18,6 +18,7 @@ export function usePresentationQueue(provider: BattleProvider) {
   const generation = useRef(0);
   const busy = useRef(false);
   const pending = useRef<PresentationScript | null>(null);
+  const pendingLogEvents = useRef<BattleEvent[]>([]);
 
   const [loadAttempt, setLoadAttempt] = useState(0);
   useEffect(() => {
@@ -26,6 +27,7 @@ export function usePresentationQueue(provider: BattleProvider) {
       if (generation.current !== token) return;
       setVisibleSnapshot(structuredClone(state.snapshot));
       setRevision(state.revision);
+      setLog([...(state.events ?? [])].sort((a, b) => a.sequence - b.sequence));
       setError(null);
       setErrorKind(null);
     }).catch((reason: unknown) => {
@@ -67,8 +69,11 @@ export function usePresentationQueue(provider: BattleProvider) {
       if (generation.current !== token) return;
       pending.current = script;
       setCanSkip(true);
-      for (const event of [...script.events].sort((a, b) => a.sequence - b.sequence)) {
+      const orderedEvents = [...script.events].sort((a, b) => a.sequence - b.sequence);
+      pendingLogEvents.current = orderedEvents;
+      for (const event of orderedEvents) {
         if (generation.current !== token) return;
+        pendingLogEvents.current = pendingLogEvents.current.slice(1);
         setActiveEvent(event);
         applyEvent(event);
         setLog((items) => [...items, event]);
@@ -78,6 +83,7 @@ export function usePresentationQueue(provider: BattleProvider) {
       setVisibleSnapshot(structuredClone(script.snapshot));
       setRevision(script.revision);
       pending.current = null;
+      pendingLogEvents.current = [];
       setCanSkip(false);
     } catch (reason) {
       if (generation.current === token) {
@@ -100,13 +106,16 @@ export function usePresentationQueue(provider: BattleProvider) {
 
   const skip = useCallback(() => {
     const finalScript = pending.current;
+    const remainingLogEvents = pendingLogEvents.current;
     generation.current += 1;
     pending.current = null;
     busy.current = false;
     if (finalScript) {
       setVisibleSnapshot(structuredClone(finalScript.snapshot));
       setRevision(finalScript.revision);
+      setLog((items) => [...items, ...remainingLogEvents]);
     }
+    pendingLogEvents.current = [];
     setActiveEvent(null);
     setIsPlaying(false);
     setCanSkip(false);
