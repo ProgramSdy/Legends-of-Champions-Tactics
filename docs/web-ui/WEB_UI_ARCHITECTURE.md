@@ -19,6 +19,8 @@ the thin Python adapter. Python remains the sole gameplay authority.
   makes skip/replay race-safe.
 - `lib/battle/assets.ts` owns definition/status presentation and fallback
   metadata.
+- `lib/battle/battleBackgrounds.ts` owns the explicit battle-scene background
+  registry and presentation-only random selection.
 - `components/battle/BattleExperience.tsx` owns the Team Builder/battle
   lifecycle. It loads the authoritative roster, creates a fresh provider for
   each configuration, and unmounts the battle subtree on return.
@@ -55,7 +57,9 @@ wrong-version or malformed roster responses.
 Returning from an ended battle discards the provider and keyed battle
 component. This clears the battle ID, cached snapshot/revision, presentation
 generation, timers, log, selections, and modal state. Relaunch sends a new
-`POST /api/v1/battles`.
+`POST /api/v1/battles` and selects a fresh cosmetic battle background. The
+selected background remains stable for the mounted battle and is not connected
+to the engine seed or battle data contract.
 
 ## Assets and Accessibility
 
@@ -80,3 +84,5 @@ worker.
 
 - 2026-07-29 — Added UI-002 Team Builder, roster discovery, configurable live
   1v1/2v2/3v3 lifecycle, computer-turn boundary, and completion reset.
+- 2026-07-30 — Added presentation-only random battle backgrounds selected once
+  per newly started battle.

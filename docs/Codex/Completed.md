@@ -527,3 +527,273 @@ return action that resets the complete frontend battle lifecycle.
 - Define an owner-approved generated source for status presentation metadata
   and separately plan durable authenticated session storage before any
   production multiplayer or multi-worker deployment.
+
+---
+
+## 2026-07-30 — ASSET-001: Create Empty Game Image Asset Folder Structure
+
+**Summary:**
+
+Created the future game-image hierarchy under the Next.js public asset root at
+`web-ui/public/game-images/`. The structure contains only zero-byte tracking
+markers and has no runtime wiring, image content, metadata, manifests, samples,
+or application changes.
+
+**Agent Contributions:**
+
+- `project-manager` — confirmed `web-ui/public` as the static root, inspected
+  repository conventions, defined the exact tracking-marker policy, and
+  coordinated scope.
+- `ui-developer` — created the required hierarchy with one zero-byte
+  `.gitkeep` in each leaf directory.
+- `game-engine-developer` — confirmed the presentation-only hierarchy has no
+  engine, adapter, API, or contract impact.
+- `test-automator` — verified exact directories, markers, emptiness, naming,
+  image absence, unchanged source/config/tests, and build rationale.
+- `reviewer` — independently approved the structure-only result and confirmed
+  the documented naming/count resolutions.
+
+**Final Tree:**
+
+```text
+web-ui/public/game-images/
+├── battle-scenes/
+│   ├── backgrounds/.gitkeep
+│   ├── foregrounds/.gitkeep
+│   └── overlays/.gitkeep
+├── heroes/
+│   ├── portraits/.gitkeep
+│   ├── figures/.gitkeep
+│   ├── skills/.gitkeep
+│   └── status-attach/.gitkeep
+├── faculty/
+│   └── icons/.gitkeep
+├── ui/
+│   ├── frames/.gitkeep
+│   ├── panels/.gitkeep
+│   ├── badges/.gitkeep
+│   └── placeholders/.gitkeep
+├── effects/
+│   ├── combat/.gitkeep
+│   ├── magic/.gitkeep
+│   ├── particles/.gitkeep
+│   └── shared/.gitkeep
+└── others/.gitkeep
+```
+
+**Files Changed:**
+
+- `web-ui/public/game-images/**/.gitkeep` — 17 zero-byte leaf markers.
+- `docs/Codex/Completed.md`
+- `docs/Codex/Current_Task.md`
+
+**Validation:**
+
+- Correct root confirmed as `web-ui/public/game-images/`.
+- 23 unique directories exist: the root, six top-level categories, and 16
+  additional children. `others` is both a top-level category and a leaf.
+- 17 leaf directories and exactly 17 `.gitkeep` files.
+- Every `.gitkeep` is zero bytes; no other files exist under the new root.
+- No image files were created or added.
+- All directory components use lowercase kebab-case.
+- Existing `web-ui/public/game-assets/` content remained unchanged.
+- No application source, route, style, test, configuration, or build-script
+  file changed.
+- Scoped `git diff --check` passed.
+- No build was run because unreferenced zero-byte public markers cannot affect
+  compilation or runtime behavior.
+- Independent reviewer reported no blocking finding.
+
+**Deviations and Conflicts:**
+
+- The task diagram used `status_attach`, while requirement 7 and the acceptance
+  criteria require lowercase kebab-case. `status-attach` was used and the
+  underscore variant was not created.
+- The tree has 23 unique directories, not 24. A count of 24 double-counts
+  `others`, which is both a top-level directory and a leaf. No unauthorized
+  directory was invented to reach that count.
+
+**Unresolved Issues:**
+
+- The current UI continues using the existing `/game-assets/` namespace.
+  Populating or wiring `/game-images/` requires a separately authorized task.
+
+**Recommended Follow-up:**
+
+- Define asset naming, dimensions, formats, and registry/wiring rules only when
+  the project owner assigns the future image-production task.
+
+---
+
+## 2026-07-30 — ASSET-002: Organize Hero Assets by Profession
+
+**Summary:**
+
+Replaced the four shared hero asset leaf folders with profession-specific
+folders for all eight heroes approved by the current Web UI/API roster. Each
+profession contains empty `portraits/`, `figures/`, `skills/`, and
+`status-attach/` leaves tracked by zero-byte `.gitkeep` files. No images,
+application code, configuration, contracts, or tests were changed.
+
+**Agent Contributions:**
+
+- `project-manager` — defined scope, sequenced the restructure, protected
+  unrelated working-tree content, and maintained workflow documentation.
+- `ui-developer` — confirmed that the owner-requested faculty-specialization
+  hierarchy is the appropriate frontend-facing organization and applied the
+  explicit title-case folder naming.
+- `game-engine-developer` — verified all eight professions against
+  `battle_api.adapter.HERO_ROSTER` and confirmed no engine, adapter, API, or
+  contract changes were required.
+- `test-automator` — checked exact profession and leaf sets, marker count and
+  emptiness, removal of shared leaves, and source/configuration scope.
+- `reviewer` — independently reviewed naming authority, roster coverage,
+  working-tree safety, scope, and validation evidence.
+
+**Final Hero Tree:**
+
+```text
+web-ui/public/game-images/heroes/
+├── Mage-Comprehensiveness/
+├── Paladin-Protection/
+├── Paladin-Retribution/
+├── Priest-Comprehensiveness/
+├── Priest-Discipline/
+├── Rogue-Comprehensiveness/
+├── Warrior-Defence/
+└── Warrior-Weapon-Master/
+```
+
+Each profession directory contains:
+
+```text
+├── portraits/.gitkeep
+├── figures/.gitkeep
+├── skills/.gitkeep
+└── status-attach/.gitkeep
+```
+
+**Files Changed:**
+
+- `web-ui/public/game-images/heroes/**/.gitkeep` — replaced four shared markers
+  with 32 profession-specific zero-byte markers.
+- `docs/Codex/Completed.md`
+- `docs/Codex/Current_Task.md`
+
+**Validation:**
+
+- Exact eight profession directories matched the approved adapter roster.
+- Exactly 41 directories exist in the hero subtree: one hero root, eight
+  profession directories, and 32 leaf directories.
+- Each profession has exactly the four required leaves.
+- Exactly 32 `.gitkeep` files exist and every marker is zero bytes.
+- No non-marker files or image files exist in the hero subtree.
+- The former shared `heroes/portraits`, `heroes/figures`, `heroes/skills`, and
+  `heroes/status-attach` directories are absent.
+- Non-hero `game-images` branches and existing `game-assets` were preserved.
+- No application source, configuration, test, or build file changed.
+- `git diff --check` passed.
+- No build was run because unreferenced zero-byte public markers cannot affect
+  compilation or runtime behavior.
+
+**Naming Decision:**
+
+- The owner explicitly requested title-case faculty-specialization names such
+  as `Warrior-Weapon-Master`. That task-specific instruction supersedes
+  ASSET-001's general lowercase convention for these profession directories.
+- Leaf folders retain lowercase kebab-case, including `status-attach`.
+
+**Unresolved Issues:**
+
+- The UI does not yet resolve assets from the new profession folders and
+  continues using `/game-assets/`; wiring remains a separate task.
+- The repository contains unrelated, pre-existing local content under
+  `docs/ChatGPT/` and an ignored `.DS_Store`. Neither was modified.
+
+**Recommended Follow-up:**
+
+- Define profession asset filenames, required dimensions and formats, and the
+  definition-ID-to-directory mapping before populating or wiring these folders.
+
+---
+
+## 2026-07-30 — UI-003: Random Battle Background
+
+**Summary:**
+
+Added a presentation-only registry for the three supplied battle-scene PNGs.
+Starting a live battle now selects one background at random, passes it into the
+battle screen, and keeps it stable throughout that battle. Returning to Team
+Builder clears the selection so the next battle performs a fresh random pick.
+The selected image is centered, covers the battlefield, and retains the
+existing readability vignette.
+
+**Agent Contributions:**
+
+- `project-manager` — defined the battle-lifecycle boundary, coordinated the
+  five roles, protected unrelated working-tree content, and maintained task
+  records.
+- `ui-developer` — implemented the explicit registry, client-event selection,
+  stable BattleScreen presentation state, CSS cover treatment, and architecture
+  documentation.
+- `game-engine-developer` — confirmed that background randomness is cosmetic
+  frontend state and requires no engine, seed, API, or contract change.
+- `test-automator` — added deterministic selector and live lifecycle coverage,
+  then validated the focused and integrated frontend behavior.
+- `reviewer` — reviewed hydration safety, lifecycle stability, accessibility,
+  image-loading cost, foreground readability, scope, and final evidence.
+
+**Files Changed:**
+
+- `web-ui/lib/battle/battleBackgrounds.ts`
+- `web-ui/components/battle/BattleExperience.tsx`
+- `web-ui/components/battle/BattleScreen.tsx`
+- `web-ui/app/globals.css`
+- `web-ui/tests/battle-backgrounds.test.tsx`
+- `docs/web-ui/WEB_UI_ARCHITECTURE.md`
+- `docs/Codex/Completed.md`
+- `docs/Codex/Current_Task.md`
+- `web-ui/public/game-images/battle-scenes/backgrounds/*.png` — supplied and
+  named by the project owner; consumed without image-content modification.
+
+**Validation:**
+
+- Focused background suite — 7 passed.
+- Full frontend Vitest suite — 64 passed across six files.
+- TypeScript type checking — passed.
+- ESLint — passed.
+- Production frontend build — passed; vinext emitted its informational
+  route-classification note.
+- Live frontend and backend were available on ports 3001 and 8001.
+- Browser review started a live battle and confirmed BG03 was selected, its
+  computed background used centered `cover`, and the selection stayed unchanged
+  after a presentation-speed rerender.
+- Browser review confirmed all three public image URLs loaded completely with
+  their expected natural dimensions.
+- Visual inspection confirmed figures, health bars, target controls, battle
+  log, caption, and interface panels remained readable and usable.
+- `git diff --check` passed.
+- No Python engine, adapter, API model, contract, or test file changed.
+
+**Implementation Decisions:**
+
+- Random selection occurs in the Team Builder Start Battle client event rather
+  than during render, preventing server/client hydration mismatch.
+- Cosmetic background randomness is deliberately independent from the
+  authoritative engine seed.
+- Consecutive battles may legitimately select the same image.
+- Only the selected image URL is referenced; the implementation does not
+  preload all backgrounds.
+
+**Unresolved Issues:**
+
+- The supplied PNGs are approximately 2 MB each and have differing dimensions;
+  browser `cover` cropping varies by viewport. Image optimization remains a
+  separate asset-production task.
+- The fixed `THE FALLEN CITADEL` caption may not describe every future
+  background if the scene library expands.
+
+**Recommended Follow-up:**
+
+- Define an optimized production background format and responsive variants
+  before adding a larger scene library.

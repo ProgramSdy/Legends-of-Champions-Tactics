@@ -77,12 +77,9 @@ button:focus-visible, a:focus-visible, [tabindex="0"]:focus-visible { outline: 2
 .team-bonus { padding: 8px; border-top: 1px solid #26384c; display: grid; gap: 4px; font-size: 9px; color: #aab2bc; }
 .team-bonus strong { color: #45c4fd; font-size: 9px; letter-spacing: .1em; }.enemy .team-bonus strong { color: #ff6654; }
 
-.battlefield { position: relative; min-width: 0; overflow: hidden; isolation: isolate; background: radial-gradient(ellipse at 50% 35%, #323e80 0, #141938 28%, transparent 60%), linear-gradient(#090d1b 0 48%, #131522 48%, #06070c 100%); }
-.battlefield::before { content:""; position:absolute; inset: 45% -10% -20%; z-index:-1; transform: perspective(400px) rotateX(58deg); background: repeating-linear-gradient(90deg, transparent 0 90px,#302c3c 92px), repeating-linear-gradient(0deg,#0c0d14 0 34px,#292638 36px); box-shadow: inset 0 50px 70px #05060b; }
+.battlefield { position: relative; min-width: 0; overflow: hidden; isolation: isolate; background-color:#090d1b; background-image:var(--battle-background-image); background-position:center; background-repeat:no-repeat; background-size:cover; }
+.battlefield::before { content:""; position:absolute; inset:0; z-index:0; pointer-events:none; background:linear-gradient(180deg,transparent 46%,#06070c80 100%); }
 .battlefield::after { content:""; position:absolute; inset:0; pointer-events:none; background:linear-gradient(90deg,#050912b8,transparent 18%,transparent 82%,#170809b8), radial-gradient(ellipse at center,transparent 50%,#03040a 100%); z-index:5; }
-.moon { position:absolute; width:95px;height:95px;border-radius:50%;left:50%;top:17%;transform:translateX(-50%);background:#9cafff22;box-shadow:0 0 80px #637eff99; }
-.ruins { position:absolute; bottom:38%; width:34%;height:40%;background:linear-gradient(100deg,#050711 30%,#10152b); clip-path:polygon(0 100%,0 30%,10% 30%,10% 12%,17% 12%,20% 43%,28% 43%,30% 0,38% 0,40% 62%,52% 62%,54% 35%,61% 35%,64% 75%,75% 75%,77% 50%,84% 50%,88% 100%); opacity:.8; }
-.ruins.right { right:0; transform:scaleX(-1); }.ruins.left{left:0}
 .battlefield-caption { position:absolute; left:50%; bottom:7px; transform:translateX(-50%); z-index:6; text-align:center; opacity:.55; letter-spacing:.2em; font-size:8px; }.battlefield-caption small{display:block;margin-top:3px}
 .formation-slot{position:absolute;width:0;height:0;z-index:3}.formation-slot .battle-figure{left:-58px;top:-95px;transform:scale(var(--figure-scale));transform-origin:center bottom}
 .battle-figure { position:absolute; width:116px; height:190px; padding:0; border:0; background:none; color:var(--text); z-index:3; transition:transform .32s ease,filter .2s; }

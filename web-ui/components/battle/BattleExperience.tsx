@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { BattleScreen } from "./BattleScreen";
 import { fetchHeroRoster, LiveBattleProvider } from "@/lib/battle/liveProvider";
 import type { BattleCreateConfiguration, HeroDefinitionSummary } from "@/lib/battle/types";
+import { pickRandomBattleBackground } from "@/lib/battle/battleBackgrounds";
 import { TeamBuilder } from "./TeamBuilder";
 
 export function BattleExperience() {
@@ -12,6 +13,7 @@ export function BattleExperience() {
   const [roster, setRoster] = useState<HeroDefinitionSummary[] | null>(null);
   const [rosterError, setRosterError] = useState<string | null>(null);
   const [rosterAttempt, setRosterAttempt] = useState(0);
+  const [battleBackground, setBattleBackground] = useState<string | null>(null);
   useEffect(() => {
     let current = true;
     fetchHeroRoster()
@@ -23,6 +25,19 @@ export function BattleExperience() {
 
   if (!provider && rosterError) return <main className="loading-screen"><section className="connection-state" role="alert"><strong>HERO ROSTER UNAVAILABLE</strong><p>{rosterError}</p><button onClick={() => { setRosterError(null); setRosterAttempt((attempt) => attempt + 1); }}>Retry connection</button></section></main>;
   if (!provider && !roster) return <main className="loading-screen" aria-live="polite"><span className="loading-rune">◇</span>Loading approved heroes…</main>;
-  if (!provider) return <TeamBuilder roster={roster!} onStart={(next) => { setSessionKey((key) => key + 1); setConfiguration(next); }} />;
-  return <BattleScreen key={sessionKey} provider={provider} mode="live" onReturnToBuilder={() => setConfiguration(null)} />;
+  if (!provider) return <TeamBuilder roster={roster!} onStart={(next) => {
+    setSessionKey((key) => key + 1);
+    setBattleBackground(pickRandomBattleBackground());
+    setConfiguration(next);
+  }} />;
+  return <BattleScreen
+    key={sessionKey}
+    provider={provider}
+    mode="live"
+    backgroundImage={battleBackground ?? undefined}
+    onReturnToBuilder={() => {
+      setConfiguration(null);
+      setBattleBackground(null);
+    }}
+  />;
 }

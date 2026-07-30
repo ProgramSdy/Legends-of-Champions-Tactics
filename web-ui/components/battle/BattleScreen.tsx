@@ -9,6 +9,7 @@ import { HeroCard, Meter } from "./HeroCard";
 import { SkillCard } from "./SkillCard";
 import { StatusIcon } from "./StatusIcon";
 import { formationFor, getBattleFormat } from "@/lib/battle/formations";
+import { BATTLE_BACKGROUNDS } from "@/lib/battle/battleBackgrounds";
 
 const logGlyph: Record<BattleEventType, string> = {
   battleStarted: "◆", roundStarted: "◎", turnStarted: "▶", skillStarted: "✦",
@@ -65,10 +66,12 @@ interface BattleScreenProps {
   provider: BattleProvider;
   mockDemos?: ReadonlyArray<{ id: string; label: string; run: () => Promise<PresentationScript> }>;
   mode?: "live" | "mock";
+  backgroundImage?: string;
   onReturnToBuilder?: () => void;
 }
 
-export function BattleScreen({ provider, mockDemos, mode = "mock", onReturnToBuilder }: BattleScreenProps) {
+export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundImage, onReturnToBuilder }: BattleScreenProps) {
+  const mountedBackground = backgroundImage ?? BATTLE_BACKGROUNDS[0];
   const { snapshot, revision, activeEvent, log, setLog, speed, setSpeed, isPlaying, canSkip, error, errorKind, present, skip, retry } = usePresentationQueue(provider);
   const [selectedSkill, setSelectedSkill] = useState<string | null>(null);
   const [selectedTargets, setSelectedTargets] = useState<string[]>([]);
@@ -158,8 +161,12 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", onReturnToBui
 
       <section className="battle-layout">
         <TeamPanel side="friendly" heroes={sideHeroes("friendly")} activeId={snapshot.activeCombatantId} />
-        <section className={`battlefield ${activeEvent ? "event-active" : ""}`} aria-label="Battlefield">
-          <div className="sky-glow" /><div className="moon" /><div className="ruins left" /><div className="ruins right" />
+        <section
+          className={`battlefield ${activeEvent ? "event-active" : ""}`}
+          aria-label="Battlefield"
+          data-background={mountedBackground}
+          style={{ "--battle-background-image": `url("${mountedBackground}")` } as CSSProperties}
+        >
           <div className={`effect-layer ${activeEvent?.effectHint ?? ""}`} aria-hidden="true"><span /></div>
           {battlefield.map((hero) => {
             const position = formationFor(snapshot, hero.sideId, hero.slot);
