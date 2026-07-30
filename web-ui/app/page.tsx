@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { BattleExperience } from "@/components/battle/BattleExperience";
 
 export const metadata: Metadata = {
-  title: "Battle · Legends of Champions Tactics",
-  description: "Engine-backed tactical battle interface.",
+  title: "Team Builder · Legends of Champions Tactics",
+  description: "Build a team and enter an engine-backed tactical battle.",
 };
 
 export default function Home() {

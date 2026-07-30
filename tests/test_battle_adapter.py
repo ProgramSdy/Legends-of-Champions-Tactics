@@ -5,7 +5,14 @@ import re
 
 import pytest
 
-from battle_api.adapter import ROOT, STATUS_KINDS, BattleAdapter, BattleRegistry
+from battle_api.adapter import (
+    HERO_ROSTER,
+    ROOT,
+    STATUS_KINDS,
+    BattleAdapter,
+    BattleRegistry,
+)
+from skills.skill import Debuff
 
 
 @pytest.fixture()
@@ -327,3 +334,411 @@ def test_registry_is_process_local_and_returns_created_session():
     session, _ = registry.create(seed=3)
     assert registry.get(session.battle_id) is session
     assert registry.get("missing") is None
+
+
+def test_approved_roster_constructs_with_stable_definition_and_skill_ids():
+    adapter = BattleAdapter()
+
+    for index, definition_id in enumerate(HERO_ROSTER):
+        session, envelope = adapter.create_battle(
+            seed=100 + index,
+            battle_id=f"battle.roster.{index}",
+            player_team=[definition_id],
+            enemy_team=["hero.rogue.comprehensiveness"],
+        )
+        friendly_id = envelope["data"]["snapshot"]["sides"][0]["combatantIds"][0]
+        combatant = envelope["data"]["snapshot"]["combatants"][friendly_id]
+
+        assert combatant["definitionId"] == definition_id
+        assert combatant["isPlayerControlled"] is True
+        assert len(combatant["skills"]) == 3
+        assert all(skill["id"].startswith("skill.") for skill in combatant["skills"])
+        assert adapter.snapshot(session)["combatants"][friendly_id]["skills"] == combatant["skills"]
+
+
+@pytest.mark.parametrize("definition_id", list(HERO_ROSTER))
+def test_every_approved_hero_can_submit_a_legal_live_action(definition_id):
+    adapter = BattleAdapter()
+    session, _ = adapter.create_battle(
+        seed=101,
+        battle_id=f"battle.action.{definition_id}",
+        player_team=[definition_id],
+        enemy_team=["hero.rogue.comprehensiveness"],
+    )
+    actor = session.game.player_heroes[0]
+    session.game.unactioned_sorted_heroes = [actor]
+    snapshot = adapter.snapshot(session)
+    action = snapshot["legalActions"][0]
+
+    result = adapter.submit(
+        session,
+        {
+            "type": "useSkill",
+            "commandId": f"cmd.action.{definition_id}",
+            "expectedRevision": session.revision,
+            "actorId": action["actorId"],
+            "skillId": action["skillId"],
+            "targetIds": action["validTargetIds"][: action["minimumTargets"]],
+        },
+    )
+
+    assert result["accepted"] is True
+    assert result["revision"] == 1
+    assert result["snapshot"] == adapter.snapshot(session)
+
+
+@pytest.mark.parametrize("battle_size", [1, 2, 3])
+def test_configured_battle_preserves_slots_duplicates_and_control_mode(battle_size):
+    adapter = BattleAdapter()
+    repeated = ["hero.priest.comprehensiveness"] * battle_size
+    session, envelope = adapter.create_battle(
+        seed=7,
+        battle_id=f"battle.size.{battle_size}",
+        battle_size=battle_size,
+        player_team=repeated,
+        enemy_team=repeated,
+        enemy_control_mode="player",
+    )
+    snapshot = envelope["data"]["snapshot"]
+
+    assert len(snapshot["sides"][0]["combatantIds"]) == battle_size
+    assert len(snapshot["sides"][1]["combatantIds"]) == battle_size
+    assert len(set(snapshot["combatants"])) == battle_size * 2
+    assert all(
+        combatant["isPlayerControlled"]
+        for combatant in snapshot["combatants"].values()
+    )
+    assert session.battle_size == battle_size
+
+
+def test_player_controlled_enemy_turn_exposes_and_accepts_legal_actions():
+    adapter = BattleAdapter()
+    session, _ = adapter.create_battle(
+        seed=19,
+        battle_id="battle.enemy-player",
+        battle_size=2,
+        player_team=[
+            "hero.priest.comprehensiveness",
+            "hero.warrior.weapon_master",
+        ],
+        enemy_team=[
+            "hero.mage.comprehensiveness",
+            "hero.rogue.comprehensiveness",
+        ],
+        enemy_control_mode="player",
+    )
+    enemy_actor = session.game.opponent_heroes[0]
+    session.game.unactioned_sorted_heroes = [enemy_actor]
+    snapshot = adapter.snapshot(session)
+    action = snapshot["legalActions"][0]
+
+    assert snapshot["combatants"][action["actorId"]]["sideId"] == "enemy"
+    assert snapshot["combatants"][action["actorId"]]["isPlayerControlled"] is True
+    result = adapter.submit(
+        session,
+        {
+            "type": "useSkill",
+            "commandId": "cmd.enemy-player",
+            "expectedRevision": session.revision,
+            "actorId": action["actorId"],
+            "skillId": action["skillId"],
+            "targetIds": action["validTargetIds"][: action["minimumTargets"]],
+        },
+    )
+    assert result["accepted"] is True
+
+
+def test_seeded_random_enemy_composition_is_complete_and_reproducible():
+    kwargs = {
+        "seed": 29,
+        "battle_size": 3,
+        "player_team": list(HERO_ROSTER)[:3],
+        "enemy_composition_mode": "random",
+        "enemy_control_mode": "player",
+    }
+    first = BattleAdapter().create_battle(battle_id="battle.random.1", **kwargs)[1]
+    second = BattleAdapter().create_battle(battle_id="battle.random.2", **kwargs)[1]
+
+    def enemy_definitions(envelope):
+        snapshot = envelope["data"]["snapshot"]
+        return [
+            snapshot["combatants"][combatant_id]["definitionId"]
+            for combatant_id in snapshot["sides"][1]["combatantIds"]
+        ]
+
+    assert enemy_definitions(first) == enemy_definitions(second)
+    assert len(enemy_definitions(first)) == 3
+
+
+def test_computer_enemy_turns_are_drained_to_human_or_battle_end():
+    adapter = BattleAdapter()
+    session, envelope = adapter.create_battle(
+        seed=3,
+        battle_id="battle.computer",
+        battle_size=3,
+        player_team=list(HERO_ROSTER)[:3],
+        enemy_composition_mode="random",
+        enemy_control_mode="computer",
+    )
+    snapshot = envelope["data"]["snapshot"]
+
+    assert snapshot["phase"] == "ended" or snapshot["combatants"][
+        snapshot["activeCombatantId"]
+    ]["isPlayerControlled"]
+    assert all(
+        not snapshot["combatants"][combatant_id]["isPlayerControlled"]
+        for combatant_id in snapshot["sides"][1]["combatantIds"]
+    )
+
+    if snapshot["phase"] != "ended":
+        action = snapshot["legalActions"][0]
+        result = adapter.submit(
+            session,
+            {
+                "type": "useSkill",
+                "commandId": "cmd.before-ai",
+                "expectedRevision": session.revision,
+                "actorId": action["actorId"],
+                "skillId": action["skillId"],
+                "targetIds": action["validTargetIds"][: action["minimumTargets"]],
+            },
+        )
+        final = result["snapshot"]
+        assert final["phase"] == "ended" or final["combatants"][
+            final["activeCombatantId"]
+        ]["isPlayerControlled"]
+        assert result["revision"] == session.revision
+
+
+def test_stunned_player_turn_is_skipped_before_legal_actions_are_exposed():
+    adapter = BattleAdapter()
+    session, _ = adapter.create_battle(
+        seed=31,
+        battle_id="battle.stunned-player",
+        battle_size=2,
+        player_team=[
+            "hero.warrior.defence",
+            "hero.priest.comprehensiveness",
+        ],
+        enemy_team=[
+            "hero.rogue.comprehensiveness",
+            "hero.mage.comprehensiveness",
+        ],
+        enemy_control_mode="player",
+    )
+    stunned = session.game.player_heroes[0]
+    next_actor = session.game.player_heroes[1]
+    stunned.status["stunned"] = True
+    stunned.stun_duration = 1
+    session.game.unactioned_sorted_heroes = [stunned, next_actor]
+
+    assert adapter.snapshot(session)["legalActions"] == []
+    events = adapter._drain_automatic_turns(session)
+    snapshot = adapter.snapshot(session)
+
+    assert [event["type"] for event in events] == ["turnEnded", "turnStarted"]
+    assert events[0]["sourceId"] == adapter._combatant_id(session, stunned)
+    assert "stunned" in events[0]["message"]
+    assert stunned.actioned is True
+    assert snapshot["activeCombatantId"] == adapter._combatant_id(session, next_actor)
+    assert snapshot["legalActions"]
+    assert session.revision == 1
+
+
+def test_stunned_computer_turn_skips_without_executing_a_skill():
+    adapter = BattleAdapter()
+    session, _ = adapter.create_battle(
+        seed=37,
+        battle_id="battle.stunned-computer",
+        player_team=["hero.priest.comprehensiveness"],
+        enemy_team=["hero.warrior.defence"],
+        enemy_control_mode="computer",
+    )
+    computer = session.game.opponent_heroes[0]
+    player = session.game.player_heroes[0]
+    computer.status["stunned"] = True
+    computer.stun_duration = 1
+    computer.actioned = False
+    player.actioned = False
+    session.game.unactioned_sorted_heroes = [computer, player]
+    revision_before = session.revision
+
+    events = adapter._drain_automatic_turns(session)
+    snapshot = adapter.snapshot(session)
+
+    assert not any(event["type"] == "skillStarted" for event in events)
+    assert [event["type"] for event in events] == ["turnEnded", "turnStarted"]
+    assert events[0]["sourceId"] == adapter._combatant_id(session, computer)
+    assert computer.actioned is True
+    assert snapshot["activeCombatantId"] == adapter._combatant_id(session, player)
+    assert snapshot["legalActions"]
+    assert session.revision == revision_before + 1
+
+
+@pytest.mark.parametrize("player_controlled", [True, False])
+def test_scoff_forces_python_ai_attack_on_initiator_without_client_choice(
+    player_controlled,
+):
+    adapter = BattleAdapter()
+    session, _ = adapter.create_battle(
+        seed=41,
+        battle_id=f"battle.scoff.{player_controlled}",
+        battle_size=2,
+        player_team=[
+            "hero.warrior.defence",
+            "hero.priest.comprehensiveness",
+        ],
+        enemy_team=[
+            "hero.rogue.comprehensiveness",
+            "hero.mage.comprehensiveness",
+        ],
+        enemy_control_mode="player" if player_controlled else "computer",
+    )
+    source = session.game.player_heroes[0]
+    other_target = session.game.player_heroes[1]
+    scoffed = session.game.opponent_heroes[0]
+    next_actor = session.game.opponent_heroes[1]
+    next_actor.is_player_controlled = True
+    scoffed.status["scoff"] = True
+    scoffed.add_debuff(Debuff("Scoff", 1, source, 1))
+    for hero in session.game.heroes:
+        hero.actioned = hero not in {scoffed, next_actor}
+    session.game.unactioned_sorted_heroes = [scoffed, next_actor]
+    revision_before = session.revision
+
+    snapshot_before = adapter.snapshot(session)
+    assert snapshot_before["activeCombatantId"] == adapter._combatant_id(
+        session, scoffed
+    )
+    assert snapshot_before["legalActions"] == []
+
+    events = adapter._drain_automatic_turns(session)
+    skill_event = next(event for event in events if event["type"] == "skillStarted")
+    status_removed = next(
+        event
+        for event in events
+        if event["type"] == "statusRemoved"
+        and event.get("statusId") == "status.scoff"
+    )
+    snapshot_after = adapter.snapshot(session)
+
+    assert skill_event["sourceId"] == adapter._combatant_id(session, scoffed)
+    assert skill_event["targetIds"] == [adapter._combatant_id(session, source)]
+    assert adapter._combatant_id(session, other_target) not in skill_event["targetIds"]
+    assert status_removed["targetId"] == adapter._combatant_id(session, scoffed)
+    assert scoffed.status["scoff"] is False
+    assert scoffed.actioned is True
+    assert snapshot_after["activeCombatantId"] == adapter._combatant_id(
+        session, next_actor
+    )
+    assert snapshot_after["legalActions"]
+    assert session.revision == revision_before + 1
+
+
+@pytest.mark.parametrize("player_controlled", [True, False])
+def test_dead_scoff_source_is_removed_before_normal_control_resumes(
+    player_controlled,
+):
+    adapter = BattleAdapter()
+    session, _ = adapter.create_battle(
+        seed=43,
+        battle_id=f"battle.scoff-dead-source.{player_controlled}",
+        battle_size=2,
+        player_team=[
+            "hero.warrior.defence",
+            "hero.priest.comprehensiveness",
+        ],
+        enemy_team=[
+            "hero.rogue.comprehensiveness",
+            "hero.mage.comprehensiveness",
+        ],
+        enemy_control_mode="player" if player_controlled else "computer",
+    )
+    dead_source = session.game.player_heroes[0]
+    living_target = session.game.player_heroes[1]
+    scoffed = session.game.opponent_heroes[0]
+    next_actor = session.game.opponent_heroes[1]
+    dead_source.hp = 0
+    scoffed.status["scoff"] = True
+    scoffed.add_debuff(Debuff("Scoff", 1, dead_source, 1))
+    next_actor.is_player_controlled = True
+    for hero in session.game.heroes:
+        hero.actioned = hero not in {scoffed, next_actor}
+    session.game.unactioned_sorted_heroes = [scoffed, next_actor]
+    session.game.update_allies_opponents_list()
+    revision_before = session.revision
+    dead_source_id = adapter._combatant_id(session, dead_source)
+    living_target_id = adapter._combatant_id(session, living_target)
+    scoffed_id = adapter._combatant_id(session, scoffed)
+
+    assert adapter.snapshot(session)["legalActions"] == []
+    events = adapter._drain_automatic_turns(session)
+    snapshot = adapter.snapshot(session)
+    removed = [
+        event
+        for event in events
+        if event["type"] == "statusRemoved"
+        and event.get("statusId") == "status.scoff"
+    ]
+
+    assert len(removed) == 1
+    assert removed[0]["targetId"] == scoffed_id
+    assert scoffed.status["scoff"] is False
+    assert all(dead_source_id not in event.get("targetIds", []) for event in events)
+    assert [event["sequence"] for event in events] == sorted(
+        event["sequence"] for event in events
+    )
+
+    if player_controlled:
+        assert not any(event["type"] == "skillStarted" for event in events)
+        assert snapshot["activeCombatantId"] == scoffed_id
+        assert snapshot["legalActions"]
+        assert all(
+            dead_source_id not in action["validTargetIds"]
+            for action in snapshot["legalActions"]
+        )
+        assert scoffed.actioned is False
+        assert session.revision == revision_before + 1
+    else:
+        skill_event = next(
+            event for event in events if event["type"] == "skillStarted"
+        )
+        assert skill_event["sourceId"] == scoffed_id
+        assert skill_event["targetIds"] == [living_target_id]
+        assert scoffed.actioned is True
+        assert snapshot["activeCombatantId"] == adapter._combatant_id(
+            session, next_actor
+        )
+        assert session.revision == revision_before + 2
+
+
+def test_multi_target_skill_contracts_to_available_living_targets():
+    adapter = BattleAdapter()
+    session, _ = adapter.create_battle(
+        seed=4,
+        battle_id="battle.multi-target",
+        player_team=["hero.mage.comprehensiveness"],
+        enemy_team=["hero.rogue.comprehensiveness"],
+    )
+    mage = session.game.player_heroes[0]
+    session.game.unactioned_sorted_heroes = [mage]
+    snapshot = adapter.snapshot(session)
+    action = next(
+        action
+        for action in snapshot["legalActions"]
+        if action["skillId"] == "skill.mage.arcane_missiles"
+    )
+
+    assert action["minimumTargets"] == action["maximumTargets"] == 1
+    result = adapter.submit(
+        session,
+        {
+            "type": "useSkill",
+            "commandId": "cmd.arcane",
+            "expectedRevision": 0,
+            "actorId": snapshot["activeCombatantId"],
+            "skillId": action["skillId"],
+            "targetIds": action["validTargetIds"],
+        },
+    )
+    assert result["accepted"] is True

@@ -2,24 +2,87 @@
 
 ## Purpose
 
-Authoritative map of screens, navigation, entry points, exits, and important UI states.
+Authoritative map of web-client screens, navigation, entry points, exits, and
+important UI states.
 
 ## Current Flow
 
-_To be documented from the current implementation._
+```text
+Load application
+  -> Load approved roster from GET /api/v1/heroes
+     -> Loading state
+     -> Retryable roster error
+     -> Team Builder
+        -> Validate configuration
+        -> Create live battle
+           -> Retryable battle-service error
+           -> Battle Screen
+              -> Authoritative battle completion
+              -> Completion dialog
+              -> Return to Team Builder
+```
+
+Returning to Team Builder unmounts the battle subtree and discards the live
+provider, battle ID, authoritative snapshot cache, presentation queue, timers,
+event log, selections, and completion-dialog state. A later launch creates a
+new provider and API session.
 
 ## Screen Inventory
 
-_To be documented._
+### Team Builder
+
+The normal application entry point. It provides:
+
+- battle size: 1v1, 2v2, or 3v3;
+- one player-team selector per required slot;
+- random or player-specified enemy composition;
+- one enemy-team selector per required slot in specified mode;
+- Python-engine computer control or player control for the enemy team;
+- an optional non-negative integer seed;
+- the eight definitions supplied by the adapter roster endpoint.
+
+The launch action is disabled until all required selectors and seed input are
+valid. Repeated definitions and overlap between teams are permitted because no
+authoritative design rule currently prohibits them.
+
+### Battle Screen
+
+Renders the selected live formation and authoritative snapshot. All friendly
+heroes are player-controlled. Enemy turns are either submitted by the player or
+resolved by the adapter through existing Python AI, according to the Team
+Builder configuration.
+
+### Completion Dialog
+
+Appears only when the authoritative snapshot phase is `ended`. It announces the
+outcome, initially focuses the Return action, contains keyboard Tab focus, and
+returns to Team Builder.
+
+### Asset Gallery
+
+Development/reference route at `/assets`; it is not part of the normal battle
+flow.
 
 ## Navigation Rules
 
-_To be documented._
+- `/` opens Team Builder after the roster loads.
+- Team Builder launches only live Python-backed sessions.
+- Mock fixtures remain test/development data and are not the normal user entry
+  flow.
+- Battle state is not retained when returning to Team Builder.
+- Browser reload during a battle does not resume the process-local session.
 
 ## Error, Empty, and Loading States
 
-_To be documented._
+- Roster loading: `Loading approved heroes…`
+- Roster/API failure: `HERO ROSTER UNAVAILABLE` with Retry.
+- Battle creation failure: existing battle-service error boundary with Retry.
+- Invalid Team Builder configuration: precise inline validation and disabled
+  launch.
+- Ended battle: modal outcome and Return to Team Builder.
 
 ## Change Log
 
+- 2026-07-29 — Documented UI-002 Team Builder, live multi-team battle, and
+  return/reset flow.
 - 2026-07-26 — Initial document created.

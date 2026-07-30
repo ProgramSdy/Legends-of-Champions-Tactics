@@ -34,11 +34,19 @@ describe("live provider boundary", () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
       contractVersion: "1.0", battleId: "battle.1", revision: 0, data: { events: [], snapshot },
     }), { status: 200, headers: { "Content-Type": "application/json" } }));
-    const provider = new LiveBattleProvider("http://adapter.test", 42);
+    const configuration = {
+      battleSize: 1 as const,
+      playerTeam: ["hero.warrior.weapon_master"],
+      enemyCompositionMode: "specified" as const,
+      enemyTeam: ["hero.rogue.comprehensiveness"],
+      enemyControlMode: "player" as const,
+      seed: 42,
+    };
+    const provider = new LiveBattleProvider("http://adapter.test", configuration);
     expect(await provider.getState()).toEqual({ revision: 0, snapshot, events: [] });
     expect(fetchMock).toHaveBeenCalledWith("http://adapter.test/api/v1/battles", expect.objectContaining({
       method: "POST",
-      body: JSON.stringify({ scenarioId: "ragnar-vs-nighthawk", seed: 42 }),
+      body: JSON.stringify(configuration),
     }));
     fetchMock.mockRestore();
   });

@@ -2,42 +2,27 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { BattleScreen } from "./BattleScreen";
-import { MockBattleProvider, createFormatFixture } from "@/lib/battle/fixture";
-import { LiveBattleProvider } from "@/lib/battle/liveProvider";
-
-type Mode = "live" | "mock";
-type Format = 1 | 2 | 3;
-
-function readConfiguration(): { mode: Mode; format: Format } {
-  if (typeof window === "undefined") return { mode: "live", format: 1 };
-  const query = new URLSearchParams(window.location.search);
-  const mode = query.get("provider") === "mock" ? "mock" : "live";
-  const requested = Number(query.get("format"));
-  return { mode, format: requested === 2 || requested === 3 ? requested : 1 };
-}
+import { fetchHeroRoster, LiveBattleProvider } from "@/lib/battle/liveProvider";
+import type { BattleCreateConfiguration, HeroDefinitionSummary } from "@/lib/battle/types";
+import { TeamBuilder } from "./TeamBuilder";
 
 export function BattleExperience() {
-  const [config, setConfig] = useState<{ mode: Mode; format: Format } | null>(null);
+  const [configuration, setConfiguration] = useState<BattleCreateConfiguration | null>(null);
+  const [sessionKey, setSessionKey] = useState(0);
+  const [roster, setRoster] = useState<HeroDefinitionSummary[] | null>(null);
+  const [rosterError, setRosterError] = useState<string | null>(null);
+  const [rosterAttempt, setRosterAttempt] = useState(0);
   useEffect(() => {
-    const timer = window.setTimeout(() => setConfig(readConfiguration()), 0);
-    return () => window.clearTimeout(timer);
-  }, []);
-  const provider = useMemo(
-    () => !config ? null : config.mode === "live" ? new LiveBattleProvider() : new MockBattleProvider(createFormatFixture(config.format)),
-    [config],
-  );
+    let current = true;
+    fetchHeroRoster()
+      .then((heroes) => { if (current) { setRoster(heroes); setRosterError(null); } })
+      .catch((reason: unknown) => { if (current) setRosterError(reason instanceof Error ? reason.message : "Unable to load hero roster."); });
+    return () => { current = false; };
+  }, [rosterAttempt]);
+  const provider = useMemo(() => configuration ? new LiveBattleProvider(undefined, configuration) : null, [configuration]);
 
-  if (!config || !provider) return <main className="loading-screen"><span className="loading-rune">◇</span>Preparing battle interface…</main>;
-  return (
-    <>
-      {process.env.NODE_ENV !== "production" && (
-        <nav className="dev-toolbar" aria-label="Battle development preview">
-          <span>DEV PREVIEW</span>
-          <a href="?provider=live&format=1" aria-current={config.mode === "live" ? "page" : undefined}>Live 1v1</a>
-          {[1, 2, 3].map((size) => <a key={size} href={`?provider=mock&format=${size}`} aria-current={config.mode === "mock" && config.format === size ? "page" : undefined}>{size}v{size}</a>)}
-        </nav>
-      )}
-      <BattleScreen provider={provider} mode={config.mode} />
-    </>
-  );
+  if (!provider && rosterError) return <main className="loading-screen"><section className="connection-state" role="alert"><strong>HERO ROSTER UNAVAILABLE</strong><p>{rosterError}</p><button onClick={() => { setRosterError(null); setRosterAttempt((attempt) => attempt + 1); }}>Retry connection</button></section></main>;
+  if (!provider && !roster) return <main className="loading-screen" aria-live="polite"><span className="loading-rune">◇</span>Loading approved heroes…</main>;
+  if (!provider) return <TeamBuilder roster={roster!} onStart={(next) => { setSessionKey((key) => key + 1); setConfiguration(next); }} />;
+  return <BattleScreen key={sessionKey} provider={provider} mode="live" onReturnToBuilder={() => setConfiguration(null)} />;
 }

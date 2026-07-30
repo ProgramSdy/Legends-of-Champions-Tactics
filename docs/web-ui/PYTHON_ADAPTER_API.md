@@ -32,16 +32,42 @@ the ASGI event loop or interleave the engine's module-global random state.
 
 Returns service and contract version health.
 
+### `GET /api/v1/heroes`
+
+Returns contract version `1.0` and exactly the eight approved hero definitions,
+including stable `definitionId`, display name, faculty, and specialization.
+
 ### `POST /api/v1/battles`
 
 Request:
 
 ```json
-{"scenarioId": "ragnar-vs-nighthawk", "seed": 42}
+{
+  "battleSize": 3,
+  "playerTeam": [
+    "hero.priest.comprehensiveness",
+    "hero.priest.discipline",
+    "hero.paladin.retribution"
+  ],
+  "enemyCompositionMode": "specified",
+  "enemyTeam": [
+    "hero.rogue.comprehensiveness",
+    "hero.warrior.weapon_master",
+    "hero.warrior.defence"
+  ],
+  "enemyControlMode": "computer",
+  "seed": 42
+}
 ```
 
-Only the listed scenario is accepted. `seed` is optional. The response is a v1
-envelope whose data contains initial semantic events and the full snapshot.
+`battleSize` is 1, 2, or 3. Player and specified-enemy arrays must match that
+size and contain only roster IDs. `enemyTeam` is omitted in random mode.
+Repeated definitions and cross-team overlap are allowed. `seed` is optional.
+The legacy `{"scenarioId":"ragnar-vs-nighthawk"}` request remains accepted.
+
+Random composition is selected inside the adapter with session-seeded
+randomness. The response is a v1 envelope containing ordered initial and
+computer-turn events plus the snapshot at the next player turn or battle end.
 
 ### `GET /api/v1/battles/{battleId}`
 
@@ -68,10 +94,30 @@ code, and the current snapshot. This lets the client reconcile stale state.
 Malformed JSON is HTTP 422 and missing battles are HTTP 404. Duplicate command
 IDs return the originally stored result without resolving the engine again.
 
+When the next actor is computer-controlled, the adapter continues resolving
+existing engine AI turns before returning. The accepted response includes all
+ordered events, its final revision, and the snapshot at the next player turn or
+battle end.
+
+Freeze, stun, paralysis, and fear are authoritative automatic skip states.
+Affected player or computer actors expose no legal actions; the adapter emits
+turn progression events and advances to the next actionable actor.
+
+Scoff is resolved automatically as the engine's forced AI attack against its
+living initiator, regardless of the configured control mode. Normal client
+actions are not exposed during that forced resolution. A stale Scoff whose
+initiator is defeated is removed without consuming the turn.
+
 ## Source and rule mapping
 
 | Contract definition | Exact Python source | Constructor / engine skills |
 |---|---|---|
+| `hero.priest.comprehensiveness` / Aurelia | `heroes.priest.Priest_Comprehensiveness` | Holy Smite, Shadow Word Pain, Binding Heal |
+| `hero.priest.discipline` / Seraphine | `heroes.priest.Priest_Discipline` | existing specialization skills and AI |
+| `hero.paladin.retribution` / Valerius | `heroes.paladin.Paladin_Retribution` | existing specialization skills and AI |
+| `hero.paladin.protection` / Bastion | `heroes.paladin.Paladin_Protection` | existing specialization skills and AI |
+| `hero.mage.comprehensiveness` / Lyra | `heroes.mage.Mage_Comprehensiveness` | existing specialization skills and AI |
+| `hero.warrior.defence` / Aegis | `heroes.warrior.Warrior_Defence` | existing specialization skills and AI |
 | `hero.warrior.weapon_master` / Ragnar | `heroes.warrior.Warrior_Weapon_Master` | `(sys_init, "Ragnar", "Group_A", True)`; Fatal Strike, Armor Crush, Antivenom Potion |
 | `hero.rogue.comprehensiveness` / Nighthawk | `heroes.rogue.Rogue_Comprehensiveness` | `(sys_init, "Nighthawk", "Group_B", True)`; Sharp Blade, Poisoned Dagger, Shadow Evasion |
 | Battle state and rounds | `game.game.Game` | `Game([ragnar], [nighthawk], "simulation")`, `game_initialization`, `start_round`, `end_round` |
@@ -100,8 +146,9 @@ implementations.
   and a module-global lock prevents cross-session interleaving. This is safe for
   the current process, but an engine-owned RNG dependency would scale better.
 - The legacy `Skill.execute` API represents targetless buffs with the sentinel
-  `["none"]`; the adapter contains this narrow compatibility mapping.
-- Event capture covers the selected heroes' explicit status registry. Expanding
+  `["none"]` and has different scalar/list target shapes; the adapter contains
+  narrow compatibility mappings.
+- Event capture covers the approved heroes' explicit status registry. Expanding
   the whitelist requires adding stable status/source mappings; arbitrary Python
   attributes are never exposed.
 - The process-local registry has no persistence, authentication, expiry, quota,

@@ -65,20 +65,26 @@ interface BattleScreenProps {
   provider: BattleProvider;
   mockDemos?: ReadonlyArray<{ id: string; label: string; run: () => Promise<PresentationScript> }>;
   mode?: "live" | "mock";
+  onReturnToBuilder?: () => void;
 }
 
-export function BattleScreen({ provider, mockDemos, mode = "mock" }: BattleScreenProps) {
+export function BattleScreen({ provider, mockDemos, mode = "mock", onReturnToBuilder }: BattleScreenProps) {
   const { snapshot, revision, activeEvent, log, setLog, speed, setSpeed, isPlaying, canSkip, error, errorKind, present, skip, retry } = usePresentationQueue(provider);
   const [selectedSkill, setSelectedSkill] = useState<string | null>(null);
-  const [selectedTarget, setSelectedTarget] = useState<string | null>(null);
+  const [selectedTargets, setSelectedTargets] = useState<string[]>([]);
   const [autoBattle, setAutoBattle] = useState(false);
   const [fullscreenError, setFullscreenError] = useState<string | null>(null);
   const logListRef = useRef<HTMLOListElement>(null);
+  const completionButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const list = logListRef.current;
     if (list) list.scrollTop = list.scrollHeight;
   }, [log.length]);
+
+  useEffect(() => {
+    if (snapshot?.phase === "ended") completionButtonRef.current?.focus();
+  }, [snapshot?.phase]);
 
   const combatants = snapshot?.combatants ?? {};
   const active = snapshot?.activeCombatantId ? combatants[snapshot.activeCombatantId] : null;
@@ -103,16 +109,25 @@ export function BattleScreen({ provider, mockDemos, mode = "mock" }: BattleScree
 
   const triggerSkill = () => {
     if (!selectedSkill || !snapshot.activeCombatantId) return;
-    const targetIds = selectedTarget ? [selectedTarget] : [];
     void present(() => provider.submitCommand({
       type: "useSkill",
       commandId: `cmd.${crypto.randomUUID()}`,
       expectedRevision: revision,
       actorId: snapshot.activeCombatantId!,
       skillId: selectedSkill,
-      targetIds,
+      targetIds: selectedTargets,
     }));
-    setSelectedSkill(null); setSelectedTarget(null);
+    setSelectedSkill(null); setSelectedTargets([]);
+  };
+
+  const toggleTarget = (heroId: string) => {
+    if (!legal) return;
+    setSelectedTargets((current) => {
+      if (current.includes(heroId)) return current.filter((id) => id !== heroId);
+      if (legal.maximumTargets <= 1) return [heroId];
+      if (current.length >= legal.maximumTargets) return current;
+      return [...current, heroId];
+    });
   };
 
   const toggleFullscreen = async () => {
@@ -153,8 +168,8 @@ export function BattleScreen({ provider, mockDemos, mode = "mock" }: BattleScree
               eventType={activeEvent?.type ?? null} eventAmount={activeEvent?.amount}
               eventTarget={activeEvent?.targetId === hero.id || (activeEvent?.type === "characterMoved" && activeEvent.sourceId === hero.id)}
               showAmount={activeEvent?.targetId === hero.id}
-              selectable={Boolean(legal?.validTargetIds.includes(hero.id)) && !isPlaying} selected={selectedTarget === hero.id}
-              onSelect={() => setSelectedTarget(hero.id)} />
+              selectable={Boolean(legal?.validTargetIds.includes(hero.id)) && !isPlaying} selected={selectedTargets.includes(hero.id)}
+              onSelect={() => toggleTarget(hero.id)} />
             </div>;
           })}
           <div className="battlefield-caption"><span>THE FALLEN CITADEL</span><small>{getBattleFormat(snapshot).toUpperCase()} FORMATION</small></div>
@@ -170,7 +185,7 @@ export function BattleScreen({ provider, mockDemos, mode = "mock" }: BattleScree
           {active?.skills.map((item) => (
             <SkillCard key={item.id} skill={item} selected={selectedSkill === item.id}
               legal={snapshot.legalActions.some((action) => action.skillId === item.id)}
-              disabled={isPlaying} onSelect={() => { setSelectedSkill(item.id); setSelectedTarget(null); }} />
+              disabled={isPlaying} onSelect={() => { setSelectedSkill(item.id); setSelectedTargets([]); }} />
           ))}
         </div>
         <div className="battle-log">
@@ -187,9 +202,26 @@ export function BattleScreen({ provider, mockDemos, mode = "mock" }: BattleScree
           <span>MOCK EVENT DEMOS</span>{mockDemos.map((demo) => <button key={demo.id} disabled={isPlaying} onClick={() => void present(demo.run)}>{demo.label}</button>)}
         </div>}
         <label className="toggle">AUTO BATTLE <input type="checkbox" checked={autoBattle} onChange={(event) => setAutoBattle(event.target.checked)} /><span /></label>
-        {!active ? <button className="end-turn" disabled>BATTLE ENDED</button> : isPlaying ? <button className="end-turn" onClick={skip} disabled={!canSkip}>{canSkip ? "SKIP EFFECT" : "RESOLVING…"}</button> : <button className="end-turn" onClick={triggerSkill} disabled={!selectedSkill || Boolean(legal && legal.minimumTargets > 0 && !selectedTarget)}>{selectedSkill ? "CAST SKILL" : "SELECT SKILL"}</button>}
+        {!active ? <button className="end-turn" disabled>BATTLE ENDED</button> : isPlaying ? <button className="end-turn" onClick={skip} disabled={!canSkip}>{canSkip ? "SKIP EFFECT" : "RESOLVING…"}</button> : <button className="end-turn" onClick={triggerSkill} disabled={!selectedSkill || Boolean(legal && selectedTargets.length < legal.minimumTargets)}>{selectedSkill ? "CAST SKILL" : "SELECT SKILL"}</button>}
       </footer>
       {(error || fullscreenError) && <div className={`ui-error ${errorKind ?? ""}`} role="alert"><strong>{errorKind === "stale" ? "STATE RECONCILED" : errorKind === "rejected" ? "COMMAND REJECTED" : "BATTLE NOTICE"}</strong><span>{error ?? fullscreenError}</span></div>}
+      {snapshot.phase === "ended" && onReturnToBuilder && (
+        <div className="completion-backdrop">
+          <section className="completion-dialog" role="dialog" aria-modal="true" aria-labelledby="battle-result-title"
+            onKeyDown={(event) => {
+              if (event.key === "Tab") {
+                event.preventDefault();
+                completionButtonRef.current?.focus();
+              }
+            }}>
+            <span className="completion-crest" aria-hidden="true">★</span>
+            <small>BATTLE COMPLETE</small>
+            <h2 id="battle-result-title">{outcomeLabel}</h2>
+            <p>The Python battle engine has declared the final result.</p>
+            <button ref={completionButtonRef} type="button" onClick={onReturnToBuilder}>RETURN TO TEAM BUILDER</button>
+          </section>
+        </div>
+      )}
       {mode === "mock" && <p className="fixture-note">FIXTURE PREVIEW · Outcomes are scripted; Python remains gameplay authority.</p>}
     </main>
   );

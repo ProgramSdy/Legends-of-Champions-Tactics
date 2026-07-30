@@ -181,3 +181,25 @@ Verified by the five-agent `QA-001` quality audit on 2026-07-28.
 - The independent reviewer found no blocking correctness or scope issues.
   A non-blocking accessibility tradeoff remains: the explicit target-button
   workaround activates Space on keydown rather than the native keyup timing.
+
+### UI-REVIEW-002 — Team Builder and Live Multi-Team Battles
+
+#### Date
+
+2026-07-29
+
+#### Source and Authority
+
+- Approved requirements: `docs/web-ui/UI_Review_002.md`
+- Owner input: `docs/web-ui/screenshots_debug/UI_Review_Human.md` (read only)
+
+#### Scope
+
+Team Builder, eight approved heroes, configurable live 1v1/2v2/3v3, random or
+specified enemies, player or computer enemy control, and finished-battle
+return/reset.
+
+#### Status
+
+Implemented and independently reviewed on 2026-07-29. Detailed requirements,
+acceptance criteria, and evidence are recorded in `UI_Review_002.md`.

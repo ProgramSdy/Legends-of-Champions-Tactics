@@ -8,8 +8,13 @@ import os
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from .adapter import BattleRegistry
-from .models import CreateBattleRequest, HttpErrorResponse, UseSkillCommand
+from .adapter import CONTRACT_VERSION, BattleRegistry
+from .models import (
+    CreateBattleRequest,
+    HeroRosterResponse,
+    HttpErrorResponse,
+    UseSkillCommand,
+)
 
 app = FastAPI(title="Legends of Champions Tactics Battle API", version="1.0.0")
 
@@ -45,12 +50,28 @@ async def health() -> dict[str, str]:
     return {"status": "ok", "contractVersion": "1.0"}
 
 
+@app.get("/api/v1/heroes", response_model=HeroRosterResponse)
+async def list_heroes() -> dict:
+    return {
+        "contractVersion": CONTRACT_VERSION,
+        "heroes": registry.adapter.roster(),
+    }
+
+
 @app.post(
     "/api/v1/battles",
     responses={422: {"model": HttpErrorResponse}},
 )
 async def create_battle(request: CreateBattleRequest) -> dict:
-    _, envelope = await asyncio.to_thread(registry.create, seed=request.seed)
+    _, envelope = await asyncio.to_thread(
+        registry.create,
+        seed=request.seed,
+        battle_size=request.battle_size,
+        player_team=list(request.player_team),
+        enemy_composition_mode=request.enemy_composition_mode,
+        enemy_team=list(request.enemy_team) if request.enemy_team else None,
+        enemy_control_mode=request.enemy_control_mode,
+    )
     return envelope
 
 

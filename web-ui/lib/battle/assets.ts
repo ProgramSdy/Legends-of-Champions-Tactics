@@ -72,6 +72,16 @@ export const statusRegistry: Record<string, { glyph: string; name: string; descr
   "status.bleeding_sharp_blade": { glyph: "╱", name: "Sharp Blade Bleeding", description: "Bleeding damage from Sharp Blade remains active.", harmful: true },
   "status.poisoned_dagger": { glyph: "◆", name: "Poisoned Dagger", description: "Poison from Poisoned Dagger remains active.", harmful: true },
   "status.shadow_evasion": { glyph: "◐", name: "Shadow Evasion", description: "Evasion is increased by Shadow Evasion.", harmful: false },
+  "status.cold": { glyph: "❄", name: "Cold", description: "Speed is reduced by an authoritative frost effect.", harmful: true },
+  "status.stunned": { glyph: "✹", name: "Stunned", description: "Cannot act while the authoritative stun persists.", harmful: true },
+  "status.shadow_word_pain": { glyph: "☾", name: "Shadow Word: Pain", description: "Suffers shadow damage over time.", harmful: true },
+  "status.holy_word_redemption": { glyph: "✚", name: "Holy Word: Redemption", description: "Receives healing from a holy effect.", harmful: false },
+  "status.holy_word_punishment": { glyph: "☀", name: "Holy Word: Punishment", description: "Suffers punishment from a holy effect.", harmful: true },
+  "status.wrath_of_crusader": { glyph: "⚔", name: "Wrath of Crusader", description: "Crusader wrath modifies authoritative combat strength.", harmful: false },
+  "status.hammer_of_revenge": { glyph: "◆", name: "Hammer of Revenge", description: "Affected by the authoritative Hammer of Revenge effect.", harmful: true },
+  "status.shield_of_righteous": { glyph: "⬡", name: "Shield of Righteous", description: "Protected by an authoritative righteous shield.", harmful: false },
+  "status.shield_lash": { glyph: "⌁", name: "Shield Lash", description: "Empowered by the authoritative Shield Lash effect.", harmful: false },
+  "status.scoff": { glyph: "!", name: "Scoff", description: "Forced to direct hostility toward the status source.", harmful: true },
 };
 
 export const effectRegistry = {

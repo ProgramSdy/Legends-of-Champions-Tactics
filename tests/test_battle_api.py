@@ -1,4 +1,5 @@
 from fastapi.testclient import TestClient
+import pytest
 
 from battle_api.app import app, registry
 
@@ -170,3 +171,93 @@ def test_cors_rejects_unlisted_origin():
     )
     assert response.status_code == 400
     assert "access-control-allow-origin" not in response.headers
+
+
+def test_roster_endpoint_exposes_only_the_eight_approved_heroes():
+    response = client.get("/api/v1/heroes")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["contractVersion"] == "1.0"
+    assert len(body["heroes"]) == 8
+    assert {hero["definitionId"] for hero in body["heroes"]} == {
+        "hero.priest.comprehensiveness",
+        "hero.priest.discipline",
+        "hero.paladin.retribution",
+        "hero.paladin.protection",
+        "hero.mage.comprehensiveness",
+        "hero.warrior.defence",
+        "hero.warrior.weapon_master",
+        "hero.rogue.comprehensiveness",
+    }
+
+
+def test_api_creates_live_three_hero_player_controlled_battle():
+    response = client.post(
+        "/api/v1/battles",
+        json={
+            "battleSize": 3,
+            "playerTeam": [
+                "hero.priest.comprehensiveness",
+                "hero.priest.comprehensiveness",
+                "hero.mage.comprehensiveness",
+            ],
+            "enemyCompositionMode": "specified",
+            "enemyTeam": [
+                "hero.paladin.retribution",
+                "hero.warrior.defence",
+                "hero.rogue.comprehensiveness",
+            ],
+            "enemyControlMode": "player",
+            "seed": 12,
+        },
+    )
+
+    assert response.status_code == 200
+    snapshot = response.json()["data"]["snapshot"]
+    assert len(snapshot["sides"][0]["combatantIds"]) == 3
+    assert len(snapshot["sides"][1]["combatantIds"]) == 3
+    assert len(snapshot["combatants"]) == 6
+    assert all(
+        combatant["isPlayerControlled"]
+        for combatant in snapshot["combatants"].values()
+    )
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {
+            "battleSize": 2,
+            "playerTeam": ["hero.priest.comprehensiveness"],
+            "enemyCompositionMode": "random",
+            "enemyControlMode": "computer",
+        },
+        {
+            "battleSize": 2,
+            "playerTeam": [
+                "hero.priest.comprehensiveness",
+                "hero.mage.comprehensiveness",
+            ],
+            "enemyCompositionMode": "specified",
+            "enemyTeam": ["hero.rogue.comprehensiveness"],
+            "enemyControlMode": "player",
+        },
+        {
+            "battleSize": 1,
+            "playerTeam": ["hero.necromancer.unsupported"],
+            "enemyCompositionMode": "random",
+            "enemyControlMode": "computer",
+        },
+        {
+            "battleSize": 1,
+            "playerTeam": ["hero.priest.comprehensiveness"],
+            "enemyCompositionMode": "random",
+            "enemyTeam": ["hero.rogue.comprehensiveness"],
+            "enemyControlMode": "computer",
+        },
+    ],
+)
+def test_api_rejects_invalid_team_builder_configuration(payload):
+    response = client.post("/api/v1/battles", json=payload)
+    assert response.status_code == 422

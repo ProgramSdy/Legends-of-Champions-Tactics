@@ -20,28 +20,76 @@ from typing import Any
 import pandas as pd
 
 from game.game import Game
+from heroes.mage import Mage_Comprehensiveness
+from heroes.paladin import Paladin_Protection, Paladin_Retribution
+from heroes.priest import Priest_Comprehensiveness, Priest_Discipline
 from heroes.rogue import Rogue_Comprehensiveness
-from heroes.warrior import Warrior_Weapon_Master
+from heroes.warrior import Warrior_Defence, Warrior_Weapon_Master
 
 CONTRACT_VERSION = "1.0"
 ROOT = Path(__file__).resolve().parents[1]
 ENGINE_RANDOM_LOCK = threading.RLock()
 
-HERO_DEFINITIONS = {
-    "Warrior_Weapon_Master": "hero.warrior.weapon_master",
-    "Rogue_Comprehensiveness": "hero.rogue.comprehensiveness",
+HERO_ROSTER = {
+    "hero.priest.comprehensiveness": {
+        "class": Priest_Comprehensiveness,
+        "displayName": "Aurelia",
+        "faculty": "Priest",
+        "specialization": "Comprehensiveness",
+    },
+    "hero.priest.discipline": {
+        "class": Priest_Discipline,
+        "displayName": "Seraphine",
+        "faculty": "Priest",
+        "specialization": "Discipline",
+    },
+    "hero.paladin.retribution": {
+        "class": Paladin_Retribution,
+        "displayName": "Valerius",
+        "faculty": "Paladin",
+        "specialization": "Retribution",
+    },
+    "hero.paladin.protection": {
+        "class": Paladin_Protection,
+        "displayName": "Bastion",
+        "faculty": "Paladin",
+        "specialization": "Protection",
+    },
+    "hero.mage.comprehensiveness": {
+        "class": Mage_Comprehensiveness,
+        "displayName": "Lyra",
+        "faculty": "Mage",
+        "specialization": "Comprehensiveness",
+    },
+    "hero.warrior.defence": {
+        "class": Warrior_Defence,
+        "displayName": "Aegis",
+        "faculty": "Warrior",
+        "specialization": "Defence",
+    },
+    "hero.warrior.weapon_master": {
+        "class": Warrior_Weapon_Master,
+        "displayName": "Ragnar",
+        "faculty": "Warrior",
+        "specialization": "Weapon Master",
+    },
+    "hero.rogue.comprehensiveness": {
+        "class": Rogue_Comprehensiveness,
+        "displayName": "Nighthawk",
+        "faculty": "Rogue",
+        "specialization": "Comprehensiveness",
+    },
 }
 
-SKILL_DEFINITIONS = {
-    ("Warrior_Weapon_Master", "Fatal Strike"): "skill.warrior.fatal_strike",
-    ("Warrior_Weapon_Master", "Armor Crush"): "skill.warrior.armor_crush",
-    ("Warrior_Weapon_Master", "Antivenom Potion"): "skill.warrior.antivenom_potion",
-    ("Rogue_Comprehensiveness", "Sharp Blade"): "skill.rogue.sharp_blade",
-    ("Rogue_Comprehensiveness", "Poisoned Dagger"): "skill.rogue.poisoned_dagger",
-    ("Rogue_Comprehensiveness", "Shadow Evasion"): "skill.rogue.shadow_evasion",
+HERO_DEFINITIONS = {
+    definition["class"].__name__: definition_id
+    for definition_id, definition in HERO_ROSTER.items()
 }
 
 STATUS_KINDS = {
+    "cold": "debuff",
+    "stunned": "control",
+    "scoff": "control",
     "fatal_strike": "debuff",
     "armor_breaker": "debuff",
     "bleeding_armor_crush": "debuff",
@@ -50,9 +98,19 @@ STATUS_KINDS = {
     "bleeding_sharp_blade": "debuff",
     "poisoned_dagger": "debuff",
     "shadow_evasion": "buff",
+    "shadow_word_pain": "debuff",
+    "holy_word_redemption": "buff",
+    "holy_word_punishment": "debuff",
+    "wrath_of_crusader": "buff",
+    "hammer_of_revenge": "debuff",
+    "shield_of_righteous": "buff",
+    "shield_lash": "buff",
 }
 
 STATUS_DURATIONS = {
+    "cold": "cold_duration",
+    "stunned": "stun_duration",
+    "scoff": None,
     "fatal_strike": None,  # duration is held on the matching Debuff
     "armor_breaker": "armor_breaker_duration",
     "bleeding_armor_crush": "bleeding_armor_crush_duration",
@@ -61,11 +119,22 @@ STATUS_DURATIONS = {
     "bleeding_sharp_blade": "sharp_blade_debuff_duration",
     "poisoned_dagger": "poisoned_dagger_debuff_duration",
     "shadow_evasion": "shadow_evasion_buff_duration",
+    "shadow_word_pain": "shadow_word_pain_debuff_duration",
+    "holy_word_redemption": "holy_word_redemption_duration",
+    "holy_word_punishment": None,
+    "wrath_of_crusader": "wrath_of_crusader_duration",
+    "hammer_of_revenge": "hammer_of_revenge_duration",
+    "shield_of_righteous": "shield_of_righteous_duration",
+    "shield_lash": None,
 }
 
 STATUS_ENGINE_NAMES = {
     "fatal_strike": "Fatal Strike",
     "antivenom_potion": "Antivenom Potion",
+    "scoff": "Scoff",
+    "holy_word_redemption": "Holy Word Redemption",
+    "holy_word_punishment": "Holy Word Punishment",
+    "shield_lash": "Shield Lash",
 }
 
 
@@ -104,6 +173,8 @@ class BattleSession:
     game: Game
     seed: int | None
     rng_state: object
+    battle_size: int = 1
+    enemy_control_mode: str = "player"
     revision: int = 0
     event_sequence: int = 0
     command_results: dict[str, dict[str, Any]] = field(default_factory=dict)
@@ -124,8 +195,30 @@ class BattleAdapter:
         return self._engine_data
 
     def create_battle(
-        self, *, seed: int | None = None, battle_id: str | None = None
+        self,
+        *,
+        seed: int | None = None,
+        battle_id: str | None = None,
+        battle_size: int = 1,
+        player_team: list[str] | None = None,
+        enemy_composition_mode: str = "specified",
+        enemy_team: list[str] | None = None,
+        enemy_control_mode: str = "player",
     ) -> tuple[BattleSession, dict[str, Any]]:
+        if player_team is None:
+            player_team = ["hero.warrior.weapon_master"]
+        if enemy_composition_mode == "random":
+            enemy_team = None
+        else:
+            if enemy_team is None:
+                enemy_team = ["hero.rogue.comprehensiveness"]
+        self._validate_creation(
+            battle_size=battle_size,
+            player_team=player_team,
+            enemy_composition_mode=enemy_composition_mode,
+            enemy_team=enemy_team,
+            enemy_control_mode=enemy_control_mode,
+        )
         with ENGINE_RANDOM_LOCK:
             global_state = random.getstate()
             try:
@@ -133,13 +226,20 @@ class BattleAdapter:
                 # independent entropy source so restoring the module RNG below
                 # cannot accidentally clone the same battle stream.
                 random.seed(seed if seed is not None else secrets.randbits(256))
-                ragnar = Warrior_Weapon_Master(
-                    self.engine_data, "Ragnar", "Group_A", True
+                selected_enemy_team = (
+                    random.sample(list(HERO_ROSTER), battle_size)
+                    if enemy_composition_mode == "random"
+                    else list(enemy_team or [])
                 )
-                nighthawk = Rogue_Comprehensiveness(
-                    self.engine_data, "Nighthawk", "Group_B", True
+                player_heroes = self._create_team(
+                    player_team, group="Group_A", player_controlled=True
                 )
-                game = Game([ragnar], [nighthawk], "simulation")
+                opponent_heroes = self._create_team(
+                    selected_enemy_team,
+                    group="Group_B",
+                    player_controlled=enemy_control_mode == "player",
+                )
+                game = Game(player_heroes, opponent_heroes, "simulation")
                 game.game_initialization()
                 game.start_round()
                 session = BattleSession(
@@ -147,9 +247,25 @@ class BattleAdapter:
                     game=game,
                     seed=seed,
                     rng_state=random.getstate(),
+                    battle_size=battle_size,
+                    enemy_control_mode=enemy_control_mode,
                 )
-                session.object_ids[id(ragnar)] = "friendly.ragnar"
-                session.object_ids[id(nighthawk)] = "enemy.nighthawk"
+                for side, heroes in (
+                    ("friendly", player_heroes),
+                    ("enemy", opponent_heroes),
+                ):
+                    for slot, hero in enumerate(heroes, start=1):
+                        definition_id = HERO_DEFINITIONS[hero.profession]
+                        # Preserve the established Stage 2 fixture IDs.
+                        if battle_size == 1 and definition_id == "hero.warrior.weapon_master":
+                            combatant_id = f"{side}.ragnar"
+                        elif battle_size == 1 and definition_id == "hero.rogue.comprehensiveness":
+                            combatant_id = f"{side}.nighthawk"
+                        else:
+                            combatant_id = (
+                                f"{side}.{definition_id.removeprefix('hero.').replace('.', '_')}.{slot}"
+                            )
+                        session.object_ids[id(hero)] = combatant_id
                 events = [
                     self._event(session, "battleStarted", message="Battle started."),
                     self._event(
@@ -159,9 +275,63 @@ class BattleAdapter:
                     ),
                     self._turn_started_event(session),
                 ]
-                return session, self.envelope(session, {"events": events, "snapshot": self.snapshot(session)})
+                events.extend(self._drain_automatic_turns(session))
+                session.rng_state = random.getstate()
+                return session, self.envelope(
+                    session, {"events": events, "snapshot": self.snapshot(session)}
+                )
             finally:
                 random.setstate(global_state)
+
+    @staticmethod
+    def roster() -> list[dict[str, str]]:
+        return [
+            {
+                "definitionId": definition_id,
+                "displayName": definition["displayName"],
+                "faculty": definition["faculty"],
+                "specialization": definition["specialization"],
+            }
+            for definition_id, definition in HERO_ROSTER.items()
+        ]
+
+    @staticmethod
+    def _validate_creation(
+        *,
+        battle_size: int,
+        player_team: list[str],
+        enemy_composition_mode: str,
+        enemy_team: list[str] | None,
+        enemy_control_mode: str,
+    ) -> None:
+        if battle_size not in (1, 2, 3):
+            raise ValueError("battle_size must be 1, 2, or 3")
+        if len(player_team) != battle_size:
+            raise ValueError("player_team must contain battle_size heroes")
+        if any(hero_id not in HERO_ROSTER for hero_id in player_team):
+            raise ValueError("player_team contains an unsupported hero")
+        if enemy_composition_mode not in ("random", "specified"):
+            raise ValueError("enemy_composition_mode must be random or specified")
+        if enemy_composition_mode == "specified":
+            if enemy_team is None or len(enemy_team) != battle_size:
+                raise ValueError("enemy_team must contain battle_size heroes")
+            if any(hero_id not in HERO_ROSTER for hero_id in enemy_team):
+                raise ValueError("enemy_team contains an unsupported hero")
+        if enemy_control_mode not in ("computer", "player"):
+            raise ValueError("enemy_control_mode must be computer or player")
+
+    def _create_team(
+        self, definition_ids: list[str], *, group: str, player_controlled: bool
+    ) -> list[Any]:
+        return [
+            HERO_ROSTER[definition_id]["class"](
+                self.engine_data,
+                HERO_ROSTER[definition_id]["displayName"],
+                group,
+                player_controlled,
+            )
+            for definition_id in definition_ids
+        ]
 
     def envelope(self, session: BattleSession, data: Any) -> dict[str, Any]:
         return {
@@ -231,6 +401,11 @@ class BattleAdapter:
                 try:
                     random.setstate(session.rng_state)
                     result = self._resolve(session, command)
+                    automatic_events = self._drain_automatic_turns(session)
+                    if automatic_events:
+                        result["events"].extend(automatic_events)
+                        result["revision"] = session.revision
+                        result["snapshot"] = self.snapshot(session)
                     session.rng_state = random.getstate()
                 finally:
                     random.setstate(global_state)
@@ -253,15 +428,17 @@ class BattleAdapter:
         targets = command.get("targetIds")
         if not isinstance(targets, list):
             raise BattleAdapterError("invalidCommand", "targetIds must be an array.")
-        minimum = 0 if skill.target_qty == 0 else skill.target_qty
-        maximum = skill.target_qty
+        valid_ids = set(self._valid_target_ids(session, actor, skill))
+        minimum = (
+            0 if skill.target_qty == 0 else min(skill.target_qty, len(valid_ids))
+        )
+        maximum = minimum
         if len(targets) < minimum or len(targets) > maximum:
             raise BattleAdapterError(
                 "illegalTargets", f"The skill requires {minimum} to {maximum} targets."
             )
         if len(set(targets)) != len(targets):
             raise BattleAdapterError("illegalTargets", "Duplicate targets are not allowed.")
-        valid_ids = set(self._valid_target_ids(session, actor, skill))
         if any(target_id not in valid_ids for target_id in targets):
             raise BattleAdapterError("illegalTargets", "One or more targets are illegal.")
 
@@ -299,7 +476,15 @@ class BattleAdapter:
             )
         # The legacy Skill boundary uses the literal sentinel ``["none"]`` for
         # targetless buffs; preserve that engine convention at this seam.
-        skill.execute(["none"] if skill.target_qty == 0 else targets)
+        if skill.target_qty == 0:
+            engine_targets: Any = ["none"]
+        elif skill.target_type == "single":
+            engine_targets = targets[0]
+        else:
+            engine_targets = targets
+        skill.execute(engine_targets)
+        if command.get("_clearScoff"):
+            actor.status["scoff"] = False
         after = self._capture(session)
         events.extend(self._mutation_events(session, actor, skill, targets, before, after))
         actor.actioned = True
@@ -351,6 +536,240 @@ class BattleAdapter:
             "events": events,
             "snapshot": self.snapshot(session),
         }
+
+    def _drain_automatic_turns(
+        self, session: BattleSession, *, maximum_turns: int = 100
+    ) -> list[dict[str, Any]]:
+        """Resolve engine-owned skips and consecutive computer turns.
+
+        The bound prevents a malformed legacy AI/engine state from monopolising
+        an API worker. Incapacitated actors are advanced according to the same
+        status semantics used by ``Hero.player_action`` and ``Hero.ai_action``
+        before a snapshot can expose legal actions.
+        """
+        events: list[dict[str, Any]] = []
+        turns = 0
+        while not self._is_ended(session.game):
+            actor = self._current_actor(session.game)
+            if actor is None:
+                break
+            if turns >= maximum_turns:
+                raise RuntimeError("automatic turn drain exceeded its safety bound")
+            skip_reason = self._incapacitated_reason(actor)
+            if skip_reason is not None:
+                events.extend(self._skip_turn(session, actor, skip_reason))
+                turns += 1
+                continue
+            if actor.status.get("scoff", False):
+                scoff_source = self._scoff_source(actor)
+                if scoff_source is None:
+                    actor.status["scoff"] = False
+                    session.revision += 1
+                    events.append(
+                        self._event(
+                            session,
+                            "statusRemoved",
+                            targetId=self._combatant_id(session, actor),
+                            statusId="status.scoff",
+                            effectHint="status",
+                            message=f"{actor.name}'s Scoff ended because its source was defeated.",
+                        )
+                    )
+                    continue
+                actions = self._legal_actions(
+                    session,
+                    actor,
+                    include_computer=True,
+                    include_forced=True,
+                )
+                action = self._scoff_action(session, actor, scoff_source, actions)
+                result = self._resolve(
+                    session,
+                    {
+                        "type": "useSkill",
+                        "commandId": f"forced.scoff.{session.revision + 1:06d}",
+                        "expectedRevision": session.revision,
+                        "actorId": action["actorId"],
+                        "skillId": action["skillId"],
+                        "targetIds": action["targetIds"],
+                        "_clearScoff": True,
+                    },
+                )
+                events.extend(result["events"])
+                turns += 1
+                continue
+            if actor.is_player_controlled:
+                break
+            actions = self._legal_actions(session, actor, include_computer=True)
+            if not actions:
+                raise RuntimeError(f"{actor.name} has no legal computer action")
+            # Use the specialization's existing engine AI when it returns a
+            # currently legal skill. Fall back only when legacy strategy code
+            # selects a cooldown/unavailable action.
+            chosen_skill = actor.ai_choose_skill(actor.opponents, actor.allies)
+            chosen_skill_id = self._skill_id(actor, chosen_skill)
+            action = next(
+                (
+                    candidate
+                    for candidate in actions
+                    if candidate["skillId"] == chosen_skill_id
+                ),
+                random.choice(actions),
+            )
+            chosen_skill = self._skill_by_id(actor, action["skillId"])
+            assert chosen_skill is not None
+            target_count = action["minimumTargets"]
+            target_ids: list[str] = []
+            if target_count:
+                chosen_targets = actor.ai_choose_target(
+                    chosen_skill, actor.opponents, actor.allies
+                )
+                if not isinstance(chosen_targets, list):
+                    chosen_targets = [chosen_targets]
+                for target in chosen_targets:
+                    if target == "none":
+                        continue
+                    target_id = self._combatant_id(session, target)
+                    if (
+                        target_id in action["validTargetIds"]
+                        and target_id not in target_ids
+                    ):
+                        target_ids.append(target_id)
+                remaining = [
+                    target_id
+                    for target_id in action["validTargetIds"]
+                    if target_id not in target_ids
+                ]
+                target_ids = target_ids[:target_count]
+                if len(target_ids) < target_count:
+                    target_ids.extend(
+                        random.sample(remaining, target_count - len(target_ids))
+                    )
+            result = self._resolve(
+                session,
+                {
+                    "type": "useSkill",
+                    "commandId": f"ai.{session.revision + 1:06d}",
+                    "expectedRevision": session.revision,
+                    "actorId": action["actorId"],
+                    "skillId": action["skillId"],
+                    "targetIds": target_ids,
+                },
+            )
+            events.extend(result["events"])
+            turns += 1
+        return events
+
+    @staticmethod
+    def _scoff_source(actor):
+        if not actor.status.get("scoff", False):
+            return None
+        return next(
+            (
+                debuff.initiator
+                for debuff in actor.debuffs
+                if debuff.name == "Scoff" and debuff.initiator.hp > 0
+            ),
+            None,
+        )
+
+    def _scoff_action(self, session, actor, source, actions) -> dict[str, Any]:
+        """Select the forced attack shape used by ``Hero.ai_action`` for Scoff."""
+        single_damage = [
+            action
+            for action in actions
+            if (
+                (skill := self._skill_by_id(actor, action["skillId"])) is not None
+                and skill.target_type == "single"
+                and skill.skill_type in {"damage", "damage_healing"}
+            )
+        ]
+        multi_damage = [
+            action
+            for action in actions
+            if (
+                (skill := self._skill_by_id(actor, action["skillId"])) is not None
+                and skill.target_type == "multi"
+                and skill.skill_type in {"damage", "damage_healing"}
+            )
+        ]
+        candidates = single_damage or multi_damage
+        if not candidates:
+            raise RuntimeError(f"{actor.name} has no legal attack while scoffed")
+        action = random.choice(candidates)
+        source_id = self._combatant_id(session, source)
+        if source_id not in action["validTargetIds"]:
+            raise RuntimeError("Scoff initiator is not a legal living opponent")
+        target_ids = [source_id]
+        if action["minimumTargets"] > 1:
+            remaining = [
+                target_id
+                for target_id in action["validTargetIds"]
+                if target_id != source_id
+            ]
+            target_ids.extend(
+                random.sample(remaining, action["minimumTargets"] - 1)
+            )
+        return {**action, "targetIds": target_ids}
+
+    @staticmethod
+    def _incapacitated_reason(actor) -> str | None:
+        reasons = (
+            ("glacier", "is frozen and cannot act"),
+            ("stunned", "is stunned and cannot act"),
+            ("paralyzed", "is paralyzed and cannot act"),
+            ("fear", "is running in fear and cannot act"),
+        )
+        return next(
+            (message for status, message in reasons if actor.status.get(status, False)),
+            None,
+        )
+
+    def _skip_turn(
+        self, session: BattleSession, actor, reason: str
+    ) -> list[dict[str, Any]]:
+        """Advance one incapacitated actor without executing a skill."""
+        game = session.game
+        actor.actioned = True
+        game.unactioned_sorted_heroes = [
+            hero for hero in game.unactioned_sorted_heroes if hero is not actor
+        ]
+        game.update_allies_opponents_list()
+        events = [
+            self._event(
+                session,
+                "turnEnded",
+                sourceId=self._combatant_id(session, actor),
+                message=f"{actor.name} {reason}; their turn ended.",
+            )
+        ]
+        if len(game.check_groups_status()) <= 1:
+            game.game_state = "game_over"
+        elif not [hero for hero in game.unactioned_sorted_heroes if hero.hp > 0]:
+            game.end_round()
+            if game.game_state != "game_over":
+                round_before = self._capture(session)
+                game.start_round()
+                events.append(
+                    self._event(
+                        session,
+                        "roundStarted",
+                        message=f"Round {game.round_counter} started.",
+                    )
+                )
+                events.extend(
+                    self._state_delta_events(
+                        session, round_before, self._capture(session)
+                    )
+                )
+        if self._is_ended(game):
+            events.append(
+                self._event(session, "battleEnded", message=self._outcome_message(game))
+            )
+        else:
+            events.append(self._turn_started_event(session))
+        session.revision += 1
+        return events
 
     def _capture(self, session: BattleSession) -> dict[str, Any]:
         return {
@@ -583,18 +1002,37 @@ class BattleAdapter:
             }
         return result
 
-    def _legal_actions(self, session: BattleSession, actor) -> list[dict[str, Any]]:
+    def _legal_actions(
+        self,
+        session: BattleSession,
+        actor,
+        *,
+        include_computer: bool = False,
+        include_forced: bool = False,
+    ) -> list[dict[str, Any]]:
+        if self._incapacitated_reason(actor) is not None:
+            return []
+        if actor.status.get("scoff", False) and not include_forced:
+            return []
+        if not include_computer and not actor.is_player_controlled:
+            return []
         actions = []
         for skill in actor.skills:
             if skill.if_cooldown or not skill.is_available:
+                continue
+            valid_targets = self._valid_target_ids(session, actor, skill)
+            required_targets = (
+                0 if skill.target_qty == 0 else min(skill.target_qty, len(valid_targets))
+            )
+            if skill.target_qty > 0 and required_targets == 0:
                 continue
             actions.append(
                 {
                     "skillId": self._skill_id(actor, skill),
                     "actorId": self._combatant_id(session, actor),
-                    "minimumTargets": 0 if skill.target_qty == 0 else skill.target_qty,
-                    "maximumTargets": skill.target_qty,
-                    "validTargetIds": self._valid_target_ids(session, actor, skill),
+                    "minimumTargets": required_targets,
+                    "maximumTargets": required_targets,
+                    "validTargetIds": valid_targets,
                 }
             )
         return actions
@@ -602,16 +1040,19 @@ class BattleAdapter:
     def _valid_target_ids(self, session: BattleSession, actor, skill) -> list[str]:
         if skill.target_qty == 0:
             return []
-        pool = actor.allies if skill.skill_type in {"healing", "buffs"} else actor.opponents
+        if skill.skill_type in {"healing", "buffs"}:
+            pool = actor.allies
+        elif skill.skill_type == "damage_healing":
+            pool = actor.opponents + actor.allies
+        else:
+            pool = actor.opponents
         return [self._combatant_id(session, hero) for hero in pool if hero.hp > 0]
 
     def _skill_by_id(self, hero, skill_id):
         return next((s for s in hero.skills if self._skill_id(hero, s) == skill_id), None)
 
     def _skill_id(self, hero, skill) -> str:
-        return SKILL_DEFINITIONS.get(
-            (hero.profession, skill.name), f"skill.{_slug(hero.profession)}.{_slug(skill.name)}"
-        )
+        return f"skill.{_slug(hero.faculty)}.{_slug(skill.name)}"
 
     def _combatant_id(self, session: BattleSession, hero) -> str:
         if id(hero) not in session.object_ids:
@@ -637,6 +1078,8 @@ class BattleAdapter:
     def _target_mode(skill) -> str:
         if skill.target_qty == 0:
             return "self"
+        if skill.skill_type == "damage_healing":
+            return "flexible"
         if skill.skill_type in {"healing", "buffs"}:
             return "singleAlly" if skill.target_type == "single" else "multipleAllies"
         return "singleEnemy" if skill.target_type == "single" else "multipleEnemies"
@@ -706,8 +1149,24 @@ class BattleRegistry:
         self._sessions: dict[str, BattleSession] = {}
         self._lock = threading.RLock()
 
-    def create(self, *, seed: int | None = None) -> tuple[BattleSession, dict[str, Any]]:
-        session, envelope = self.adapter.create_battle(seed=seed)
+    def create(
+        self,
+        *,
+        seed: int | None = None,
+        battle_size: int = 1,
+        player_team: list[str] | None = None,
+        enemy_composition_mode: str = "specified",
+        enemy_team: list[str] | None = None,
+        enemy_control_mode: str = "player",
+    ) -> tuple[BattleSession, dict[str, Any]]:
+        session, envelope = self.adapter.create_battle(
+            seed=seed,
+            battle_size=battle_size,
+            player_team=player_team,
+            enemy_composition_mode=enemy_composition_mode,
+            enemy_team=enemy_team,
+            enemy_control_mode=enemy_control_mode,
+        )
         with self._lock:
             self._sessions[session.battle_id] = session
         return session, envelope

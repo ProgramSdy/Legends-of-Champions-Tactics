@@ -329,10 +329,12 @@ Fixture numbers are intentionally test data, not duplicated formulas. Every
 script terminates with a complete snapshot so event-sequencer tests can verify
 reconciliation.
 
-## Stage 2 live adapter
+## Live adapter
 
-`battle_api.adapter.BattleAdapter` implements this contract for the whitelisted
-`ragnar-vs-nighthawk` scenario. Accepted commands invoke the repository's
+`battle_api.adapter.BattleAdapter` implements this contract for configurable
+1v1, 2v2, and 3v3 sessions using the approved eight-hero roster. The legacy
+`ragnar-vs-nighthawk` creation request remains accepted for compatibility.
+Accepted commands invoke the repository's
 existing `Skill.execute` method; the adapter does not reproduce damage, evade,
 cooldown, status, or round formulas. Semantic events are built from typed
 pre/post engine state captured around skill and round-start mutation boundaries,
@@ -341,6 +343,7 @@ never from `Game.output_buffer`.
 The development transport is JSON HTTP:
 
 - `GET /api/v1/health`
+- `GET /api/v1/heroes`
 - `POST /api/v1/battles`
 - `GET /api/v1/battles/{battleId}`
 - `POST /api/v1/battles/{battleId}/commands`
@@ -350,6 +353,52 @@ Python `random` state; the adapter swaps that state around engine calls under a
 session lock. This makes seeded single-session tests reproducible without
 changing rule probabilities, but it is not a substitute for durable replay or
 multi-process persistence.
+
+## UI-002 additive creation contract
+
+Contract version `1.0` remains the snapshot, command, event, and envelope
+version. UI-002 additively extends session creation and adds roster discovery:
+
+```ts
+type BattleCreateConfiguration = {
+  battleSize: 1 | 2 | 3;
+  playerTeam: string[];
+  enemyCompositionMode: "random" | "specified";
+  enemyTeam?: string[];
+  enemyControlMode: "computer" | "player";
+  seed?: number;
+};
+```
+
+`playerTeam` must contain exactly `battleSize` approved definition IDs.
+`enemyTeam` must contain exactly that many approved IDs in `specified` mode and
+must be omitted in `random` mode. Repeated definitions and cross-team overlap
+are accepted. In random mode Python selects a complete enemy team from the
+approved roster using session-seeded randomness.
+
+All friendly combatants are player-controlled. Enemy combatants follow
+`enemyControlMode`. The adapter resolves consecutive computer actors through
+the specializations' existing Python AI selection and targeting until the next
+player-controlled actor or battle end. One command response may therefore
+contain several ordered turns and a revision greater than the submitted
+revision plus one. A defensive bound prevents a malformed legacy AI state from
+resolving indefinitely.
+
+Actors incapacitated by an authoritative freeze, stun, paralysis, or fear state
+expose no legal actions. The adapter records and advances the skipped turn for
+either control mode before returning the next actionable snapshot; a
+computer-controlled incapacitated actor never invokes skill selection.
+
+Scoff is an authoritative forced-action state rather than a skip. The adapter
+withholds normal client actions and uses the existing Python AI attack policy
+against the living Scoff initiator for either control mode. Scoff is removed as
+part of that resolution. If its recorded initiator is already defeated, the
+stale Scoff state is removed without consuming the actor's turn.
+
+Combatant instance IDs include side and slot when needed, so repeated
+definitions remain distinct. Definition IDs and skill IDs remain stable.
+Multi-target requirements contract to the number of currently living legal
+targets; the client submits only actions and targets listed in `legalActions`.
 
 Open design decisions remain: durable session storage, cross-process locking,
 hidden-information policy, localization ownership, durable replay/audit,

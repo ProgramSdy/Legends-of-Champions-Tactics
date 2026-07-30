@@ -1,9 +1,11 @@
 import {
   BattleProviderError,
+  type BattleCreateConfiguration,
   type BattleCommand,
   type BattleProvider,
   type BattleSnapshot,
   type BattleState,
+  type HeroDefinitionSummary,
   type PresentationScript,
 } from "./types";
 
@@ -36,13 +38,44 @@ interface CommandRejected {
   snapshot: BattleSnapshot;
 }
 
+export async function fetchHeroRoster(
+  baseUrl = process.env.NEXT_PUBLIC_BATTLE_API_URL ?? "http://localhost:8001",
+): Promise<HeroDefinitionSummary[]> {
+  let response: Response;
+  try {
+    response = await fetch(`${baseUrl}/api/v1/heroes`);
+  } catch {
+    throw new BattleProviderError("Battle service is disconnected. Start the Python adapter and retry.", "disconnected");
+  }
+  if (!response.ok) throw new BattleProviderError(`Battle adapter returned HTTP ${response.status}.`, "adapter");
+  const body = await response.json() as { contractVersion: string; heroes: HeroDefinitionSummary[] };
+  const validHeroes = Array.isArray(body.heroes) && body.heroes.length === 8 && body.heroes.every((hero) =>
+    hero !== null
+    && typeof hero === "object"
+    && typeof hero.definitionId === "string"
+    && typeof hero.displayName === "string"
+    && typeof hero.faculty === "string"
+    && typeof hero.specialization === "string"
+  );
+  if (body.contractVersion !== "1.0" || !validHeroes) {
+    throw new BattleProviderError("The battle service returned an unsupported hero roster.", "adapter");
+  }
+  return body.heroes;
+}
+
 export class LiveBattleProvider implements BattleProvider {
   private battleId: string | null = null;
   private state: BattleState | null = null;
 
   constructor(
     private readonly baseUrl = process.env.NEXT_PUBLIC_BATTLE_API_URL ?? "http://localhost:8001",
-    private readonly seed?: number,
+    private readonly configuration: BattleCreateConfiguration = {
+      battleSize: 1,
+      playerTeam: ["hero.warrior.weapon_master"],
+      enemyCompositionMode: "specified",
+      enemyTeam: ["hero.rogue.comprehensiveness"],
+      enemyControlMode: "player",
+    },
   ) {}
 
   private async request<T>(path: string, init?: RequestInit): Promise<Envelope<T>> {
@@ -70,7 +103,7 @@ export class LiveBattleProvider implements BattleProvider {
     if (this.state) return structuredClone(this.state);
     const envelope = await this.request<CreateData>("/api/v1/battles", {
       method: "POST",
-      body: JSON.stringify({ scenarioId: "ragnar-vs-nighthawk", ...(this.seed === undefined ? {} : { seed: this.seed }) }),
+      body: JSON.stringify(this.configuration),
     });
     this.battleId = envelope.battleId;
     this.state = {

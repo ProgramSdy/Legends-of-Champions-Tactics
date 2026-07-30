@@ -1,5 +1,24 @@
 export type SideId = "friendly" | "enemy";
 export type EffectHint = "magic" | "healing" | "melee" | "status" | "summon";
+export type BattleSize = 1 | 2 | 3;
+export type EnemyCompositionMode = "random" | "specified";
+export type EnemyControlMode = "computer" | "player";
+
+export interface BattleCreateConfiguration {
+  battleSize: BattleSize;
+  playerTeam: string[];
+  enemyCompositionMode: EnemyCompositionMode;
+  enemyTeam?: string[];
+  enemyControlMode: EnemyControlMode;
+  seed?: number;
+}
+
+export interface HeroDefinitionSummary {
+  definitionId: string;
+  displayName: string;
+  faculty: string;
+  specialization: string;
+}
 
 export interface StatusState {
   id: string;

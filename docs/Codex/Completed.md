@@ -423,3 +423,107 @@ issues.
 - Define an owner-approved single source or generated path for status
   presentation metadata, then add exact Enter/Space invocation-count coverage
   if the explicit browser keyboard workaround remains necessary.
+
+---
+
+## 2026-07-29 — UI-002: Team Builder and Live 2v2/3v3 Battles
+
+**Summary:**
+
+Added Team Builder as the normal web entry point, exposed the eight approved
+hero definitions through the Python adapter, and extended live engine-backed
+battles to configurable 1v1, 2v2, and 3v3. Player teams remain
+player-controlled; enemies support random or specified composition and
+computer or player control. The adapter drains existing Python AI turns,
+preserves ordered authoritative events and snapshots, supports repeated hero
+definitions through slot-qualified instance IDs, and handles the approved
+roster's skill/target/status shapes. Finished battles now provide an accessible
+return action that resets the complete frontend battle lifecycle.
+
+**Agent Contributions:**
+
+- `project-manager` — mapped cross-boundary dependencies, froze the additive
+  creation contract, selected a permissive duplicate/overlap policy where no
+  design restriction was authorised, and defined acceptance gates.
+- `ui-developer` — implemented roster loading, Team Builder, typed creation,
+  multi-target interaction, completion dialog, return/reset, status metadata,
+  and frontend tests.
+- `game-engine-developer` — implemented the eight-hero factory/roster API,
+  multi-team session creation, validation, seeded random enemies, computer-turn
+  draining, authoritative incapacitated-turn skipping and forced Scoff
+  targeting, stable IDs, legacy target-shape compatibility, statuses, and
+  backend/API tests.
+- `test-automator` — added all-eight-hero live-action, player-controlled enemy,
+  malformed-roster, and fresh-session lifecycle coverage and ran the integrated
+  validation suite.
+- `reviewer` — independently reviewed authority, API/RNG/AI behavior, legality,
+  accessibility, reset, tests, browser evidence, scope, and documentation. No
+  blocking implementation issue remained; modal focus and roster validation
+  recommendations were implemented before completion.
+
+**Files Changed:**
+
+- `battle_api/adapter.py`
+- `battle_api/app.py`
+- `battle_api/models.py`
+- `tests/test_battle_adapter.py`
+- `tests/test_battle_api.py`
+- `web-ui/app/globals.css`
+- `web-ui/app/page.tsx`
+- `web-ui/components/battle/BattleExperience.tsx`
+- `web-ui/components/battle/BattleScreen.tsx`
+- `web-ui/components/battle/TeamBuilder.tsx`
+- `web-ui/lib/battle/assets.ts`
+- `web-ui/lib/battle/liveProvider.ts`
+- `web-ui/lib/battle/types.ts`
+- `web-ui/tests/stage-two-ui.test.tsx`
+- `web-ui/tests/ui-002-team-builder.test.tsx`
+- `docs/web-ui/UI_Review.md`
+- `docs/web-ui/UI_Review_002.md`
+- `docs/web-ui/Screen_Flow.md`
+- `docs/web-ui/WEB_UI_ARCHITECTURE.md`
+- `docs/web-ui/BATTLE_DATA_CONTRACT_V1.md`
+- `docs/web-ui/PYTHON_ADAPTER_API.md`
+- `docs/Codex/Completed.md`
+- `docs/Codex/Current_Task.md`
+
+**Validation:**
+
+- Frontend Vitest suite — 57 passed across five test files.
+- TypeScript type checking — passed.
+- ESLint — passed.
+- Production frontend build — passed; vinext emitted its informational
+  route-classification note.
+- Python suite — 59 passed; one existing non-failing Starlette/httpx
+  test-client deprecation warning.
+- Seeded adapter stress covered 30 live 1v1/2v2/3v3 configurations for up to
+  six human-command cycles.
+- Live browser review covered specified/player-controlled 1v1,
+  random/computer-controlled 2v2, and specified/computer-controlled 3v3.
+- Browser review confirmed enemy-player legal action and Enter targeting,
+  Python AI turn draining, all selected combatants, battle completion after
+  four human actions, result dialog, return/reset, and fresh relaunch.
+- At 1280×720, live 3v3 rendered six figures without document overflow; the
+  Battle Log remained 120 pixels high and internally scrolled, while skill
+  cards remained 94 pixels high.
+- Live Poisoned Dagger status metadata displayed correctly on pointer hover and
+  keyboard focus.
+- The owner-controlled file retained its task-start SHA-256:
+  `1d4ce91e6f2a6200bbf4bc0a434560c91ea25910e37daa5f80e6743277247230`.
+
+**Unresolved Issues:**
+
+- Sessions remain process-local, unauthenticated, non-expiring, and
+  single-worker.
+- The legacy engine uses module-global randomness and stateful specialization
+  behavior; the adapter retains locks and per-session RNG state, but the
+  approved roster is not an exhaustive balance/interaction proof.
+- Status presentation descriptions remain duplicated frontend metadata, with
+  cross-boundary identifier coverage but no generated prose source.
+- One existing Starlette/httpx test-client deprecation warning remains.
+
+**Recommended Follow-up:**
+
+- Define an owner-approved generated source for status presentation metadata
+  and separately plan durable authenticated session storage before any
+  production multiplayer or multi-worker deployment.
