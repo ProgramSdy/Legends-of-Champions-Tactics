@@ -226,7 +226,7 @@ class Warrior_Defence(Warrior):
             self.preset_target = None
             self.add_skill(Skill(self, "Devastate", self.devastate, target_type = "single", skill_type= "damage",))
             self.add_skill(Skill(self, "Shield Bash", self.shield_bash, target_type = "single", skill_type= "damage", capable_interrupt_magic_casting = True))
-            self.add_skill(Skill(self, "Shield Lash", self.shield_lash, target_type = "single", skill_type= "damage", is_control_skill = True))
+            self.add_skill(Skill(self, "Shield Lash", self.shield_lash, target_type = "single", skill_type= "damage", is_control_skill = True, independent_effect_action=self.independent_shield_lash))
 
     def shield_bash(self, other_hero):
         accuracy = 100  # Shield Bash has a 100% chance to succeed
@@ -631,4 +631,3 @@ class Warrior_Berserker(Warrior):
                return other_hero.take_damage(damage_dealt)
         else:
           return other_hero.take_damage(damage_dealt)
-

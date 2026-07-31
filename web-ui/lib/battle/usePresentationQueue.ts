@@ -41,12 +41,51 @@ export function usePresentationQueue(provider: BattleProvider) {
     setVisibleSnapshot((current) => {
       if (!current) return current;
       const next = structuredClone(current);
+      if (event.type === "turnStarted" && event.sourceId && next.combatants[event.sourceId]) {
+        next.activeCombatantId = event.sourceId;
+        next.turnControl = {
+          disposition: "automaticAction",
+          acceptsCommands: false,
+          reasonId: "automaticResolution",
+          actorCombatantId: event.sourceId,
+          sourceCombatantId: null,
+          forcedTargetIds: [],
+        };
+        next.legalActions = [];
+        next.turnOrder = next.turnOrder.map((turn) => ({
+          ...turn,
+          isCurrent: turn.combatantId === event.sourceId,
+        }));
+      }
+      if (
+        event.type === "turnEnded"
+        && event.sourceId
+        && event.reasonId
+        && ["glacier", "stunned", "paralyzed", "fear"].includes(event.reasonId)
+        && next.combatants[event.sourceId]
+      ) {
+        next.activeCombatantId = event.sourceId;
+        next.turnControl = {
+          disposition: "skip",
+          acceptsCommands: false,
+          reasonId: event.reasonId,
+          actorCombatantId: event.sourceId,
+          sourceCombatantId: null,
+          forcedTargetIds: [],
+        };
+        next.legalActions = [];
+      }
       if (event.targetId && event.hpAfter && next.combatants[event.targetId]) next.combatants[event.targetId].hp = event.hpAfter;
       if (event.type === "statusApplied" && event.targetId && event.statusId && next.combatants[event.targetId]) {
         const statuses = next.combatants[event.targetId].statuses;
         const existing = statuses.find((status) => status.id === event.statusId);
         if (existing) existing.roundsRemaining = event.roundsRemaining ?? null;
         else statuses.push({ id: event.statusId, instanceId: `${event.id}.status`, kind: "debuff", roundsRemaining: event.roundsRemaining ?? null, stacks: null, sourceCombatantId: event.sourceId ?? null });
+      }
+      if (event.type === "statusRemoved" && event.targetId && event.statusId && next.combatants[event.targetId]) {
+        next.combatants[event.targetId].statuses = next.combatants[event.targetId].statuses.filter(
+          (status) => status.id !== event.statusId,
+        );
       }
       if (event.type === "characterSummoned" && event.combatant) {
         next.combatants[event.combatant.id] = event.combatant;

@@ -108,6 +108,14 @@ type BattleSnapshot = {
     hasActed: boolean;
     isCurrent: boolean;
   }>;
+  turnControl: {
+    disposition: "playerCommand" | "automaticAction" | "skip" | "ended";
+    acceptsCommands: boolean;
+    reasonId: string | null;
+    actorCombatantId: string | null;
+    sourceCombatantId: string | null;
+    forcedTargetIds: string[];
+  };
   legalActions: LegalAction[]; // commands currently available to the client
 };
 
@@ -160,10 +168,13 @@ type LegalAction = {
 };
 ```
 
-Only `legalActions` determines whether a skill/target can be commanded. The
-client may calculate bar width from authoritative current/maximum values and
-may disable controls using `legalActions`; it may not derive legality from
-skill labels, status names, cooldown math, or HP.
+`turnControl.acceptsCommands` is the authoritative command boundary. It must be
+true with disposition `playerCommand`, and its actor must match
+`activeCombatantId`, before the client can submit intent. `legalActions` then
+determines the exact skills and targets available at that boundary. The client
+may calculate bar width from authoritative current/maximum values, but it may
+not derive command ownership or legality from skill labels, status names,
+cooldown math, HP, or local status interpretation.
 
 An `awaitingCommand` snapshot may expose legal actions before command
 submission; these entries communicate the actor, skills, and targets the client
@@ -171,6 +182,14 @@ can currently submit. After an accepted command, the returned final snapshot
 contains the legal actions for the next authoritative actor when another
 command is available, or an empty array when no command is currently legal,
 including after the battle has ended.
+
+`automaticAction` and `skip` are engine-owned states. The adapter normally
+drains them synchronously and returns the next `playerCommand` or `ended`
+snapshot, while semantic events describe the intermediate actions. Explicit
+turn control remains present on every snapshot so command validation, clients,
+diagnostics, and future transports do not need to infer the boundary.
+`reasonId`, source, and forced targets are structured context, not client-side
+instructions to reproduce the rule.
 
 The adapter maps the engine's five string states onto `phase`. `turn.index` is
 the current completed/active position in the round and is adapter-owned because
@@ -181,7 +200,9 @@ an updated snapshot.
 
 Status serialization must be an explicit mapping from engine flags and
 `Buff`/`Debuff` records. The UI must never enumerate arbitrary Python
-attributes or guess durations by naming convention.
+attributes or guess durations by naming convention. When an active engine
+record has an initiator, `sourceCombatantId` identifies it; Scoff therefore
+retains its authoritative initiator across the contract.
 
 ## Commands
 
@@ -219,7 +240,9 @@ the current Python player flow otherwise expects skill execution.
 Commands express intent only. The adapter resolves combat through the engine,
 then returns semantic events and a final authoritative snapshot. Duplicate
 `commandId` values must be idempotent. `expectedRevision` prevents input
-against stale state. Rejection never mutates authoritative state.
+against stale state. Rejection never mutates authoritative state. The adapter
+rejects a command unless the current engine directive accepts player commands
+and the submitted skill/target shape matches a published legal action.
 
 ## Semantic events
 
@@ -245,13 +268,19 @@ type BattleEvent = {
   combatant?: CombatantState;
   movement?: "lunge" | "return" | "offset";
   effectHint?: "magic" | "healing" | "melee" | "status" | "summon";
+  reasonId?: string | null; // stable automatic/skip reason when applicable
   message: string; // adapter-authored display text; never parsed for state
 };
 ```
 
 Fields irrelevant to an event are omitted. State-changing events include their
 post-change value (`hpAfter`, status duration, or full summoned combatant).
-`attackEvaded` has no `amount` or HP mutation. One Life Drain resolution can
+`attackEvaded` is emitted only when the engine records an authoritative evade
+for that target; unchanged HP alone is not evidence of evasion because a landed
+attack may deal zero damage. A true evade has no `amount` or HP mutation and
+does not produce target-side `statusApplied` events from that attack.
+Independent caster or ally effects may still produce their own events. One
+Life Drain resolution can
 produce ordered damage and healing events. Flesh Slam Multi can produce
 multiple target damage events followed by self-damage. Stitch of Agony produces
 `statusApplied` on cast and later `damageApplied` events at authoritative
@@ -389,11 +418,13 @@ expose no legal actions. The adapter records and advances the skipped turn for
 either control mode before returning the next actionable snapshot; a
 computer-controlled incapacitated actor never invokes skill selection.
 
-Scoff is an authoritative forced-action state rather than a skip. The adapter
-withholds normal client actions and uses the existing Python AI attack policy
-against the living Scoff initiator for either control mode. Scoff is removed as
-part of that resolution. If its recorded initiator is already defeated, the
-stale Scoff state is removed without consuming the actor's turn.
+Scoff is an authoritative forced-action state rather than a skip. The
+engine-owned turn directive supplies its forced skill and targets using the
+existing Python AI attack policy against the living initiator for either
+control mode. The adapter executes that directive and withholds normal client
+actions. Scoff is removed as part of that resolution. If its recorded initiator
+is already defeated, the stale Scoff state is removed without consuming the
+actor's turn.
 
 Combatant instance IDs include side and slot when needed, so repeated
 definitions remain distinct. Definition IDs and skill IDs remain stable.

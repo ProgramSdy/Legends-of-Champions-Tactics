@@ -661,6 +661,9 @@ def test_dead_scoff_source_is_removed_before_normal_control_resumes(
     dead_source.hp = 0
     scoffed.status["scoff"] = True
     scoffed.add_debuff(Debuff("Scoff", 1, dead_source, 1))
+    for skill in scoffed.skills:
+        if skill.target_qty == 0:
+            skill.if_cooldown = True
     next_actor.is_player_controlled = True
     for hero in session.game.heroes:
         hero.actioned = hero not in {scoffed, next_actor}
@@ -704,7 +707,17 @@ def test_dead_scoff_source_is_removed_before_normal_control_resumes(
             event for event in events if event["type"] == "skillStarted"
         )
         assert skill_event["sourceId"] == scoffed_id
-        assert skill_event["targetIds"] == [living_target_id]
+        selected_skill = adapter._skill_by_id(
+            scoffed, skill_event["skillId"]
+        )
+        assert selected_skill is not None
+        assert skill_event["targetIds"] in (
+            [],
+            [living_target_id],
+        )
+        assert bool(skill_event["targetIds"]) is bool(
+            selected_skill.target_qty
+        )
         assert scoffed.actioned is True
         assert snapshot["activeCombatantId"] == adapter._combatant_id(
             session, next_actor
@@ -742,3 +755,200 @@ def test_multi_target_skill_contracts_to_available_living_targets():
         },
     )
     assert result["accepted"] is True
+
+
+def test_turn_control_serializes_engine_directive_and_scoff_source():
+    adapter = BattleAdapter()
+    session, _ = adapter.create_battle(
+        seed=71,
+        battle_id="battle.turn-control",
+        battle_size=2,
+        player_team=[
+            "hero.warrior.defence",
+            "hero.priest.comprehensiveness",
+        ],
+        enemy_team=[
+            "hero.rogue.comprehensiveness",
+            "hero.mage.comprehensiveness",
+        ],
+    )
+    source = session.game.player_heroes[0]
+    actor = session.game.opponent_heroes[0]
+    session.game.unactioned_sorted_heroes = [actor]
+    actor.status["scoff"] = True
+    actor.add_debuff(Debuff("Scoff", 1, source, 1))
+
+    snapshot = adapter.snapshot(session)
+    actor_id = adapter._combatant_id(session, actor)
+    source_id = adapter._combatant_id(session, source)
+
+    assert snapshot["turnControl"] == {
+        "disposition": "automaticAction",
+        "acceptsCommands": False,
+        "reasonId": "scoff",
+        "actorCombatantId": actor_id,
+        "sourceCombatantId": source_id,
+        "forcedTargetIds": [source_id],
+    }
+    scoff = next(
+        status
+        for status in snapshot["combatants"][actor_id]["statuses"]
+        if status["id"] == "status.scoff"
+    )
+    assert scoff["sourceCombatantId"] == source_id
+    assert snapshot["legalActions"] == []
+
+
+def test_stun_precedes_scoff_without_consuming_scoff():
+    adapter = BattleAdapter()
+    session, _ = adapter.create_battle(
+        seed=73,
+        battle_id="battle.stun-before-scoff",
+        player_team=["hero.warrior.defence"],
+        enemy_team=["hero.rogue.comprehensiveness"],
+    )
+    source = session.game.player_heroes[0]
+    actor = session.game.opponent_heroes[0]
+    session.game.unactioned_sorted_heroes = [actor, source]
+    actor.status["stunned"] = True
+    actor.stun_duration = 1
+    actor.status["scoff"] = True
+    actor.add_debuff(Debuff("Scoff", 1, source, 1))
+
+    before = adapter.snapshot(session)
+    events = adapter._drain_automatic_turns(session)
+
+    assert before["turnControl"]["disposition"] == "skip"
+    assert before["turnControl"]["reasonId"] == "stunned"
+    assert events[0]["reasonId"] == "stunned"
+    assert not any(event["type"] == "skillStarted" for event in events)
+    assert actor.status["scoff"] is True
+
+
+def test_stun_consumes_stacked_shadow_word_insanity_in_adapter():
+    adapter = BattleAdapter()
+    session, _ = adapter.create_battle(
+        seed=74,
+        battle_id="battle.stun-insanity",
+        player_team=["hero.warrior.defence"],
+        enemy_team=["hero.rogue.comprehensiveness"],
+    )
+    source = session.game.player_heroes[0]
+    actor = session.game.opponent_heroes[0]
+    session.game.unactioned_sorted_heroes = [actor, source]
+    actor.status["stunned"] = True
+    actor.stun_duration = 1
+    actor.status["shadow_word_insanity"] = True
+
+    events = adapter._drain_automatic_turns(session)
+
+    assert actor.status["shadow_word_insanity"] is False
+    assert actor.status["stunned"] is True
+    assert any(
+        event["type"] == "statusRemoved"
+        and event.get("statusId") == "status.shadow_word_insanity"
+        and event.get("reasonId") == "stunned"
+        for event in events
+    )
+    assert not any(event["type"] == "skillStarted" for event in events)
+
+
+def test_scoff_precedes_an_existing_magic_cast():
+    adapter = BattleAdapter()
+    session, _ = adapter.create_battle(
+        seed=75,
+        battle_id="battle.scoff-before-cast",
+        player_team=["hero.warrior.defence"],
+        enemy_team=["hero.rogue.comprehensiveness"],
+    )
+    source = session.game.player_heroes[0]
+    actor = session.game.opponent_heroes[0]
+    actor.status["magic_casting"] = True
+    actor.magic_casting_duration = 0
+    actor.casting_magic = actor.skills[0]
+    actor.casting_magic_target = source
+    actor.status["scoff"] = True
+    actor.add_debuff(Debuff("Scoff", 1, source, 1))
+
+    directive = actor.turn_directive(actor.opponents, actor.allies)
+
+    assert directive.reason_id == "scoff"
+    assert directive.source is source
+    assert directive.targets is source
+
+
+def test_ready_magic_cast_directive_consumes_casting_status():
+    adapter = BattleAdapter()
+    session, _ = adapter.create_battle(
+        seed=76,
+        battle_id="battle.magic-ready",
+        player_team=["hero.warrior.defence"],
+        enemy_team=["hero.mage.comprehensiveness"],
+    )
+    target = session.game.player_heroes[0]
+    actor = session.game.opponent_heroes[0]
+    actor.status["magic_casting"] = True
+    actor.magic_casting_duration = 0
+    actor.casting_magic = actor.skills[0]
+    actor.casting_magic_target = target
+
+    directive = actor.turn_directive(actor.opponents, actor.allies)
+
+    assert directive.reason_id == "magicCastingReady"
+    assert directive.consume_statuses == ("magic_casting",)
+
+
+def test_scoff_preserves_legacy_selection_of_unavailable_off_cooldown_skill():
+    adapter = BattleAdapter()
+    session, _ = adapter.create_battle(
+        seed=77,
+        battle_id="battle.scoff-unavailable",
+        player_team=["hero.warrior.defence"],
+        enemy_team=["hero.rogue.comprehensiveness"],
+    )
+    source = session.game.player_heroes[0]
+    actor = session.game.opponent_heroes[0]
+    session.game.unactioned_sorted_heroes = [actor, source]
+    chosen = actor.skills[0]
+    chosen.is_available = False
+    chosen.if_cooldown = False
+    for skill in actor.skills[1:]:
+        skill.if_cooldown = True
+    actor.status["scoff"] = True
+    actor.add_debuff(Debuff("Scoff", 1, source, 1))
+
+    events = adapter._drain_automatic_turns(session)
+    skill_event = next(event for event in events if event["type"] == "skillStarted")
+
+    assert skill_event["skillId"] == adapter._skill_id(actor, chosen)
+    assert skill_event["targetIds"] == [adapter._combatant_id(session, source)]
+
+
+def test_restricted_turn_rejects_direct_command_without_mutation():
+    adapter = BattleAdapter()
+    session, _ = adapter.create_battle(
+        seed=79,
+        battle_id="battle.restricted-command",
+    )
+    snapshot = adapter.snapshot(session)
+    action = snapshot["legalActions"][0]
+    actor = adapter._hero_by_id(session, action["actorId"])
+    actor.status["stunned"] = True
+    actor.stun_duration = 1
+    before = deepcopy(adapter.snapshot(session))
+
+    result = adapter.submit(
+        session,
+        {
+            "type": "useSkill",
+            "commandId": "cmd.restricted",
+            "expectedRevision": session.revision,
+            "actorId": action["actorId"],
+            "skillId": action["skillId"],
+            "targetIds": action["validTargetIds"][: action["minimumTargets"]],
+        },
+    )
+
+    assert result["accepted"] is False
+    assert result["code"] == "notYourTurn"
+    assert adapter.snapshot(session) == before

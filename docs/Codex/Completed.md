@@ -797,3 +797,337 @@ existing readability vignette.
 
 - Define an optimized production background format and responsive variants
   before adding a larger scene library.
+
+---
+
+## 2026-07-30 — UI-004: Raise 1v1 Battlefield Health Bars
+
+**Summary:**
+
+Raised the battlefield health/status panels only in the 1v1 duel layout to add
+clearance above the enlarged hero figures. The duel offset changed from the
+shared `top: -5px` position to `top: -20px`; 2v2 and 3v3 retain the original
+shared offset.
+
+**Agent Contributions:**
+
+- `project-manager` — constrained the change to duel presentation, coordinated
+  validation and documentation, and protected the existing dirty worktree.
+- `ui-developer` — implemented the single duel-only CSS override and performed
+  live visual and computed-style inspection.
+- `game-engine-developer` — confirmed the existing `format-duel` marker is the
+  correct boundary and that no formation, engine, API, or contract change was
+  required.
+- `test-automator` — reviewed the format-scoped selector and regression plan,
+  and verified integrated frontend validation evidence.
+- `reviewer` — independently reviewed the offset, 1v1 clearance, unchanged
+  duo/trio geometry, accessibility, scope, and final evidence.
+
+**Files Changed:**
+
+- `web-ui/app/globals.css`
+- `docs/web-ui/Style_Guide.md`
+- `docs/Codex/Completed.md`
+- `docs/Codex/Current_Task.md`
+
+**Validation:**
+
+- Live computed styles: both 1v1 overheads resolved to `top: -20px`.
+- Live computed styles: all four 2v2 overheads and all six 3v3 overheads
+  remained `top: -5px`.
+- Live 1v1 screenshot inspection confirmed improved clearance on both sides,
+  readable health panels, and no battlefield-edge clipping.
+- Figures, formation anchors, target controls, and health/status content were
+  not changed.
+- Full frontend Vitest suite — 64 passed across six files.
+- TypeScript type checking — passed.
+- ESLint — passed.
+- Production frontend build — passed; vinext emitted its informational
+  route-classification note.
+- `git diff --check` passed.
+- No Python, adapter, API, battle-contract, formation-registry, or test file
+  changed.
+
+**Unresolved Issues:**
+
+- The adjustment was validated at the currently supported live desktop layout;
+  future changes to duel figure scale should recheck this spacing.
+
+**Recommended Follow-up:**
+
+- No further action is required unless owner review requests a different duel
+  clearance after hero figure artwork replaces placeholders.
+
+---
+
+## 2026-07-31 — UI-003: Investigate Stun and Scoff Action Restrictions
+
+**Summary:**
+
+Completed a five-role, documentation-only investigation of the original Python
+and live web-integration paths for Shield Bash Stun and Shield Lash/Heroric
+Charge Scoff. Current controlled real-skill scenarios did not reproduce the
+reported action-legality failures: Stun skipped the restricted turn, and Scoff
+automatically attacked its initiator for both player- and computer-controlled
+targets. The study records the remaining architectural risks and an
+implementation-ready engine-owned turn-directive design without marking the
+reported defect fixed.
+
+**Agent Contributions:**
+
+- `project-manager` — enforced the no-fix boundary, coordinated all five roles,
+  consolidated evidence, and maintained task records.
+- `ui-developer` — traced live-provider, legal-action, interaction,
+  presentation-queue, and final-snapshot reconciliation behavior.
+- `game-engine-developer` — traced and reproduced legacy Game, Hero, skill,
+  status-duration, forced-target, and adapter behavior using actual skills.
+- `test-automator` — ran controlled player/computer scenarios, assessed current
+  automated coverage, and designed the proposed regression matrix.
+- `reviewer` — independently reproduced the public-adapter happy path and
+  reviewed root-cause claims, architecture, scope, and unresolved semantics.
+
+**Files Changed:**
+
+- `docs/Codex/Analysis/UI_003_Action_Restriction_Integration_Study.md`
+- `docs/Codex/Completed.md`
+- `docs/Codex/Current_Task.md`
+
+**Validation:**
+
+- Focused adapter Stun/Scoff tests — 6 passed, 39 deselected.
+- Controlled engine and adapter experiments used real Shield Bash, Shield Lash,
+  and Heroric Charge skills for player- and computer-controlled targets; the
+  expected automatic restrictions were observed.
+- Full Python suite — 59 passed with one Starlette deprecation warning.
+- Relevant frontend suites — 38 passed.
+- Full frontend suite — 64 passed across six files.
+- TypeScript type checking, ESLint, and the production web build — passed.
+- Owner-controlled review-file SHA-256 was unchanged at
+  `5c93e620ae0cd28ce0f48885bede782e94686d1ec6fe20d5c4bcc121725e78d3`.
+- Task-scoped Markdown whitespace validation passed. Repository-wide
+  `git diff --check` reports pre-existing trailing whitespace in the
+  owner-controlled review file; it was preserved rather than edited.
+- No production behavior was changed by UI-003.
+
+**Unresolved Issues:**
+
+- The owner's symptom is not reproducible on the current happy path; a precise
+  current seed/runtime scenario is needed to identify whether stale processes,
+  evasion/immunity, initiative timing, or transient presentation caused the
+  observation.
+- The adapter duplicates engine restriction decisions and the API lacks
+  explicit turn-control semantics.
+- Scoff source identity is not serialized, command validation lacks an
+  independent control-boundary check, and frontend automatic-turn presentation
+  is incomplete.
+- Duration-one Stun has timing-sensitive legacy round-boundary behavior that
+  requires owner confirmation before any implementation changes it.
+
+**Recommended Follow-up:**
+
+- After owner decisions on Stun duration, contract versioning, automatic-turn
+  presentation, and no-legal-attack Scoff behavior, authorize a separate
+  implementation task for an engine-owned turn directive, explicit contract
+  control state, strict adapter validation, and end-to-end regressions.
+
+---
+
+## 2026-07-31 — UI-005: Authoritative Action-Restriction Integration
+
+**Summary:**
+
+Implemented the UI-003 study recommendations as a backward-compatible v1
+integration. Python now produces a shared turn directive for player commands,
+automatic actions, skipped turns, and battle completion. The legacy Game and
+web adapter consume this authority, the adapter strictly rejects commands at
+restricted boundaries, and snapshots expose explicit `turnControl` plus status
+source identity. React gates all controls on that explicit boundary and
+presents automatic and skipped turns from authoritative events without
+interpreting gameplay statuses.
+
+Shield Bash Stun and Shield Lash/Heroric Charge Scoff are covered through real
+skill execution for player- and computer-controlled targets. Existing Stun
+duration, Scoff targeting/fallback, combined-status precedence, seeded session
+behavior, and the engine spelling `Heroric Charge` were preserved.
+
+**Agent Contributions:**
+
+- `project-manager` — defined the backward-compatible implementation
+  assumptions, coordinated the five roles, resolved scope and precedence
+  findings, maintained documentation, and managed final live validation.
+- `ui-developer` — added typed turn-control semantics, authoritative
+  interaction gating, transient actor/status reconciliation, skip feedback,
+  and mock-provider parity.
+- `game-engine-developer` — implemented `TurnDirective`, refactored Game and
+  adapter consumption, added source serialization and strict validation, and
+  preserved legacy combined-status and forced-action behavior.
+- `test-automator` — added actual-skill backend integration and frontend
+  control/presentation regressions and ran the complete automated gate.
+- `reviewer` — independently identified and verified fixes for precedence,
+  status consumption, forced-skill compatibility, source events, skip
+  presentation, canonical IDs, deterministic test assertions, and scope.
+
+**Files Changed:**
+
+- `heroes/hero.py`
+- `game/game.py`
+- `battle_api/adapter.py`
+- `tests/test_battle_adapter.py`
+- `tests/test_action_restrictions_integration.py`
+- `web-ui/lib/battle/types.ts`
+- `web-ui/lib/battle/fixture.ts`
+- `web-ui/lib/battle/usePresentationQueue.ts`
+- `web-ui/components/battle/BattleScreen.tsx`
+- `web-ui/tests/action-restrictions.test.tsx`
+- `docs/web-ui/BATTLE_DATA_CONTRACT_V1.md`
+- `docs/web-ui/PYTHON_ADAPTER_API.md`
+- `docs/web-ui/WEB_UI_ARCHITECTURE.md`
+- `docs/Codex/Current_Task.md`
+- `docs/Codex/Completed.md`
+
+**Validation:**
+
+- Python compilation — passed for engine, adapter, and changed backend tests.
+- Full Python suite — 75 passed; one existing Starlette deprecation warning.
+- Focused restriction/dead-source backend suite — 11 passed.
+- Full frontend Vitest suite — 68 passed across seven files.
+- TypeScript type checking — passed.
+- ESLint — passed.
+- Production frontend build — passed; vinext emitted its informational
+  route-classification note.
+- Task-scoped `git diff --check` and new-file whitespace checks — passed.
+- Independent reviewer — approved with no remaining blocker.
+- Owner-controlled review-file SHA-256 remained
+  `5c93e620ae0cd28ce0f48885bede782e94686d1ec6fe20d5c4bcc121725e78d3`.
+- Restarted frontend on port 3001 and backend on port 8001; roster, battle
+  creation, and frontend HTTP requests returned 200.
+- Live 1v1 browser validation cast Shield Bash: the log showed Stun application,
+  Nighthawk's restricted turn ending without a skill, and controls returning
+  to Aegis.
+- Live 1v1 browser validation then cast Shield Lash: after Stun expired,
+  Nighthawk automatically used Sharp Blade against Aegis, Scoff was removed,
+  and no player-control prompt appeared for the forced action.
+
+**Implementation Decisions:**
+
+- `turnControl` is an additive v1 field; no contract version was introduced.
+- Existing Stun duration and combined-status precedence were not redesigned.
+- Scoff retains the legacy off-cooldown attack selection, including its
+  existing availability behavior and two-target fallback.
+- React uses `turnControl` and published `legalActions`; it does not inspect
+  status names to determine command ownership.
+- Direct private-drain test assertions accept the selected AI skill's valid
+  target shape instead of depending on module-global random history.
+
+**Unresolved Issues:**
+
+- Frontend and backend must be deployed together because the updated frontend
+  requires the additive `turnControl` field.
+- The process-local adapter still has the documented single-worker and
+  persistence limitations.
+- The existing Starlette test-client deprecation warning remains.
+
+**Recommended Follow-up:**
+
+- Have the project owner verify Shield Bash, Shield Lash, and Heroric Charge in
+  the restarted live UI. Any requested change to Stun duration or Scoff's
+  no-attack edge remains a separate game-design decision.
+
+---
+
+## 2026-07-31 — BUG-001: Make Evaded Attacks Suppress Harmful Target Effects
+
+**Summary:**
+
+Investigated the reported Shield Bash evade-plus-Stun behavior across the
+engine, adapter, and web event path. A true engine evade already excluded its
+target from the skill callback, so Shield Bash and the audited harmful-effect
+skills did not mutate an evading target. The reproducible defect was instead a
+false adapter event: any landed damage skill that left HP unchanged was
+reported as `attackEvaded`. A zero-damage Shield Bash could therefore correctly
+apply Stun while the UI incorrectly said that the attack was evaded.
+
+The engine now records an authoritative outcome for every resolved target, and
+the adapter uses that outcome rather than inferring evasion from HP. This fixes
+the observed contradiction systematically for current and future skills,
+including independent outcomes in multi-target attacks. Target-side skill
+callbacks remain hit-gated.
+
+The former name-specific miss handling for five mixed-effect attacks was
+replaced by an optional independent-benefit callback. Crusader Strike, Shield
+of Righteous, Heroric Charge, Cumbrous Axe, and Shield Lash now declare their
+caster benefits explicitly, so those benefits remain independent of whether
+the harmful target attack lands. Existing control-immunity behavior was
+preserved.
+
+**Agent Contributions:**
+
+- `project-manager` — established the authoritative task, coordinated the
+  five-role investigation, reconciled the reported symptom with engine and
+  adapter evidence, and maintained the documentation workflow.
+- `ui-developer` — traced the event-to-presentation path and confirmed that the
+  frontend already renders the semantic events correctly, so no React change
+  was required.
+- `game-engine-developer` — audited the shared resolution paths, added
+  authoritative per-target outcomes and the independent-benefit seam, migrated
+  all five known mixed-effect attacks, and corrected independent buff source
+  serialization.
+- `test-automator` — added deterministic hit, evade, zero-damage, mixed-benefit,
+  and multi-target regressions; exposed and retested the Shield Lash
+  serialization edge; and ran the complete automated gate.
+- `reviewer` — independently confirmed the actual root cause, audited harmful
+  effect gating, identified the control-immunity compatibility requirement,
+  and reviewed the systematic boundary and final evidence.
+
+**Files Changed:**
+
+- `skills/skill.py`
+- `heroes/hero.py`
+- `heroes/paladin.py`
+- `heroes/warrior.py`
+- `heroes/death_knight.py`
+- `battle_api/adapter.py`
+- `tests/test_evasion_effect_boundaries.py`
+- `docs/GDD/Combat_System.md`
+- `docs/GDD/Skill_System.md`
+- `docs/web-ui/BATTLE_DATA_CONTRACT_V1.md`
+- `docs/Codex/Completed.md`
+- `docs/Codex/Current_Task.md`
+
+**Validation:**
+
+- Deterministic regression coverage confirms that a landed Shield Bash applies
+  Stun, a true evade applies neither damage nor Stun, and a landed zero-damage
+  Shield Bash applies Stun without producing `attackEvaded`.
+- All five registered mixed-effect attacks retain their independent caster
+  benefit when their target evades.
+- A real multi-target execution records and gates hit and evade outcomes
+  independently.
+- Control-immunity regressions preserve no-Scoff behavior plus the historical
+  independent benefit and cooldown for Heroric Charge, Cumbrous Axe, and
+  Shield Lash, including Shield Lash's existing resistance sequence.
+- Full Python suite — 87 passed; one existing Starlette deprecation warning.
+- Python compilation — passed.
+- Full frontend Vitest suite — 68 passed.
+- TypeScript type checking, ESLint, and the production frontend build — passed.
+- The frontend required no production change for BUG-001.
+- Restarted the backend on port 8001; its health endpoint and the existing
+  frontend on port 3001 both returned HTTP 200.
+- Task-scoped whitespace checks passed. Repository-wide `git diff --check`
+  reports only pre-existing trailing whitespace in the owner-controlled human
+  review file, which was preserved.
+- Owner-controlled review-file SHA-256 remained
+  `5c93e620ae0cd28ce0f48885bede782e94686d1ec6fe20d5c4bcc121725e78d3`.
+
+**Unresolved Issues:**
+
+- Shield Lash retains its legacy control-immunity behavior, including its
+  existing independent-effect resolution sequence. Any balance or
+  normalization change to that behavior requires a separate approved task.
+- The existing Starlette test-client deprecation warning remains.
+
+**Recommended Follow-up:**
+
+- Add an explicit typed outcome model if future consumers require more detail
+  than the current internal per-target outcome categories. No additional
+  evade-specific skill patch is required.

@@ -269,65 +269,57 @@ class Game:
 
         # Update allies and opponents list
         self.update_allies_opponents_list()
-        if hero.status['shadow_word_insanity'] == True:
-          hero_opponents = hero.allies
-          hero_allies = hero.opponents
-          if hero_opponents:  # Ensure there are opponents available
+        directive = hero.turn_directive(hero.opponents, hero.allies)
+        if directive.reason_id == "shadowWordInsanity":
             self.display_battle_info(f"{hero.name} enters an insane state, unable to distinguish between friends and enemies.")
-            result = hero.ai_action(hero_opponents, hero_allies)
-            hero.status['shadow_word_insanity'] = False
+
+        if directive.reason_id == "scoffSourceDefeated":
+            source_name = directive.source.name if directive.source is not None else "its source"
+            self.display_battle_info(f"{hero.name}'s deep hatred towards {source_name} has disappeared.")
+            hero.status['scoff'] = False
+
+        if directive.reason_id == "scoff" and directive.source is not None:
+            self.display_battle_info(f"{hero.name} has a deep hatred towards {directive.source.name} and launches an all-out attack against them.")
+            result = directive.skill.execute(directive.targets)
+            hero.status['scoff'] = False
             if result is not None:
               self.display_battle_info(result)
-            if len(self.check_groups_status()) == 1 or len(self.check_groups_status()) == 0:
-              self.game_state = "game_over"
-              return
-        elif hero.status['scoff'] == True:
-          for debuff in hero.debuffs:
-            if debuff.name == "Scoff" and debuff.initiator.hp > 0:
-              self.display_battle_info(f"{hero.name} has a deep hatred towards {debuff.initiator.name} and launches an all-out attack against them.")
-              result = hero.ai_action(hero.opponents, hero.allies)
-              hero.status['scoff'] = False
-              if result is not None:
+        elif directive.disposition == "skip":
+            skip_messages = {
+                "glacier": f"{hero.name} is frozen and can't move.",
+                "stunned": f"{hero.name} is stunned and can't move.",
+                "paralyzed": f"{hero.name} is paralyzed and can't move.",
+                "fear": f"{hero.name} is running in fear.",
+            }
+            if directive.consume_scoff:
+                hero.status['scoff'] = False
+            self.display_battle_info(
+                skip_messages.get(
+                    directive.reason_id,
+                    f"{hero.name} {directive.message}.",
+                )
+            )
+        elif directive.disposition == "playerCommand":
+            self.skill_selection_active = True  # Activate skill selection
+            result = hero.player_action(hero, hero.opponents, hero.allies)  # Execute the chosen skill and chosen target
+            if result is not None:
                 self.display_battle_info(result)
-              if len(self.check_groups_status()) == 1 or len(self.check_groups_status()) == 0:
-                self.game_state = "game_over"
-                return
-            elif debuff.name == "Scoff" and debuff.initiator.hp <= 0:
-              self.display_battle_info(f"{hero.name}'s deep hatred towards {debuff.initiator.name} has disappeared.")
-              hero.status['scoff'] = False
-              if hero.is_player_controlled:
-                  self.skill_selection_active = True  # Activate skill selection
-                  result = hero.player_action(hero, hero.opponents, hero.allies)  # Execute the chosen skill and chosen target
-                  if result is not None:
-                    self.display_battle_info(result)
-                  if len(self.check_groups_status())  == 1 or len(self.check_groups_status()) == 0:
-                    self.game_state = "game_over"
-                    return
-              else:
-                  if hero.opponents:  # Ensure there are opponents available
-                      result = hero.ai_action(hero.opponents, hero.allies)
-                      if result is not None:
-                        self.display_battle_info(result)
-                      if len(self.check_groups_status()) == 1 or len(self.check_groups_status()) == 0:
-                        self.game_state = "game_over"
-                        return
-        else:
-          if hero.is_player_controlled:
-              self.skill_selection_active = True  # Activate skill selection
-              result = hero.player_action(hero, hero.opponents, hero.allies)  # Execute the chosen skill and chosen target
-              if result is not None:
+        elif directive.disposition == "automaticAction":
+            if directive.skill is not None:
+                result = directive.skill.execute(directive.targets)
+            elif hero.opponents:
+                result = hero.ai_action(hero.opponents, hero.allies)
+            else:
+                result = None
+            if result is not None:
                 self.display_battle_info(result)
-              if len(self.check_groups_status())  == 1 or len(self.check_groups_status()) == 0:
-                self.game_state = "game_over"
-                return
-          else:
-              if hero.opponents:  # Ensure there are opponents available
-                  result = hero.ai_action(hero.opponents, hero.allies)
-                  if result is not None:
-                    self.display_battle_info(result)
-                  if len(self.check_groups_status()) == 1 or len(self.check_groups_status()) == 0:
-                    self.game_state = "game_over"
-                    return
+
+        for status in directive.consume_statuses:
+            hero.status[status] = False
+
+        if len(self.check_groups_status()) == 1 or len(self.check_groups_status()) == 0:
+            self.game_state = "game_over"
+            return
         hero.actioned = True
         self.sorted_heroes = sorted(self.heroes, key=lambda hero: hero.agility, reverse=True)
         self.unactioned_sorted_heroes = sorted(self.unactioned_sorted_heroes, key=lambda hero: hero.agility, reverse=True)

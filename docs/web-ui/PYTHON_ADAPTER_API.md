@@ -99,14 +99,23 @@ existing engine AI turns before returning. The accepted response includes all
 ordered events, its final revision, and the snapshot at the next player turn or
 battle end.
 
+Every snapshot includes additive v1 `turnControl`. Its disposition is
+`playerCommand`, `automaticAction`, `skip`, or `ended`; commands are accepted
+only when `acceptsCommands` is true at a `playerCommand` boundary and the
+submitted action matches the published `legalActions`. Automatic and skipped
+states are classified by the engine-owned `Hero.turn_directive()` seam rather
+than by adapter-local status rules.
+
 Freeze, stun, paralysis, and fear are authoritative automatic skip states.
 Affected player or computer actors expose no legal actions; the adapter emits
 turn progression events and advances to the next actionable actor.
 
-Scoff is resolved automatically as the engine's forced AI attack against its
-living initiator, regardless of the configured control mode. Normal client
-actions are not exposed during that forced resolution. A stale Scoff whose
-initiator is defeated is removed without consuming the turn.
+Scoff is resolved automatically from the engine directive's forced skill and
+targets against its living initiator, regardless of the configured control
+mode. Normal client actions are not exposed during that forced resolution. A
+stale Scoff whose initiator is defeated is removed without consuming the turn.
+The initiator is serialized as the status and turn-control source where
+applicable.
 
 ## Source and rule mapping
 

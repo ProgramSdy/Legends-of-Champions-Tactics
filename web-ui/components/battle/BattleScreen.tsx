@@ -91,7 +91,15 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
 
   const combatants = snapshot?.combatants ?? {};
   const active = snapshot?.activeCombatantId ? combatants[snapshot.activeCombatantId] : null;
-  const legal = snapshot?.legalActions.find((action) => action.skillId === selectedSkill);
+  const acceptsCommands = Boolean(
+    snapshot
+    && snapshot.turnControl.disposition === "playerCommand"
+    && snapshot.turnControl.acceptsCommands
+    && snapshot.turnControl.actorCombatantId === snapshot.activeCombatantId,
+  );
+  const legal = acceptsCommands
+    ? snapshot?.legalActions.find((action) => action.skillId === selectedSkill)
+    : undefined;
   const sideHeroes = (side: "friendly" | "enemy") => {
     const definition = snapshot?.sides.find((item) => item.id === side);
     const items = definition?.combatantIds.map((id) => combatants[id]) ?? [];
@@ -111,7 +119,7 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
     : snapshot.outcome?.kind === "roundLimit" ? "ROUND LIMIT REACHED" : "BATTLE ENDED IN A DRAW";
 
   const triggerSkill = () => {
-    if (!selectedSkill || !snapshot.activeCombatantId) return;
+    if (!acceptsCommands || !selectedSkill || !legal || !snapshot.activeCombatantId) return;
     void present(() => provider.submitCommand({
       type: "useSkill",
       commandId: `cmd.${crypto.randomUUID()}`,
@@ -175,7 +183,7 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
               eventType={activeEvent?.type ?? null} eventAmount={activeEvent?.amount}
               eventTarget={activeEvent?.targetId === hero.id || (activeEvent?.type === "characterMoved" && activeEvent.sourceId === hero.id)}
               showAmount={activeEvent?.targetId === hero.id}
-              selectable={Boolean(legal?.validTargetIds.includes(hero.id)) && !isPlaying} selected={selectedTargets.includes(hero.id)}
+              selectable={acceptsCommands && Boolean(legal?.validTargetIds.includes(hero.id)) && !isPlaying} selected={selectedTargets.includes(hero.id)}
               onSelect={() => toggleTarget(hero.id)} />
             </div>;
           })}
@@ -186,13 +194,25 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
 
       <section className="command-deck">
         {active
-          ? <div className="acting-card"><AssetImage request={{ kind: "portrait", key: active.definitionId, name: active.displayName, className: active.faculty }} className="portrait" /><div><small>ACTING HERO</small><h2>{active.displayName}</h2><p>{active.faculty} · {active.specialization}</p><span className="turn-intent">{selectedSkill ? `READYING ${active.skills.find((skill) => skill.id === selectedSkill)?.displayName}` : "CHOOSE AN AUTHORIZED SKILL"}</span></div></div>
+          ? <div className="acting-card"><AssetImage request={{ kind: "portrait", key: active.definitionId, name: active.displayName, className: active.faculty }} className="portrait" /><div><small>ACTING HERO</small><h2>{active.displayName}</h2><p>{active.faculty} · {active.specialization}</p><span className="turn-intent">{
+            snapshot.turnControl.disposition === "skip"
+              ? "ACTION RESTRICTED · TURN SKIPPED"
+              : isPlaying && activeEvent
+                ? "RESOLVING AUTHORITATIVE ACTION"
+                : acceptsCommands
+                ? selectedSkill
+                  ? `READYING ${active.skills.find((skill) => skill.id === selectedSkill)?.displayName}`
+                  : "CHOOSE AN AUTHORIZED SKILL"
+                : snapshot.turnControl.disposition === "automaticAction"
+                    ? "ACTION RESOLVING AUTOMATICALLY"
+                    : "PLAYER COMMANDS UNAVAILABLE"
+          }</span></div></div>
           : <div className="acting-card battle-ended" role="status"><div className="ended-crest">◇</div><div><small>BATTLE COMPLETE</small><h2>{outcomeLabel}</h2><p>The final board reflects the authoritative Python result.</p><span className="turn-intent">NO FURTHER COMMANDS ARE LEGAL</span></div></div>}
         <div className="skills" aria-label="Skills">
           {active?.skills.map((item) => (
             <SkillCard key={item.id} skill={item} selected={selectedSkill === item.id}
-              legal={snapshot.legalActions.some((action) => action.skillId === item.id)}
-              disabled={isPlaying} onSelect={() => { setSelectedSkill(item.id); setSelectedTargets([]); }} />
+              legal={acceptsCommands && snapshot.legalActions.some((action) => action.skillId === item.id)}
+              disabled={isPlaying || !acceptsCommands} onSelect={() => { setSelectedSkill(item.id); setSelectedTargets([]); }} />
           ))}
         </div>
         <div className="battle-log">
@@ -209,7 +229,7 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
           <span>MOCK EVENT DEMOS</span>{mockDemos.map((demo) => <button key={demo.id} disabled={isPlaying} onClick={() => void present(demo.run)}>{demo.label}</button>)}
         </div>}
         <label className="toggle">AUTO BATTLE <input type="checkbox" checked={autoBattle} onChange={(event) => setAutoBattle(event.target.checked)} /><span /></label>
-        {!active ? <button className="end-turn" disabled>BATTLE ENDED</button> : isPlaying ? <button className="end-turn" onClick={skip} disabled={!canSkip}>{canSkip ? "SKIP EFFECT" : "RESOLVING…"}</button> : <button className="end-turn" onClick={triggerSkill} disabled={!selectedSkill || Boolean(legal && selectedTargets.length < legal.minimumTargets)}>{selectedSkill ? "CAST SKILL" : "SELECT SKILL"}</button>}
+        {!active ? <button className="end-turn" disabled>BATTLE ENDED</button> : isPlaying ? <button className="end-turn" onClick={skip} disabled={!canSkip}>{canSkip ? "SKIP EFFECT" : "RESOLVING…"}</button> : !acceptsCommands ? <button className="end-turn" disabled>AUTOMATIC TURN</button> : <button className="end-turn" onClick={triggerSkill} disabled={!selectedSkill || !legal || selectedTargets.length < legal.minimumTargets || selectedTargets.length > legal.maximumTargets}>{selectedSkill ? "CAST SKILL" : "SELECT SKILL"}</button>}
       </footer>
       {(error || fullscreenError) && <div className={`ui-error ${errorKind ?? ""}`} role="alert"><strong>{errorKind === "stale" ? "STATE RECONCILED" : errorKind === "rejected" ? "COMMAND REJECTED" : "BATTLE NOTICE"}</strong><span>{error ?? fullscreenError}</span></div>}
       {snapshot.phase === "ended" && onReturnToBuilder && (

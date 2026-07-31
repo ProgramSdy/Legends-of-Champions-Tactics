@@ -310,7 +310,7 @@ class Death_Knight_Blood(Death_Knight):
         super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major)
         self.add_skill(Skill(self, "Blood Plague", self.blood_plague, target_type = "single", skill_type= "damage"))
         self.add_skill(Skill(self, "Crimson Cleave", self.crimson_cleave, target_type = "single", skill_type= "damage"))
-        self.add_skill(Skill(self, "Cumbrous Axe", self.cumbrous_axe, target_type = "single", skill_type= "damage", is_control_skill = True))
+        self.add_skill(Skill(self, "Cumbrous Axe", self.cumbrous_axe, target_type = "single", skill_type= "damage", is_control_skill = True, independent_effect_action=self.independent_cumbrous_axe))
 
     def blood_plague(self, other_hero):
         results = []

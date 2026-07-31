@@ -27,7 +27,7 @@ class Paladin_Retribution(Paladin):
     def __init__(self, sys_init, name, group, is_player_controlled):
             super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major)
             self.add_skill(Skill(self, "Hammer of Anger", self.hammer_of_anger, target_type = "single", skill_type= "damage"))
-            self.add_skill(Skill(self, "Crusader Strike", self.crusader_strike, target_type = "single", skill_type= "damage"))
+            self.add_skill(Skill(self, "Crusader Strike", self.crusader_strike, target_type = "single", skill_type= "damage", independent_effect_action=self.independent_crusader_strike))
             self.add_skill(Skill(self, "Flash of Light", self.flash_of_light, "single", skill_type= "healing"))
 
     def hammer_of_anger(self, other_hero):
@@ -188,8 +188,8 @@ class Paladin_Protection(Paladin):
     def __init__(self, sys_init, name, group, is_player_controlled):
             super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major)
             self.add_skill(Skill(self, "Hammer of Revenge", self.hammer_of_revenge, target_type = "single", skill_type= "damage"))
-            self.add_skill(Skill(self, "Shield of Righteous", self.shield_of_righteous, target_type = "single", skill_type= "damage"))
-            self.add_skill(Skill(self, "Heroric Charge", self.heroric_charge, target_type = "single", skill_type= "damage", is_control_skill = True))
+            self.add_skill(Skill(self, "Shield of Righteous", self.shield_of_righteous, target_type = "single", skill_type= "damage", independent_effect_action=self.independent_shield_of_righteous))
+            self.add_skill(Skill(self, "Heroric Charge", self.heroric_charge, target_type = "single", skill_type= "damage", is_control_skill = True, independent_effect_action=self.independent_heroric_charge))
 
     def hammer_of_revenge(self, other_hero):
         variation = random.randint(-4, -1)

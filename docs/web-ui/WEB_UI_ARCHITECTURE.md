@@ -38,14 +38,18 @@ control mode, and optional seed. The adapter validates and constructs the
 engine session. Random enemy selection and all computer turns happen in Python.
 
 Commands carry the expected revision, actor, skill, and selected target IDs.
-Only provider `legalActions` enables skills and targets. Local selection is
-allowed; HP, statuses, cooldowns, turns, defeat, and outcomes are never
-optimistic.
+The explicit provider `turnControl` boundary must accept commands before the UI
+enables interaction; `legalActions` then enables exact skills and targets.
+React never interprets Stun, Scoff, or another status to decide command
+ownership. Local selection is allowed; HP, statuses, cooldowns, turns, defeat,
+and outcomes are never optimistic.
 
-During playback, only explicit event post-values are shown. The supplied final
-snapshot then replaces visible state. Rejected and stale commands reconcile an
-authoritative snapshot and show distinct feedback. Loading, disconnected, and
-adapter-error states expose retry boundaries.
+During playback, explicit turn events identify the transient acting hero,
+restriction reason, status application/removal, and supplied post-values while
+all command controls remain disabled. The supplied final snapshot then replaces
+visible state. Rejected and stale commands reconcile an authoritative snapshot
+and show distinct feedback. Loading, disconnected, and adapter-error states
+expose retry boundaries.
 
 ## Session Lifecycle
 
@@ -86,3 +90,5 @@ worker.
   1v1/2v2/3v3 lifecycle, computer-turn boundary, and completion reset.
 - 2026-07-30 — Added presentation-only random battle backgrounds selected once
   per newly started battle.
+- 2026-07-31 — Added explicit authoritative turn-control gating and transient
+  automatic/skip presentation; React does not infer restriction rules.

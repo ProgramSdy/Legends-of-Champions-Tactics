@@ -356,6 +356,7 @@ class BattleAdapter:
             "round": game.round_counter,
             "turn": {"index": min(acted + (1 if active else 0), total), "total": total},
             "activeCombatantId": active_id,
+            "turnControl": self._turn_control(session, active, ended=ended),
             "outcome": outcome,
             "sides": [
                 {
@@ -381,6 +382,33 @@ class BattleAdapter:
                 for hero in ordered
             ],
             "legalActions": self._legal_actions(session, active) if active else [],
+        }
+
+    def _turn_control(self, session: BattleSession, actor, *, ended=False) -> dict[str, Any]:
+        if ended or actor is None:
+            return {
+                "disposition": "ended",
+                "acceptsCommands": False,
+                "reasonId": None,
+                "actorCombatantId": None,
+                "sourceCombatantId": None,
+                "forcedTargetIds": [],
+            }
+        directive = actor.turn_directive(
+            actor.opponents, actor.allies, select_action=False
+        )
+        source_id = (
+            self._combatant_id(session, directive.source)
+            if directive.source is not None
+            else None
+        )
+        return {
+            "disposition": directive.disposition,
+            "acceptsCommands": directive.accepts_commands,
+            "reasonId": directive.reason_id,
+            "actorCombatantId": self._combatant_id(session, actor),
+            "sourceCombatantId": source_id,
+            "forcedTargetIds": [source_id] if directive.reason_id == "scoff" and source_id else [],
         }
 
     def submit(self, session: BattleSession, command: dict[str, Any]) -> dict[str, Any]:
@@ -422,17 +450,38 @@ class BattleAdapter:
         actor = self._current_actor(session.game)
         if actor is None or command.get("actorId") != self._combatant_id(session, actor):
             raise BattleAdapterError("notYourTurn", "The actor is not the current combatant.")
+        directive = actor.turn_directive(
+            actor.opponents, actor.allies, select_action=False
+        )
+        if directive.disposition != "playerCommand" or not directive.accepts_commands:
+            raise BattleAdapterError(
+                "notYourTurn", "The current turn does not accept player commands."
+            )
         skill = self._skill_by_id(actor, command.get("skillId"))
         if skill is None or not skill.is_available or skill.if_cooldown:
             raise BattleAdapterError("illegalSkill", "The skill does not exist or is unavailable.")
         targets = command.get("targetIds")
         if not isinstance(targets, list):
             raise BattleAdapterError("invalidCommand", "targetIds must be an array.")
-        valid_ids = set(self._valid_target_ids(session, actor, skill))
-        minimum = (
-            0 if skill.target_qty == 0 else min(skill.target_qty, len(valid_ids))
+        published_action = next(
+            (
+                action
+                for action in self._legal_actions(session, actor)
+                if action["skillId"] == command.get("skillId")
+            ),
+            None,
         )
-        maximum = minimum
+        if published_action is None:
+            if targets:
+                raise BattleAdapterError(
+                    "illegalTargets", "One or more targets are illegal."
+                )
+            raise BattleAdapterError(
+                "illegalSkill", "The skill is not a published legal action."
+            )
+        valid_ids = set(published_action["validTargetIds"])
+        minimum = published_action["minimumTargets"]
+        maximum = published_action["maximumTargets"]
         if len(targets) < minimum or len(targets) > maximum:
             raise BattleAdapterError(
                 "illegalTargets", f"The skill requires {minimum} to {maximum} targets."
@@ -458,6 +507,7 @@ class BattleAdapter:
                 targetIds=command["targetIds"],
                 skillId=command["skillId"],
                 effectHint=self._effect_hint(skill),
+                reasonId=command.get("_reasonId"),
                 message=f"{actor.name} used {skill.name}.",
             )
         ]
@@ -485,6 +535,8 @@ class BattleAdapter:
         skill.execute(engine_targets)
         if command.get("_clearScoff"):
             actor.status["scoff"] = False
+        for status in command.get("_clearStatuses", []):
+            actor.status[status] = False
         after = self._capture(session)
         events.extend(self._mutation_events(session, actor, skill, targets, before, after))
         actor.actioned = True
@@ -555,50 +607,152 @@ class BattleAdapter:
                 break
             if turns >= maximum_turns:
                 raise RuntimeError("automatic turn drain exceeded its safety bound")
-            skip_reason = self._incapacitated_reason(actor)
-            if skip_reason is not None:
-                events.extend(self._skip_turn(session, actor, skip_reason))
-                turns += 1
-                continue
-            if actor.status.get("scoff", False):
-                scoff_source = self._scoff_source(actor)
-                if scoff_source is None:
+            directive = actor.turn_directive(actor.opponents, actor.allies)
+            if directive.disposition == "skip":
+                if directive.consume_scoff:
                     actor.status["scoff"] = False
-                    session.revision += 1
                     events.append(
                         self._event(
                             session,
                             "statusRemoved",
                             targetId=self._combatant_id(session, actor),
                             statusId="status.scoff",
+                            reasonId=directive.reason_id,
                             effectHint="status",
-                            message=f"{actor.name}'s Scoff ended because its source was defeated.",
+                            message=f"{actor.name}'s Scoff ended without a legal forced attack.",
                         )
                     )
-                    continue
-                actions = self._legal_actions(
-                    session,
-                    actor,
-                    include_computer=True,
-                    include_forced=True,
+                events.extend(
+                    self._consume_directive_statuses(session, actor, directive)
                 )
-                action = self._scoff_action(session, actor, scoff_source, actions)
+                events.extend(self._skip_turn(session, actor, directive))
+                turns += 1
+                continue
+            if directive.reason_id == "scoffSourceDefeated":
+                if directive.consume_scoff:
+                    actor.status["scoff"] = False
+                session.revision += 1
+                events.append(
+                    self._event(
+                        session,
+                        "statusRemoved",
+                        targetId=self._combatant_id(session, actor),
+                        statusId="status.scoff",
+                        effectHint="status",
+                        message=f"{actor.name}'s Scoff ended because its source was defeated.",
+                    )
+                )
+                continue
+            if directive.reason_id == "scoff":
+                if directive.skill is None:
+                    raise RuntimeError(f"{actor.name} has no legal attack while scoffed")
+                skill_id = self._skill_id(actor, directive.skill)
+                chosen_targets = (
+                    directive.targets
+                    if isinstance(directive.targets, list)
+                    else [directive.targets]
+                )
+                target_ids = [
+                    self._combatant_id(session, target)
+                    for target in chosen_targets
+                    if target is not None
+                ]
+                valid_target_ids = self._valid_target_ids(
+                    session, actor, directive.skill
+                )
+                required_targets = (
+                    0
+                    if directive.skill.target_qty == 0
+                    else min(directive.skill.target_qty, len(valid_target_ids))
+                )
+                if (
+                    len(target_ids) != required_targets
+                    or len(set(target_ids)) != len(target_ids)
+                    or any(
+                        target_id not in valid_target_ids
+                        for target_id in target_ids
+                    )
+                ):
+                    raise RuntimeError(
+                        f"{actor.name}'s engine-selected Scoff targets are not legal"
+                    )
                 result = self._resolve(
                     session,
                     {
                         "type": "useSkill",
                         "commandId": f"forced.scoff.{session.revision + 1:06d}",
                         "expectedRevision": session.revision,
-                        "actorId": action["actorId"],
-                        "skillId": action["skillId"],
-                        "targetIds": action["targetIds"],
-                        "_clearScoff": True,
+                        "actorId": self._combatant_id(session, actor),
+                        "skillId": skill_id,
+                        "targetIds": target_ids,
+                        "_clearScoff": directive.consume_scoff,
                     },
                 )
                 events.extend(result["events"])
                 turns += 1
                 continue
-            if actor.is_player_controlled:
+            if directive.reason_id in {"shadowWordInsanity", "magicCastingReady"}:
+                if directive.skill is None:
+                    raise RuntimeError(
+                        f"{actor.name}'s automatic action has no executable skill"
+                    )
+                chosen_targets = (
+                    directive.targets
+                    if isinstance(directive.targets, list)
+                    else [directive.targets]
+                )
+                target_ids = [
+                    self._combatant_id(session, target)
+                    for target in chosen_targets
+                    if target not in (None, "none")
+                ]
+                result = self._resolve(
+                    session,
+                    {
+                        "type": "useSkill",
+                        "commandId": f"forced.{directive.reason_id}.{session.revision + 1:06d}",
+                        "expectedRevision": session.revision,
+                        "actorId": self._combatant_id(session, actor),
+                        "skillId": self._skill_id(actor, directive.skill),
+                        "targetIds": target_ids,
+                        "_reasonId": directive.reason_id,
+                        "_clearStatuses": list(directive.consume_statuses),
+                    },
+                )
+                events.extend(result["events"])
+                turns += 1
+                continue
+            if directive.reason_id == "vanish":
+                hp_before = actor.hp
+                message = actor.take_healing(int(actor.hp_max * 0.15))
+                if actor.hp > hp_before:
+                    events.append(
+                        self._event(
+                            session,
+                            "healingApplied",
+                            sourceId=self._combatant_id(session, actor),
+                            targetId=self._combatant_id(session, actor),
+                            amount=actor.hp - hp_before,
+                            hpAfter={"current": actor.hp, "maximum": actor.hp_max},
+                            reasonId=directive.reason_id,
+                            effectHint="healing",
+                            message=f"{actor.name} hid and drank a healing potion. {message}",
+                        )
+                    )
+                events.extend(
+                    self._consume_directive_statuses(session, actor, directive)
+                )
+                events.extend(self._skip_turn(session, actor, directive))
+                turns += 1
+                continue
+            if directive.reason_id == "magicCasting":
+                events.extend(
+                    self._consume_directive_statuses(session, actor, directive)
+                )
+                events.extend(self._skip_turn(session, actor, directive))
+                turns += 1
+                continue
+            if directive.disposition == "playerCommand":
                 break
             actions = self._legal_actions(session, actor, include_computer=True)
             if not actions:
@@ -660,73 +814,30 @@ class BattleAdapter:
             turns += 1
         return events
 
-    @staticmethod
-    def _scoff_source(actor):
-        if not actor.status.get("scoff", False):
-            return None
-        return next(
-            (
-                debuff.initiator
-                for debuff in actor.debuffs
-                if debuff.name == "Scoff" and debuff.initiator.hp > 0
-            ),
-            None,
-        )
-
-    def _scoff_action(self, session, actor, source, actions) -> dict[str, Any]:
-        """Select the forced attack shape used by ``Hero.ai_action`` for Scoff."""
-        single_damage = [
-            action
-            for action in actions
-            if (
-                (skill := self._skill_by_id(actor, action["skillId"])) is not None
-                and skill.target_type == "single"
-                and skill.skill_type in {"damage", "damage_healing"}
+    def _consume_directive_statuses(
+        self, session: BattleSession, actor, directive
+    ) -> list[dict[str, Any]]:
+        """Apply consumed statuses when no skill-resolution delta captures them."""
+        events: list[dict[str, Any]] = []
+        for status in directive.consume_statuses:
+            if not actor.status.get(status, False):
+                continue
+            actor.status[status] = False
+            events.append(
+                self._event(
+                    session,
+                    "statusRemoved",
+                    targetId=self._combatant_id(session, actor),
+                    statusId=f"status.{status}",
+                    reasonId=directive.reason_id,
+                    effectHint="status",
+                    message=f"{actor.name}'s {status.replace('_', ' ')} status ended.",
+                )
             )
-        ]
-        multi_damage = [
-            action
-            for action in actions
-            if (
-                (skill := self._skill_by_id(actor, action["skillId"])) is not None
-                and skill.target_type == "multi"
-                and skill.skill_type in {"damage", "damage_healing"}
-            )
-        ]
-        candidates = single_damage or multi_damage
-        if not candidates:
-            raise RuntimeError(f"{actor.name} has no legal attack while scoffed")
-        action = random.choice(candidates)
-        source_id = self._combatant_id(session, source)
-        if source_id not in action["validTargetIds"]:
-            raise RuntimeError("Scoff initiator is not a legal living opponent")
-        target_ids = [source_id]
-        if action["minimumTargets"] > 1:
-            remaining = [
-                target_id
-                for target_id in action["validTargetIds"]
-                if target_id != source_id
-            ]
-            target_ids.extend(
-                random.sample(remaining, action["minimumTargets"] - 1)
-            )
-        return {**action, "targetIds": target_ids}
-
-    @staticmethod
-    def _incapacitated_reason(actor) -> str | None:
-        reasons = (
-            ("glacier", "is frozen and cannot act"),
-            ("stunned", "is stunned and cannot act"),
-            ("paralyzed", "is paralyzed and cannot act"),
-            ("fear", "is running in fear and cannot act"),
-        )
-        return next(
-            (message for status, message in reasons if actor.status.get(status, False)),
-            None,
-        )
+        return events
 
     def _skip_turn(
-        self, session: BattleSession, actor, reason: str
+        self, session: BattleSession, actor, directive
     ) -> list[dict[str, Any]]:
         """Advance one incapacitated actor without executing a skill."""
         game = session.game
@@ -740,7 +851,8 @@ class BattleAdapter:
                 session,
                 "turnEnded",
                 sourceId=self._combatant_id(session, actor),
-                message=f"{actor.name} {reason}; their turn ended.",
+                reasonId=directive.reason_id,
+                message=f"{actor.name} {directive.message}; their turn ended.",
             )
         ]
         if len(game.check_groups_status()) <= 1:
@@ -776,7 +888,7 @@ class BattleAdapter:
             self._combatant_id(session, hero): {
                 "hp": hero.hp,
                 "maximum": hero.hp_max,
-                "statuses": self._active_statuses(hero),
+                "statuses": self._active_statuses(session, hero),
             }
             for hero in session.game.player_heroes + session.game.opponent_heroes
         }
@@ -801,7 +913,7 @@ class BattleAdapter:
                         message=f"{target.name} took {old['hp'] - new['hp']} damage.",
                     )
                 )
-            elif skill.skill_type == "damage":
+            elif skill.last_target_outcomes.get(id(target)) == "evaded":
                 events.append(
                     self._event(
                         session,
@@ -837,7 +949,7 @@ class BattleAdapter:
                     self._event(
                         session,
                         "statusApplied",
-                        sourceId=actor_id,
+                        sourceId=status.get("sourceCombatantId") or actor_id,
                         targetId=combatant_id,
                         skillId=self._skill_id(actor, skill),
                         statusId=status_id,
@@ -960,7 +1072,7 @@ class BattleAdapter:
             "alive": hero.hp > 0,
             "hp": {"current": hero.hp, "maximum": hero.hp_max},
             "resource": None,
-            "statuses": list(self._active_statuses(hero).values()),
+            "statuses": list(self._active_statuses(session, hero).values()),
             "skills": [
                 {
                     "id": self._skill_id(hero, skill),
@@ -979,7 +1091,7 @@ class BattleAdapter:
             ],
         }
 
-    def _active_statuses(self, hero) -> dict[str, dict[str, Any]]:
+    def _active_statuses(self, session: BattleSession, hero) -> dict[str, dict[str, Any]]:
         result = {}
         records = list(hero.buffs) + list(hero.debuffs)
         for key, kind in STATUS_KINDS.items():
@@ -992,13 +1104,16 @@ class BattleAdapter:
             if record is not None:
                 duration = record.duration
             status_id = f"status.{key}"
+            source = record.initiator if record is not None else None
             result[status_id] = {
                 "id": status_id,
                 "instanceId": f"{status_id}.{_slug(hero.name)}",
                 "kind": kind,
                 "roundsRemaining": duration,
                 "stacks": getattr(hero, f"{key}_stacks", None),
-                "sourceCombatantId": None,
+                "sourceCombatantId": (
+                    self._combatant_id(session, source) if source is not None else None
+                ),
             }
         return result
 
@@ -1010,7 +1125,10 @@ class BattleAdapter:
         include_computer: bool = False,
         include_forced: bool = False,
     ) -> list[dict[str, Any]]:
-        if self._incapacitated_reason(actor) is not None:
+        directive = actor.turn_directive(
+            actor.opponents, actor.allies, select_action=False
+        )
+        if directive.disposition == "skip":
             return []
         if actor.status.get("scoff", False) and not include_forced:
             return []

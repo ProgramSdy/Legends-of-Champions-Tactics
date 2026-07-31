@@ -13,7 +13,7 @@ CYAN = "\033[96m"
 RESET = "\033[0m"
 
 class Skill:
-    def __init__(self, initiator, name, skill_action, target_type, skill_type, target_qty = 1, capable_interrupt_magic_casting = False, is_control_skill = False, is_instant_skill = True, damage_nature = "NA", damage_type = "NA"):       
+    def __init__(self, initiator, name, skill_action, target_type, skill_type, target_qty = 1, capable_interrupt_magic_casting = False, is_control_skill = False, is_instant_skill = True, damage_nature = "NA", damage_type = "NA", independent_effect_action = None):
         self.initiator = initiator  # Reference to the hero instance who initiated the skill
         self.name = name            # Name of the skill, e.g., "Fireball"
         self.skill_action = skill_action   # This is a method reference that performs the skill's action
@@ -33,6 +33,11 @@ class Skill:
         self.active_state = None
         self.damage_nature = damage_nature
         self.damage_type = damage_type
+        self.independent_effect_action = independent_effect_action
+        # Authoritative outcome of the most recent execution, keyed by target.
+        # Consumers such as adapters must use this instead of inferring a miss
+        # from unchanged HP: a successful hit can legitimately deal 0 damage.
+        self.last_target_outcomes = {}
 
     def immunity_condition_all_check(self, opponent):
         # Check for immunity to all damage
@@ -114,10 +119,16 @@ class Skill:
                   outcomes["immunity_condition_control"].append(target)
                   continue
             outcomes["hit"].append(target)
+        self.last_target_outcomes = {
+            id(target): outcome
+            for outcome, resolved_targets in outcomes.items()
+            for target in resolved_targets
+        }
         return outcomes
 
     def execute(self, opponents):
         result_message = ""
+        self.last_target_outcomes = {}
         """
         if self.name == "Crushing Wave":
           for hero in opponents:
@@ -240,109 +251,16 @@ class Skill:
                 # Special Condition
                 if self.initiator.status['magic_casting'] == True:
                     self.initiator.status['magic_casting'] = False
-                if self.name == "Shield of Righteous":
-                    if self.initiator.status['shield_of_righteous'] == False:
-                      self.initiator.status['shield_of_righteous'] = True
-                      defense_before_increasing = self.initiator.defense
-                      defense_increased_amount_by_shield_of_righteous_single = math.ceil(self.initiator.original_defense * 0.15)  # Increase hero's defense by 15%
-                      self.initiator.defense_increased_amount_by_shield_of_righteous = self.initiator.defense_increased_amount_by_shield_of_righteous + defense_increased_amount_by_shield_of_righteous_single  # Defense increase accumulated
-                      self.initiator.defense = self.initiator.defense + defense_increased_amount_by_shield_of_righteous_single
-                      self.initiator.shield_of_righteous_stacks += 1
-                      self.initiator.shield_of_righteous_duration = 3  # Effect lasts for 2 rounds
-                      result_message += f" Defense of {self.initiator.name} has increased from {defense_before_increasing} to {self.initiator.defense}."
-                    else:
-                      if self.initiator.shield_of_righteous_stacks < 2: #shield of righteous effect can stack for two times.
-                        defense_before_increasing = self.initiator.defense
-                        defense_increased_amount_by_shield_of_righteous_single = math.ceil(self.initiator.original_defense * 0.15)  # Increase hero's defense by 15%
-                        self.initiator.defense_increased_amount_by_shield_of_righteous = self.initiator.defense_increased_amount_by_shield_of_righteous + defense_increased_amount_by_shield_of_righteous_single  # Defense increase accumulated
-                        self.initiator.defense = self.initiator.defense + defense_increased_amount_by_shield_of_righteous_single
-                        self.initiator.shield_of_righteous_stacks += 1
-                        self.initiator.shield_of_righteous_duration = 3  # Effect lasts for 2 rounds
-                        result_message += f" Defense of {self.initiator.name} has increased from {defense_before_increasing} to {self.initiator.defense}."
-                      else:
-                        self.initiator.shield_of_righteous_duration = 3
-                        result_message += f" Shield of Righteous buff duration refreshed."
-                if self.name == "Crusader Strike":
-                  if self.initiator.status['wrath_of_crusader'] == False:
-                    self.initiator.status['wrath_of_crusader'] = True
-                    agility_before_increasing = self.initiator.agility
-                    agility_increased_amount_by_wrath_of_crusader_single = math.ceil(self.initiator.original_agility * 0.75)  # Increase hero's agility by 75%
-                    self.initiator.agility_increased_amount_by_wrath_of_crusader = self.initiator.agility_increased_amount_by_wrath_of_crusader + agility_increased_amount_by_wrath_of_crusader_single  # Defense increase accumulated
-                    self.initiator.agility = self.initiator.agility + agility_increased_amount_by_wrath_of_crusader_single
-                    self.initiator.wrath_of_crusader_stacks += 1
-                    self.initiator.wrath_of_crusader_duration = 3  # Effect lasts for 2 rounds
-                    result_message += f" Agility of {self.initiator.name} has increased from {agility_before_increasing} to {self.initiator.agility}."
-                  else:
-                    if self.initiator.wrath_of_crusader_stacks < 2: # wrath of crusader effect can stack for two times.
-                      agility_before_increasing = self.initiator.agility
-                      agility_increased_amount_by_wrath_of_crusader_single = math.ceil(self.initiator.original_agility * 0.75)  # Increase hero's agility by 75%
-                      self.initiator.agility_increased_amount_by_wrath_of_crusader = self.initiator.agility_increased_amount_by_wrath_of_crusader + agility_increased_amount_by_wrath_of_crusader_single  # Defense increase accumulated
-                      self.initiator.agility = self.initiator.agility + agility_increased_amount_by_wrath_of_crusader_single
-                      self.initiator.wrath_of_crusader_stacks += 1
-                      self.initiator.wrath_of_crusader_duration = 3  # Effect lasts for 2 rounds
-                      result_message += f" Agility of {self.initiator.name} has increased from {agility_before_increasing} to {self.initiator.agility}."
-                    else:
-                      self.wrath_of_crusader_duration = 3
-                      result_message += f" Wrath of Crusader buff duration refreshed"
+                if self.independent_effect_action is not None:
+                  effect_message = self.independent_effect_action(self)
+                  if effect_message:
+                    result_message += f" {effect_message}"
                 if self.name == "Shadow Word Insanity" or self.name == "Curse of Fear":
                   self.if_cooldown = True
                   self.cooldown = 3
                 if self.name == "Pestilence":
                   self.if_cooldown = True
                   self.cooldown = 2
-                if self.name == "Cumbrous Axe":
-                  self.if_cooldown = True
-                  self.cooldown = 3
-                  self.initiator.status['cumbrous_axe'] = True
-                  self.initiator.healing_boost_effects['cumbrous_axe'] = 1.0
-                  for buff in self.initiator.buffs_debuffs_recycle_pool:
-                    if buff.name == "Cumbrous Axe" and buff.initiator == self:
-                        self.initiator.buffs_debuffs_recycle_pool.remove(buff)
-                        buff.duration = 2
-                        self.initiator.add_buff(buff)   
-                  else:
-                      buff = Buff(
-                          name='Cumbrous Axe',
-                          duration=2,
-                          initiator=self,
-                          effect=1
-                      )
-                      self.initiator.add_buff(buff)
-                  result_message +=  f" The healing {self.initiator.name} receives is boost."
-                if self.name == "Heroric Charge":
-                  basic_healing_heroric_charge = 22
-                  variation = random.randint(-2, 2)
-                  actual_healing = basic_healing_heroric_charge + variation
-                  self.if_cooldown = True
-                  self.cooldown = 3
-                  result_message +=  f"Holy light showers {self.initiator.name}. {self.initiator.take_healing(actual_healing)}."
-                if self.name == "Shield Lash":
-                  self.initiator.status['shield_lash'] = True
-                  self.initiator.fire_resistance_boost_amount['shield_lash'] = 45
-                  self.initiator.frost_resistance_boost_amount['shield_lash'] = 45
-                  self.initiator.death_resistance_boost_amount['shield_lash'] = 45
-                  self.initiator.nature_resistance_boost_amount['shield_lash'] = 45
-                  self.initiator.fire_resistance = self.initiator.fire_resistance + self.initiator.fire_resistance_boost_amount['shield_lash']
-                  self.initiator.frost_resistance = self.initiator.frost_resistance + self.initiator.frost_resistance_boost_amount['shield_lash']
-                  self.initiator.death_resistance = self.initiator.death_resistance + self.initiator.death_resistance_boost_amount['shield_lash']
-                  self.initiator.nature_resistance = self.initiator.nature_resistance + self.initiator.nature_resistance_boost_amount['shield_lash']
-                  self.if_cooldown = True
-                  self.cooldown = 3
-                  for buff in self.initiator.buffs_debuffs_recycle_pool:
-                          if buff.name == "Shield Lash" and buff.initiator == self:
-                              self.initiator.buffs_debuffs_recycle_pool.remove(buff)
-                              buff.duration = 2
-                              self.initiator.add_buff(buff)   
-                              break
-                  else:
-                      buff = Buff(
-                          name='Shield Lash',
-                          duration=2,
-                          initiator=self,
-                          effect=1
-                      )
-                      self.initiator.add_buff(buff)
-                  result_message +=  f"{self.initiator.name}'s magical resistance is boost."
                 if result_message:
                  return result_message
                 #else:
@@ -359,11 +277,14 @@ class Skill:
             self.cooldown = 3
 
           if opponents in self.initiator.allies:
+            self.last_target_outcomes[id(opponents)] = "ally"
             return self.skill_action(opponents, 'ally')
           else:
             if not self.evasion_check(opponents):
+              self.last_target_outcomes[id(opponents)] = "hit"
               return self.skill_action(opponents, 'opponent')
             else:
+              self.last_target_outcomes[id(opponents)] = "evaded"
               return f"{self.initiator.name} tries to use {self.name} on {opponents.name}, but {opponents.name} evades the attack."
         # Manage summon skill
         elif self.skill_type == "summon":

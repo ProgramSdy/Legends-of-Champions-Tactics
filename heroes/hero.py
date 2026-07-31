@@ -1,5 +1,6 @@
 import math
 import random
+from dataclasses import dataclass
 from heroes import *
 from skills import *
 
@@ -11,6 +12,22 @@ BLUE = "\033[94m"
 MAGENTA = "\033[95m"
 CYAN = "\033[96m"
 RESET = "\033[0m"
+
+
+@dataclass(frozen=True)
+class TurnDirective:
+    """Authoritative instruction for how the current hero turn is controlled."""
+
+    disposition: str
+    accepts_commands: bool
+    reason_id: str | None = None
+    message: str | None = None
+    source: object | None = None
+    skill: object | None = None
+    targets: object | None = None
+    consume_scoff: bool = False
+    consume_statuses: tuple[str, ...] = ()
+
 
 class Hero:
     # Class variables for ranges and skills - no specific values here
@@ -840,6 +857,78 @@ class Hero:
       other_hero.status['magic_casting'] = False
       return f"{other_hero.name}'s magic casting has been interrupted"
 
+    def independent_crusader_strike(self, skill):
+      before = self.agility
+      if not self.status['wrath_of_crusader']:
+        self.status['wrath_of_crusader'] = True
+        amount = math.ceil(self.original_agility * 0.75)
+        self.agility_increased_amount_by_wrath_of_crusader += amount
+        self.agility += amount
+        self.wrath_of_crusader_stacks += 1
+      elif self.wrath_of_crusader_stacks < 2:
+        amount = math.ceil(self.original_agility * 0.75)
+        self.agility_increased_amount_by_wrath_of_crusader += amount
+        self.agility += amount
+        self.wrath_of_crusader_stacks += 1
+      self.wrath_of_crusader_duration = 3
+      return (
+        f"Agility of {self.name} has increased from {before} to {self.agility}."
+        if self.agility != before
+        else "Wrath of Crusader buff duration refreshed"
+      )
+
+    def independent_shield_of_righteous(self, skill):
+      before = self.defense
+      if not self.status['shield_of_righteous']:
+        self.status['shield_of_righteous'] = True
+        amount = math.ceil(self.original_defense * 0.15)
+        self.defense_increased_amount_by_shield_of_righteous += amount
+        self.defense += amount
+        self.shield_of_righteous_stacks += 1
+      elif self.shield_of_righteous_stacks < 2:
+        amount = math.ceil(self.original_defense * 0.15)
+        self.defense_increased_amount_by_shield_of_righteous += amount
+        self.defense += amount
+        self.shield_of_righteous_stacks += 1
+      self.shield_of_righteous_duration = 3
+      return (
+        f"Defense of {self.name} has increased from {before} to {self.defense}."
+        if self.defense != before
+        else "Shield of Righteous buff duration refreshed."
+      )
+
+    def _independent_buff(self, skill, name, status, effect):
+      self.status[status] = True
+      skill.if_cooldown = True
+      skill.cooldown = 3
+      for buff in self.buffs_debuffs_recycle_pool:
+        if buff.name == name and buff.initiator == self:
+          self.buffs_debuffs_recycle_pool.remove(buff)
+          buff.duration = 2
+          self.add_buff(buff)
+          break
+      else:
+        self.add_buff(Buff(name=name, duration=2, initiator=self, effect=effect))
+
+    def independent_cumbrous_axe(self, skill):
+      self.healing_boost_effects['cumbrous_axe'] = 1.0
+      self._independent_buff(skill, "Cumbrous Axe", "cumbrous_axe", 1)
+      return f"The healing {self.name} receives is boost."
+
+    def independent_heroric_charge(self, skill):
+      healing = 22 + random.randint(-2, 2)
+      skill.if_cooldown = True
+      skill.cooldown = 3
+      return f"Holy light showers {self.name}. {self.take_healing(healing)}."
+
+    def independent_shield_lash(self, skill):
+      for resistance in ("fire", "frost", "death", "nature"):
+        boosts = getattr(self, f"{resistance}_resistance_boost_amount")
+        boosts['shield_lash'] = 45
+        setattr(self, f"{resistance}_resistance", getattr(self, f"{resistance}_resistance") + 45)
+      self._independent_buff(skill, "Shield Lash", "shield_lash", 1)
+      return f"{self.name}'s magical resistance is boost."
+
     def add_skill(self, skill):
         self.skills.append(skill)
 
@@ -1121,6 +1210,219 @@ class Hero:
             return chosen_ally
 
 
+    def _choose_scoff_action(self, opponents):
+        """Preserve the legacy forced-attack selection and targeting policy."""
+        debuff = next((item for item in self.debuffs if item.name == "Scoff"), None)
+        if debuff is None:
+            return None, None, None
+        damage_skills = [
+            skill
+            for skill in self.skills
+            if (
+                skill.target_type == "single"
+                and skill.skill_type in ["damage", "damage_healing"]
+                and skill.if_cooldown == False
+            )
+        ]
+        chosen_skill = random.choice(damage_skills) if damage_skills else None
+        chosen_target = debuff.initiator
+        if chosen_skill is None:
+            damage_skills = [
+                skill
+                for skill in self.skills
+                if (
+                    skill.target_type == "multi"
+                    and skill.skill_type in ["damage", "damage_healing"]
+                    and skill.target_qty == 2
+                    and skill.if_cooldown == False
+                )
+            ]
+            chosen_skill = random.choice(damage_skills) if damage_skills else None
+            chosen_target = [debuff.initiator]
+            other_opponents = [
+                opponent
+                for opponent in opponents
+                if opponent != debuff.initiator and opponent.hp > 0
+            ]
+            if other_opponents:
+                chosen_target.append(random.choice(other_opponents))
+        return chosen_skill, chosen_target, debuff.initiator
+
+    def turn_directive(self, opponents, allies, *, select_action=True):
+        """Return the engine-owned control directive for this hero's turn.
+
+        The method classifies command ownership without executing a skill. When
+        requested, it also selects the exact legacy Scoff action using the same
+        random fallback policy as ``ai_action``.
+        """
+        if self.status["shadow_word_insanity"]:
+            consume = ("shadow_word_insanity",)
+            for status, reason_id, message in (
+                ("glacier", "glacier", "is frozen and cannot act"),
+                ("stunned", "stunned", "is stunned and cannot act"),
+                ("paralyzed", "paralyzed", "is paralyzed and cannot act"),
+            ):
+                if self.status[status]:
+                    return TurnDirective(
+                        "skip", False, reason_id, message,
+                        consume_statuses=consume,
+                    )
+            if self.status["vanish"]:
+                return TurnDirective(
+                    "automaticAction",
+                    False,
+                    "vanish",
+                    "is hiding in dark and drinking healing potion",
+                    consume_statuses=consume,
+                )
+            if self.status["fear"]:
+                return TurnDirective(
+                    "skip",
+                    False,
+                    "fear",
+                    "is running in fear and cannot act",
+                    consume_statuses=consume,
+                )
+            if self.status["scoff"]:
+                chosen_skill = chosen_targets = source = None
+                if select_action:
+                    chosen_skill, chosen_targets, source = self._choose_scoff_action(
+                        self.allies
+                    )
+                else:
+                    debuff = next(
+                        (item for item in self.debuffs if item.name == "Scoff"),
+                        None,
+                    )
+                    source = debuff.initiator if debuff is not None else None
+                return TurnDirective(
+                    "automaticAction",
+                    False,
+                    "shadowWordInsanity",
+                    source=source,
+                    skill=chosen_skill,
+                    targets=chosen_targets,
+                    consume_statuses=consume,
+                )
+            if self.status["magic_casting"]:
+                if self.magic_casting_duration == 0:
+                    return TurnDirective(
+                        "automaticAction",
+                        False,
+                        "magicCastingReady",
+                        skill=self.casting_magic,
+                        targets=self.casting_magic_target,
+                        consume_statuses=consume + ("magic_casting",),
+                    )
+                return TurnDirective(
+                    "automaticAction",
+                    False,
+                    "magicCasting",
+                    f"is casting {self.casting_magic.name}",
+                    consume_statuses=consume,
+                )
+            chosen_skill = chosen_targets = None
+            confused_opponents = self.allies
+            confused_allies = self.opponents
+            if select_action and confused_opponents:
+                chosen_skill = self.ai_choose_skill(
+                    confused_opponents, confused_allies
+                )
+                chosen_targets = self.ai_choose_target(
+                    chosen_skill, confused_opponents, confused_allies
+                )
+            return TurnDirective(
+                disposition="automaticAction",
+                accepts_commands=False,
+                reason_id="shadowWordInsanity",
+                skill=chosen_skill,
+                targets=chosen_targets,
+                consume_statuses=consume,
+            )
+
+        restricted = (
+            ("glacier", "glacier", "is frozen and cannot act"),
+            ("stunned", "stunned", "is stunned and cannot act"),
+            ("paralyzed", "paralyzed", "is paralyzed and cannot act"),
+        )
+        for status, reason_id, message in restricted:
+            if self.status[status]:
+                return TurnDirective(
+                    disposition="skip",
+                    accepts_commands=False,
+                    reason_id=reason_id,
+                    message=message,
+                )
+
+        if self.status["vanish"]:
+            return TurnDirective(
+                disposition="automaticAction",
+                accepts_commands=False,
+                reason_id="vanish",
+                message="is hiding in dark and drinking healing potion",
+            )
+
+        if self.status["fear"]:
+            return TurnDirective(
+                disposition="skip",
+                accepts_commands=False,
+                reason_id="fear",
+                message="is running in fear and cannot act",
+            )
+
+        if self.status["scoff"]:
+            debuff = next((item for item in self.debuffs if item.name == "Scoff"), None)
+            source = debuff.initiator if debuff is not None else None
+            if source is None or source.hp <= 0:
+                return TurnDirective(
+                    disposition=(
+                        "playerCommand" if self.is_player_controlled else "automaticAction"
+                    ),
+                    accepts_commands=self.is_player_controlled,
+                    reason_id="scoffSourceDefeated",
+                    source=source,
+                    consume_scoff=True,
+                )
+            if select_action:
+                chosen_skill, chosen_targets, source = self._choose_scoff_action(
+                    opponents
+                )
+            else:
+                chosen_skill = chosen_targets = None
+            return TurnDirective(
+                disposition="automaticAction",
+                accepts_commands=False,
+                reason_id="scoff",
+                source=source,
+                skill=chosen_skill,
+                targets=chosen_targets,
+                consume_scoff=True,
+            )
+
+        if self.status["magic_casting"]:
+            if self.magic_casting_duration == 0:
+                return TurnDirective(
+                    disposition="automaticAction",
+                    accepts_commands=False,
+                    reason_id="magicCastingReady",
+                    skill=self.casting_magic,
+                    targets=self.casting_magic_target,
+                    consume_statuses=("magic_casting",),
+                )
+            return TurnDirective(
+                disposition="automaticAction",
+                accepts_commands=False,
+                reason_id="magicCasting",
+                message=f"is casting {self.casting_magic.name}",
+            )
+
+        return TurnDirective(
+            disposition=(
+                "playerCommand" if self.is_player_controlled else "automaticAction"
+            ),
+            accepts_commands=self.is_player_controlled,
+        )
+
     def ai_action(self, opponents, allies):
         if self.status['glacier'] == False:
           if self.status['stunned'] == False:
@@ -1143,20 +1445,10 @@ class Hero:
                     elif self.status['magic_casting'] == True and self.magic_casting_duration > 0:
                       return f"{self.name} is casting {self.casting_magic.name}."
                   else:
-                    for debuff in self.debuffs:
-                      if debuff.name == "Scoff":
-                        damage_skills = [skill for skill in self.skills if skill.target_type == "single" and skill.skill_type in ["damage", "damage_healing"] and skill.if_cooldown == False]
-                        chosen_skill = random.choice(damage_skills) if damage_skills else None
-                        chosen_target = debuff.initiator
-                        if chosen_skill == None:
-                          damage_skills = [skill for skill in self.skills if skill.target_type == "multi" and skill.skill_type in ["damage", "damage_healing"] and skill.target_qty == 2 and skill.if_cooldown == False]
-                          chosen_skill = random.choice(damage_skills) if damage_skills else None
-                          chosen_target = [debuff.initiator]
-                          #print(f"{RED}Debug: }{RESET}")
-                          other_opponents = [op for op in opponents if op != debuff.initiator and op.hp > 0]
-                          if other_opponents:
-                            chosen_target.append(random.choice(other_opponents))
-                        return chosen_skill.execute(chosen_target)
+                    chosen_skill, chosen_target, _ = self._choose_scoff_action(
+                        opponents
+                    )
+                    return chosen_skill.execute(chosen_target)
                 else:
                   return f"{self.name} is running in fear."
               else:

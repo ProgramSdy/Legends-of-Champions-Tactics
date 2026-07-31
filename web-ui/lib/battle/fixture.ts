@@ -21,6 +21,11 @@ export const fleshPuppet = combatant({
 
 export const initialSnapshot: BattleSnapshot = {
   phase: "awaitingCommand", round: 2, turn: { index: 1, total: 6 }, activeCombatantId: "friendly.arthas", outcome: null,
+  turnControl: {
+    disposition: "playerCommand", acceptsCommands: true,
+    reasonId: null, actorCombatantId: "friendly.arthas",
+    sourceCombatantId: null, forcedTargetIds: [],
+  },
   sides: [
     { id: "friendly", combatantIds: ["friendly.arthas", "friendly.black_heart"], maxSlots: 3 },
     { id: "enemy", combatantIds: ["enemy.sashein", "enemy.andonidas"], maxSlots: 3 },
@@ -100,6 +105,11 @@ export function createFormatFixture(size: 1 | 2 | 3): BattleSnapshot {
     { id: "enemy", combatantIds: enemyIds, maxSlots: size },
   ];
   snapshot.activeCombatantId = "friendly.ragnar";
+  snapshot.turnControl = {
+    disposition: "playerCommand", acceptsCommands: true,
+    reasonId: null, actorCombatantId: "friendly.ragnar",
+    sourceCombatantId: null, forcedTargetIds: [],
+  };
   snapshot.turnOrder = Array.from({ length: size }, (_, index) => [
     { combatantId: friendlyIds[index], hasActed: false, isCurrent: index === 0 },
     { combatantId: enemyIds[index], hasActed: false, isCurrent: false },
@@ -197,9 +207,18 @@ export class MockBattleProvider implements BattleProvider {
 
   async submitCommand(command: BattleCommand): Promise<PresentationScript> {
     if (command.expectedRevision !== this.revision) throw new Error("The battle state changed. Please select the action again.");
+    if (!this.snapshot.turnControl.acceptsCommands || this.snapshot.turnControl.disposition !== "playerCommand") {
+      throw new Error("The current turn does not accept player commands.");
+    }
     if (command.actorId !== this.snapshot.activeCombatantId) throw new Error("That combatant is not the active actor.");
     const legal = this.snapshot.legalActions.find((action) => action.actorId === command.actorId && command.type === "useSkill" && action.skillId === command.skillId);
-    if (command.type === "useSkill" && (!legal || command.targetIds.some((id) => !legal.validTargetIds.includes(id)))) throw new Error("That command is not legal in the current snapshot.");
+    if (command.type === "useSkill" && (
+      !legal
+      || command.targetIds.length < legal.minimumTargets
+      || command.targetIds.length > legal.maximumTargets
+      || new Set(command.targetIds).size !== command.targetIds.length
+      || command.targetIds.some((id) => !legal.validTargetIds.includes(id))
+    )) throw new Error("That command is not legal in the current snapshot.");
     const id = command.type === "endTurn" ? "magic" :
       command.skillId === "skill.life_drain" ? "magic" :
       command.skillId === "skill.stitch_of_agony" ? "status" : "summon";

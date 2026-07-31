@@ -68,6 +68,17 @@ export interface LegalAction {
   validTargetIds: string[];
 }
 
+export type TurnDisposition = "playerCommand" | "automaticAction" | "skip" | "ended";
+
+export interface TurnControl {
+  disposition: TurnDisposition;
+  acceptsCommands: boolean;
+  reasonId: string | null;
+  actorCombatantId: string | null;
+  sourceCombatantId: string | null;
+  forcedTargetIds: string[];
+}
+
 export interface BattleSnapshot {
   phase: "initializing" | "roundStart" | "awaitingCommand" | "resolving" | "roundEnd" | "ended";
   round: number;
@@ -77,6 +88,7 @@ export interface BattleSnapshot {
   sides: Array<{ id: SideId; combatantIds: string[]; maxSlots: number }>;
   combatants: Record<string, CombatantState>;
   turnOrder: Array<{ combatantId: string; hasActed: boolean; isCurrent: boolean }>;
+  turnControl: TurnControl;
   legalActions: LegalAction[];
 }
 
@@ -101,6 +113,7 @@ export interface BattleEvent {
   combatant?: CombatantState;
   movement?: "lunge" | "return" | "offset";
   effectHint?: EffectHint;
+  reasonId?: string | null;
   message: string;
 }
 
