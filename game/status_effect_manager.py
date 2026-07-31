@@ -120,6 +120,18 @@ class StatusEffectManager:
                       hero.status['shield_of_righteous'] = False
                       self.game.display_status_updates(f"{BLUE}Shield of Righteous effect has faded away from {hero.name}. {hero.name}'s defense has returned to {hero.defense}{RESET}")
 
+            # Handle Wrath_of_Crusader Buff
+            if hero.status['wrath_of_crusader'] and hero.hp > 0:
+              if hero.wrath_of_crusader_duration > 0:
+                  hero.wrath_of_crusader_duration -= 1
+                  self.game.display_status_updates(f"{BLUE}{hero.name}'s Wrath of Crusader effect duration is {hero.wrath_of_crusader_duration} rounds{RESET}")
+                  if hero.wrath_of_crusader_duration == 0:
+                      hero.agility = hero.agility - hero.agility_increased_amount_by_wrath_of_crusader  # Restore original agility
+                      hero.agility_increased_amount_by_wrath_of_crusader = 0 # Reset the amount of agility increased by wrath of crusader
+                      hero.wrath_of_crusader_stacks = 0 # Reset stack count
+                      hero.status['wrath_of_crusader'] = False
+                      self.game.display_status_updates(f"{BLUE}Wrath of Crusader effect has faded away from {hero.name}. {hero.name}'s agility has returned to {hero.agility}{RESET}")
+
             # Handle Shadow Word Pain Debuff Duration
             if hero.status['shadow_word_pain'] and hero.hp > 0:
                 hero.shadow_word_pain_debuff_duration -=1
