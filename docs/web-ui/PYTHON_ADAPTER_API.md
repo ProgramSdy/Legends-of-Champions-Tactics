@@ -36,6 +36,9 @@ Returns service and contract version health.
 
 Returns contract version `1.0` and exactly the eight approved hero definitions,
 including stable `definitionId`, display name, faculty, and specialization.
+The roster display name is catalogue metadata. Each non-summoned battle
+combatant receives a runtime name from its class's `HeroGenerator` faculty pool
+during session creation.
 
 ### `POST /api/v1/battles`
 
@@ -99,6 +102,11 @@ existing engine AI turns before returning. The accepted response includes all
 ordered events, its final revision, and the snapshot at the next player turn or
 battle end.
 
+Responses may add `battleLog` events carrying sanitized Python-authored
+presentation lines. `channel` is `battleInfo` or `statusUpdate`. Typed semantic
+events remain authoritative for mutations and playback; `visibleInLog: false`
+only suppresses their generic text when a Python line would duplicate it.
+
 Every snapshot includes additive v1 `turnControl`. Its disposition is
 `playerCommand`, `automaticAction`, `skip`, or `ended`; commands are accepted
 only when `acceptsCommands` is true at a `playerCommand` boundary and the
@@ -127,8 +135,8 @@ applicable.
 | `hero.paladin.protection` / Bastion | `heroes.paladin.Paladin_Protection` | existing specialization skills and AI |
 | `hero.mage.comprehensiveness` / Lyra | `heroes.mage.Mage_Comprehensiveness` | existing specialization skills and AI |
 | `hero.warrior.defence` / Aegis | `heroes.warrior.Warrior_Defence` | existing specialization skills and AI |
-| `hero.warrior.weapon_master` / Ragnar | `heroes.warrior.Warrior_Weapon_Master` | `(sys_init, "Ragnar", "Group_A", True)`; Fatal Strike, Armor Crush, Antivenom Potion |
-| `hero.rogue.comprehensiveness` / Nighthawk | `heroes.rogue.Rogue_Comprehensiveness` | `(sys_init, "Nighthawk", "Group_B", True)`; Sharp Blade, Poisoned Dagger, Shadow Evasion |
+| `hero.warrior.weapon_master` / Ragnar catalogue entry | `heroes.warrior.Warrior_Weapon_Master` | runtime Warrior-pool name; Fatal Strike, Armor Crush, Antivenom Potion |
+| `hero.rogue.comprehensiveness` / Nighthawk catalogue entry | `heroes.rogue.Rogue_Comprehensiveness` | runtime Rogue-pool name; Sharp Blade, Poisoned Dagger, Shadow Evasion |
 | Battle state and rounds | `game.game.Game` | `Game([ragnar], [nighthawk], "simulation")`, `game_initialization`, `start_round`, `end_round` |
 | Target/evasion dispatch | `skills.skill.Skill` | `Skill.execute` and `Skill.resolve_targets` |
 | Damage/defeat | `heroes.hero.Hero` | `take_damage`, `take_damage_action`, `check_if_defeated` |
@@ -154,6 +162,12 @@ implementations.
 - The engine uses module-global `random`. Sessions retain independent RNG state
   and a module-global lock prevents cross-session interleaving. This is safe for
   the current process, but an engine-owned RNG dependency would scale better.
+- Runtime names are selected from `HeroGenerator.hero_classes` inside that
+  session random boundary. Same-faculty names are unique across both teams until
+  the pool is exhausted, after which creation permits repeats. Name selection
+  derives from then restores the session stream before hero construction;
+  equal seeds/configurations remain reproducible without shifting established
+  combat/stat rolls.
 - The legacy `Skill.execute` API represents targetless buffs with the sentinel
   `["none"]` and has different scalar/list target shapes; the adapter contains
   narrow compatibility mappings.

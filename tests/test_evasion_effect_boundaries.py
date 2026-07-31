@@ -263,8 +263,10 @@ def test_heroric_charge_control_immunity_suppresses_scoff_but_keeps_caster_heal(
     target.is_immunity_condition_control = True
     source.hp = source.hp_max - 60
     source_hp_before = source.hp
+    skill = next(skill for skill in source.skills if skill.name == "Heroric Charge")
+    skill.evasion_check = lambda _target: False
 
-    skill, result = _submit_named_skill(
+    _, result = _submit_named_skill(
         adapter, session, source, target, "Heroric Charge"
     )
 
@@ -289,8 +291,10 @@ def test_shield_lash_control_immunity_keeps_historical_double_resistance_buff():
         nature: getattr(source, f"{nature}_resistance")
         for nature in ("fire", "frost", "death", "nature")
     }
+    skill = next(skill for skill in source.skills if skill.name == "Shield Lash")
+    skill.evasion_check = lambda _target: False
 
-    skill, result = _submit_named_skill(
+    _, result = _submit_named_skill(
         adapter, session, source, target, "Shield Lash"
     )
 

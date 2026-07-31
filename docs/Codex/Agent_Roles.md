@@ -20,7 +20,7 @@ project-specific ownership, coordination, and completion workflow.
 
 ## Golden Rule
 
-Every project task must activate all five configured agents:
+The project has five configured agents available for task assignment:
 
 - `project-manager`
 - `ui-developer`
@@ -28,15 +28,18 @@ Every project task must activate all five configured agents:
 - `test-automator`
 - `reviewer`
 
-All five agents must participate before a task is marked complete. Their depth
-of participation is proportional to the task. When an agent has no
-implementation ownership, it performs a bounded review within its area and
-reports a documented no-change conclusion. Mandatory participation must never
-be used to manufacture work, expand the authorised scope, or create unnecessary
-changes.
+Not every task requires all five agents. Before work begins, the
+`project-manager` must analyse the task type, affected ownership boundaries,
+complexity, risk, and validation needs, then select one or more relevant
+agents. Agent involvement grows with complexity and risk. Agents must not be
+activated merely to manufacture work, expand the authorised scope, or create
+unnecessary no-change reports.
 
-The `project-manager` coordinates the work. Codex must not silently complete a
-task through one agent or omit another configured agent.
+An official task assigned through `docs/Codex/Current_Task.md` will normally
+use all five agents, especially for bug fixes. A narrower official task may use
+fewer agents only when the project manager documents why the reduced assignment
+is appropriate. Codex must follow the announced selection and must not silently
+omit a selected agent.
 
 ## Project Manager
 
@@ -52,8 +55,8 @@ completion reporting.
 - Read all five configured agent definitions before work begins.
 - Inspect the repository structure and identify the affected ownership
   boundaries.
-- Break the work into clear subtasks with explicit ownership for all five
-  agents.
+- Select the relevant agent or agents in proportion to task type, complexity,
+  affected boundaries, and risk, then assign clear ownership.
 - Define dependencies, execution order, milestones, and decision gates.
 - Keep work within the approved scope.
 - Prevent unnecessary rewrites, duplicated effort, and unrelated refactoring.
@@ -65,8 +68,8 @@ completion reporting.
   workflows change.
 - Ensure the completion record accurately lists files changed, validation
   performed, known limitations, and recommended follow-up work.
-- Do not mark work complete until implementation, testing, and independent
-  review are finished.
+- Do not mark work complete until the implementation, validation, and review
+  required by the announced agent selection are finished.
 
 ## UI Developer
 
@@ -188,32 +191,39 @@ documentation, test quality, and residual risk.
 
 1. The `project-manager` confirms the repository root and reads the task,
    startup documentation, and all five configured agent definitions.
-2. The `project-manager` identifies affected boundaries and announces explicit,
-   scoped assignments for all five agents.
-3. The `ui-developer` and `game-engine-developer` assess their ownership areas
-   and implement approved changes where required.
-4. Agents without implementation changes report a bounded no-change impact
-   conclusion.
-5. The `test-automator` validates the integrated result and reports failures.
-6. The responsible implementation agents fix discovered defects, followed by
+2. The `project-manager` identifies affected boundaries, assesses complexity
+   and risk, and announces explicit scoped assignments for the selected agent
+   or agents.
+3. Selected implementation specialists inspect and change only their approved
+   ownership areas.
+4. When selected, the `test-automator` validates the integrated result and
+   reports failures.
+5. Responsible implementation agents fix discovered defects, followed by
    affected re-validation.
-7. The `reviewer` performs an independent final review after validation.
-8. The `project-manager` resolves findings, consolidates the outcome, updates
+6. When selected, the `reviewer` performs an independent review after
+   validation.
+7. The `project-manager` resolves findings, consolidates the outcome, updates
    authoritative documentation, and records task completion.
 
-If concurrency or tool limits prevent simultaneous activation, run agents in
-coordinated waves. Sequential execution does not waive any agent's required
-participation.
+Official `Current_Task.md` work should default to all five roles, and bug fixes
+should strongly default to all five because they require implementation,
+regression testing, cross-boundary impact assessment, and independent review.
+The project manager may document a narrower selection when the task clearly
+does not need that breadth. If concurrency or tool limits prevent simultaneous
+activation, selected agents may run in coordinated waves.
 
 ## Assignment and Completion Requirements
 
-Before implementation, `docs/Codex/Current_Task.md` must identify what each of
-the five agents will implement, validate, review, coordinate, or assess.
+Before implementation, `docs/Codex/Current_Task.md` must record the complexity
+and risk assessment, identify each selected agent's responsibility, and list
+non-participating roles with a brief rationale when an official task uses fewer
+than all five.
 
 The final completion record must include:
 
-- each agent's contribution or no-change conclusion;
+- each participating agent's contribution;
+- the selection rationale when fewer than all five agents participated;
 - implementation and documentation files changed;
 - exact validation performed and actual results;
-- independent reviewer findings and disposition;
+- reviewer findings and disposition when the reviewer participated;
 - unresolved issues, risks, and recommended follow-up work.

@@ -16,6 +16,7 @@ const logGlyph: Record<BattleEventType, string> = {
   characterMoved: "➜", projectileLaunched: "◌", damageApplied: "✕",
   healingApplied: "+", statusApplied: "◇", statusRemoved: "○", attackEvaded: "↝",
   characterSummoned: "♟", characterDefeated: "☠", turnEnded: "■", battleEnded: "★",
+  battleLog: "›",
 };
 
 function TeamPanel({ side, heroes, activeId }: { side: "friendly" | "enemy"; heroes: Array<CombatantState | null>; activeId: string | null }) {

@@ -96,7 +96,7 @@ export type BattleEventType =
   | "battleStarted" | "roundStarted" | "turnStarted" | "skillStarted"
   | "characterMoved" | "projectileLaunched" | "damageApplied" | "healingApplied"
   | "statusApplied" | "statusRemoved" | "attackEvaded" | "characterSummoned"
-  | "characterDefeated" | "turnEnded" | "battleEnded";
+  | "characterDefeated" | "turnEnded" | "battleEnded" | "battleLog";
 
 export interface BattleEvent {
   id: string;
@@ -114,6 +114,8 @@ export interface BattleEvent {
   movement?: "lunge" | "return" | "offset";
   effectHint?: EffectHint;
   reasonId?: string | null;
+  channel?: "battleInfo" | "statusUpdate";
+  visibleInLog?: boolean;
   message: string;
 }
 

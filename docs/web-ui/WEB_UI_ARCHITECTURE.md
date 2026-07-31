@@ -15,8 +15,10 @@ the thin Python adapter. Python remains the sole gameplay authority.
 - `lib/battle/formations.ts` is the single duel/duo/trio slot registry. Format
   is derived from authoritative team size.
 - `lib/battle/usePresentationQueue.ts` orders semantic events, applies supplied
-  post-event values, and reconciles to the final snapshot. A generation token
-  makes skip/replay race-safe.
+  post-event values, and reconciles to the final snapshot. Typed semantic
+  events always drive playback and state; additive `battleLog` events carry
+  Python-authored display prose. A generation token makes skip/replay
+  race-safe.
 - `lib/battle/assets.ts` owns definition/status presentation and fallback
   metadata.
 - `lib/battle/battleBackgrounds.ts` owns the explicit battle-scene background
@@ -51,6 +53,12 @@ visible state. Rejected and stale commands reconcile an authoritative snapshot
 and show distinct feedback. Loading, disconnected, and adapter-error states
 expose retry boundaries.
 
+The presentation queue processes every typed semantic event even when
+`visibleInLog` is false. That flag suppresses only the event's generic log copy
+when an ordered, sanitized `battleLog` line from Python already describes it.
+The client displays `battleLog` prose but never parses it for state, legality,
+identity, or animation decisions.
+
 ## Session Lifecycle
 
 `BattleCreateConfiguration` contains `battleSize`, `playerTeam`,
@@ -70,6 +78,11 @@ to the engine seed or battle data contract.
 Approved heroes use stable definition-ID keyed placeholder-ready portrait,
 figure, thumbnail, class, active, and defeated metadata. Missing assets use
 class, generic, then initials fallbacks. `/assets` exposes asset diagnostics.
+
+Battle-session display names come from the adapter and are presentation data;
+stable definition and combatant IDs remain the only identity keys. Side cards
+show faculty and specialization together, while summons retain their explicit
+summon label.
 
 Icon controls have accessible names, status tooltips are pointer/keyboard
 reachable, and focus is visible. Team Builder uses native radio, select, and
@@ -92,3 +105,6 @@ worker.
   per newly started battle.
 - 2026-07-31 — Added explicit authoritative turn-control gating and transient
   automatic/skip presentation; React does not infer restriction rules.
+- 2026-07-31 — Added UI-006 engine-authored battle-log presentation, runtime
+  display names independent of stable IDs, full profession labels, and refined
+  duel/duo/trio command-deck presentation.

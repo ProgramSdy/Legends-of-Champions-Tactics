@@ -55,7 +55,7 @@ describe("independent live battle UI coverage", () => {
     expect(await screen.findByRole("main")).toHaveAttribute("data-format", "duel");
     expect(screen.getAllByText("Ragnar").length).toBeGreaterThan(1);
     expect(screen.getAllByText("Nighthawk").length).toBeGreaterThan(1);
-    expect(screen.getByRole("article", { name: /Ragnar, Weapon Master, active hero/i })).toBeVisible();
+    expect(screen.getByRole("article", { name: /Ragnar, Warrior · Weapon Master, active hero/i })).toBeVisible();
     expect(screen.getByRole("region", { name: "Battlefield" }).querySelectorAll(".battle-figure")).toHaveLength(2);
   });
 

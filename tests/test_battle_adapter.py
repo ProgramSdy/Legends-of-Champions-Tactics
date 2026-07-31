@@ -12,6 +12,7 @@ from battle_api.adapter import (
     BattleAdapter,
     BattleRegistry,
 )
+from game.hero_generator import HeroGenerator
 from skills.skill import Debuff
 
 
@@ -35,13 +36,14 @@ def command_for(adapter, session, command_id="cmd.1", action_index=0):
     }
 
 
-def test_seeded_creation_instantiates_ragnar_and_nighthawk(adapter_session):
-    _, session, envelope = adapter_session
+def test_seeded_creation_instantiates_expected_definitions_with_faculty_names(adapter_session):
+    adapter, session, envelope = adapter_session
     snapshot = envelope["data"]["snapshot"]
+    names = HeroGenerator(adapter.engine_data)
     assert session.game.player_heroes[0].__class__.__name__ == "Warrior_Weapon_Master"
     assert session.game.opponent_heroes[0].__class__.__name__ == "Rogue_Comprehensiveness"
-    assert snapshot["combatants"]["friendly.ragnar"]["displayName"] == "Ragnar"
-    assert snapshot["combatants"]["enemy.nighthawk"]["displayName"] == "Nighthawk"
+    assert snapshot["combatants"]["friendly.ragnar"]["displayName"] in names.warrior_names_list
+    assert snapshot["combatants"]["enemy.nighthawk"]["displayName"] in names.rogue_names_list
     assert snapshot["sides"][0]["maxSlots"] == 3
     assert snapshot["phase"] == "awaitingCommand"
 

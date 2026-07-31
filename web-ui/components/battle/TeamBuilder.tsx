@@ -20,12 +20,14 @@ function TeamSelect({
   value,
   onChange,
   roster,
+  showDefinitionName = true,
 }: {
   id: string;
   label: string;
   value: string;
   onChange: (value: string) => void;
   roster: HeroDefinitionSummary[];
+  showDefinitionName?: boolean;
 }) {
   return (
     <label className="team-slot" htmlFor={id}>
@@ -33,7 +35,9 @@ function TeamSelect({
       <select id={id} value={value} onChange={(event) => onChange(event.target.value)}>
         <option value="">Choose a hero</option>
         {roster.map((hero) => (
-          <option key={hero.definitionId} value={hero.definitionId}>{hero.displayName} · {hero.specialization}</option>
+          <option key={hero.definitionId} value={hero.definitionId}>
+            {showDefinitionName ? `${hero.displayName} · ${hero.specialization}` : `${hero.faculty} - ${hero.specialization}`}
+          </option>
         ))}
       </select>
     </label>
@@ -123,7 +127,7 @@ export function TeamBuilder({ roster, onStart }: TeamBuilderProps) {
       <section className="team-composer friendly" aria-labelledby="player-team-heading">
         <header><div><small>PLAYER CONTROLLED</small><h2 id="player-team-heading">Your Team</h2></div><strong>{battleSize} HERO{battleSize > 1 ? "ES" : ""}</strong></header>
         <div className="team-slot-list">
-          {playerTeam.map((heroId, index) => <TeamSelect roster={roster} key={`player-${index}`} id={`player-slot-${index}`} label={`Player slot ${index + 1}`} value={heroId} onChange={(value) => setPlayerTeam((team) => updateSlot(team, index, value))} />)}
+          {playerTeam.map((heroId, index) => <TeamSelect roster={roster} showDefinitionName={false} key={`player-${index}`} id={`player-slot-${index}`} label={`Player slot ${index + 1}`} value={heroId} onChange={(value) => setPlayerTeam((team) => updateSlot(team, index, value))} />)}
         </div>
       </section>
 

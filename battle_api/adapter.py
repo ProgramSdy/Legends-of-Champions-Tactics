@@ -20,6 +20,7 @@ from typing import Any
 import pandas as pd
 
 from game.game import Game
+from game.hero_generator import HeroGenerator
 from heroes.mage import Mage_Comprehensiveness
 from heroes.paladin import Paladin_Protection, Paladin_Retribution
 from heroes.priest import Priest_Comprehensiveness, Priest_Discipline
@@ -29,6 +30,7 @@ from heroes.warrior import Warrior_Defence, Warrior_Weapon_Master
 CONTRACT_VERSION = "1.0"
 ROOT = Path(__file__).resolve().parents[1]
 ENGINE_RANDOM_LOCK = threading.RLock()
+ANSI_ESCAPE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 
 HERO_ROSTER = {
     "hero.priest.comprehensiveness": {
@@ -177,6 +179,7 @@ class BattleSession:
     enemy_control_mode: str = "player"
     revision: int = 0
     event_sequence: int = 0
+    presentation_log_cursor: int = 0
     command_results: dict[str, dict[str, Any]] = field(default_factory=dict)
     object_ids: dict[int, str] = field(default_factory=dict)
     lock: threading.RLock = field(default_factory=threading.RLock)
@@ -231,11 +234,22 @@ class BattleAdapter:
                     if enemy_composition_mode == "random"
                     else list(enemy_team or [])
                 )
+                # Derive names from this session's seeded stream without
+                # perturbing established combat/stat generation rolls.
+                pre_name_state = random.getstate()
+                runtime_names = self._runtime_names(
+                    list(player_team) + selected_enemy_team
+                )
+                random.setstate(pre_name_state)
                 player_heroes = self._create_team(
-                    player_team, group="Group_A", player_controlled=True
+                    player_team,
+                    runtime_names[:battle_size],
+                    group="Group_A",
+                    player_controlled=True,
                 )
                 opponent_heroes = self._create_team(
                     selected_enemy_team,
+                    runtime_names[battle_size:],
                     group="Group_B",
                     player_controlled=enemy_control_mode == "player",
                 )
@@ -275,6 +289,7 @@ class BattleAdapter:
                     ),
                     self._turn_started_event(session),
                 ]
+                events.extend(self._drain_presentation_log(session))
                 events.extend(self._drain_automatic_turns(session))
                 session.rng_state = random.getstate()
                 return session, self.envelope(
@@ -321,17 +336,38 @@ class BattleAdapter:
             raise ValueError("enemy_control_mode must be computer or player")
 
     def _create_team(
-        self, definition_ids: list[str], *, group: str, player_controlled: bool
+        self,
+        definition_ids: list[str],
+        runtime_names: list[str],
+        *,
+        group: str,
+        player_controlled: bool,
     ) -> list[Any]:
         return [
             HERO_ROSTER[definition_id]["class"](
                 self.engine_data,
-                HERO_ROSTER[definition_id]["displayName"],
+                runtime_name,
                 group,
                 player_controlled,
             )
-            for definition_id in definition_ids
+            for definition_id, runtime_name in zip(definition_ids, runtime_names)
         ]
+
+    def _runtime_names(self, definition_ids: list[str]) -> list[str]:
+        """Choose session-scoped faculty names, unique until a pool is exhausted."""
+        generator = HeroGenerator(self.engine_data)
+        used_by_faculty: dict[str, set[str]] = {}
+        names: list[str] = []
+        for definition_id in definition_ids:
+            hero_class = HERO_ROSTER[definition_id]["class"]
+            pool = generator.hero_classes[hero_class]
+            faculty = HERO_ROSTER[definition_id]["faculty"]
+            used = used_by_faculty.setdefault(faculty, set())
+            available = [name for name in pool if name not in used]
+            name = random.choice(available if available else pool)
+            used.add(name)
+            names.append(name)
+        return names
 
     def envelope(self, session: BattleSession, data: Any) -> dict[str, Any]:
         return {
@@ -532,13 +568,24 @@ class BattleAdapter:
             engine_targets = targets[0]
         else:
             engine_targets = targets
-        skill.execute(engine_targets)
+        action_result = skill.execute(engine_targets)
+        if action_result:
+            game.display_battle_info(action_result)
+        presentation_events = self._drain_presentation_log(session)
+        if presentation_events:
+            self._hide_semantic_log_copy(events)
+            events.extend(presentation_events)
         if command.get("_clearScoff"):
             actor.status["scoff"] = False
         for status in command.get("_clearStatuses", []):
             actor.status[status] = False
         after = self._capture(session)
-        events.extend(self._mutation_events(session, actor, skill, targets, before, after))
+        mutation_events = self._mutation_events(
+            session, actor, skill, targets, before, after
+        )
+        if presentation_events:
+            self._hide_semantic_log_copy(mutation_events)
+        events.extend(mutation_events)
         actor.actioned = True
         if game.unactioned_sorted_heroes and game.unactioned_sorted_heroes[0] is actor:
             game.unactioned_sorted_heroes.pop(0)
@@ -574,6 +621,10 @@ class BattleAdapter:
                         session, round_before, self._capture(session)
                     )
                 )
+                round_log_events = self._drain_presentation_log(session)
+                if round_log_events:
+                    self._hide_semantic_log_copy(events)
+                    events.extend(round_log_events)
         if self._is_ended(game):
             events.append(
                 self._event(session, "battleEnded", message=self._outcome_message(game))
@@ -588,6 +639,44 @@ class BattleAdapter:
             "events": events,
             "snapshot": self.snapshot(session),
         }
+
+    def _drain_presentation_log(
+        self, session: BattleSession
+    ) -> list[dict[str, Any]]:
+        """Serialize new engine prose without treating it as state authority."""
+        entries = session.game.presentation_log[session.presentation_log_cursor:]
+        session.presentation_log_cursor = len(session.game.presentation_log)
+        events: list[dict[str, Any]] = []
+        for entry in entries:
+            message = ANSI_ESCAPE.sub("", str(entry["message"])).strip()
+            if not message:
+                continue
+            events.append(
+                self._event(
+                    session,
+                    "battleLog",
+                    channel=entry["channel"],
+                    message=message,
+                )
+            )
+        return events
+
+    @staticmethod
+    def _hide_semantic_log_copy(events: list[dict[str, Any]]) -> None:
+        """Keep typed events active while suppressing duplicate generic prose."""
+        visible_semantic_types = {
+            "skillStarted",
+            "characterMoved",
+            "damageApplied",
+            "attackEvaded",
+            "healingApplied",
+            "statusApplied",
+            "statusRemoved",
+            "characterDefeated",
+        }
+        for event in events:
+            if event["type"] in visible_semantic_types:
+                event["visibleInLog"] = False
 
     def _drain_automatic_turns(
         self, session: BattleSession, *, maximum_turns: int = 100

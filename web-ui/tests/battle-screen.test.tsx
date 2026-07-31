@@ -30,7 +30,7 @@ describe("battle screen integration", () => {
     expect(screen.getByRole("navigation", { name: "Turn order" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Settings" })).toBeEnabled();
     expect(screen.getByRole("link", { name: "Open asset gallery" })).toHaveAttribute("href", "/assets");
-    expect(screen.getByRole("article", { name: /Arthas, Necromancer, active hero/i })).toHaveClass("active");
+    expect(screen.getByRole("article", { name: /Arthas, Necromancer · Necromancer, active hero/i })).toHaveClass("active");
     expect(screen.queryByText("Choose a demo or select a skill.")).not.toBeInTheDocument();
   });
 

@@ -10,8 +10,9 @@ No active task.
   authorised it.
 - When a task is assigned, replace the placeholder sections below.
 - Keep the scope focused and update the completion record when finished.
-- Read `docs/Codex/Agent_Roles.md` and assign all five configured agents before
-  implementation or review work begins.
+- Read `docs/Codex/Agent_Roles.md`; have the project manager assess task type,
+  complexity, affected systems, and risk before assigning the relevant agent or
+  agents.
 
 ---
 
@@ -53,11 +54,19 @@ _Not assigned._
 
 ## Agent Assignments
 
+### Complexity and Risk
+
+_Not assessed._
+
+### Participating Agents
+
 - `project-manager` — _Not assigned._
-- `ui-developer` — _Not assigned._
-- `game-engine-developer` — _Not assigned._
-- `test-automator` — _Not assigned._
-- `reviewer` — _Not assigned._
+- _Additional relevant agents to be selected and assigned._
+
+### Non-Participating Agents
+
+_List each non-participating role and the project manager's rationale. Official
+tasks normally use all five agents, especially bug fixes._
 
 ## Completion Notes
 

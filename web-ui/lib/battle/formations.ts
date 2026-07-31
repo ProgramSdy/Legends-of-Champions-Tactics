@@ -12,29 +12,29 @@ export interface FormationPosition {
 
 export const formationRegistry: Record<BattleFormat, Record<SideId, FormationPosition[]>> = {
   duel: {
-    friendly: [{ slot: "centre", x: 29, y: 45, scale: 1.28 }],
-    enemy: [{ slot: "centre", x: 71, y: 45, scale: 1.28 }],
+    friendly: [{ slot: "centre", x: 29, y: 55, scale: 1.28 }],
+    enemy: [{ slot: "centre", x: 71, y: 55, scale: 1.28 }],
   },
   duo: {
     friendly: [
-      { slot: "front", x: 35, y: 40, scale: 1.02 },
-      { slot: "rear", x: 20, y: 54, scale: .94 },
+      { slot: "front", x: 35, y: 48, scale: 1.02 },
+      { slot: "rear", x: 20, y: 62, scale: .94 },
     ],
     enemy: [
-      { slot: "front", x: 65, y: 40, scale: 1.02 },
-      { slot: "rear", x: 80, y: 54, scale: .94 },
+      { slot: "front", x: 65, y: 48, scale: 1.02 },
+      { slot: "rear", x: 80, y: 62, scale: .94 },
     ],
   },
   trio: {
     friendly: [
-      { slot: "front", x: 38, y: 37, scale: .9 },
-      { slot: "centre", x: 23, y: 48, scale: .86 },
-      { slot: "rear", x: 10, y: 59, scale: .8 },
+      { slot: "front", x: 38, y: 44, scale: .9 },
+      { slot: "centre", x: 23, y: 55, scale: .86 },
+      { slot: "rear", x: 10, y: 66, scale: .8 },
     ],
     enemy: [
-      { slot: "front", x: 62, y: 37, scale: .9 },
-      { slot: "centre", x: 77, y: 48, scale: .86 },
-      { slot: "rear", x: 90, y: 59, scale: .8 },
+      { slot: "front", x: 62, y: 44, scale: .9 },
+      { slot: "centre", x: 77, y: 55, scale: .86 },
+      { slot: "rear", x: 90, y: 66, scale: .8 },
     ],
   },
 };

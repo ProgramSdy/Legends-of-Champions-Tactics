@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { BattleProviderError, type BattleEvent, type BattleProvider, type BattleSnapshot, type PresentationScript, type ProviderErrorKind } from "./types";
 
 const BASE_DELAY = 620;
+const isVisibleLogEvent = (event: BattleEvent) => event.visibleInLog !== false;
 
 export function usePresentationQueue(provider: BattleProvider) {
   const [visibleSnapshot, setVisibleSnapshot] = useState<BattleSnapshot | null>(null);
@@ -27,7 +28,7 @@ export function usePresentationQueue(provider: BattleProvider) {
       if (generation.current !== token) return;
       setVisibleSnapshot(structuredClone(state.snapshot));
       setRevision(state.revision);
-      setLog([...(state.events ?? [])].sort((a, b) => a.sequence - b.sequence));
+      setLog([...(state.events ?? [])].sort((a, b) => a.sequence - b.sequence).filter(isVisibleLogEvent));
       setError(null);
       setErrorKind(null);
     }).catch((reason: unknown) => {
@@ -109,14 +110,20 @@ export function usePresentationQueue(provider: BattleProvider) {
       pending.current = script;
       setCanSkip(true);
       const orderedEvents = [...script.events].sort((a, b) => a.sequence - b.sequence);
-      pendingLogEvents.current = orderedEvents;
+      pendingLogEvents.current = orderedEvents.filter(isVisibleLogEvent);
       for (const event of orderedEvents) {
         if (generation.current !== token) return;
-        pendingLogEvents.current = pendingLogEvents.current.slice(1);
+        if (isVisibleLogEvent(event)) {
+          pendingLogEvents.current = pendingLogEvents.current.slice(1);
+        }
         setActiveEvent(event);
         applyEvent(event);
-        setLog((items) => [...items, event]);
-        await new Promise((resolve) => window.setTimeout(resolve, BASE_DELAY / speed));
+        if (isVisibleLogEvent(event)) {
+          setLog((items) => [...items, event]);
+        }
+        if (event.type !== "battleLog") {
+          await new Promise((resolve) => window.setTimeout(resolve, BASE_DELAY / speed));
+        }
       }
       if (generation.current !== token) return;
       setVisibleSnapshot(structuredClone(script.snapshot));

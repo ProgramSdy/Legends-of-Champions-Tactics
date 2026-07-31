@@ -68,3 +68,21 @@ N/A
  - Check hero.py, you will find how status such as stunned is managed in hero.ai_action(), Have a deep investigation and understand on this original logic.
 
  2: Have a good investigation on above issue and plan out the best solution for current architecture. Provide a study report. Do not start fix work.
+
+ ### Date
+
+2026-07-31
+
+### Screenshot name
+
+battle_31_07_2026-01
+
+### Task List
+
+1_ Mark_1 and Mark_2, heroes are feeling floating in the air compare to the backgrond. Move them downward a bit to a reasonable place.
+2_ Mark_3, Battle log font is still too small, make it bigger.
+3_ Mark_3, Battle log content is not ideal, it shall come from python engine output. Investigate game.py file and check display_battle_info() and display_status_updates(). display_status_updates() works at the begining of each round to indicate buff and debuff updates, display_battle_info() works at each hero action and provide damage and status information. Study this logic and update current log display.
+4_ Mark_4, Hero profession shall include both faculty + Major, now only major is shown. Eg, Warrior Defence now only shows Defence.
+5_ Mark_4, Hero name is not correct, you are now giving random name to heroes which is not good. Hero names are defined in the hero_generator.py there are name groups defined for each hero in same faculty. Different major hero in same faculty share a same name group. Apply a random name selection from the hero name group on his faculty. Try provide different names to the same type of hero (same faculty) in one battle unless number of same hero is more than the pickable name from group, then repetitive name shall be allowed. 
+6_ Mark_5, remove this empty area by extend the bottom line of each skill button. Keep skill icon squre shape for a resonable size, fill the empty area with some decoration with good design.
+7_ In Team Builder page Player slot, when selecting heros, No name is needed to be displayed, Only display falcuty and major, such as Paladin - Protection, etc.

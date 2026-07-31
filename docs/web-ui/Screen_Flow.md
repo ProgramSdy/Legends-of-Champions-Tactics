@@ -41,6 +41,13 @@ The normal application entry point. It provides:
 - an optional non-negative integer seed;
 - the eight definitions supplied by the adapter roster endpoint.
 
+Player-team selectors identify choices as `Faculty - Specialization` and do
+not expose catalogue roster names as if they were fixed battle identities.
+Player-specified enemy selectors retain catalogue name plus specialization.
+When the session is created, Python assigns runtime display names from the
+relevant faculty pools while stable definition and combatant IDs continue to
+identify selections, targets, and commands.
+
 The launch action is disabled until all required selectors and seed input are
 valid. Repeated definitions and overlap between teams are permitted because no
 authoritative design rule currently prohibits them.
@@ -51,6 +58,11 @@ Renders the selected live formation and authoritative snapshot. All friendly
 heroes are player-controlled. Enemy turns are either submitted by the player or
 resolved by the adapter through existing Python AI, according to the Team
 Builder configuration.
+
+The Battle Log presents ordered, sanitized lines authored by Python through the
+battle-info and status-update channels. Typed battle events remain the source
+for animation and state reconciliation; equivalent generic event text is hidden
+to avoid duplicate lines without suppressing the typed event itself.
 
 ### Completion Dialog
 
@@ -86,3 +98,5 @@ flow.
 - 2026-07-29 — Documented UI-002 Team Builder, live multi-team battle, and
   return/reset flow.
 - 2026-07-26 — Initial document created.
+- 2026-07-31 — Documented UI-006 player selection labels, runtime battle names,
+  and the Python-authored Battle Log presentation boundary.

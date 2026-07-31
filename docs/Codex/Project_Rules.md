@@ -3,9 +3,9 @@
 These are stable working rules for Codex. Read this file before starting any
 project task.
 
-## Five-Agent Collaboration — Mandatory Golden Rule
+## Agent Collaboration — Proportional Golden Rule
 
-Every project task must activate and use all five configured Codex agents:
+Project work uses these five configured Codex roles:
 
 1. `project-manager`
 2. `ui-developer`
@@ -16,26 +16,30 @@ Every project task must activate and use all five configured Codex agents:
 Before conducting each task, read `docs/Codex/Agent_Roles.md` and the current
 definitions for all five agents under `.codex/agents/`.
 
-The `project-manager` must coordinate the work and explicitly assign a scoped
-responsibility to every agent before implementation begins. Participation is
-mandatory for all five agents, but its depth must be proportional to the task.
-An agent whose area requires no implementation changes must still perform a
-bounded impact assessment and report a documented no-change conclusion. It
-must not invent work, expand scope, or make unnecessary edits merely to
-participate.
+The `project-manager` coordinates every task. Before work begins, it must assess
+the request's type, complexity, affected systems, ownership boundaries, and
+risk, then explicitly assign one or more relevant configured agents. Agent
+involvement must be proportional: simple and low-risk work needs fewer roles;
+complex, high-risk, or cross-system work needs broader cooperation.
 
-The implementation specialists work within their ownership boundaries. The
-`test-automator` validates the integrated result. The `reviewer` performs an
-independent final review after validation. The `project-manager` resolves
+An official task assigned through `docs/Codex/Current_Task.md` will normally
+involve all five configured agents, especially when it is a bug fix. The
+project manager may use fewer agents when the official task is genuinely
+narrow or low risk, but the assignment must state why each omitted role is not
+needed. Non-participating agents do not need to produce artificial no-change
+reports.
+
+Selected implementation specialists work within their ownership boundaries.
+When selected, the `test-automator` validates the integrated result and the
+`reviewer` performs an independent review. The `project-manager` resolves
 findings, consolidates the outcome, updates documentation, and records
-completion.
+completion in proportion to the task.
 
-If concurrency or tool limits prevent simultaneous activation, the agents must
-work in coordinated waves. All five must still report an outcome before the
-task can be marked complete.
+If concurrency or tool limits prevent simultaneous activation, selected agents
+may work in coordinated waves.
 
-Codex must never silently complete a project task through one agent or with
-fewer than all five configured agents.
+Codex must never silently bypass the project manager's agent-selection step or
+omit a role that the documented assignment selected.
 
 ## Before Editing
 
@@ -45,8 +49,9 @@ fewer than all five configured agents.
 4. Read `docs/Codex/Agent_Roles.md` and all five definitions in
    `.codex/agents/`.
 5. Read `docs/Codex/Current_Task.md`.
-6. Have the `project-manager` assign explicit responsibilities to all five
-   agents.
+6. Have the `project-manager` assess complexity and risk, then assign explicit
+   responsibilities to the relevant agent or agents. For an official task,
+   record any justified departure from the normal five-agent involvement.
 7. Read the relevant onboarding, GDD, Technical, and web-ui documents.
 8. Inspect the actual repository files related to the task.
 9. State material assumptions in the task completion report.
@@ -109,8 +114,9 @@ fewer than all five configured agents.
 When a task is complete, update `docs/Codex/Completed.md` with:
 
 - the completion date and task title;
-- each agent's contribution or documented no-change conclusion;
+- each participating agent's contribution and the project manager's selection
+  rationale where fewer than all five agents were used;
 - a summary and files changed;
 - validation performed and its actual results;
-- reviewer findings and disposition;
+- reviewer findings and disposition when the reviewer participated;
 - unresolved issues and recommended follow-up work.

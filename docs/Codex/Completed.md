@@ -1131,3 +1131,289 @@ preserved.
 - Add an explicit typed outcome model if future consumers require more detail
   than the current internal per-target outcome categories. No additional
   evade-specific skill patch is required.
+
+---
+
+## 2026-07-31 — OPS-001: Restore the Local Game Website and Verify the Live Battle Flow
+
+**Summary:**
+
+Restored the local website and battle API by starting the two documented
+development services. Both ports had immediate connection refusals before
+recovery, and both applications started normally without a code or
+configuration change. The confirmed root cause was therefore stopped local
+development processes, not an application regression.
+
+The frontend is running at `http://localhost:3001/` and the Python adapter is
+running at `http://localhost:8001`. The frontend development server listens on
+the IPv6 localhost address (`::1`), while Uvicorn listens on
+`127.0.0.1`; both documented `localhost` URLs work.
+
+**Agent Contributions:**
+
+- `project-manager` — coordinated recovery, protected the dirty worktree and
+  owner-controlled files, kept diagnosis conditional on startup failure, and
+  completed the documentation workflow.
+- `ui-developer` — started `npm run dev`, inspected startup output, verified
+  live-provider configuration and CORS, and completed the rendered Team Builder
+  through battle-action browser flow. No frontend change was required.
+- `game-engine-developer` — started the documented Uvicorn reload process and
+  verified health, roster, 1v1 creation, legal command handling, revision
+  advancement, and clean backend logs. No backend change was required.
+- `test-automator` — independently repeated HTTP, roster, CORS, battle-create,
+  and command-submission checks and confirmed the localhost IPv6 binding.
+- `reviewer` — independently confirmed both listeners and HTTP endpoints,
+  reviewed the live-flow evidence and repository status, verified owner-file
+  protection, and approved completion with no blockers.
+
+**Files Changed:**
+
+- `docs/Codex/Completed.md`
+- `docs/Codex/Current_Task.md` (assigned task reset to the standard placeholder)
+
+No application, test, configuration, package, or asset file changed.
+
+**Recovery Commands:**
+
+- Backend from the repository root:
+  `.venv/bin/uvicorn battle_api.app:app --reload --port 8001`
+- Frontend from `web-ui/`: `npm run dev`
+
+**Validation:**
+
+- Pre-recovery frontend, health, and roster probes returned HTTP `000` with
+  immediate connection refusal.
+- Backend startup completed under the Uvicorn reload process with no exception.
+- Frontend startup reported `http://localhost:3001/` and served the root with
+  HTTP `200`.
+- `GET /api/v1/health` — HTTP `200`, status `ok`, contract version `1.0`.
+- `GET /api/v1/heroes` — HTTP `200` with exactly the eight approved heroes.
+- CORS GET and OPTIONS checks — HTTP `200`, exact allowed origin
+  `http://localhost:3001`, and the documented methods/headers.
+- Direct live 1v1 creation — HTTP `200`, authoritative revision `0` with
+  published legal actions.
+- Direct published command — HTTP `200`, accepted, revision advanced from `0`
+  to `1`, and the next actor exposed legal actions.
+- Isolated browser smoke — Team Builder rendered all eight heroes; a live 1v1
+  battle rendered; Holy Smite and its legal enemy target were selected and
+  submitted; damage and turn events played; the screen reconciled to the next
+  actionable player state with enabled skills.
+- Instrumented browser repeat — no console errors, uncaught errors, unhandled
+  promise rejections, or alert-state failures were captured.
+- Backend request log contained no exception during the verified flow.
+- Independent reviewer approved with no blockers.
+- Owner-controlled `UI_Review_Human.md` SHA-256 remained
+  `5c93e620ae0cd28ce0f48885bede782e94686d1ec6fe20d5c4bcc121725e78d3`.
+
+**Unresolved Issues:**
+
+- These are development processes and must be restarted after they stop or the
+  host restarts.
+- The frontend currently binds to IPv6 localhost, so
+  `http://127.0.0.1:3001/` is not equivalent to the documented working
+  `http://localhost:3001/` address.
+- The adapter registry remains process-local and limited to one worker.
+
+**Recommended Follow-up:**
+
+- Continue using `http://localhost:3001/` for the website and keep both
+  documented development commands running during local testing. No repository
+  implementation follow-up is required for OPS-001.
+
+---
+
+## 2026-07-31 — UI-006: Refine Battlefield Layout, Python-Authored Battle Logs, Hero Identity, and Skill Cards
+
+**Summary:**
+
+Implemented all seven owner-approved corrections from
+`battle_31_07_2026-01`. Duel, duo, and trio formation anchors now place hero
+figures lower on the arena floor. Battle Log typography is larger, and the log
+now presents ordered, ANSI-sanitized lines emitted by Python through
+`display_battle_info()` and `display_status_updates()` without parsing prose
+for state. Typed semantic events continue to drive animation and snapshot
+reconciliation; covered generic copies are hidden to prevent duplicate lines.
+
+Battle side cards now show faculty plus specialization. Non-summoned battle
+names are chosen from the authoritative `HeroGenerator` faculty pools across
+both teams, remain unique until the faculty pool is exhausted, reproduce under
+the session seed, and do not change stable definition or combatant IDs. Name
+selection derives from and restores the seeded stream before hero construction
+so existing stat and combat rolls are not shifted.
+
+Skill cards now fill the command-deck height with square artwork and an
+intentional decorative lower treatment. Player Team selectors show
+`Faculty - Specialization` while preserving stable definition IDs; specified
+Enemy Team selectors retain their existing catalogue-name presentation.
+
+**Agent Contributions:**
+
+- `project-manager` — completed the required documentation startup, protected
+  the owner-controlled review inputs and existing worktree changes, coordinated
+  all five roles, reconciled the faculty-pool overflow result, maintained the
+  authoritative documentation, and closed the task workflow.
+- `ui-developer` — implemented shared formation anchors, readable Battle Log
+  styling, complete profession labels, full-height skill cards with square
+  artwork, player-slot labels, typed presentation-log handling, and live
+  1v1/2v2/3v3 browser validation at the annotated viewport.
+- `game-engine-developer` — added ordered presentation-log capture, sanitized
+  additive adapter events, duplicate-copy visibility metadata, deterministic
+  faculty-pool runtime naming, stable-ID preservation, and explicit
+  faculty-wide uniqueness bookkeeping.
+- `test-automator` — added backend and frontend UI-006 regressions, updated
+  invalidated presentation assertions, made affected control-immunity tests
+  deterministic, and added the public-adapter real-round transition regression
+  requested during review.
+- `reviewer` — independently audited Python authority, typed state/event
+  reconciliation, identity and RNG boundaries, queue/skip behavior,
+  accessibility, responsive layout, tests, live evidence, and owner-file
+  hashes; identified the missing integrated round-transition proof and approved
+  the corrected result with no blockers.
+
+**Files Changed:**
+
+- `game/game.py`
+- `battle_api/adapter.py`
+- `web-ui/app/globals.css`
+- `web-ui/components/battle/BattleScreen.tsx`
+- `web-ui/components/battle/HeroCard.tsx`
+- `web-ui/components/battle/SkillCard.tsx`
+- `web-ui/components/battle/TeamBuilder.tsx`
+- `web-ui/lib/battle/formations.ts`
+- `web-ui/lib/battle/types.ts`
+- `web-ui/lib/battle/usePresentationQueue.ts`
+- `tests/test_battle_adapter.py`
+- `tests/test_evasion_effect_boundaries.py`
+- `tests/test_ui006_identity_and_logs.py`
+- `web-ui/tests/battle-screen.test.tsx`
+- `web-ui/tests/components.test.tsx`
+- `web-ui/tests/stage-two-automation.test.tsx`
+- `web-ui/tests/ui-006-refinements.test.tsx`
+- `docs/web-ui/BATTLE_DATA_CONTRACT_V1.md`
+- `docs/web-ui/PYTHON_ADAPTER_API.md`
+- `docs/web-ui/WEB_UI_ARCHITECTURE.md`
+- `docs/web-ui/Screen_Flow.md`
+- `docs/web-ui/Style_Guide.md`
+- `docs/Codex/Completed.md`
+- `docs/Codex/Current_Task.md` (assigned task reset to the standard placeholder)
+
+**Validation:**
+
+- Full Python suite — 96 passed; one existing Starlette deprecation warning.
+- UI-006 backend suite — 9 passed.
+- The integrated public-adapter round-transition regression submitted real
+  commands through Round 2 and verified sanitized ordered `statusUpdate` prose,
+  unique event sequences, retained typed mutations, hidden duplicate copies,
+  and no duplicate status lines.
+- Full frontend Vitest suite — 74 passed.
+- UI-006 frontend suite — 6 passed.
+- TypeScript type checking, ESLint, and the production frontend build — passed.
+- Python compilation and task-scoped whitespace checks — passed.
+- Live 1v1 at 1468×799 submitted a Python-authorized Holy Smite command; the
+  ordered engine prose contained no ANSI sequences or raw IDs, typed state
+  reconciled, Battle Log text computed to 11px, skill cards filled the 179px
+  skills region, artwork was 44×44, and no console or unhandled errors appeared.
+- A second live 1v1 used Shadow Evasion and reached Round 2 with ordered
+  cooldown and status-duration lines from Python and no browser errors.
+- Live 2v2 confirmed faculty-wide naming: four Priests consumed all three
+  unique Priest names before the fourth valid overflow repeat.
+- Live 3v3 confirmed six distinct figure rectangles with no overlap, grounded
+  formation anchors, 11px Battle Log text, complete profession labels, and
+  full-height square-artwork skill cards.
+- Independent review reran the UI-006 backend suite (9 passed), frontend suite
+  (6 passed), and annotated-viewport browser inspection; verdict approved with
+  no blockers.
+- Repository-wide `git diff --check` reports only the pre-existing trailing
+  whitespace in the owner-controlled human review file, which was not edited.
+- Owner-controlled SHA-256 baselines remained unchanged:
+  `UI_Review_Human.md` `49a1ba65efa2846a255cb9cd4a13fe805bf34d4e4dbef9a87edfa8e577697e20`,
+  screenshot `0e180499bf950232dafaa1ea0eb91b0b2efd7c1a5cacdd874b8585c076562378`,
+  and Keynote `affce7c7fd3c2eaf333c8e2d4017e38276ce456d5b28d12fcdcfccd7a86c89ee`.
+
+**Unresolved Issues:**
+
+- Duplicate semantic-log suppression currently applies to a fixed action-wide
+  event set whenever Python emitted presentation prose, rather than correlating
+  each prose line to one semantic event. The approved roster, automated tests,
+  and live flows have complete prose coverage, so this is non-blocking future
+  hardening rather than a UI-006 defect.
+- The process-local adapter's documented single-worker and persistence limits
+  remain.
+- The existing Starlette test-client deprecation warning remains.
+
+**Recommended Follow-up:**
+
+- If future skills emit only partial presentation prose for a multi-effect
+  action, add explicit prose-to-semantic-event correlation metadata before
+  expanding the suppression set. No additional UI-006 implementation is
+  required.
+
+---
+
+## 2026-07-31 — Update the Agent Cooperation Rule to Proportional Assignment
+
+**Summary:**
+
+Replaced the mandatory participation rule with a proportional agent-selection
+workflow. The project manager now assesses every task's type, affected systems,
+complexity, risk, and validation needs before assigning one or more relevant
+configured agents. Agent breadth increases with task complexity.
+
+Official tasks assigned through `docs/Codex/Current_Task.md` still normally use
+all five agents, with bug fixes strongly defaulting to all five. A narrower
+official assignment is permitted only when the project manager records why
+each omitted role is unnecessary. Non-participating agents no longer perform
+artificial no-change assessments merely to satisfy a participation count.
+
+**Agent Selection and Contributions:**
+
+- Complexity/risk assessment — documentation-governance change with no
+  application, engine, API, frontend, or test behavior impact. Cross-document
+  consistency was the primary risk.
+- `project-manager` — selected the proportional team, located every active
+  mandatory-five rule, updated the authoritative workflow documents and task
+  template, preserved historical records, and validated the final wording.
+- `reviewer` — independently checked the five scoped workflow documents,
+  identified two completion clauses that still implied mandatory reviewer
+  participation, and approved the corrected policy with no blockers.
+- `ui-developer` — not selected because no frontend behavior or web UI
+  documentation changed.
+- `game-engine-developer` — not selected because no engine, adapter, API, or
+  contract behavior changed.
+- `test-automator` — not selected because this was a Markdown-only policy
+  update with no executable behavior; targeted consistency and Markdown checks
+  were proportionate validation.
+
+**Files Changed:**
+
+- `docs/README.md`
+- `docs/Codex/Project_Rules.md`
+- `docs/Codex/Agent_Roles.md`
+- `docs/Codex/Document_Planner_Rules.md`
+- `docs/Codex/Current_Task.md`
+- `docs/Codex/Completed.md`
+
+**Validation:**
+
+- Searched active workflow documents for contradictory mandatory-five,
+  all-five-assignment, artificial no-change, and unconditional-reviewer rules;
+  no contradiction remains.
+- Task-scoped `git diff --check` — passed.
+- Independent reviewer re-read all five scoped workflow documents after the
+  correction and approved the result with no blockers.
+- Historical completion and UI-review records were preserved rather than
+  rewritten to reflect a policy that did not apply when those tasks ran.
+- Owner-controlled review inputs remained unchanged at their confirmed
+  SHA-256 baselines: `49a1ba65...`, `0e180499...`, and `affce7c7...`.
+
+**Unresolved Issues:**
+
+- None for this policy update. Future project managers must exercise judgment
+  consistently when classifying task complexity and documenting narrower
+  official-task assignments.
+
+**Recommended Follow-up:**
+
+- Apply this proportional selection step at the beginning of every new task.
+  Continue to default official bug-fix tasks to all five roles unless a clearly
+  documented scope and risk assessment justifies fewer.

@@ -115,8 +115,8 @@ When authorised to prepare an implementation task, the planner must:
    required;
 6. define a focused implementation scope and explicit out-of-scope boundary;
 7. write measurable acceptance criteria and proportionate validation;
-8. assign all configured Codex agents clear responsibilities in accordance
-   with `docs/Codex/Agent_Roles.md`;
+8. assess task complexity and risk, then assign the relevant configured agents
+   clear responsibilities in accordance with `docs/Codex/Agent_Roles.md`;
 9. review the completed task for ambiguity, contradictions, and missing
    dependencies before publishing it.
 
@@ -132,7 +132,7 @@ following are true:
 - the requested project study and task preparation are complete;
 - `docs/Codex/Current_Task.md` has been updated with the implementation task;
 - the task has been checked for scope, accuracy, acceptance criteria,
-  validation requirements, and all required agent assignments; and
+  validation requirements, and all selected-agent assignments; and
 - the task is ready for implementation to begin.
 
 The handoff message must be concise. It should identify the prepared task and
@@ -169,7 +169,9 @@ Every prepared `Current_Task.md` must include:
 - explicit out-of-scope items;
 - measurable acceptance criteria;
 - exact or clearly defined validation requirements;
-- clear assignments for every configured Codex agent;
+- a complexity/risk assessment and clear assignments for every selected agent;
+- for an official task using fewer than all five agents, a brief rationale for
+  each non-participating role;
 - completion-note instructions where task-specific evidence is required.
 
 Tasks must not prescribe speculative implementation details as fact. They may

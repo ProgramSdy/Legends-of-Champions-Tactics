@@ -32,6 +32,9 @@ class Game:
         self.round_counter = 1
         self.round_counter_max = 15
         self.output_buffer = []
+        # Ordered, channel-aware presentation prose for non-terminal clients.
+        # Authoritative state remains in the normal mutable battle model.
+        self.presentation_log = []
         self.interface = interface  # New addition to hold GameInterface instance
         self.status_manager = StatusEffectManager(self)  # Instantiate the status manager
         self.status_dispeller = StatusDispell(self)
@@ -162,6 +165,7 @@ class Game:
         # Loop through each line and display it with a delay
         for line in message_lines:
             self.output_buffer.append(line)
+            self.presentation_log.append({"channel": "battleInfo", "message": line})
             if self.mode =="manual":
               time.sleep(delay)
               print(line)
@@ -176,6 +180,7 @@ class Game:
 
     def display_status_updates(self, message, delay = 2):
         self.output_buffer.append(message)
+        self.presentation_log.append({"channel": "statusUpdate", "message": message})
         if self.mode =="manual":
           time.sleep(delay)
           print(message)

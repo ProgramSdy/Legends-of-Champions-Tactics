@@ -24,7 +24,7 @@ describe("battle components", () => {
     const arthas = initialSnapshot.combatants["friendly.arthas"];
     const { container } = render(<HeroCard hero={arthas} active />);
 
-    expect(screen.getByRole("article", { name: /Arthas, Necromancer, active hero/i })).toHaveClass("active");
+    expect(screen.getByRole("article", { name: /Arthas, Necromancer · Necromancer, active hero/i })).toHaveClass("active");
     expect(screen.getByText("61/81")).toBeVisible();
     expect(screen.getByText("2/3")).toBeVisible();
     expect(screen.getByText("Health: 75 percent")).toBeInTheDocument();

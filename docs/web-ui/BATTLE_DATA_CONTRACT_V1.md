@@ -256,7 +256,7 @@ type BattleEvent = {
     | "damageApplied" | "healingApplied"
     | "statusApplied" | "statusRemoved" | "attackEvaded"
     | "characterSummoned" | "characterDefeated"
-    | "turnEnded" | "battleEnded";
+    | "turnEnded" | "battleEnded" | "battleLog";
   sourceId?: string;
   targetId?: string;
   targetIds?: string[];
@@ -269,7 +269,9 @@ type BattleEvent = {
   movement?: "lunge" | "return" | "offset";
   effectHint?: "magic" | "healing" | "melee" | "status" | "summon";
   reasonId?: string | null; // stable automatic/skip reason when applicable
-  message: string; // adapter-authored display text; never parsed for state
+  channel?: "battleInfo" | "statusUpdate"; // battleLog only
+  visibleInLog?: boolean; // false hides generic prose, not semantic playback
+  message: string; // presentation text; never parsed for state
 };
 ```
 
@@ -304,8 +306,18 @@ unknown/malformed events, reload, or reconnection—the UI replaces visible stat
 with the returned snapshot. Animation completion is never an acknowledgement
 required by the engine.
 
-Battle-log entries are rendered from `event.message` and event type. Console
-strings in `Game.output_buffer` are not a contract and must not be parsed.
+`battleLog` is an additive, presentation-only event containing sanitized prose
+emitted by Python through `Game.display_battle_info()` or
+`Game.display_status_updates()`. Its `channel` preserves that source boundary.
+ANSI control sequences are removed before JSON serialization. These lines
+retain engine order but never authorize state changes or client commands.
+
+Typed semantic events remain mandatory for mutation playback and
+reconciliation. When an engine-authored line covers the visible description of
+a semantic event, the adapter sets `visibleInLog: false`; clients still process
+the event normally but do not render its generic adapter message as a duplicate.
+`Game.output_buffer` itself is not a contract and prose must never be parsed to
+derive state.
 
 ## Authority boundary
 
@@ -382,6 +394,14 @@ Python `random` state; the adapter swaps that state around engine calls under a
 session lock. This makes seeded single-session tests reproducible without
 changing rule probabilities, but it is not a substitute for durable replay or
 multi-process persistence.
+
+At battle creation, non-summoned `displayName` values are selected from the
+chosen class's faculty pool in `HeroGenerator`. Selection derives from the
+session-owned seeded stream, then restores that stream before construction so
+approved naming does not perturb established combat/stat rolls. Names remain
+unique across both teams while unused names exist in that faculty pool; pool
+exhaustion permits repeats. Definition IDs, combatant IDs, target identity, and
+idempotency do not depend on the selected display name.
 
 ## UI-002 additive creation contract
 
