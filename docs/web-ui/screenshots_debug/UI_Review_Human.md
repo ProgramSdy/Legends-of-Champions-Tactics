@@ -86,3 +86,33 @@ battle_31_07_2026-01
 5_ Mark_4, Hero name is not correct, you are now giving random name to heroes which is not good. Hero names are defined in the hero_generator.py there are name groups defined for each hero in same faculty. Different major hero in same faculty share a same name group. Apply a random name selection from the hero name group on his faculty. Try provide different names to the same type of hero (same faculty) in one battle unless number of same hero is more than the pickable name from group, then repetitive name shall be allowed. 
 6_ Mark_5, remove this empty area by extend the bottom line of each skill button. Keep skill icon squre shape for a resonable size, fill the empty area with some decoration with good design.
 7_ In Team Builder page Player slot, when selecting heros, No name is needed to be displayed, Only display falcuty and major, such as Paladin - Protection, etc.
+
+### Date
+
+2026-08-02
+
+### Screenshot name
+
+battle_02_08_2026-01
+
+### Task List
+
+1_ Mark_1 and Mark_2, In 1v1 Hero with image and hero with fallback image size are significantly different? They need to be identical. Use the size of fall back hero (in Red Rectable), this size is ok for 1v1 battle, current hero with image size is too small. Then fix 2v2 and v3 as well.
+2_ Mark_3, In 1v1 hero image feet position (up and down) from play team and enemy team shall be aligned to this Red Line. Their feet postion shall alwasy align with each other.
+3_ Mark_4, There is a hero-aura at the bottom of hero image, player is blue and enemy is red, this is a good design, but the ring position is not correctly align with hero position, they are a bit drift to the left. Make sure the middle point align with hero image middle point. (in left and right position)
+4_ Make sure the Hp bar still have enough gap with hero image after above modification.
+5_ Battle effect:
+  5_1: Healing effect now I can see is a gree bar, but this bar is always in a fixed position, this is wrong. This bar shall appears in the location where the hero who receives healing is located.
+  5_2: Debuff effect now is like a double purple ring flashing, but this ring is also always in a fixed position, this is wrong. This ring shall appears in the location where the hero who receives debuff is located. Change the ring colour from purple to red.
+  5_3: Add a Buff effect similar to debuff effect. Make it similar to debuff effect but change colour to blue. The ring shall appears in the location where the hero who receives buff is located. 
+  5_4: Hero attack effect currently design is attack hero make a quick dash forward and defending hero make a quick dash backward. This is correct when player hero attacks, player hero dash to the right and enemy hero also dash to the right. But it is wrong when enemy hero attacks, now I see both hero also dash to the right side. This shall be correct to both hero dash to the left. Because player hero is at the left side and enemy hero stays at right side. If enemy hero attacks, dashing to the left make it feels like enemy hero is dasing forward and player hero is dashing backward.
+
+### Screenshot name
+
+battle_02_08_2026-02
+
+### Task List
+
+1_ Mark_1, When select Choose team for Enemy Composition, enemy slot still shows fake name and major. Please fix it as you fix for Player slot before, where it is suppose to show Faculty-Major.
+2_ Add a scrolling bar at the right side in team builder page.
+3_ Add a scrolling bar at the right side in battle asset registry page.
