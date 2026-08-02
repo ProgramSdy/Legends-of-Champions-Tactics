@@ -27,9 +27,10 @@ _To be documented._
 ### Battlefield Health Panels
 
 - Battlefield health/status panels sit above their associated hero figure.
-- The enlarged 1v1 figure treatment uses additional vertical clearance:
-  `.format-duel .overhead` is positioned at `top: -20px`.
-- The shared 2v2 and 3v3 overhead position remains `top: -5px`.
+- In 1v1, the entire overhead health/status box is 1.5× its shared logical
+  size, anchored from its bottom edge. 2v2 and 3v3 retain the shared size.
+- Its vertical clearance is calculated from the hero's formation scale, so
+  each health/status box remains above its corresponding figure.
 - Format-specific spacing must not move the hero figure, formation anchor, or
   target-control hit area.
 
@@ -37,10 +38,23 @@ _To be documented._
 
 - Hero figures must read as grounded on the arena floor in every live format.
 - The formation registry is the single source for slot coordinates. Current
-  vertical anchors are 55% for duel; 48% and 62% for duo; and 44%, 55%, and
-  66% for trio.
+  vertical anchors are 80% for duel; 82% and 100% for duo; and 75%, 88%, and
+  100% for trio. Within duo and trio, the lower (nearer) slot uses the larger
+  scale so visual depth agrees with the ground position.
+- Duel figures use scale 1.1. The two duel teams retain matching y and scale
+  values so their presentation remains symmetric.
 - Format scaling must preserve clear separation between figures, overhead
   health panels, side panels, and the command deck.
+- Final figure artwork uses contained, bottom-aligned presentation without the
+  placeholder silhouette clip. Friendly artwork preserves its original
+  orientation; enemy artwork is horizontally mirrored without mirroring its
+  label, aura, health/status panel, or target hit area.
+- Direct final artwork and fallback figures share one 172×284 logical figure
+  footprint before formation scaling. The aura is centered from that same
+  footprint; 1v1 opposing figures share its feet baseline.
+- Overhead health/status UI must retain visible separation from the figure
+  footprint in every format. The enlarged treatment uses a 7px minimum visual
+  clearance at the 1440×720 desktop review viewport.
 
 ### Battle Side Cards
 
@@ -58,7 +72,23 @@ _To be documented._
 
 ## Interaction and Feedback
 
-_To be documented._
+- Healing feedback is green and anchored to the authoritative event target.
+- Authoritative `statusPresentation: "buff"` uses blue double rings;
+  `"debuff"` uses red double rings. Neutral or unrelated status events do not
+  invent a local gameplay classification.
+- Friendly lunge feedback moves right; enemy lunge feedback moves left. It is
+  presentation-only and must not alter formation or combat positions.
+- While a selected skill still requires targets, every valid battlefield target
+  uses a crosshair cursor, regardless of side. The cursor returns to normal
+  once the required maximum target count is selected; multi-target skills keep
+  the crosshair until all targets are selected.
+- Desktop Team Builder and Battle Asset Registry scrolling uses a finite,
+  focusable region with a stable right-side scrollbar gutter when overflowing.
+- Battle entry is a non-interactive overlay on the composed battlefield. The
+  `3`, `2`, and `1` frames share one centered layout box, font metrics,
+  transform origin, and animation; `START` uses its separate intentional label
+  treatment. The overlay preserves an accessible live-status announcement and
+  must honour reduced-motion preferences.
 
 ## Accessibility
 
@@ -71,3 +101,17 @@ _To be documented._
 - 2026-07-31 — Documented UI-006 grounded formations, complete profession
   labels, full-height skill cards, square skill artwork, and readable battle-log
   typography.
+- 2026-08-01 — Documented final battlefield-art containment and enemy-only
+  image mirroring.
+- 2026-08-02 — Documented UI-007 shared figure/aura alignment, target-bound
+  effect language, side-aware lunge direction, and desktop scroll behavior.
+- 2026-08-02 — Documented the owner-authorised UI-007 follow-up that doubled
+  the shared figure footprint while preserving independent HP-panel clearance.
+- 2026-08-02 — Corrected duo/trio depth-scale ordering so nearer, lower
+  formation positions render larger than farther positions.
+- 2026-08-02 — Enlarged the complete 1v1 overhead health/status box to 1.5×,
+  bottom-anchored above the hero; 2v2 and 3v3 remain unchanged.
+- 2026-08-02 — Added valid-target crosshair feedback that persists until a
+  selected skill's required target count is complete.
+- 2026-08-02 — Documented the UI-008 in-scene countdown metric contract and
+  accessible non-interactive entry state.

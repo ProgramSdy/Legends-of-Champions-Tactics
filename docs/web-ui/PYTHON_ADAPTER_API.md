@@ -6,6 +6,13 @@ Install `requirements.txt` plus `requirements-api.txt`, then start the
 development API from the repository root:
 
 ```bash
+make dev
+```
+
+`make dev` starts the adapter on port 8001 and the web client on port 3001;
+press Ctrl-C once to stop both. To run the adapter independently, use:
+
+```bash
 uvicorn battle_api.app:app --reload --port 8001
 ```
 
@@ -71,6 +78,13 @@ The legacy `{"scenarioId":"ragnar-vs-nighthawk"}` request remains accepted.
 Random composition is selected inside the adapter with session-seeded
 randomness. The response is a v1 envelope containing ordered initial and
 computer-turn events plus the snapshot at the next player turn or battle end.
+For an automatically resolved opening, it also additively includes
+`openingSnapshot` (the authoritative state before automatic opening events are
+presented) and `playOpening: true`. The client begins its visible queue from
+that snapshot, plays the returned events in order, then reconciles to the
+returned final snapshot and revision. Player-first openings retain
+`playOpening: false`; their ordinary initial snapshot remains immediately
+usable after the entry overlay.
 
 ### `GET /api/v1/battles/{battleId}`
 
@@ -106,6 +120,12 @@ Responses may add `battleLog` events carrying sanitized Python-authored
 presentation lines. `channel` is `battleInfo` or `statusUpdate`. Typed semantic
 events remain authoritative for mutations and playback; `visibleInLog: false`
 only suppresses their generic text when a Python line would duplicate it.
+
+Each `statusApplied` event also includes the additive `statusPresentation`
+classification: `buff`, `debuff`, or the compatible `neutral` fallback. The
+adapter derives it from authoritative serialized status metadata; control
+statuses use the harmful `debuff` presentation. Existing `effectHint: "status"`,
+status duration, source and target fields remain unchanged.
 
 Every snapshot includes additive v1 `turnControl`. Its disposition is
 `playerCommand`, `automaticAction`, `skip`, or `ended`; commands are accepted

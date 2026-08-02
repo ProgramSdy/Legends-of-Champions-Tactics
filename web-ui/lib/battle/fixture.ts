@@ -173,7 +173,7 @@ function script(id: string, current: BattleSnapshot, revision: number, selectedT
     else enemyTarget.statuses.push({ id: "status.stitch_of_agony", instanceId: `status.stitch_of_agony.${revision}`, kind: "debuff", roundsRemaining: 3, stacks: null, sourceCombatantId: "friendly.arthas" });
     events = [
       event(1, "skillStarted", `Arthas casts Stitch of Agony on ${enemyTarget.displayName}.`, { sourceId: "friendly.arthas", targetId: enemyTargetId, effectHint: "status" }),
-      event(2, "statusApplied", `Stitch of Agony afflicts ${enemyTarget.displayName} for 3 rounds.`, { sourceId: "friendly.arthas", targetId: enemyTargetId, statusId: "status.stitch_of_agony", roundsRemaining: 3, effectHint: "status" }),
+      event(2, "statusApplied", `Stitch of Agony afflicts ${enemyTarget.displayName} for 3 rounds.`, { sourceId: "friendly.arthas", targetId: enemyTargetId, statusId: "status.stitch_of_agony", roundsRemaining: 3, effectHint: "status", statusPresentation: "debuff" }),
     ];
   } else if (id === "evade") {
     label = "Shadow Bolt evade"; eventType = "evade";

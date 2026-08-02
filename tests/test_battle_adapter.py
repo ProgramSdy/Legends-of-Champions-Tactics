@@ -48,6 +48,46 @@ def test_seeded_creation_instantiates_expected_definitions_with_faculty_names(ad
     assert snapshot["phase"] == "awaitingCommand"
 
 
+def test_enemy_first_creation_exposes_playable_opening_and_preserves_final_state():
+    adapter = BattleAdapter()
+    _session, envelope = adapter.create_battle(
+        seed=42, battle_id="battle.opening.enemy", enemy_control_mode="computer"
+    )
+    data = envelope["data"]
+    opening = data["openingSnapshot"]
+    final = data["snapshot"]
+
+    assert data["playOpening"] is True
+    assert opening["phase"] != "ended"
+    assert opening["activeCombatantId"] == "enemy.nighthawk"
+    assert final["phase"] in {"awaitingCommand", "roundStart", "ended"}
+    events = data["events"]
+    assert [event["sequence"] for event in events] == sorted(event["sequence"] for event in events)
+    assert len({event["id"] for event in events}) == len(events)
+    assert any(event["sourceId"] == "enemy.nighthawk" for event in events if event.get("sourceId"))
+
+
+def test_player_first_creation_keeps_opening_and_final_snapshots_reproducible():
+    first = BattleAdapter().create_battle(
+        seed=42, battle_id="battle.opening.player-a", enemy_control_mode="player"
+    )[1]["data"]
+    second = BattleAdapter().create_battle(
+        seed=42, battle_id="battle.opening.player-b", enemy_control_mode="player"
+    )[1]["data"]
+
+    assert first["playOpening"] is False
+    assert first["openingSnapshot"] == first["snapshot"]
+    assert [
+        (event["sequence"], event["type"], event["message"])
+        for event in first["events"]
+    ] == [
+        (event["sequence"], event["type"], event["message"])
+        for event in second["events"]
+    ]
+    assert first["openingSnapshot"] == second["openingSnapshot"]
+    assert first["snapshot"] == second["snapshot"]
+
+
 def test_seed_is_reproducible_without_leaking_global_random_state():
     first = BattleAdapter().create_battle(seed=17, battle_id="battle.a")[1]
     second = BattleAdapter().create_battle(seed=17, battle_id="battle.b")[1]
@@ -262,6 +302,65 @@ def test_status_delta_events_have_deterministic_status_id_order(adapter_session)
         "status.y_removed",
         "status.z_removed",
     ]
+
+
+def test_status_application_events_add_authoritative_presentation_without_semantic_changes(
+    adapter_session,
+):
+    adapter, session, _ = adapter_session
+    actor = session.game.player_heroes[0]
+    skill = actor.skills[0]
+    combatant_id = adapter._combatant_id(session, actor)
+    base = {"hp": actor.hp, "maximum": actor.hp_max}
+    before = {
+        combatant_id: {
+            **base,
+            "statuses": {
+                "status.expiring": {"roundsRemaining": 1, "kind": "debuff"},
+            },
+        }
+    }
+    after = {
+        combatant_id: {
+            **base,
+            "statuses": {
+                "status.beneficial": {"roundsRemaining": 3, "kind": "buff"},
+                "status.control": {"roundsRemaining": 2, "kind": "control"},
+                "status.unclassified": {"roundsRemaining": None},
+            },
+        }
+    }
+    before_unchanged = deepcopy(before)
+    after_unchanged = deepcopy(after)
+
+    command_events = adapter._mutation_events(
+        session, actor, skill, [], before, after
+    )
+    round_events = adapter._state_delta_events(session, before, after)
+
+    expected = [
+        ("status.beneficial", "buff", 3),
+        ("status.control", "debuff", 2),
+        ("status.unclassified", "neutral", None),
+    ]
+    for events in (command_events, round_events):
+        applied = [event for event in events if event["type"] == "statusApplied"]
+        assert [
+            (
+                event["statusId"],
+                event["statusPresentation"],
+                event.get("roundsRemaining"),
+            )
+            for event in applied
+        ] == expected
+        assert all(event["targetId"] == combatant_id for event in applied)
+        assert all(event["effectHint"] == "status" for event in applied)
+        removed = next(event for event in events if event["type"] == "statusRemoved")
+        assert "statusPresentation" not in removed
+        assert removed["effectHint"] == "status"
+
+    assert before == before_unchanged
+    assert after == after_unchanged
 
 
 def test_every_adapter_status_has_frontend_tooltip_metadata():

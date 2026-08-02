@@ -30,7 +30,12 @@ const heroClasses: Record<string, string> = {
 };
 
 export const heroPresentation: Record<string, { className: string; tone: string; assets: Partial<Record<"portrait" | "figure" | "thumbnail" | "class", string>>; placeholder: boolean; animation?: { idle: string; active: string; defeated: string } }> = {
-  "hero.warrior.weapon_master": { className: "Warrior", tone: "amber", assets: { class: classAssets.Warrior }, placeholder: true, animation: { idle: "idle", active: "weapon-ready", defeated: "defeated" } },
+  "hero.paladin.protection": { className: "Paladin", tone: "amber", assets: { figure: "/game-images/heroes/Paladin-Protection/figures/Paladin_Protection.png" }, placeholder: false },
+  "hero.paladin.retribution": { className: "Paladin", tone: "amber", assets: { figure: "/game-images/heroes/Paladin-Retribution/figures/Paladin_Retribution.png" }, placeholder: false },
+  "hero.priest.comprehensiveness": { className: "Priest", tone: "blue", assets: { figure: "/game-images/heroes/Priest-Comprehensiveness/figures/Priest_Comprehensiveness.png" }, placeholder: false },
+  "hero.priest.discipline": { className: "Priest", tone: "blue", assets: { figure: "/game-images/heroes/Priest-Discipline/figures/Priest_Discipline.png" }, placeholder: false },
+  "hero.warrior.defence": { className: "Warrior", tone: "amber", assets: { figure: "/game-images/heroes/Warrior-Defence/figures/Warrior_Defence.png" }, placeholder: false },
+  "hero.warrior.weapon_master": { className: "Warrior", tone: "amber", assets: { class: classAssets.Warrior, figure: "/game-images/heroes/Warrior-Weapon-Master/figures/Warrior_Weapon_Master.png" }, placeholder: false, animation: { idle: "idle", active: "weapon-ready", defeated: "defeated" } },
   "hero.rogue.comprehensiveness": { className: "Rogue", tone: "violet", assets: {}, placeholder: true, animation: { idle: "idle", active: "shadow-ready", defeated: "defeated" } },
 };
 

@@ -18,5 +18,5 @@ export function AssetImage(props: AssetImageProps) {
   if (!src || failed) {
     return <span className={`asset-fallback fallback-${asset.fallback} ${props.className ?? ""}`} role="img" aria-label={asset.label}>{initials(request.name)}<small>{asset.fallback === "class" ? "CLASS PLACEHOLDER" : "PLACEHOLDER"}</small></span>;
   }
-  return <Image className={`${props.className ?? ""} fallback-${asset.fallback}`} src={src} alt="" aria-label={asset.label} width={160} height={160} onError={() => setFailed(true)} />;
+  return <Image className={`${props.className ?? ""} fallback-${asset.fallback}`} src={src} alt="" aria-label={asset.label} width={160} height={160} unoptimized={src.startsWith("/game-images/")} onError={() => setFailed(true)} />;
 }

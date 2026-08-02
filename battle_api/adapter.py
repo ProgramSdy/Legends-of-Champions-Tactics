@@ -15,7 +15,7 @@ import re
 import secrets
 import threading
 import uuid
-from typing import Any
+from typing import Any, Literal
 
 import pandas as pd
 
@@ -137,6 +137,14 @@ STATUS_ENGINE_NAMES = {
     "holy_word_redemption": "Holy Word Redemption",
     "holy_word_punishment": "Holy Word Punishment",
     "shield_lash": "Shield Lash",
+}
+
+StatusPresentation = Literal["buff", "debuff", "neutral"]
+
+STATUS_PRESENTATION_BY_KIND: dict[str, StatusPresentation] = {
+    "buff": "buff",
+    "debuff": "debuff",
+    "control": "debuff",
 }
 
 
@@ -289,11 +297,22 @@ class BattleAdapter:
                     ),
                     self._turn_started_event(session),
                 ]
+                # Preserve the engine-owned state before an automatic opening
+                # actor is drained. Clients use this only for presentation;
+                # `snapshot` below remains the final authoritative state.
+                opening_snapshot = self.snapshot(session)
                 events.extend(self._drain_presentation_log(session))
-                events.extend(self._drain_automatic_turns(session))
+                automatic_events = self._drain_automatic_turns(session)
+                events.extend(automatic_events)
                 session.rng_state = random.getstate()
                 return session, self.envelope(
-                    session, {"events": events, "snapshot": self.snapshot(session)}
+                    session,
+                    {
+                        "events": events,
+                        "snapshot": self.snapshot(session),
+                        "openingSnapshot": opening_snapshot,
+                        "playOpening": bool(automatic_events),
+                    },
                 )
             finally:
                 random.setstate(global_state)
@@ -1043,6 +1062,7 @@ class BattleAdapter:
                         skillId=self._skill_id(actor, skill),
                         statusId=status_id,
                         roundsRemaining=status["roundsRemaining"],
+                        statusPresentation=self._status_presentation(status),
                         effectHint="status",
                         message=f"{status_id} was applied to {combatant_id}.",
                     )
@@ -1114,6 +1134,7 @@ class BattleAdapter:
                         targetId=combatant_id,
                         statusId=status_id,
                         roundsRemaining=status["roundsRemaining"],
+                        statusPresentation=self._status_presentation(status),
                         effectHint="status",
                         message=f"{status_id} was applied to {combatant_id}.",
                     )
@@ -1298,6 +1319,11 @@ class BattleAdapter:
         if skill.skill_type == "buffs":
             return "status"
         return "melee"
+
+    @staticmethod
+    def _status_presentation(status: dict[str, Any]) -> StatusPresentation:
+        """Map authoritative status metadata to its additive UI treatment."""
+        return STATUS_PRESENTATION_BY_KIND.get(status.get("kind"), "neutral")
 
     def _event(self, session: BattleSession, event_type: str, *, message: str, **fields):
         session.event_sequence += 1

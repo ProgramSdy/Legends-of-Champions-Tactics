@@ -13,29 +13,63 @@ export function usePresentationQueue(provider: BattleProvider) {
   const [log, setLog] = useState<BattleEvent[]>([]);
   const [speed, setSpeed] = useState(1);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isOpening, setIsOpening] = useState(false);
+  const [hasPendingOpening, setHasPendingOpening] = useState(false);
   const [canSkip, setCanSkip] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [errorKind, setErrorKind] = useState<ProviderErrorKind | null>(null);
   const generation = useRef(0);
   const busy = useRef(false);
   const pending = useRef<PresentationScript | null>(null);
+  const pendingOpening = useRef<PresentationScript | null>(null);
   const pendingLogEvents = useRef<BattleEvent[]>([]);
 
   const [loadAttempt, setLoadAttempt] = useState(0);
   useEffect(() => {
     const token = ++generation.current;
+    busy.current = false;
+    pending.current = null;
+    pendingOpening.current = null;
+    pendingLogEvents.current = [];
     provider.getState().then((state) => {
       if (generation.current !== token) return;
-      setVisibleSnapshot(structuredClone(state.snapshot));
+      const shouldPlayOpening = state.playOpening === true && Boolean(state.openingSnapshot);
+      setVisibleSnapshot(structuredClone(shouldPlayOpening ? state.openingSnapshot! : state.snapshot));
       setRevision(state.revision);
-      setLog([...(state.events ?? [])].sort((a, b) => a.sequence - b.sequence).filter(isVisibleLogEvent));
+      if (shouldPlayOpening) {
+        pendingOpening.current = {
+          id: "session-opening",
+          label: "Battle opening",
+          eventType: state.events?.find((event) => event.effectHint)?.effectHint ?? "magic",
+          events: [...(state.events ?? [])].sort((a, b) => a.sequence - b.sequence),
+          snapshot: structuredClone(state.snapshot),
+          revision: state.revision,
+        };
+        setIsOpening(true);
+        setHasPendingOpening(true);
+        setLog([]);
+      } else {
+        setIsOpening(false);
+        setHasPendingOpening(false);
+        setLog([...(state.events ?? [])].sort((a, b) => a.sequence - b.sequence).filter(isVisibleLogEvent));
+      }
+      setActiveEvent(null);
+      setIsPlaying(false);
+      setCanSkip(false);
       setError(null);
       setErrorKind(null);
     }).catch((reason: unknown) => {
+      if (generation.current !== token) return;
       setError(reason instanceof Error ? reason.message : "Unable to load battle.");
       setErrorKind(reason instanceof BattleProviderError ? reason.kind : "adapter");
     });
-    return () => { generation.current += 1; };
+    return () => {
+      generation.current += 1;
+      busy.current = false;
+      pending.current = null;
+      pendingOpening.current = null;
+      pendingLogEvents.current = [];
+    };
   }, [provider, loadAttempt]);
 
   const applyEvent = useCallback((event: BattleEvent) => {
@@ -57,6 +91,11 @@ export function usePresentationQueue(provider: BattleProvider) {
           ...turn,
           isCurrent: turn.combatantId === event.sourceId,
         }));
+      }
+      if (event.type === "turnEnded" && event.sourceId) {
+        next.turnOrder = next.turnOrder.map((turn) => turn.combatantId === event.sourceId
+          ? { ...turn, hasActed: true }
+          : turn);
       }
       if (
         event.type === "turnEnded"
@@ -80,8 +119,11 @@ export function usePresentationQueue(provider: BattleProvider) {
       if (event.type === "statusApplied" && event.targetId && event.statusId && next.combatants[event.targetId]) {
         const statuses = next.combatants[event.targetId].statuses;
         const existing = statuses.find((status) => status.id === event.statusId);
-        if (existing) existing.roundsRemaining = event.roundsRemaining ?? null;
-        else statuses.push({ id: event.statusId, instanceId: `${event.id}.status`, kind: "debuff", roundsRemaining: event.roundsRemaining ?? null, stacks: null, sourceCombatantId: event.sourceId ?? null });
+        const kind = event.statusPresentation === "buff" ? "buff" : event.statusPresentation === "debuff" ? "debuff" : "other";
+        if (existing) {
+          existing.roundsRemaining = event.roundsRemaining ?? null;
+          existing.kind = kind;
+        } else statuses.push({ id: event.statusId, instanceId: `${event.id}.status`, kind, roundsRemaining: event.roundsRemaining ?? null, stacks: null, sourceCombatantId: event.sourceId ?? null });
       }
       if (event.type === "statusRemoved" && event.targetId && event.statusId && next.combatants[event.targetId]) {
         next.combatants[event.targetId].statuses = next.combatants[event.targetId].statuses.filter(
@@ -93,11 +135,14 @@ export function usePresentationQueue(provider: BattleProvider) {
         const side = next.sides.find((item) => item.id === event.combatant?.sideId);
         if (side && !side.combatantIds.includes(event.combatant.id)) side.combatantIds.push(event.combatant.id);
       }
+      if (event.type === "characterDefeated" && event.targetId && next.combatants[event.targetId]) {
+        next.combatants[event.targetId].alive = false;
+      }
       return next;
     });
   }, []);
 
-  const present = useCallback(async (request: () => Promise<PresentationScript>) => {
+  const runPresentation = useCallback(async (request: () => Promise<PresentationScript>, opening: boolean) => {
     if (busy.current) return;
     busy.current = true;
     const token = ++generation.current;
@@ -145,10 +190,24 @@ export function usePresentationQueue(provider: BattleProvider) {
         busy.current = false;
         setActiveEvent(null);
         setIsPlaying(false);
+        if (opening) setIsOpening(false);
         setCanSkip(false);
       }
     }
   }, [applyEvent, speed]);
+
+  const present = useCallback(
+    (request: () => Promise<PresentationScript>) => runPresentation(request, false),
+    [runPresentation],
+  );
+
+  const playOpening = useCallback(() => {
+    const script = pendingOpening.current;
+    if (!script || busy.current) return Promise.resolve();
+    pendingOpening.current = null;
+    setHasPendingOpening(false);
+    return runPresentation(async () => script, true);
+  }, [runPresentation]);
 
   const skip = useCallback(() => {
     const finalScript = pending.current;
@@ -164,6 +223,8 @@ export function usePresentationQueue(provider: BattleProvider) {
     pendingLogEvents.current = [];
     setActiveEvent(null);
     setIsPlaying(false);
+    setIsOpening(false);
+    setHasPendingOpening(false);
     setCanSkip(false);
   }, []);
 
@@ -173,5 +234,5 @@ export function usePresentationQueue(provider: BattleProvider) {
     setLoadAttempt((attempt) => attempt + 1);
   }, []);
 
-  return { snapshot: visibleSnapshot, revision, activeEvent, log, setLog, speed, setSpeed, isPlaying, canSkip, error, errorKind, present, skip, retry };
+  return { snapshot: visibleSnapshot, revision, activeEvent, log, setLog, speed, setSpeed, isPlaying, isOpening, hasPendingOpening, canSkip, error, errorKind, present, playOpening, skip, retry };
 }

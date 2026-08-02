@@ -1,11 +1,8 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { BattleExperience } from "@/components/battle/BattleExperience";
-import {
-  BATTLE_BACKGROUNDS,
-  pickRandomBattleBackground,
-} from "@/lib/battle/battleBackgrounds";
+import { BATTLE_BACKGROUND } from "@/lib/battle/battleBackgrounds";
 import { createFormatFixture } from "@/lib/battle/fixture";
 
 const roster = [
@@ -38,24 +35,9 @@ function endedEnvelope(battleId: string) {
   };
 }
 
-describe("random battle backgrounds", () => {
-  it.each([
-    [0, BATTLE_BACKGROUNDS[0]],
-    [1 / 3 - Number.EPSILON, BATTLE_BACKGROUNDS[0]],
-    [1 / 3, BATTLE_BACKGROUNDS[1]],
-    [2 / 3 - Number.EPSILON, BATTLE_BACKGROUNDS[1]],
-    [2 / 3, BATTLE_BACKGROUNDS[2]],
-    [0.999999, BATTLE_BACKGROUNDS[2]],
-  ])("maps random value %s to a registered background", (value, expected) => {
-    expect(pickRandomBattleBackground(() => value)).toBe(expected);
-    expect(BATTLE_BACKGROUNDS).toContain(expected);
-  });
-
-  it("keeps one background through rerenders and selects again for a new battle", async () => {
+describe("fixed battle background", () => {
+  it("uses BG03 through rerenders and each new battle", async () => {
     const user = userEvent.setup();
-    const random = vi.spyOn(Math, "random")
-      .mockReturnValueOnce(0)
-      .mockReturnValueOnce(0.999999);
     const fetchMock = vi.spyOn(globalThis, "fetch")
       .mockResolvedValueOnce(new Response(JSON.stringify({
         contractVersion: "1.0",
@@ -70,28 +52,43 @@ describe("random battle backgrounds", () => {
         headers: { "Content-Type": "application/json" },
       }));
 
-    render(<BattleExperience />);
+    render(<BattleExperience countdownStepMs={0} />);
     await user.click(await screen.findByRole("button", { name: "ENTER BATTLE" }));
 
     const firstBattlefield = await screen.findByRole("region", { name: "Battlefield" });
-    expect(firstBattlefield).toHaveAttribute("data-background", BATTLE_BACKGROUNDS[0]);
+    expect(BATTLE_BACKGROUND).toBe("/game-images/battle-scenes/backgrounds/Battle_Scene_BG03.png");
+    expect(firstBattlefield).toHaveAttribute("data-background", BATTLE_BACKGROUND);
     expect(firstBattlefield.style.getPropertyValue("--battle-background-image"))
-      .toBe(`url("${BATTLE_BACKGROUNDS[0]}")`);
-    expect(random).toHaveBeenCalledTimes(1);
+      .toBe(`url("${BATTLE_BACKGROUND}")`);
 
     fireEvent.click(screen.getByRole("button", { name: "×2" }));
     expect(screen.getByRole("region", { name: "Battlefield" }))
-      .toHaveAttribute("data-background", BATTLE_BACKGROUNDS[0]);
-    expect(random).toHaveBeenCalledTimes(1);
+      .toHaveAttribute("data-background", BATTLE_BACKGROUND);
 
     await user.click(await screen.findByRole("button", { name: "RETURN TO TEAM BUILDER" }));
     await user.click(await screen.findByRole("button", { name: "ENTER BATTLE" }));
 
     expect(await screen.findByRole("region", { name: "Battlefield" }))
-      .toHaveAttribute("data-background", BATTLE_BACKGROUNDS[2]);
-    expect(random).toHaveBeenCalledTimes(2);
+      .toHaveAttribute("data-background", BATTLE_BACKGROUND);
 
     fetchMock.mockRestore();
-    random.mockRestore();
+  });
+
+  it("renders 3, 2, 1, and START over the composed live scene", async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response(JSON.stringify({ contractVersion: "1.0", heroes: roster }), { status: 200, headers: { "Content-Type": "application/json" } }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(endedEnvelope("battle.countdown.1")), { status: 200, headers: { "Content-Type": "application/json" } }));
+
+    render(<BattleExperience countdownStepMs={20} />);
+    await user.click(await screen.findByRole("button", { name: "ENTER BATTLE" }));
+
+    expect(await screen.findByRole("status", { name: "Battle begins in 3" })).toHaveTextContent("3");
+    expect(screen.getByRole("region", { name: "Battlefield" })).toBeVisible();
+    expect(await screen.findByRole("status", { name: "Battle start" })).toHaveTextContent("START");
+
+    await screen.findByRole("dialog", { name: "YOUR TEAM VICTORIOUS" });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    fetchMock.mockRestore();
   });
 });

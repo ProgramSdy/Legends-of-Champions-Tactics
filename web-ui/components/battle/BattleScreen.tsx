@@ -3,13 +3,13 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { usePresentationQueue } from "@/lib/battle/usePresentationQueue";
-import type { BattleEventType, BattleProvider, CombatantState, PresentationScript } from "@/lib/battle/types";
+import type { BattleEvent, BattleEventType, BattleProvider, CombatantState, PresentationScript, SideId } from "@/lib/battle/types";
 import { AssetImage } from "./AssetImage";
 import { HeroCard, Meter } from "./HeroCard";
 import { SkillCard } from "./SkillCard";
 import { StatusIcon } from "./StatusIcon";
 import { formationFor, getBattleFormat } from "@/lib/battle/formations";
-import { BATTLE_BACKGROUNDS } from "@/lib/battle/battleBackgrounds";
+import { BATTLE_BACKGROUND } from "@/lib/battle/battleBackgrounds";
 
 const logGlyph: Record<BattleEventType, string> = {
   battleStarted: "◆", roundStarted: "◎", turnStarted: "▶", skillStarted: "✦",
@@ -31,20 +31,42 @@ function TeamPanel({ side, heroes, activeId }: { side: "friendly" | "enemy"; her
   );
 }
 
-function BattlefieldFigure({ hero, active, eventType, eventAmount, eventTarget, showAmount, selectable, selected, onSelect }: {
-  hero: CombatantState; active: boolean; eventType: BattleEventType | null; eventAmount?: number; eventTarget: boolean; showAmount: boolean;
-  selectable: boolean; selected: boolean; onSelect: () => void;
+type TargetEffect = "healing" | "buff" | "debuff";
+
+function targetEffectFor(event: BattleEvent | null, combatantId: string): TargetEffect | null {
+  if (!event || event.targetId !== combatantId) return null;
+  if (event.type === "healingApplied") return "healing";
+  if (event.type === "statusApplied" && (event.statusPresentation === "buff" || event.statusPresentation === "debuff")) {
+    return event.statusPresentation;
+  }
+  return null;
+}
+
+function BattlefieldFigure({ hero, active, event, eventSourceSide, selectable, targetSelectionPending, selected, onSelect }: {
+  hero: CombatantState; active: boolean; event: BattleEvent | null; eventSourceSide: SideId | null;
+  selectable: boolean; targetSelectionPending: boolean; selected: boolean; onSelect: () => void;
 }) {
-  const effect = eventTarget ? eventType : null;
+  const eventTarget = event?.targetId === hero.id;
+  const moved = event?.type === "characterMoved" && event.sourceId === hero.id;
+  const effect = eventTarget || moved ? event?.type ?? null : null;
+  const targetEffect = targetEffectFor(event, hero.id);
+  const movementClass = moved && event?.movement === "lunge"
+    ? `movement-lunge lunge-${hero.sideId}`
+    : moved && event?.movement ? `movement-${event.movement}` : "";
+  const evadeClass = event?.type === "attackEvaded" && eventTarget && eventSourceSide
+    ? `evade-${eventSourceSide}` : "";
   const assetKey = hero.definitionId;
   return (
-    <div className={`battle-figure slot-${hero.slot} ${hero.sideId} ${active ? "acting" : ""} ${effect ? `fx-${effect}` : ""} ${selectable ? "selectable" : ""} ${selected ? "targeted" : ""}`}
+    <div
+      className={`battle-figure slot-${hero.slot} ${hero.sideId} ${active ? "acting" : ""} ${effect ? `fx-${effect}` : ""} ${movementClass} ${evadeClass} ${selectable ? "selectable" : ""} ${selected ? "targeted" : ""}`}
+      data-combatant-id={hero.id}
+      data-figure-footprint="shared"
     >
       <div className="overhead">
         <Meter value={hero.hp.current} maximum={hero.hp.maximum} kind="hp" label={`${hero.displayName} health`} />
         <div className="battlefield-statuses">{hero.statuses.map((status) => <StatusIcon key={status.instanceId} status={status} />)}</div>
       </div>
-      <button className="battle-target-control" type="button" disabled={!selectable} onClick={onSelect}
+      <button className={`battle-target-control ${targetSelectionPending ? "target-selection-pending" : ""}`} type="button" disabled={!selectable} onClick={onSelect}
         onKeyDown={(event) => {
           if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
@@ -52,11 +74,14 @@ function BattlefieldFigure({ hero, active, eventType, eventAmount, eventTarget, 
           }
         }}
         aria-label={`${hero.displayName}${selectable ? ", selectable target" : ""}`}>
-        <span className="figure-aura" />
-        <AssetImage request={{ kind: "figure", key: assetKey, name: hero.displayName, className: hero.faculty }} className="figure-art" />
+        <span className="figure-footprint">
+          <span className="figure-aura" />
+          <AssetImage request={{ kind: "figure", key: assetKey, name: hero.displayName, className: hero.faculty }} className="figure-art" />
+          {targetEffect && <span className={`target-effect effect-${targetEffect} ${targetEffect === "debuff" ? "red" : targetEffect === "buff" ? "blue" : "green"}`} data-effect-target={hero.id} aria-hidden="true" />}
+        </span>
         <span className="figure-name">{hero.displayName}</span>
-        {effect === "damageApplied" && showAmount && eventAmount !== undefined && <span className="combat-text damage">−{eventAmount}</span>}
-        {effect === "healingApplied" && showAmount && eventAmount !== undefined && <span className="combat-text heal">+{eventAmount}</span>}
+        {effect === "damageApplied" && eventTarget && event?.amount !== undefined && <span className="combat-text damage">−{event.amount}</span>}
+        {effect === "healingApplied" && eventTarget && event?.amount !== undefined && <span className="combat-text heal">+{event.amount}</span>}
         {effect === "attackEvaded" && <span className="combat-text evade">EVADE</span>}
       </button>
     </div>
@@ -68,12 +93,16 @@ interface BattleScreenProps {
   mockDemos?: ReadonlyArray<{ id: string; label: string; run: () => Promise<PresentationScript> }>;
   mode?: "live" | "mock";
   backgroundImage?: string;
+  entryCountdownStepMs?: number;
   onReturnToBuilder?: () => void;
 }
 
-export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundImage, onReturnToBuilder }: BattleScreenProps) {
-  const mountedBackground = backgroundImage ?? BATTLE_BACKGROUNDS[0];
-  const { snapshot, revision, activeEvent, log, setLog, speed, setSpeed, isPlaying, canSkip, error, errorKind, present, skip, retry } = usePresentationQueue(provider);
+type EntryCountdown = 3 | 2 | 1 | "start" | null;
+
+export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundImage, entryCountdownStepMs, onReturnToBuilder }: BattleScreenProps) {
+  const mountedBackground = backgroundImage ?? BATTLE_BACKGROUND;
+  const { snapshot, revision, activeEvent, log, setLog, speed, setSpeed, isPlaying, isOpening, hasPendingOpening, canSkip, error, errorKind, present, playOpening, skip, retry } = usePresentationQueue(provider);
+  const [entryCountdown, setEntryCountdown] = useState<EntryCountdown>(entryCountdownStepMs === undefined ? null : 3);
   const [selectedSkill, setSelectedSkill] = useState<string | null>(null);
   const [selectedTargets, setSelectedTargets] = useState<string[]>([]);
   const [autoBattle, setAutoBattle] = useState(false);
@@ -82,18 +111,32 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
   const completionButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
+    if (!snapshot || entryCountdown === null || entryCountdownStepMs === undefined) return;
+    const next: EntryCountdown = entryCountdown === 3 ? 2 : entryCountdown === 2 ? 1 : entryCountdown === 1 ? "start" : null;
+    const timer = window.setTimeout(() => setEntryCountdown(next), entryCountdownStepMs);
+    return () => window.clearTimeout(timer);
+  }, [entryCountdown, entryCountdownStepMs, snapshot]);
+
+  useEffect(() => {
+    if (snapshot && entryCountdown === null && hasPendingOpening) void playOpening();
+  }, [entryCountdown, hasPendingOpening, playOpening, snapshot]);
+
+  useEffect(() => {
     const list = logListRef.current;
     if (list) list.scrollTop = list.scrollHeight;
   }, [log.length]);
 
   useEffect(() => {
-    if (snapshot?.phase === "ended") completionButtonRef.current?.focus();
-  }, [snapshot?.phase]);
+    if (snapshot?.phase === "ended" && entryCountdown === null && !isOpening) completionButtonRef.current?.focus();
+  }, [entryCountdown, isOpening, snapshot?.phase]);
 
   const combatants = snapshot?.combatants ?? {};
   const active = snapshot?.activeCombatantId ? combatants[snapshot.activeCombatantId] : null;
+  const entryLocked = entryCountdown !== null || isOpening;
   const acceptsCommands = Boolean(
     snapshot
+    && !entryLocked
+    && !isPlaying
     && snapshot.turnControl.disposition === "playerCommand"
     && snapshot.turnControl.acceptsCommands
     && snapshot.turnControl.actorCombatantId === snapshot.activeCombatantId,
@@ -101,6 +144,7 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
   const legal = acceptsCommands
     ? snapshot?.legalActions.find((action) => action.skillId === selectedSkill)
     : undefined;
+  const targetSelectionPending = Boolean(legal && selectedTargets.length < legal.maximumTargets);
   const sideHeroes = (side: "friendly" | "enemy") => {
     const definition = snapshot?.sides.find((item) => item.id === side);
     const items = definition?.combatantIds.map((id) => combatants[id]) ?? [];
@@ -110,6 +154,7 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
   const battlefield = battlefieldIds
     .map((id) => combatants[id])
     .filter((hero): hero is CombatantState => Boolean(hero?.alive));
+  const eventSourceSide = activeEvent?.sourceId ? combatants[activeEvent.sourceId]?.sideId ?? null : null;
 
   if (!snapshot) return <main className="loading-screen" aria-live="polite">
     {error ? <section className={`connection-state ${errorKind ?? "adapter"}`} role="alert"><strong>{errorKind === "disconnected" ? "BATTLE SERVICE OFFLINE" : "BATTLE COULD NOT OPEN"}</strong><p>{error}</p><button onClick={retry}>Retry connection</button></section> : <><span className="loading-rune">◇</span>Opening the battlefield…</>}
@@ -176,15 +221,16 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
           data-background={mountedBackground}
           style={{ "--battle-background-image": `url("${mountedBackground}")` } as CSSProperties}
         >
-          <div className={`effect-layer ${activeEvent?.effectHint ?? ""}`} aria-hidden="true"><span /></div>
+          {(activeEvent?.effectHint === "magic" || activeEvent?.effectHint === "summon")
+            && <div className={`effect-layer ${activeEvent.effectHint}`} aria-hidden="true"><span /></div>}
           {battlefield.map((hero) => {
             const position = formationFor(snapshot, hero.sideId, hero.slot);
             return <div className="formation-slot" key={hero.id} data-slot={position.slot} style={{ left: `${position.x}%`, top: `${position.y}%`, "--figure-scale": position.scale } as CSSProperties}>
             <BattlefieldFigure hero={hero} active={hero.id === snapshot.activeCombatantId}
-              eventType={activeEvent?.type ?? null} eventAmount={activeEvent?.amount}
-              eventTarget={activeEvent?.targetId === hero.id || (activeEvent?.type === "characterMoved" && activeEvent.sourceId === hero.id)}
-              showAmount={activeEvent?.targetId === hero.id}
-              selectable={acceptsCommands && Boolean(legal?.validTargetIds.includes(hero.id)) && !isPlaying} selected={selectedTargets.includes(hero.id)}
+              event={activeEvent} eventSourceSide={eventSourceSide}
+              selectable={acceptsCommands && Boolean(legal?.validTargetIds.includes(hero.id)) && !isPlaying}
+              targetSelectionPending={acceptsCommands && Boolean(legal?.validTargetIds.includes(hero.id)) && !isPlaying && targetSelectionPending}
+              selected={selectedTargets.includes(hero.id)}
               onSelect={() => toggleTarget(hero.id)} />
             </div>;
           })}
@@ -217,7 +263,7 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
           ))}
         </div>
         <div className="battle-log">
-          <header><strong>BATTLE LOG</strong><button onClick={() => setLog([])}>Clear</button></header>
+          <header><strong>BATTLE LOG</strong><button disabled={entryLocked} onClick={() => setLog([])}>Clear</button></header>
           <ol ref={logListRef} aria-live="polite" aria-label="Battle events">
             {log.map((item, index) => <li className={item.type} key={`${item.id}.${index}`}><span>{logGlyph[item.type]}</span>{item.message}</li>)}
           </ol>
@@ -225,15 +271,29 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
       </section>
 
       <footer className="battle-controls">
-        <div className="speed"><span>SPEED</span>{[1, 1.5, 2].map((value) => <button className={speed === value ? "selected" : ""} key={value} onClick={() => setSpeed(value)}>×{value}</button>)}</div>
+        <div className="speed"><span>SPEED</span>{[1, 1.5, 2].map((value) => <button className={speed === value ? "selected" : ""} disabled={entryLocked} key={value} onClick={() => setSpeed(value)}>×{value}</button>)}</div>
         {mockDemos && <div className="demo-controls" aria-label="Mock presentation demos">
-          <span>MOCK EVENT DEMOS</span>{mockDemos.map((demo) => <button key={demo.id} disabled={isPlaying} onClick={() => void present(demo.run)}>{demo.label}</button>)}
+          <span>MOCK EVENT DEMOS</span>{mockDemos.map((demo) => <button key={demo.id} disabled={isPlaying || entryLocked} onClick={() => void present(demo.run)}>{demo.label}</button>)}
         </div>}
-        <label className="toggle">AUTO BATTLE <input type="checkbox" checked={autoBattle} onChange={(event) => setAutoBattle(event.target.checked)} /><span /></label>
-        {!active ? <button className="end-turn" disabled>BATTLE ENDED</button> : isPlaying ? <button className="end-turn" onClick={skip} disabled={!canSkip}>{canSkip ? "SKIP EFFECT" : "RESOLVING…"}</button> : !acceptsCommands ? <button className="end-turn" disabled>AUTOMATIC TURN</button> : <button className="end-turn" onClick={triggerSkill} disabled={!selectedSkill || !legal || selectedTargets.length < legal.minimumTargets || selectedTargets.length > legal.maximumTargets}>{selectedSkill ? "CAST SKILL" : "SELECT SKILL"}</button>}
+        <label className="toggle">AUTO BATTLE <input type="checkbox" checked={autoBattle} disabled={entryLocked || isPlaying} onChange={(event) => setAutoBattle(event.target.checked)} /><span /></label>
+        {!active ? <button className="end-turn" disabled>BATTLE ENDED</button> : isPlaying ? <button className="end-turn" onClick={skip} disabled={!canSkip || isOpening}>{isOpening ? "OPENING BATTLE…" : canSkip ? "SKIP EFFECT" : "RESOLVING…"}</button> : !acceptsCommands ? <button className="end-turn" disabled>{entryLocked ? "BATTLE OPENING" : "AUTOMATIC TURN"}</button> : <button className="end-turn" onClick={triggerSkill} disabled={!selectedSkill || !legal || selectedTargets.length < legal.minimumTargets || selectedTargets.length > legal.maximumTargets}>{selectedSkill ? "CAST SKILL" : "SELECT SKILL"}</button>}
       </footer>
       {(error || fullscreenError) && <div className={`ui-error ${errorKind ?? ""}`} role="alert"><strong>{errorKind === "stale" ? "STATE RECONCILED" : errorKind === "rejected" ? "COMMAND REJECTED" : "BATTLE NOTICE"}</strong><span>{error ?? fullscreenError}</span></div>}
-      {snapshot.phase === "ended" && onReturnToBuilder && (
+      {entryCountdown !== null && (
+        <div className="battle-entry-countdown" data-countdown-step={entryCountdown}>
+          <section
+            key={entryCountdown}
+            className={`entry-countdown-value ${entryCountdown === "start" ? "start" : "numeric"}`}
+            role="status"
+            aria-live="assertive"
+            aria-atomic="true"
+            aria-label={entryCountdown === "start" ? "Battle start" : `Battle begins in ${entryCountdown}`}
+          >
+            {entryCountdown === "start" ? "START" : entryCountdown}
+          </section>
+        </div>
+      )}
+      {snapshot.phase === "ended" && !entryLocked && onReturnToBuilder && (
         <div className="completion-backdrop">
           <section className="completion-dialog" role="dialog" aria-modal="true" aria-labelledby="battle-result-title"
             onKeyDown={(event) => {

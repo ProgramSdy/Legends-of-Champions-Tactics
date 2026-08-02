@@ -89,7 +89,7 @@ export function TeamBuilder({ roster, onStart }: TeamBuilderProps) {
   };
 
   return (
-    <main className="team-builder">
+    <main className="team-builder" tabIndex={0} aria-label="Team Builder scroll area">
       <header className="builder-title">
         <span className="builder-crest" aria-hidden="true">L</span>
         <div><p>LEGENDS OF CHAMPIONS TACTICS</p><h1>Team Builder</h1><span>Assemble both sides, then enter the Fallen Citadel.</span></div>
@@ -135,7 +135,7 @@ export function TeamBuilder({ roster, onStart }: TeamBuilderProps) {
         <header><div><small>{enemyControlMode === "computer" ? "ENGINE CONTROLLED" : "PLAYER CONTROLLED"}</small><h2 id="enemy-team-heading">Enemy Team</h2></div><strong>{enemyCompositionMode === "random" ? "RANDOM" : `${battleSize} HERO${battleSize > 1 ? "ES" : ""}`}</strong></header>
         {enemyCompositionMode === "random"
           ? <div className="random-team-note"><span aria-hidden="true">?</span><p>Python will assemble the enemy team when the battle begins. A seed makes this choice repeatable.</p></div>
-          : <div className="team-slot-list">{enemyTeam.map((heroId, index) => <TeamSelect roster={roster} key={`enemy-${index}`} id={`enemy-slot-${index}`} label={`Enemy slot ${index + 1}`} value={heroId} onChange={(value) => setEnemyTeam((team) => updateSlot(team, index, value))} />)}</div>}
+          : <div className="team-slot-list">{enemyTeam.map((heroId, index) => <TeamSelect roster={roster} showDefinitionName={false} key={`enemy-${index}`} id={`enemy-slot-${index}`} label={`Enemy slot ${index + 1}`} value={heroId} onChange={(value) => setEnemyTeam((team) => updateSlot(team, index, value))} />)}</div>}
       </section>
 
       <section className="hero-roster" aria-labelledby="roster-heading">

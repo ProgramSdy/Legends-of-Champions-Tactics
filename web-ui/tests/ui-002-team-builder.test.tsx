@@ -127,7 +127,7 @@ describe("UI-002 Team Builder", () => {
         battleId: "battle.ui-002.relaunch",
       }), { status: 200, headers: { "Content-Type": "application/json" } }));
 
-    render(<BattleExperience />);
+    render(<BattleExperience countdownStepMs={0} />);
 
     expect(await screen.findByRole("heading", { name: "Team Builder" })).toBeVisible();
     await user.click(screen.getByRole("button", { name: "ENTER BATTLE" }));

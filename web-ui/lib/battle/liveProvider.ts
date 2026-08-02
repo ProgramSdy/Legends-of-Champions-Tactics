@@ -18,6 +18,8 @@ interface Envelope<T> {
 
 interface CreateData {
   events?: PresentationScript["events"];
+  openingSnapshot?: BattleSnapshot;
+  playOpening?: boolean;
   snapshot: BattleSnapshot;
 }
 
@@ -110,6 +112,9 @@ export class LiveBattleProvider implements BattleProvider {
       revision: envelope.revision,
       snapshot: envelope.data.snapshot,
       events: envelope.data.events ?? [],
+      ...(envelope.data.playOpening === true && envelope.data.openingSnapshot
+        ? { openingSnapshot: envelope.data.openingSnapshot, playOpening: true }
+        : {}),
     };
     return structuredClone(this.state);
   }

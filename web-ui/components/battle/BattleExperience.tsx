@@ -4,10 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import { BattleScreen } from "./BattleScreen";
 import { fetchHeroRoster, LiveBattleProvider } from "@/lib/battle/liveProvider";
 import type { BattleCreateConfiguration, HeroDefinitionSummary } from "@/lib/battle/types";
-import { pickRandomBattleBackground } from "@/lib/battle/battleBackgrounds";
+import { BATTLE_BACKGROUND } from "@/lib/battle/battleBackgrounds";
 import { TeamBuilder } from "./TeamBuilder";
 
-export function BattleExperience() {
+export function BattleExperience({ countdownStepMs = 1000 }: { countdownStepMs?: number }) {
   const [configuration, setConfiguration] = useState<BattleCreateConfiguration | null>(null);
   const [sessionKey, setSessionKey] = useState(0);
   const [roster, setRoster] = useState<HeroDefinitionSummary[] | null>(null);
@@ -27,7 +27,7 @@ export function BattleExperience() {
   if (!provider && !roster) return <main className="loading-screen" aria-live="polite"><span className="loading-rune">◇</span>Loading approved heroes…</main>;
   if (!provider) return <TeamBuilder roster={roster!} onStart={(next) => {
     setSessionKey((key) => key + 1);
-    setBattleBackground(pickRandomBattleBackground());
+    setBattleBackground(BATTLE_BACKGROUND);
     setConfiguration(next);
   }} />;
   return <BattleScreen
@@ -35,6 +35,7 @@ export function BattleExperience() {
     provider={provider}
     mode="live"
     backgroundImage={battleBackground ?? undefined}
+    entryCountdownStepMs={countdownStepMs}
     onReturnToBuilder={() => {
       setConfiguration(null);
       setBattleBackground(null);

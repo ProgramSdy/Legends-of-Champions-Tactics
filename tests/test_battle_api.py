@@ -46,6 +46,72 @@ def test_health_create_get_command_and_not_found():
     assert missing.json()["detail"]["code"] == "battleNotFound"
 
 
+def test_api_status_application_exposes_additive_authoritative_presentation():
+    created = client.post(
+        "/api/v1/battles",
+        json={"scenarioId": "ragnar-vs-nighthawk", "seed": 42},
+    ).json()
+    battle_id = created["battleId"]
+    snapshot = created["data"]["snapshot"]
+    action = next(
+        action
+        for action in snapshot["legalActions"]
+        if action["skillId"] == "skill.rogue.shadow_evasion"
+    )
+
+    response = client.post(
+        f"/api/v1/battles/{battle_id}/commands",
+        json={
+            "type": "useSkill",
+            "commandId": "cmd.status-presentation.api",
+            "expectedRevision": 0,
+            "actorId": snapshot["activeCombatantId"],
+            "skillId": action["skillId"],
+            "targetIds": [],
+        },
+    )
+
+    assert response.status_code == 200
+    events = response.json()["data"]["events"]
+    applied = next(event for event in events if event["type"] == "statusApplied")
+    assert applied["statusId"] == "status.shadow_evasion"
+    assert applied["sourceId"] == snapshot["activeCombatantId"]
+    assert applied["targetId"] == snapshot["activeCombatantId"]
+    assert applied["statusPresentation"] == "buff"
+    assert applied["effectHint"] == "status"
+    assert all(
+        "statusPresentation" not in event
+        for event in events
+        if event["type"] != "statusApplied"
+    )
+
+
+@pytest.mark.parametrize(
+    ("enemy_control_mode", "play_opening"),
+    [("player", False), ("computer", True)],
+)
+def test_create_exposes_additive_opening_lifecycle_contract(enemy_control_mode, play_opening):
+    response = client.post(
+        "/api/v1/battles",
+        json={
+            "scenarioId": "ragnar-vs-nighthawk",
+            "seed": 42,
+            "enemyControlMode": enemy_control_mode,
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert data["playOpening"] is play_opening
+    assert "openingSnapshot" in data
+    if not play_opening:
+        assert data["openingSnapshot"] == data["snapshot"]
+    else:
+        assert data["openingSnapshot"]["activeCombatantId"] == "enemy.nighthawk"
+        assert [event["sequence"] for event in data["events"]] == sorted(
+            event["sequence"] for event in data["events"]
+        )
+
+
 def test_pydantic_validation_rejects_malformed_request_before_engine_mutation():
     response = client.post(
         "/api/v1/battles/not-found/commands",

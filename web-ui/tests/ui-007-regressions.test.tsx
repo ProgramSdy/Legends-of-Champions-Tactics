@@ -1,0 +1,189 @@
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+import { BattleScreen } from "@/components/battle/BattleScreen";
+import { TeamBuilder } from "@/components/battle/TeamBuilder";
+import { createFormatFixture, MockBattleProvider } from "@/lib/battle/fixture";
+import { formationRegistry } from "@/lib/battle/formations";
+import type { BattleEvent, BattleSize, HeroDefinitionSummary } from "@/lib/battle/types";
+import { readFileSync } from "node:fs";
+
+const roster: HeroDefinitionSummary[] = [
+  { definitionId: "hero.one", displayName: "Definition Name", faculty: "Faculty", specialization: "Major" },
+  { definitionId: "hero.two", displayName: "Another Definition", faculty: "Other Faculty", specialization: "Minor" },
+];
+
+describe("UI-007 battlefield geometry contracts", () => {
+  it.each([[1], [2], [3]] as const)("keeps shared figure footprint hooks for size %d formations", async (size) => {
+    render(<BattleScreen provider={new MockBattleProvider(createFormatFixture(size))} />);
+    const battlefield = await screen.findByRole("region", { name: "Battlefield" });
+    expect(battlefield.closest("main")).toHaveAttribute("data-format", ["duel", "duo", "trio"][size - 1]);
+    const figures = battlefield.querySelectorAll<HTMLElement>(".battle-figure");
+    expect(figures.length).toBe(size * 2);
+    figures.forEach((figure) => {
+      expect(figure).toHaveAttribute("data-combatant-id");
+      expect(figure).toHaveAttribute("data-figure-footprint", "shared");
+      const footprint = figure.querySelector(".figure-footprint");
+      expect(footprint).toBeInTheDocument();
+      expect(footprint?.querySelector(".figure-aura")).toBeInTheDocument();
+      expect(figure.querySelector(".figure-art")).toBeInTheDocument();
+      // Overhead remains a child of the same figure so health/status cues do
+      // not drift into a format-wide overlay as formations change.
+      expect(figure.querySelector(".overhead")).toBeInTheDocument();
+    });
+  });
+
+  it("uses the doubled logical footprint and preserves footing/clearance CSS hooks", () => {
+    // Normalize formatting so this contract checks geometry values rather than
+    // a particular CSS minification/line-break style.
+    const css = readFileSync("app/globals.css", "utf8").replace(/\s+/g, "");
+    const footprint = css.match(/\.figure-footprint\{([^}]*)\}/)?.[1] ?? "";
+    const aura = css.match(/\.figure-aura\{([^}]*)\}/)?.[1] ?? "";
+    const overhead = css.match(/\.overhead\{([^}]*)\}/)?.[1] ?? "";
+
+    expect(footprint).toMatch(/(?:^|;)width:172px(?:;|$)/);
+    expect(footprint).toMatch(/(?:^|;)height:284px(?:;|$)/);
+    expect(footprint).toMatch(/(?:^|;)bottom:17px(?:;|$)/);
+    expect(aura).toMatch(/(?:^|;)bottom:-12px(?:;|$)/);
+    expect(aura).toMatch(/(?:^|;)left:50%(?:;|$)/);
+    // Overhead is positioned in the unscaled parent coordinate space. Its
+    // bottom clearance therefore tracks each formation's figure scale.
+    expect(overhead).toMatch(/(?:^|;)bottom:calc\(301px\*var\(--figure-scale\)\+8px\)(?:;|$)/);
+    expect(overhead).toMatch(/(?:^|;)left:59px(?:;|$)/);
+    const duelOverhead = css.match(/\.format-duel\.overhead\{([^}]*)\}/)?.[1] ?? "";
+    expect(duelOverhead).toMatch(/(?:^|;)transform:scale\(1\.5\)(?:;|$)/);
+    expect(duelOverhead).toMatch(/(?:^|;)transform-origin:centerbottom(?:;|$)/);
+  });
+
+  it("keeps formation slots distinct and aligned to a common figure baseline", () => {
+    for (const format of ["duel", "duo", "trio"] as const) {
+      const friendly = formationRegistry[format].friendly;
+      const enemy = formationRegistry[format].enemy;
+      expect(new Set([...friendly, ...enemy].map(({ x, y }) => `${x}:${y}`)).size).toBe(friendly.length + enemy.length);
+      if (format === "duel") {
+        expect(friendly[0].y).toBe(enemy[0].y);
+        expect(friendly[0].scale).toBe(1.1);
+        expect(enemy[0].scale).toBe(1.1);
+      }
+    }
+  });
+});
+
+describe("UI-007 target-bound battle effects", () => {
+  async function renderDemos() {
+    const provider = new MockBattleProvider();
+    render(<BattleScreen provider={provider} mockDemos={[
+      { id: "healing", label: "Healing", run: () => provider.runDemo("healing") },
+      { id: "status", label: "Debuff", run: () => provider.runDemo("status") },
+    ]} />);
+    await screen.findByRole("region", { name: "Battlefield" });
+    fireEvent.click(screen.getByRole("button", { name: "×2" }));
+    return { provider };
+  }
+
+  it("anchors healing to the friendly recipient rather than a global layer", async () => {
+    await renderDemos();
+    fireEvent.click(screen.getByRole("button", { name: "Healing" }));
+    await waitFor(() => expect(document.querySelector("[data-combatant-id='friendly.arthas'] .target-effect.effect-healing")).toBeInTheDocument());
+    const figure = document.querySelector("[data-combatant-id='friendly.arthas']")!;
+    expect(figure).toHaveAttribute("data-combatant-id", "friendly.arthas");
+    expect(document.querySelector(".effect-layer")).toBeNull();
+  });
+
+  it("anchors a harmful status as a red debuff effect to the enemy target", async () => {
+    await renderDemos();
+    fireEvent.click(screen.getByRole("button", { name: "Debuff" }));
+    await waitFor(() => expect(document.querySelector("[data-combatant-id='enemy.sashein'] .target-effect.effect-debuff")).toBeInTheDocument());
+    const figure = document.querySelector("[data-combatant-id='enemy.sashein']")!;
+    expect(figure).toHaveAttribute("data-combatant-id", "enemy.sashein");
+    expect(figure.querySelector(".target-effect.effect-debuff")).toHaveClass("red");
+  });
+
+  it("renders an authoritative beneficial status cue as a blue buff on its recipient", async () => {
+    const provider = new MockBattleProvider();
+    const snapshot = (await provider.getState()).snapshot;
+    const buffEvent = {
+      id: "evt.buff", sequence: 1, type: "statusApplied", sourceId: "enemy.sashein",
+      targetId: "friendly.arthas", statusId: "status.arcane_guard", roundsRemaining: 2,
+      statusPresentation: "buff", effectHint: "status", message: "Arcane Guard strengthens Arthas.",
+    } as BattleEvent & { statusPresentation: "buff" };
+    render(<BattleScreen provider={provider} mockDemos={[{
+      id: "buff", label: "Buff", run: async () => ({ id: "buff", label: "Buff", eventType: "status", events: [buffEvent], snapshot, revision: 2 }),
+    }]} />);
+    await screen.findByRole("region", { name: "Battlefield" });
+    fireEvent.click(screen.getByRole("button", { name: "×2" }));
+    fireEvent.click(screen.getByRole("button", { name: "Buff" }));
+    await waitFor(() => expect(document.querySelector("[data-combatant-id='friendly.arthas'] .target-effect.effect-buff")).toBeInTheDocument());
+    expect(document.querySelector("[data-combatant-id='friendly.arthas'] .target-effect.effect-buff")).toHaveClass("blue");
+  });
+
+  it.each([
+    [2, "friendly.black_heart", "debuff"],
+    [2, "enemy.andonidas", "buff"],
+    [3, "friendly.arthas", "debuff"],
+    [3, "enemy.sashein", "buff"],
+  ] as const)("anchors %s effect to %s in supported formations", async (size: BattleSize, targetId: string, presentation: "buff" | "debuff") => {
+    const provider = new MockBattleProvider(createFormatFixture(size));
+    const snapshot = (await provider.getState()).snapshot;
+    const event = {
+      id: `evt.${size}.${targetId}.${presentation}`, sequence: 1, type: "statusApplied",
+      sourceId: targetId.startsWith("friendly") ? "enemy.nighthawk" : "friendly.ragnar", targetId,
+      statusId: presentation === "buff" ? "status.arcane_guard" : "status.stitch_of_agony",
+      roundsRemaining: 2, statusPresentation: presentation, effectHint: "status",
+      message: `${presentation} applied to ${targetId}`,
+    } satisfies BattleEvent;
+    render(<BattleScreen provider={provider} mockDemos={[{
+      id: "target-effect", label: "Target effect", run: async () => ({ id: "target-effect", label: "Target effect", eventType: "status", events: [event], snapshot, revision: 2 }),
+    }]} />);
+    await screen.findByRole("region", { name: "Battlefield" });
+    fireEvent.click(screen.getByRole("button", { name: "×2" }));
+    fireEvent.click(screen.getByRole("button", { name: "Target effect" }));
+    await waitFor(() => expect(document.querySelector(`[data-combatant-id='${targetId}'] .target-effect.effect-${presentation}`)).toBeInTheDocument());
+  });
+
+  it.each([
+    ["friendly.ragnar", "enemy.nighthawk", "lunge-friendly"],
+    ["enemy.nighthawk", "friendly.ragnar", "lunge-enemy"],
+  ] as const)("applies side-aware movement class for %s attacker", async (sourceId, targetId, movementClass) => {
+    const provider = new MockBattleProvider(createFormatFixture(1));
+    const snapshot = (await provider.getState()).snapshot;
+    const event = {
+      id: `evt.lunge.${sourceId}`, sequence: 1, type: "characterMoved", sourceId, targetId,
+      movement: "lunge", effectHint: "melee", message: `${sourceId} lunges.`,
+    } satisfies BattleEvent;
+    render(<BattleScreen provider={provider} mockDemos={[{
+      id: "lunge", label: "Lunge", run: async () => ({ id: "lunge", label: "Lunge", eventType: "melee", events: [event], snapshot, revision: 2 }),
+    }]} />);
+    await screen.findByRole("region", { name: "Battlefield" });
+    fireEvent.click(screen.getByRole("button", { name: "×2" }));
+    fireEvent.click(screen.getByRole("button", { name: "Lunge" }));
+    await waitFor(() => expect(document.querySelector(`[data-combatant-id='${sourceId}']`)).toHaveClass("movement-lunge", movementClass));
+  });
+
+  it("derives lunge direction from the acting side", () => {
+    const css = readFileSync("app/globals.css", "utf8");
+    expect(css).toMatch(/\.movement-lunge\.lunge-friendly[^}]*animation:[^;]*lunge-friendly/);
+    expect(css).toMatch(/\.movement-lunge\.lunge-enemy[^}]*animation:[^;]*lunge-enemy/);
+  });
+});
+
+describe("UI-007 builder identity and scrolling contracts", () => {
+  it("uses Faculty - Major labels for specified enemy selections", () => {
+    render(<TeamBuilder roster={roster} onStart={() => undefined} />);
+    fireEvent.click(screen.getByRole("radio", { name: "Choose team" }));
+    const enemy = screen.getByLabelText("Enemy slot 1");
+    expect(within(enemy).getAllByRole("option").map((option) => option.textContent)).toEqual([
+      "Choose a hero", "Faculty - Major", "Other Faculty - Minor",
+    ]);
+    expect(within(enemy).queryByText(/Definition Name|Another Definition/)).not.toBeInTheDocument();
+  });
+
+  it("exposes explicit desktop overflow containers for keyboard and gutter scrolling", () => {
+    render(<TeamBuilder roster={roster} onStart={() => undefined} />);
+    expect(document.querySelector(".team-builder")).toHaveAttribute("tabindex", "0");
+    const css = readFileSync("app/globals.css", "utf8");
+    expect(css).toMatch(/\.team-builder\{[^}]*overflow-y:auto/);
+    expect(css).toMatch(/\.team-builder\{[^}]*scrollbar-gutter:stable/);
+    expect(css).toMatch(/\.gallery-shell\{[^}]*overflow-y:auto/);
+    expect(css).toMatch(/\.gallery-shell\{[^}]*scrollbar-gutter:stable/);
+  });
+});

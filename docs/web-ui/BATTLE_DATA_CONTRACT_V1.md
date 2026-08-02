@@ -47,6 +47,26 @@ adapter now exposes it over JSON HTTP. Future transports may also expose the
 same versioned envelope over WebSocket, IPC, or an in-process bridge without
 changing component props.
 
+`POST /api/v1/battles` uses this additive v1 creation payload:
+
+```ts
+type BattleCreateData = {
+  snapshot: BattleSnapshot;          // authoritative current/final boundary
+  events: BattleEvent[];             // ordered, stable-ID presentation events
+  openingSnapshot?: BattleSnapshot; // before automatic opening playback
+  playOpening?: boolean;             // true only when that playback is needed
+};
+```
+
+When `playOpening` is true, `openingSnapshot` is the visible state before the
+adapter's already-authoritative automatic opening resolution. The frontend must
+start there, apply the returned events once in ascending sequence, then
+reconcile to `snapshot` and `revision`; it must not simulate AI decisions or
+derive missing mutations. It must not prefill the visible log with those
+events. When false or omitted, `snapshot` is immediately usable and the
+ordinary initial-event path is retained. These additive fields do not create a
+new contract version.
+
 ## Stable identifiers
 
 Do not use display names or array indices as identity.
@@ -265,6 +285,7 @@ type BattleEvent = {
   amount?: number;
   hpAfter?: { current: number; maximum: number };
   roundsRemaining?: number | null;
+  statusPresentation?: "buff" | "debuff" | "neutral"; // statusApplied only
   combatant?: CombatantState;
   movement?: "lunge" | "return" | "offset";
   effectHint?: "magic" | "healing" | "melee" | "status" | "summon";
@@ -277,6 +298,11 @@ type BattleEvent = {
 
 Fields irrelevant to an event are omitted. State-changing events include their
 post-change value (`hpAfter`, status duration, or full summoned combatant).
+Every `statusApplied` event includes the additive authoritative
+`statusPresentation` cue. Beneficial statuses use `buff`, harmful and control
+statuses use `debuff`, and an unclassified status uses the compatible `neutral`
+fallback. Existing consumers may continue using `effectHint: "status"`; clients
+must not infer this presentation class from `statusId`.
 `attackEvaded` is emitted only when the engine records an authoritative evade
 for that target; unchanged HP alone is not evidence of evasion because a landed
 attack may deal zero damage. A true evade has no `amount` or HP mutation and

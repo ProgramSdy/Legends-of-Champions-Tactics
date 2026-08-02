@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
 import { BattleScreen } from "@/components/battle/BattleScreen";
 import { MockBattleProvider } from "@/lib/battle/fixture";
 
@@ -41,8 +42,53 @@ describe("battle screen integration", () => {
     skill.focus();
     await user.keyboard("{Enter}");
     expect(skill).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByRole("button", { name: "Sashein, selectable target" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Sashein, selectable target" })).toHaveClass("target-selection-pending");
     expect(screen.getByRole("button", { name: "CAST SKILL" })).toBeDisabled();
+  });
+
+  it("uses a crosshair only while required targets remain, including across both teams", async () => {
+    const snapshot = (await new MockBattleProvider().getState()).snapshot;
+    const lifeDrain = snapshot.legalActions.find((action) => action.skillId === "skill.life_drain")!;
+    lifeDrain.minimumTargets = 2;
+    lifeDrain.maximumTargets = 2;
+    lifeDrain.validTargetIds = ["friendly.black_heart", "enemy.sashein", "enemy.andonidas"];
+    const provider = new MockBattleProvider(snapshot);
+    await renderBattle(provider);
+
+    fireEvent.click(screen.getByRole("button", { name: /Life Drain/i }));
+    const friendlyTarget = screen.getByRole("button", { name: "Black Heart, selectable target" });
+    const enemyTarget = screen.getByRole("button", { name: "Sashein, selectable target" });
+    const source = screen.getByRole("button", { name: "Arthas" });
+    expect(friendlyTarget).toHaveClass("target-selection-pending");
+    expect(enemyTarget).toHaveClass("target-selection-pending");
+    expect(source).not.toHaveClass("target-selection-pending");
+
+    fireEvent.click(friendlyTarget);
+    expect(friendlyTarget).toHaveClass("target-selection-pending");
+
+    fireEvent.click(enemyTarget);
+    expect(friendlyTarget).not.toHaveClass("target-selection-pending");
+    expect(enemyTarget).not.toHaveClass("target-selection-pending");
+  });
+
+  it("keeps selected-target state without rendering the legacy TARGET rectangle", async () => {
+    const snapshot = (await new MockBattleProvider().getState()).snapshot;
+    const lifeDrain = snapshot.legalActions.find((action) => action.skillId === "skill.life_drain")!;
+    lifeDrain.minimumTargets = 2;
+    lifeDrain.maximumTargets = 2;
+    lifeDrain.validTargetIds = ["friendly.black_heart", "enemy.sashein", "enemy.andonidas"];
+    await renderBattle(new MockBattleProvider(snapshot));
+
+    fireEvent.click(screen.getByRole("button", { name: /Life Drain/i }));
+    const friendlyTarget = screen.getByRole("button", { name: "Black Heart, selectable target" });
+    fireEvent.click(friendlyTarget);
+    expect(friendlyTarget.closest(".battle-figure")).toHaveClass("targeted");
+    expect(friendlyTarget.closest(".battle-figure")).not.toHaveTextContent("TARGET");
+
+    const css = readFileSync("app/globals.css", "utf8").replace(/\s+/g, "");
+    expect(css).toMatch(/\.battle-figure\.targeted\{?[^}]*filter:drop-shadow/);
+    expect(css).not.toMatch(/\.battle-figure\.targeted::after/);
+    expect(css).not.toMatch(/content:\"TARGET\"/);
   });
 
   it("submits a structured useSkill command with revision, actor, skill, and selected targets", async () => {

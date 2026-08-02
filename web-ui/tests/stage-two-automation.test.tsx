@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { BattleScreen } from "@/components/battle/BattleScreen";
 import { resolveAsset } from "@/lib/battle/assets";
-import { createFormatFixture } from "@/lib/battle/fixture";
+import { createFormatFixture, MockBattleProvider } from "@/lib/battle/fixture";
 import { formationFor } from "@/lib/battle/formations";
 import { LiveBattleProvider } from "@/lib/battle/liveProvider";
 import {
@@ -41,6 +41,34 @@ class ControlledProvider implements BattleProvider {
 }
 
 describe("independent live battle UI coverage", () => {
+  it("maps Priest Discipline to the supplied figure for both sides", async () => {
+    const asset = resolveAsset({
+      kind: "figure", key: "hero.priest.discipline", name: "Seraphine", className: "Priest",
+    });
+    expect(asset).toMatchObject({
+      status: "final",
+      fallback: "requested",
+      src: "/game-images/heroes/Priest-Discipline/figures/Priest_Discipline.png",
+    });
+
+    const fixture = createFormatFixture(1);
+    for (const id of ["friendly.ragnar", "enemy.nighthawk"] as const) {
+      fixture.combatants[id].definitionId = "hero.priest.discipline";
+      fixture.combatants[id].displayName = id.startsWith("friendly") ? "Seraphine" : "Enemy Seraphine";
+      fixture.combatants[id].faculty = "Priest";
+      fixture.combatants[id].specialization = "Discipline";
+    }
+    render(<BattleScreen provider={new MockBattleProvider(fixture)} mode="mock" />);
+    // Render with the fixture provider directly so both side orientation hooks
+    // are exercised without network or asset-loading dependencies.
+    const battlefield = await screen.findByRole("region", { name: "Battlefield" });
+    const friendly = battlefield.querySelector("[data-combatant-id='friendly.ragnar'] img.figure-art");
+    const enemy = battlefield.querySelector("[data-combatant-id='enemy.nighthawk'] img.figure-art");
+    expect(friendly).toHaveAttribute("src", expect.stringContaining("/game-images/heroes/Priest-Discipline/figures/Priest_Discipline.png"));
+    expect(enemy).toHaveAttribute("src", expect.stringContaining("/game-images/heroes/Priest-Discipline/figures/Priest_Discipline.png"));
+    expect(enemy?.closest(".battle-figure")).toHaveClass("enemy");
+  });
+
   it("shows loading until the provider returns, then renders the approved live duel", async () => {
     const load = deferred<BattleState>();
     const provider: BattleProvider = {
