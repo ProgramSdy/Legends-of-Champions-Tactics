@@ -11,6 +11,8 @@ const FINAL_FIGURES = [
   { id: "hero.paladin.protection", faculty: "Paladin", specialization: "Protection", path: "/game-images/heroes/Paladin-Protection/figures/Paladin_Protection.png" },
   { id: "hero.paladin.retribution", faculty: "Paladin", specialization: "Retribution", path: "/game-images/heroes/Paladin-Retribution/figures/Paladin_Retribution.png" },
   { id: "hero.priest.comprehensiveness", faculty: "Priest", specialization: "Comprehensiveness", path: "/game-images/heroes/Priest-Comprehensiveness/figures/Priest_Comprehensiveness.png" },
+  { id: "hero.mage.comprehensiveness", faculty: "Mage", specialization: "Comprehensiveness", path: "/game-images/heroes/Mage-Comprehensiveness/figures/Mage_Comprehensiveness.png" },
+  { id: "hero.rogue.comprehensiveness", faculty: "Rogue", specialization: "Comprehensiveness", path: "/game-images/heroes/Rogue-Comprehensiveness/figures/Rogue_Comprehensiveness.png" },
   { id: "hero.warrior.defence", faculty: "Warrior", specialization: "Defence", path: "/game-images/heroes/Warrior-Defence/figures/Warrior_Defence.png" },
   { id: "hero.warrior.weapon_master", faculty: "Warrior", specialization: "Weapon Master", path: "/game-images/heroes/Warrior-Weapon-Master/figures/Warrior_Weapon_Master.png" },
 ] as const;

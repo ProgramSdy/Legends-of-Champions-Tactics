@@ -10,6 +10,7 @@ import { SkillCard } from "./SkillCard";
 import { StatusIcon } from "./StatusIcon";
 import { formationFor, getBattleFormat } from "@/lib/battle/formations";
 import { BATTLE_BACKGROUND } from "@/lib/battle/battleBackgrounds";
+import { heroFigureScaleFor } from "@/lib/battle/assets";
 
 const logGlyph: Record<BattleEventType, string> = {
   battleStarted: "◆", roundStarted: "◎", turnStarted: "▶", skillStarted: "✦",
@@ -18,6 +19,29 @@ const logGlyph: Record<BattleEventType, string> = {
   characterSummoned: "♟", characterDefeated: "☠", turnEnded: "■", battleEnded: "★",
   battleLog: "›",
 };
+
+function createCommandId(): string {
+  const cryptoApi = globalThis.crypto;
+  if (typeof cryptoApi?.randomUUID === "function") {
+    return `cmd.${cryptoApi.randomUUID()}`;
+  }
+  const bytes = new Uint8Array(16);
+  if (typeof cryptoApi?.getRandomValues === "function") {
+    cryptoApi.getRandomValues(bytes);
+  } else {
+    const timestamp = Date.now();
+    for (let index = 0; index < bytes.length; index += 1) {
+      bytes[index] = Math.floor(Math.random() * 256);
+    }
+    for (let index = 0; index < 6; index += 1) {
+      bytes[bytes.length - 1 - index] ^= Math.floor(timestamp / (256 ** index)) & 0xff;
+    }
+  }
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("");
+  return `cmd.${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
 
 function TeamPanel({ side, heroes, activeId }: { side: "friendly" | "enemy"; heroes: Array<CombatantState | null>; activeId: string | null }) {
   return (
@@ -33,6 +57,14 @@ function TeamPanel({ side, heroes, activeId }: { side: "friendly" | "enemy"; her
 
 type TargetEffect = "healing" | "buff" | "debuff";
 
+const FIGURE_FRAME_WIDTH = 172;
+const FALLBACK_FIGURE_FRAME_HEIGHT = 202;
+
+function frameHeightFor({ naturalWidth, naturalHeight }: { naturalWidth: number; naturalHeight: number }): number | null {
+  if (!Number.isFinite(naturalWidth) || !Number.isFinite(naturalHeight) || naturalWidth <= 0 || naturalHeight <= 0) return null;
+  return Math.round((FIGURE_FRAME_WIDTH * naturalHeight / naturalWidth) * 100) / 100;
+}
+
 function targetEffectFor(event: BattleEvent | null, combatantId: string): TargetEffect | null {
   if (!event || event.targetId !== combatantId) return null;
   if (event.type === "healingApplied") return "healing";
@@ -42,10 +74,11 @@ function targetEffectFor(event: BattleEvent | null, combatantId: string): Target
   return null;
 }
 
-function BattlefieldFigure({ hero, active, event, eventSourceSide, selectable, targetSelectionPending, selected, onSelect }: {
+function BattlefieldFigure({ hero, active, event, eventSourceSide, selectable, targetSelectionPending, selected, onSelect, formationScale }: {
   hero: CombatantState; active: boolean; event: BattleEvent | null; eventSourceSide: SideId | null;
-  selectable: boolean; targetSelectionPending: boolean; selected: boolean; onSelect: () => void;
+  selectable: boolean; targetSelectionPending: boolean; selected: boolean; onSelect: () => void; formationScale: number;
 }) {
+  const [figureFrameHeight, setFigureFrameHeight] = useState(FALLBACK_FIGURE_FRAME_HEIGHT);
   const eventTarget = event?.targetId === hero.id;
   const moved = event?.type === "characterMoved" && event.sourceId === hero.id;
   const effect = eventTarget || moved ? event?.type ?? null : null;
@@ -56,13 +89,16 @@ function BattlefieldFigure({ hero, active, event, eventSourceSide, selectable, t
   const evadeClass = event?.type === "attackEvaded" && eventTarget && eventSourceSide
     ? `evade-${eventSourceSide}` : "";
   const assetKey = hero.definitionId;
+  const figureScale = formationScale * heroFigureScaleFor(hero.definitionId);
   return (
     <div
       className={`battle-figure slot-${hero.slot} ${hero.sideId} ${active ? "acting" : ""} ${effect ? `fx-${effect}` : ""} ${movementClass} ${evadeClass} ${selectable ? "selectable" : ""} ${selected ? "targeted" : ""}`}
       data-combatant-id={hero.id}
       data-figure-footprint="shared"
+      style={{ "--figure-frame-height": `${figureFrameHeight}px`, "--figure-scale": figureScale } as CSSProperties}
     >
       <div className="overhead">
+        <span className="overhead-name">{hero.displayName}</span>
         <Meter value={hero.hp.current} maximum={hero.hp.maximum} kind="hp" label={`${hero.displayName} health`} />
         <div className="battlefield-statuses">{hero.statuses.map((status) => <StatusIcon key={status.instanceId} status={status} />)}</div>
       </div>
@@ -76,10 +112,10 @@ function BattlefieldFigure({ hero, active, event, eventSourceSide, selectable, t
         aria-label={`${hero.displayName}${selectable ? ", selectable target" : ""}`}>
         <span className="figure-footprint">
           <span className="figure-aura" />
-          <AssetImage request={{ kind: "figure", key: assetKey, name: hero.displayName, className: hero.faculty }} className="figure-art" />
+          <AssetImage request={{ kind: "figure", key: assetKey, name: hero.displayName, className: hero.faculty }} className="figure-art"
+            onImageDimensions={(dimensions) => setFigureFrameHeight(dimensions ? frameHeightFor(dimensions) ?? FALLBACK_FIGURE_FRAME_HEIGHT : FALLBACK_FIGURE_FRAME_HEIGHT)} />
           {targetEffect && <span className={`target-effect effect-${targetEffect} ${targetEffect === "debuff" ? "red" : targetEffect === "buff" ? "blue" : "green"}`} data-effect-target={hero.id} aria-hidden="true" />}
         </span>
-        <span className="figure-name">{hero.displayName}</span>
         {effect === "damageApplied" && eventTarget && event?.amount !== undefined && <span className="combat-text damage">−{event.amount}</span>}
         {effect === "healingApplied" && eventTarget && event?.amount !== undefined && <span className="combat-text heal">+{event.amount}</span>}
         {effect === "attackEvaded" && <span className="combat-text evade">EVADE</span>}
@@ -168,7 +204,7 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
     if (!acceptsCommands || !selectedSkill || !legal || !snapshot.activeCombatantId) return;
     void present(() => provider.submitCommand({
       type: "useSkill",
-      commandId: `cmd.${crypto.randomUUID()}`,
+      commandId: createCommandId(),
       expectedRevision: revision,
       actorId: snapshot.activeCombatantId!,
       skillId: selectedSkill,
@@ -231,6 +267,7 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
               selectable={acceptsCommands && Boolean(legal?.validTargetIds.includes(hero.id)) && !isPlaying}
               targetSelectionPending={acceptsCommands && Boolean(legal?.validTargetIds.includes(hero.id)) && !isPlaying && targetSelectionPending}
               selected={selectedTargets.includes(hero.id)}
+              formationScale={position.scale}
               onSelect={() => toggleTarget(hero.id)} />
             </div>;
           })}

@@ -29,8 +29,11 @@ _To be documented._
 - Battlefield health/status panels sit above their associated hero figure.
 - In 1v1, the entire overhead health/status box is 1.5× its shared logical
   size, anchored from its bottom edge. 2v2 and 3v3 retain the shared size.
-- Its vertical clearance is calculated from the hero's formation scale, so
-  each health/status box remains above its corresponding figure.
+- Its vertical clearance is calculated from the hero's measured frame height
+  and formation scale, so each health/status box remains 12px above the visible
+  figure frame.
+- The runtime hero name is part of the health/status box, above the HP meter;
+  it is truncated rather than allowed to overlap the figure or other UI.
 - Format-specific spacing must not move the hero figure, formation anchor, or
   target-control hit area.
 
@@ -41,7 +44,7 @@ _To be documented._
   vertical anchors are 80% for duel; 82% and 100% for duo; and 75%, 88%, and
   100% for trio. Within duo and trio, the lower (nearer) slot uses the larger
   scale so visual depth agrees with the ground position.
-- Duel figures use scale 1.1. The two duel teams retain matching y and scale
+- Duel figures use scale 1.5. The two duel teams retain matching y and scale
   values so their presentation remains symmetric.
 - Format scaling must preserve clear separation between figures, overhead
   health panels, side panels, and the command deck.
@@ -49,12 +52,20 @@ _To be documented._
   placeholder silhouette clip. Friendly artwork preserves its original
   orientation; enemy artwork is horizontally mirrored without mirroring its
   label, aura, health/status panel, or target hit area.
-- Direct final artwork and fallback figures share one 172×284 logical figure
-  footprint before formation scaling. The aura is centered from that same
-  footprint; 1v1 opposing figures share its feet baseline.
-- Overhead health/status UI must retain visible separation from the figure
-  footprint in every format. The enlarged treatment uses a 7px minimum visual
-  clearance at the 1440×720 desktop review viewport.
+- Direct final artwork and fallback figures use one 172px-wide, bottom-aligned
+  logical frame before formation scaling. A final image sets its frame height
+  from its intrinsic aspect ratio; missing or failed artwork uses the 202px
+  fallback frame. The aura is centered from that frame; 1v1 opposing figures
+  share its feet baseline.
+- `web-ui/lib/battle/assets.ts` owns a per-definition battlefield figure-scale
+  registry. Every current hero starts at `1.0`; adjusting one entry changes
+  only that hero's battlefield art, attached target control/aura/effects, and
+  HP-panel position. Portraits, side cards, and game rules are unaffected.
+- Overhead health/status UI must retain 12px of visible separation above the
+  dynamic figure frame in every format.
+- Formation layers follow depth: rear is below centre, and centre is below
+  front, so a nearer front figure and its health box cannot be covered by a
+  farther slot.
 
 ### Battle Side Cards
 
@@ -78,6 +89,9 @@ _To be documented._
   invent a local gameplay classification.
 - Friendly lunge feedback moves right; enemy lunge feedback moves left. It is
   presentation-only and must not alter formation or combat positions.
+- Battlefield auras are side-owned: friendly figures are blue and enemy
+  figures are red. An acting figure retains its side color and adds the normal
+  pulse animation; purple is not an active-aura color.
 - While a selected skill still requires targets, every valid battlefield target
   uses a crosshair cursor, regardless of side. The cursor returns to normal
   once the required maximum target count is selected; multi-target skills keep
@@ -113,5 +127,14 @@ _To be documented._
   bottom-anchored above the hero; 2v2 and 3v3 remain unchanged.
 - 2026-08-02 — Added valid-target crosshair feedback that persists until a
   selected skill's required target count is complete.
+- 2026-08-03 — Reduced scale-aware HP-panel clearance to 4px, moved runtime
+  names into the HP panel, established rear/centre/front stacking, and made
+  active aura animation retain its team color.
+- 2026-08-04 — Made battlefield frames follow supplied hero artwork’s
+  intrinsic aspect ratio, retained a 202px frame for missing/failed images,
+  and anchored HP/status panels 8px above the resulting dynamic frame.
+- 2026-08-04 — Increased the dynamic HP/status panel clearance to 12px.
+- 2026-08-04 — Added the per-definition battlefield figure-scale registry;
+  all supported definitions initially use the neutral `1.0` ratio.
 - 2026-08-02 — Documented the UI-008 in-scene countdown metric contract and
   accessible non-interactive entry state.

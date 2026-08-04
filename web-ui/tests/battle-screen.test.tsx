@@ -111,6 +111,29 @@ describe("battle screen integration", () => {
     });
   });
 
+  it("keeps command submission usable when crypto.randomUUID is unavailable", async () => {
+    const provider = new MockBattleProvider();
+    const submit = vi.spyOn(provider, "submitCommand");
+    const originalCrypto = globalThis.crypto;
+    vi.stubGlobal("crypto", {});
+    try {
+      await renderBattle(provider);
+      fireEvent.click(screen.getByRole("button", { name: /Life Drain/i }));
+      fireEvent.click(screen.getByRole("button", { name: "Andonidas, selectable target" }));
+      fireEvent.click(screen.getByRole("button", { name: "CAST SKILL" }));
+
+      expect(submit).toHaveBeenCalledOnce();
+      expect(submit.mock.calls[0][0]).toMatchObject({
+        type: "useSkill",
+        targetIds: ["enemy.andonidas"],
+        commandId: expect.stringMatching(/^cmd\.[A-Za-z0-9-]+$/),
+      });
+    } finally {
+      vi.unstubAllGlobals();
+      vi.stubGlobal("crypto", originalCrypto);
+    }
+  });
+
   it("renders ordered battle-log messages and allows clearing them", async () => {
     await renderBattle();
     const log = screen.getByRole("list", { name: "Battle events" });

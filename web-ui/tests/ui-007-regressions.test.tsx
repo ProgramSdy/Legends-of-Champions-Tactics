@@ -29,6 +29,9 @@ describe("UI-007 battlefield geometry contracts", () => {
       // Overhead remains a child of the same figure so health/status cues do
       // not drift into a format-wide overlay as formations change.
       expect(figure.querySelector(".overhead")).toBeInTheDocument();
+      expect(figure.querySelector(".figure-name")).not.toBeInTheDocument();
+      const heroName = figure.querySelector(".battle-target-control")?.getAttribute("aria-label")?.split(",")[0];
+      expect(figure.querySelector(".overhead")).toHaveTextContent(heroName ?? "");
     });
   });
 
@@ -41,17 +44,89 @@ describe("UI-007 battlefield geometry contracts", () => {
     const overhead = css.match(/\.overhead\{([^}]*)\}/)?.[1] ?? "";
 
     expect(footprint).toMatch(/(?:^|;)width:172px(?:;|$)/);
-    expect(footprint).toMatch(/(?:^|;)height:284px(?:;|$)/);
+    expect(footprint).toMatch(/(?:^|;)height:var\(--figure-frame-height\)(?:;|$)/);
     expect(footprint).toMatch(/(?:^|;)bottom:17px(?:;|$)/);
     expect(aura).toMatch(/(?:^|;)bottom:-12px(?:;|$)/);
     expect(aura).toMatch(/(?:^|;)left:50%(?:;|$)/);
-    // Overhead is positioned in the unscaled parent coordinate space. Its
-    // bottom clearance therefore tracks each formation's figure scale.
-    expect(overhead).toMatch(/(?:^|;)bottom:calc\(301px\*var\(--figure-scale\)\+8px\)(?:;|$)/);
+    // Overhead is positioned from the measured frame, footprint baseline, and
+    // the required 12px clearance in scaled formation coordinates.
+    expect(overhead).toMatch(/(?:^|;)bottom:calc\(\(var\(--figure-frame-height\)\+17px\)\*var\(--figure-scale\)\+12px\)(?:;|$)/);
     expect(overhead).toMatch(/(?:^|;)left:59px(?:;|$)/);
     const duelOverhead = css.match(/\.format-duel\.overhead\{([^}]*)\}/)?.[1] ?? "";
     expect(duelOverhead).toMatch(/(?:^|;)transform:scale\(1\.5\)(?:;|$)/);
     expect(duelOverhead).toMatch(/(?:^|;)transform-origin:centerbottom(?:;|$)/);
+  });
+
+  it("fills the dynamic frame for fallback figures while preserving image containment", () => {
+    const css = readFileSync("app/globals.css", "utf8").replace(/\s+/g, "");
+    const fallback = css.match(/\.figure-art\.asset-fallback\{([^}]*)\}/)?.[1] ?? "";
+    const finalImage = css.match(/img\.figure-art\.fallback-requested\{([^}]*)\}/)?.[1] ?? "";
+
+    // Fallback silhouettes fill the measured frame and use the default
+    // 202px metric when no intrinsic dimensions are available.
+    expect(fallback).toMatch(/(?:^|;)height:100%(?:;|$)/);
+    expect(fallback).toMatch(/(?:^|;)inset:0(?:;|$)/);
+
+    // Real figure images continue to preserve their source proportions.
+    expect(finalImage).toMatch(/(?:^|;)object-fit:contain(?:;|$)/);
+    expect(finalImage).toMatch(/(?:^|;)object-position:centerbottom(?:;|$)/);
+  });
+
+  it("derives the figure frame from loaded artwork dimensions", async () => {
+    const { container } = render(<BattleScreen provider={new MockBattleProvider(createFormatFixture(1))} />);
+    await screen.findByRole("region", { name: "Battlefield" });
+    const figure = container.querySelector<HTMLElement>(".battle-figure")!;
+    const image = figure.querySelector<HTMLImageElement>("img.figure-art.fallback-requested")!;
+    Object.defineProperty(image, "naturalWidth", { configurable: true, value: 1200 });
+    Object.defineProperty(image, "naturalHeight", { configurable: true, value: 1800 });
+
+    fireEvent.load(image);
+    await waitFor(() => expect(figure.style.getPropertyValue("--figure-frame-height")).toBe("258px"));
+    // The image is bottom anchored in the shared footprint; only its frame
+    // height changes when intrinsic dimensions become available.
+    expect(figure.querySelector(".figure-footprint")).toBeInTheDocument();
+    expect(figure.querySelector(".overhead")).toBeInTheDocument();
+  });
+
+  it("retains the fallback frame metric after a missing figure errors", async () => {
+    const { container } = render(<BattleScreen provider={new MockBattleProvider(createFormatFixture(1))} />);
+    await screen.findByRole("region", { name: "Battlefield" });
+    const figure = container.querySelector<HTMLElement>(".battle-figure")!;
+    const image = figure.querySelector<HTMLImageElement>("img.figure-art.fallback-requested")!;
+    fireEvent.error(image);
+
+    await waitFor(() => expect(figure.querySelector(".asset-fallback.figure-art")).toBeInTheDocument());
+    expect(figure.style.getPropertyValue("--figure-frame-height")).toBe("202px");
+  });
+
+  it("keeps overhead clearance dynamic while preserving footing and enemy mirroring", () => {
+    const css = readFileSync("app/globals.css", "utf8").replace(/\s+/g, "");
+    const overhead = css.match(/\.overhead\{([^}]*)\}/)?.[1] ?? "";
+    expect(overhead).toMatch(/(?:^|;)bottom:calc\(\(var\(--figure-frame-height\)\+17px\)\*var\(--figure-scale\)\+12px\)(?:;|$)/);
+    const targetControl = css.match(/\.battle-target-control\{([^}]*)\}/)?.[1] ?? "";
+    expect(targetControl).toMatch(/(?:^|;)height:calc\(var\(--figure-frame-height\)\+48px\)(?:;|$)/);
+    const footprint = css.match(/\.figure-footprint\{([^}]*)\}/)?.[1] ?? "";
+    expect(footprint).toMatch(/(?:^|;)bottom:17px(?:;|$)/);
+    expect(css).toMatch(/\.battle-figure\.enemyimg\.figure-art\.fallback-requested\{[^}]*transform:scaleX\(-1\)/);
+  });
+
+  it("keeps aura ownership and active animation side-aware", () => {
+    const css = readFileSync("app/globals.css", "utf8").replace(/\s+/g, "");
+    expect(css).toMatch(/\.figure-aura\{[^}]*background:#2584ff2e/);
+    expect(css).toMatch(/\.enemy\.figure-aura\{[^}]*background:#e3403025/);
+    expect(css).toMatch(/\.battle-figure\.acting\.figure-aura\{[^}]*animation:pulse-centered/);
+  });
+
+  it("layers front formation figures above rear figures in duo and trio", async () => {
+    const css = readFileSync("app/globals.css", "utf8").replace(/\s+/g, "");
+    const zIndex = (slot: string) => Number(css.match(new RegExp(`\\.formation-slot\\[data-slot=${slot}\\]\\{[^}]*z-index:(\\d+)`))?.[1]);
+    expect(zIndex("front")).toBeGreaterThan(zIndex("rear"));
+    for (const size of [2, 3] as const) {
+      const { container } = render(<BattleScreen provider={new MockBattleProvider(createFormatFixture(size))} />);
+      await screen.findByRole("region", { name: "Battlefield" });
+      expect(container.querySelectorAll(`.formation-slot[data-slot="front"]`)).toHaveLength(2);
+      expect(container.querySelectorAll(`.formation-slot[data-slot="rear"]`)).toHaveLength(2);
+    }
   });
 
   it("keeps formation slots distinct and aligned to a common figure baseline", () => {
@@ -61,8 +136,8 @@ describe("UI-007 battlefield geometry contracts", () => {
       expect(new Set([...friendly, ...enemy].map(({ x, y }) => `${x}:${y}`)).size).toBe(friendly.length + enemy.length);
       if (format === "duel") {
         expect(friendly[0].y).toBe(enemy[0].y);
-        expect(friendly[0].scale).toBe(1.1);
-        expect(enemy[0].scale).toBe(1.1);
+        expect(friendly[0].scale).toBe(1.5);
+        expect(enemy[0].scale).toBe(1.5);
       }
     }
   });

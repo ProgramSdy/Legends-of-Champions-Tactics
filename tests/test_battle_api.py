@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 import pytest
 
-from battle_api.app import app, registry
+from battle_api.app import DEFAULT_CORS_ORIGINS, _cors_origins, app, registry
 
 
 client = TestClient(app)
@@ -237,6 +237,20 @@ def test_cors_rejects_unlisted_origin():
     )
     assert response.status_code == 400
     assert "access-control-allow-origin" not in response.headers
+
+
+def test_cors_origin_configuration_is_explicit_and_never_allows_wildcard(monkeypatch):
+    monkeypatch.delenv("BATTLE_API_CORS_ORIGINS", raising=False)
+    assert _cors_origins() == list(DEFAULT_CORS_ORIGINS)
+
+    monkeypatch.setenv(
+        "BATTLE_API_CORS_ORIGINS",
+        " https://preview.example , *, ,http://localhost:3001 ",
+    )
+    assert _cors_origins() == [
+        "https://preview.example",
+        "http://localhost:3001",
+    ]
 
 
 def test_roster_endpoint_exposes_only_the_eight_approved_heroes():

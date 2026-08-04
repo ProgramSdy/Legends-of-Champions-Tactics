@@ -34,10 +34,31 @@ export const heroPresentation: Record<string, { className: string; tone: string;
   "hero.paladin.retribution": { className: "Paladin", tone: "amber", assets: { figure: "/game-images/heroes/Paladin-Retribution/figures/Paladin_Retribution.png" }, placeholder: false },
   "hero.priest.comprehensiveness": { className: "Priest", tone: "blue", assets: { figure: "/game-images/heroes/Priest-Comprehensiveness/figures/Priest_Comprehensiveness.png" }, placeholder: false },
   "hero.priest.discipline": { className: "Priest", tone: "blue", assets: { figure: "/game-images/heroes/Priest-Discipline/figures/Priest_Discipline.png" }, placeholder: false },
+  "hero.mage.comprehensiveness": { className: "Mage", tone: "blue", assets: { figure: "/game-images/heroes/Mage-Comprehensiveness/figures/Mage_Comprehensiveness.png" }, placeholder: false },
   "hero.warrior.defence": { className: "Warrior", tone: "amber", assets: { figure: "/game-images/heroes/Warrior-Defence/figures/Warrior_Defence.png" }, placeholder: false },
   "hero.warrior.weapon_master": { className: "Warrior", tone: "amber", assets: { class: classAssets.Warrior, figure: "/game-images/heroes/Warrior-Weapon-Master/figures/Warrior_Weapon_Master.png" }, placeholder: false, animation: { idle: "idle", active: "weapon-ready", defeated: "defeated" } },
-  "hero.rogue.comprehensiveness": { className: "Rogue", tone: "violet", assets: {}, placeholder: true, animation: { idle: "idle", active: "shadow-ready", defeated: "defeated" } },
+  "hero.rogue.comprehensiveness": { className: "Rogue", tone: "violet", assets: { figure: "/game-images/heroes/Rogue-Comprehensiveness/figures/Rogue_Comprehensiveness.png" }, placeholder: false, animation: { idle: "idle", active: "shadow-ready", defeated: "defeated" } },
 };
+
+// Battlefield-only visual tuning. Keep a definition at 1.0 to preserve its
+// current intrinsic-art size; adjust individual values when visual direction
+// calls for a larger or smaller hero without affecting portraits or game rules.
+export const DEFAULT_HERO_FIGURE_SCALE = 1;
+export const heroFigureScales: Record<string, number> = {
+  "hero.paladin.protection": 1.2,
+  "hero.paladin.retribution": 1.2,
+  "hero.priest.comprehensiveness": 1,
+  "hero.priest.discipline": 1,
+  "hero.mage.comprehensiveness": 0.9,
+  "hero.warrior.defence": 1.2,
+  "hero.warrior.weapon_master": 1.1,
+  "hero.rogue.comprehensiveness": 1,
+};
+
+export function heroFigureScaleFor(definitionId: string): number {
+  const scale = heroFigureScales[definitionId];
+  return typeof scale === "number" && Number.isFinite(scale) && scale > 0 ? scale : DEFAULT_HERO_FIGURE_SCALE;
+}
 
 export interface SkillPresentation {
   glyph: string;

@@ -16,6 +16,29 @@ press Ctrl-C once to stop both. To run the adapter independently, use:
 uvicorn battle_api.app:app --reload --port 8001
 ```
 
+### Same-Wi-Fi development access
+
+For a temporary local-network playtest, run this from the repository root:
+
+```bash
+make lan
+```
+
+It detects the Mac Wi-Fi address from `en0`, binds the development frontend and
+adapter to the LAN, configures the browser to use that same host for the API,
+and restricts API CORS to that explicit browser origin plus the two local
+origins. If Wi-Fi is on another interface, provide the address yourself:
+
+```bash
+make lan LAN_HOST=192.168.1.42
+```
+
+Open `http://<LAN_HOST>:3001` from another device on the same trusted network.
+Allow incoming connections for ports 3001 and 8001 in macOS Firewall if asked.
+This is an unauthenticated development mode, not an Internet-facing deployment:
+do not use it on untrusted/shared networks or forward these ports through a
+router.
+
 Development CORS allows exactly `http://localhost:3001` and
 `http://127.0.0.1:3001` by default. Override the exact allowlist with a
 comma-separated environment variable:

@@ -2,6 +2,204 @@
 
 Completed work should be appended in reverse chronological order, with the newest entry first.
 
+## 2026-08-04 — Add Per-Hero Battlefield Figure-Scale Parameters
+
+**Summary:**
+
+Added one centralized, per-definition `heroFigureScales` registry. Every
+supported hero currently uses the neutral `1.0` ratio. Future visual tuning can
+change one value—for example, Warrior Defence to `1.2` or Mage
+Comprehensiveness to `0.9`—without modifying formation data or image files.
+The value combines with the existing formation scale and preserves grounded
+feet, target coverage, aura/effect alignment, dynamic HP-panel positioning,
+and the fixed 12px panel clearance.
+
+**Agent Selection and Contributions:**
+
+- Complexity/risk assessment — focused frontend configuration and geometry
+  integration. `project-manager`, `ui-developer`, and `test-automator`
+  participated. `game-engine-developer` was omitted because no authoritative
+  rules, adapter, or API behavior changes. `reviewer` was not selected because
+  the narrowly covered registry/configuration task did not justify further
+  work in the already-constrained agent pool.
+- `project-manager` — selected definition-ID ownership and required the
+  effective scale to remain distinct from formation configuration.
+- `ui-developer` — implemented the all-`1.0` registry, safe unknown fallback,
+  and effective battlefield scale.
+- `test-automator` — covered defaults, invalid/unknown fallback, representative
+  `1.2`/`0.9` overrides, formation multiplication, and preserved image
+  dimensions/side behavior.
+
+**Files Changed:**
+
+- `web-ui/lib/battle/assets.ts`
+- `web-ui/components/battle/BattleScreen.tsx`
+- `web-ui/tests/hero-figure-scales.test.tsx`
+- `docs/web-ui/Style_Guide.md`
+- `docs/web-ui/WEB_UI_ARCHITECTURE.md`
+- `docs/Codex/Completed.md`
+
+**Validation:**
+
+- `cd web-ui && npm exec vitest run tests/hero-figure-scales.test.tsx` — passed; 11 tests.
+- `cd web-ui && npm run typecheck` — passed.
+- `cd web-ui && npm run lint` — passed.
+- `git diff --check` — passed.
+
+**Unresolved Issues or Follow-up:**
+
+- Ratios substantially outside the representative `0.9`–`1.2` range should be
+  inspected in live 2v2 and 3v3 before being retained as visual tuning.
+
+---
+
+## 2026-08-04 — Increase Dynamic HP/Status Panel Clearance to 12px
+
+**Summary:**
+
+Increased only the terminal clearance in the dynamic HP/status panel formula
+from 8px to 12px. Intrinsic figure sizing, formation scale, foot baseline,
+target controls, aura placement, and image mirroring remain unchanged.
+
+**Agent Selection and Contributions:**
+
+- Complexity/risk assessment — low, surgical frontend geometry adjustment.
+  The `project-manager` and `ui-developer` participated. `test-automator`,
+  `reviewer`, and `game-engine-developer` were not selected because this is one
+  well-covered CSS constant change with no engine or contract impact.
+- `project-manager` — restricted the work to the final clearance term and its
+  current tests/documentation.
+- `ui-developer` — updated the CSS formula, regression assertions, and
+  normative UI documentation.
+
+**Files Changed:**
+
+- `web-ui/app/globals.css`
+- `web-ui/tests/ui-007-regressions.test.tsx`
+- `docs/web-ui/Style_Guide.md`
+- `docs/web-ui/WEB_UI_ARCHITECTURE.md`
+- `docs/Codex/Completed.md`
+
+**Validation:**
+
+- `cd web-ui && npm exec vitest run tests/ui-007-regressions.test.tsx` — passed; 23 tests.
+- `cd web-ui && npm run typecheck` — passed.
+- `cd web-ui && npm run lint` — passed.
+- `git diff --check` — passed.
+- Live browser measurements — 1v1 returned `[12, 12]`, 2v2 returned four
+  12px gaps, and 3v3 returned six 12px gaps.
+
+**Unresolved Issues or Follow-up:**
+
+- None for this clearance-only adjustment.
+
+---
+
+## 2026-08-04 — Dynamically Align Figure Frames and HP Panels to Hero Art
+
+**Summary:**
+
+Replaced the fixed-height battlefield figure frame with a 172px-wide frame
+whose height is derived from each loaded final image’s intrinsic aspect ratio.
+Missing or failed images retain a 202px fallback frame. The target control
+grows with the frame, feet remain grounded, and the HP/status panel is now
+positioned exactly 8px above the resulting scaled frame in every formation.
+
+**Agent Selection and Contributions:**
+
+- Complexity/risk assessment — medium shared frontend geometry change across
+  direct art, fallbacks, 1v1/2v2/3v3 layouts, and hit targets.
+  `project-manager`, `ui-developer`, `test-automator`, and `reviewer`
+  participated. `game-engine-developer` was not selected because no combat
+  rules, adapter/API contract, or authoritative state changed.
+- `project-manager` — selected the intrinsic-size design and kept formation
+  coordinates, authority boundaries, and the dirty worktree out of scope.
+- `ui-developer` — added intrinsic dimension reporting, dynamic frame metrics,
+  frame-aware target height, and the 8px HP-panel calculation.
+- `test-automator` — replaced obsolete fixed-frame assertions and added image
+  load/error, frame, clearance, hitbox, and mirror regressions.
+- `reviewer` — found no blockers; confirmed frame footing, fallback/error,
+  side mirroring, accessibility structure, and worktree scope.
+
+**Files Changed:**
+
+- `web-ui/components/battle/AssetImage.tsx`
+- `web-ui/components/battle/BattleScreen.tsx`
+- `web-ui/app/globals.css`
+- `web-ui/tests/ui-007-regressions.test.tsx`
+- `docs/web-ui/Style_Guide.md`
+- `docs/web-ui/WEB_UI_ARCHITECTURE.md`
+- `docs/Codex/Completed.md`
+
+**Validation:**
+
+- `cd web-ui && npm exec vitest run tests/ui-007-regressions.test.tsx tests/battle-screen.test.tsx tests/paladin-protection-figure.test.tsx --reporter=dot` — passed; 57 tests. npm emitted a non-failing warning that its `--reporter` config forwarding will change in a future major version.
+- `cd web-ui && npm run typecheck` — passed.
+- `cd web-ui && npm run lint` — passed.
+- `git diff --check` — passed.
+- Live browser measurements — every rendered figure in 1v1, 2v2, and 3v3
+  reported an exact 8px gap from its dynamic frame top to its HP-panel bottom;
+  Warrior Weapon Master used a 201.91px unscaled frame, supplied 2:3 art used
+  258px, and missing Mage art retained the 202px fallback frame.
+
+**Unresolved Issues or Follow-up:**
+
+- Very tall future art is intentionally allowed to create a tall frame. Review
+  such supplied assets in the live formations to ensure they do not crowd the
+  header or neighbouring heroes before release.
+
+---
+
+## 2026-08-04 — Align Fallback Figure Proportions with Hero Artwork
+
+**Summary:**
+
+Changed the battlefield’s missing-image silhouette so it keeps the shared
+bottom baseline but occupies 71.2% of the shared figure footprint. This aligns
+its visual height with the contained Warrior Weapon Master reference instead
+of allowing the fallback shape to fill the entire tall frame.
+
+**Agent Selection and Contributions:**
+
+- Complexity/risk assessment — low frontend-only visual maintenance. The
+  `project-manager`, `ui-developer`, and `test-automator` participated.
+  `game-engine-developer` was not needed because no authoritative state,
+  adapter, API, or contract changes were involved. `reviewer` was omitted as
+  an independent review was disproportionate for one isolated CSS rule; a
+  focused regression and live comparison covered the risk.
+- `project-manager` — limited scope to the shared fallback selector and
+  protected the existing dirty worktree.
+- `ui-developer` — bottom-aligned the fallback at its adjusted visual height.
+- `test-automator` — added the selector/proportion regression assertion and
+  ran the focused suite.
+
+**Files Changed:**
+
+- `web-ui/app/globals.css`
+- `web-ui/tests/ui-007-regressions.test.tsx`
+- `docs/web-ui/Style_Guide.md`
+- `docs/web-ui/WEB_UI_ARCHITECTURE.md`
+- `docs/Codex/Completed.md`
+
+**Validation:**
+
+- `cd web-ui && npm exec vitest run tests/ui-007-regressions.test.tsx` — passed; 20 tests.
+- `cd web-ui && npm run typecheck` — passed.
+- `cd web-ui && npm run lint` — passed.
+- Live 1v1 final-art versus deliberate missing-image comparison — both stayed
+  foot-aligned; the fallback rendered at 303px high at duel scale, matching
+  the Warrior reference’s contained visual height. The HP panels and target
+  control geometry did not move.
+- `git diff --check` — passed.
+
+**Unresolved Issues or Follow-up:**
+
+- Hero source aspect ratios vary. The generic 71.2% fallback is intentionally
+  tuned to the current Warrior reference, so it is generally similar rather
+  than pixel-identical to every supplied asset.
+
+---
+
 ## Completion Entry Template
 
 ### TASK-0000 — Task title
@@ -23,6 +221,175 @@ Brief description of the completed result.
 **Unresolved Issues or Follow-up:**
 
 - None, or list remaining items.
+
+---
+
+## 2026-08-03 — UI Geometry: HP Clearance, Formation Layers, Auras, and Names
+
+**Summary:**
+
+Reduced the scale-aware health-panel clearance from 8px to 4px. In duo and
+trio formations, rear/centre/front slots now have deterministic depth layers
+so the nearer front figure and its HP panel render above farther slots. Hero
+names now appear inside the HP panel above the HP meter. Auras are permanently
+blue for friendly heroes and red for enemies; active heroes retain that side
+color while using the existing pulse animation.
+
+**Agent Selection and Contributions:**
+
+- Complexity/risk assessment — medium frontend geometry work across all battle
+  formats. `project-manager`, `ui-developer`, `test-automator`, and `reviewer`
+  participated. `game-engine-developer` was not selected because formation,
+  health-panel, and aura presentation do not change engine state or contracts.
+- `ui-developer` — implemented the CSS/component geometry changes.
+- `test-automator` — added deterministic coverage for clearance, stack order,
+  aura ownership, and name relocation.
+- `reviewer` — approved the final implementation with no blockers.
+
+**Files Changed:**
+
+- `web-ui/app/globals.css`
+- `web-ui/components/battle/BattleScreen.tsx`
+- `web-ui/tests/ui-007-regressions.test.tsx`
+- `docs/web-ui/Style_Guide.md`
+- `docs/Codex/Completed.md`
+
+**Validation:**
+
+- `cd web-ui && npm run typecheck && npm run lint && npx vitest run tests/ui-007-regressions.test.tsx tests/battle-screen.test.tsx tests/paladin-protection-figure.test.tsx --reporter=dot` — passed; 53 tests.
+- `git diff --check` — passed.
+- Independent review — approved, no blockers.
+
+**Unresolved Issues or Follow-up:**
+
+- None for the requested battlefield geometry changes.
+
+---
+
+## 2026-08-03 — Register Mage and Rogue Comprehensiveness Figures
+
+**Summary:**
+
+Registered the owner-supplied Mage Comprehensiveness and Rogue
+Comprehensiveness battlefield figures using their stable hero definition IDs.
+Both use their direct public paths, retain the standard fallback chain, and
+mirror only as enemy artwork.
+
+**Agent Selection and Contributions:**
+
+- This was a narrow frontend asset-registry update. The `project-manager`,
+  `ui-developer`, and `test-automator` participated; engine and reviewer roles
+  were not needed because no game/API behaviour changed.
+- `ui-developer` — registered both final figure URLs without modifying assets.
+- `test-automator` — extended direct-path and both-side orientation coverage.
+
+**Files Changed:**
+
+- `web-ui/lib/battle/assets.ts`
+- `web-ui/tests/paladin-protection-figure.test.tsx`
+- `docs/web-ui/WEB_UI_ARCHITECTURE.md`
+- `docs/Codex/Completed.md`
+
+**Validation:**
+
+- `cd web-ui && npm run typecheck && npm run lint && npx vitest run tests/paladin-protection-figure.test.tsx --reporter=dot` — passed; 16 tests.
+- `git diff --check` — passed.
+
+**Unresolved Issues or Follow-up:**
+
+- None for these two figure registrations.
+
+---
+
+## 2026-08-03 — BUG-UUID-001: Support Browsers Without `crypto.randomUUID`
+
+**Summary:**
+
+Repaired browser command submission on clients that do not implement
+`crypto.randomUUID()`. Skill commands now preserve the required `cmd.<UUID>`
+shape by using `randomUUID` when available, Web Crypto random bytes otherwise,
+and a timestamp-mixed random fallback only when Web Crypto itself is absent.
+The command payload, target IDs, API contract, and battle rules are unchanged.
+
+**Agent Selection and Contributions:**
+
+- Complexity/risk assessment — low, frontend compatibility bug. The
+  `project-manager`, `ui-developer`, and `test-automator` participated.
+  `game-engine-developer` and `reviewer` were not selected because the API
+  contract and engine behaviour are untouched and a deterministic client
+  regression test covers the narrow compatibility seam.
+- `ui-developer` — added the compatible command-ID generator at the actual
+  `BattleScreen` submission boundary.
+- `test-automator` — added a regression that removes `randomUUID`/Web Crypto,
+  selects a target, and verifies one correctly shaped command is submitted.
+
+**Files Changed:**
+
+- `web-ui/components/battle/BattleScreen.tsx`
+- `web-ui/tests/battle-screen.test.tsx`
+- `docs/Codex/Completed.md`
+
+**Validation:**
+
+- `cd web-ui && npm run typecheck && npm run lint && npx vitest run tests/battle-screen.test.tsx --reporter=dot` — passed; 18 tests.
+
+**Unresolved Issues or Follow-up:**
+
+- Reload the game page on the other PC after the development server receives
+  this source update. No battle/API follow-up is required.
+
+---
+
+## 2026-08-03 — NET-001: Add Opt-In Same-Wi-Fi Development Access
+
+**Summary:**
+
+Added `make lan` as an opt-in trusted-network launcher. It binds the frontend
+and FastAPI adapter only to the selected LAN address, injects that address into
+the browser API URL, and permits only that exact frontend origin in adapter
+CORS (in addition to the existing local origins). Default `make dev` remains
+loopback-only.
+
+**Agent Selection and Contributions:**
+
+- Complexity/risk assessment — medium cross-boundary development-networking
+  change with unauthenticated API exposure risk; all five roles participated in
+  coordinated review/implementation/validation work.
+- `project-manager` — constrained the work to opt-in local development,
+  selected explicit-interface binding, and consolidated validation/docs.
+- `ui-developer` — verified Vinext's LAN host option and the required public
+  API URL injection boundary.
+- `game-engine-developer` — its FastAPI bind/CORS responsibility was completed
+  by the project manager in a coordinated capacity wave; the explicit-origin,
+  no-wildcard policy was retained.
+- `test-automator` — added CORS origin parsing coverage.
+- `reviewer` — identified loopback binding, client-local API URL, and wildcard
+  CORS as blockers; those findings were addressed before completion.
+
+**Files Changed:**
+
+- `Makefile`
+- `tests/test_battle_api.py`
+- `docs/web-ui/PYTHON_ADAPTER_API.md`
+- `docs/Codex/Completed.md`
+
+**Validation:**
+
+- `make -n lan LAN_HOST=192.168.1.42` — confirmed the generated commands bind
+  both services to the explicit address, configure exact CORS, and inject the
+  correct API URL.
+- `.venv/bin/python -m pytest -q tests/test_battle_api.py` — 18 passed; one
+  non-failing Starlette/TestClient deprecation warning.
+- `git diff --check` — passed.
+
+**Unresolved Issues or Follow-up:**
+
+- This environment had no active `en0` Wi-Fi address, so cross-device access
+  could not be exercised here. On the host Mac, run `make lan` (or provide
+  `LAN_HOST=<your-LAN-IP>`), approve macOS Firewall prompts, then open the
+  printed game address from the other device.
+- The LAN launcher is unauthenticated development tooling. Do not expose it to
+  untrusted networks or forward ports 3001/8001 through a router.
 
 ---
 

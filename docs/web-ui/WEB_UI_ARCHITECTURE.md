@@ -98,7 +98,7 @@ health/status UI, labels, portraits, and thumbnails are unchanged.
 
 Current final figure registrations cover Paladin Protection, Paladin
 Retribution, Priest Comprehensiveness, Priest Discipline, Warrior Defence, and
-Warrior Weapon Master.
+Warrior Weapon Master, Mage Comprehensiveness, and Rogue Comprehensiveness.
 
 Battle-session display names come from the adapter and are presentation data;
 stable definition and combatant IDs remain the only identity keys. Side cards
@@ -110,13 +110,22 @@ reachable, and focus is visible. Team Builder uses native radio, select, and
 input controls. The battle-completion dialog moves and contains focus on its
 Return action. Effects honor reduced motion and never determine outcomes.
 
-Battle figures use one contained, bottom-aligned footprint for direct final
-artwork and the fallback renderer. Each figure owns its centered aura and
-transient target-bound effects. Healing appears green; an additive adapter
+Battle figures use one contained, bottom-aligned, 172px-wide footprint for
+direct final artwork and the fallback renderer. A loaded final image reports
+its intrinsic dimensions to the figure and establishes its own frame height;
+missing or failed images retain a 202px fallback frame. The HP/status panel
+uses that frame and the formation scale to preserve a 12px visual clearance.
+Each figure owns its centered aura and transient target-bound effects. Healing appears green; an additive adapter
 `statusPresentation` value authoritatively selects blue buff or red debuff
 rings. The client never classifies a status locally. Attack-lunge direction is
 derived from the acting combatant's side while the authoritative formation and
 combat positions remain unchanged.
+
+`lib/battle/assets.ts` owns `heroFigureScales`, a centralized, stable
+definition-ID registry for battlefield-only visual tuning. Each supported
+definition defaults to `1.0`; the value multiplies its formation scale without
+changing portraits, team cards, engine state, or API payloads. Unknown IDs use
+the neutral default.
 
 The Team Builder and `/assets` registry are finite, keyboard-focusable desktop
 scroll regions with a stable scrollbar gutter when their content overflows.
@@ -155,3 +164,5 @@ worker.
 - 2026-08-02 — UI-008 replaced the earlier standalone entry countdown with a
   fully composed in-scene overlay and documented the authoritative playable
   opening lifecycle (`openingSnapshot` / `playOpening`).
+- 2026-08-03 — Registered supplied final battlefield figures for Mage
+  Comprehensiveness and Rogue Comprehensiveness.

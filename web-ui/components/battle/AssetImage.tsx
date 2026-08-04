@@ -5,8 +5,8 @@ import Image from "next/image";
 import { initials, resolveAsset, type AssetRequest } from "@/lib/battle/assets";
 
 type AssetImageProps =
-  | { request: AssetRequest; className?: string; src?: never; name?: never }
-  | { request?: never; className?: string; src: string | null; name: string };
+  | { request: AssetRequest; className?: string; src?: never; name?: never; onImageDimensions?: (dimensions: { naturalWidth: number; naturalHeight: number } | null) => void }
+  | { request?: never; className?: string; src: string | null; name: string; onImageDimensions?: (dimensions: { naturalWidth: number; naturalHeight: number } | null) => void };
 
 export function AssetImage(props: AssetImageProps) {
   const [failed, setFailed] = useState(false);
@@ -18,5 +18,7 @@ export function AssetImage(props: AssetImageProps) {
   if (!src || failed) {
     return <span className={`asset-fallback fallback-${asset.fallback} ${props.className ?? ""}`} role="img" aria-label={asset.label}>{initials(request.name)}<small>{asset.fallback === "class" ? "CLASS PLACEHOLDER" : "PLACEHOLDER"}</small></span>;
   }
-  return <Image className={`${props.className ?? ""} fallback-${asset.fallback}`} src={src} alt="" aria-label={asset.label} width={160} height={160} unoptimized={src.startsWith("/game-images/")} onError={() => setFailed(true)} />;
+  return <Image className={`${props.className ?? ""} fallback-${asset.fallback}`} src={src} alt="" aria-label={asset.label} width={160} height={160} unoptimized={src.startsWith("/game-images/")}
+    onLoad={(event) => props.onImageDimensions?.({ naturalWidth: event.currentTarget.naturalWidth, naturalHeight: event.currentTarget.naturalHeight })}
+    onError={() => { setFailed(true); props.onImageDimensions?.(null); }} />;
 }
