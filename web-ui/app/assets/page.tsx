@@ -21,7 +21,7 @@ function AssetFacts({ kind, id, name, className }: { kind: AssetKind; id: string
 export default function AssetsPage() {
   return (
     <main className="gallery-shell" tabIndex={0} aria-label="Battle Asset Registry scroll area">
-      <header><div><p>DEVELOPMENT ROUTE</p><h1>Battle Asset Registry</h1><span>Stable IDs, resolved paths, fallback tiers, and production readiness.</span></div><Link href="/">← Return to battle</Link></header>
+      <header><div><p>DEVELOPMENT ROUTE</p><h1>Battle Asset Registry</h1><span>Stable IDs, resolved paths, fallback tiers, and production readiness.</span></div><Link href="/game">← Return to battle</Link></header>
       <section><h2>Reference hero asset sets</h2><div className="gallery-grid heroes">{heroes.flatMap((hero) => heroKinds.map((kind) =>
         <article key={`${hero.id}.${kind}`}><AssetImage request={{ kind, key: hero.id, name: hero.name, className: hero.className }} /><strong>{hero.name} · {kind}</strong><AssetFacts kind={kind} id={hero.id} name={hero.name} className={hero.className} /><small>{heroPresentation[hero.id].placeholder ? "Placeholder-ready internal asset set" : "Final artwork"}</small></article>,
       ))}</div></section>

@@ -150,6 +150,13 @@ adapter derives it from authoritative serialized status metadata; control
 statuses use the harmful `debuff` presentation. Existing `effectHint: "status"`,
 status duration, source and target fields remain unchanged.
 
+`statusApplied` also carries the additive nullable `stacks` field whenever the
+serialized post-event status has a stack count. The adapter emits it for a new
+status and for a retained status whose stack count, source, kind, or refreshed
+duration changes. A duration-only countdown tick does not create a synthetic
+status-application event. This changes neither status rules nor the v1 event
+ordering; older consumers can ignore the optional field.
+
 Every snapshot includes additive v1 `turnControl`. Its disposition is
 `playerCommand`, `automaticAction`, `skip`, or `ended`; commands are accepted
 only when `acceptsCommands` is true at a `playerCommand` boundary and the

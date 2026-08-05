@@ -285,6 +285,7 @@ type BattleEvent = {
   amount?: number;
   hpAfter?: { current: number; maximum: number };
   roundsRemaining?: number | null;
+  stacks?: number | null; // statusApplied only; authoritative post-event count
   statusPresentation?: "buff" | "debuff" | "neutral"; // statusApplied only
   combatant?: CombatantState;
   movement?: "lunge" | "return" | "offset";
@@ -301,8 +302,12 @@ post-change value (`hpAfter`, status duration, or full summoned combatant).
 Every `statusApplied` event includes the additive authoritative
 `statusPresentation` cue. Beneficial statuses use `buff`, harmful and control
 statuses use `debuff`, and an unclassified status uses the compatible `neutral`
-fallback. Existing consumers may continue using `effectHint: "status"`; clients
-must not infer this presentation class from `statusId`.
+fallback. It additively includes `stacks` whenever the serialized status has a
+stack value. This is the post-event count for a new, refreshed, increased, or
+reduced retained status; clients render it and never derive a count from a
+status ID, skill, or rules. A legacy event may omit the field. Existing
+consumers may continue using `effectHint: "status"`; clients must not infer this
+presentation class from `statusId`.
 `attackEvaded` is emitted only when the engine records an authoritative evade
 for that target; unchanged HP alone is not evidence of evasion because a landed
 attack may deal zero damage. A true evade has no `amount` or HP mutation and
@@ -326,8 +331,9 @@ snapshot. The UI queues events, presents each at the selected local speed, and
 temporarily blocks battle input while required. It may shorten, skip, or replace
 missing effects and must honor `prefers-reduced-motion`.
 
-For smooth bars, visible state may apply each event's post-change value during
-playback. After the queue completes—or immediately after interruption,
+For smooth bars and status icons, visible state may apply each event's supplied
+post-change value during playback. After the queue completes—or immediately
+after interruption,
 unknown/malformed events, reload, or reconnection—the UI replaces visible state
 with the returned snapshot. Animation completion is never an acknowledgement
 required by the engine.

@@ -24,6 +24,24 @@ _To be documented._
 
 _To be documented._
 
+### Startup Title Scene
+
+- The initial `/` route is a full-viewport cinematic title scene. It uses the
+  owner-supplied startup artwork as a crop-safe direct public image and a
+  subtle readability-only vignette; it must not materially obscure the battle
+  artwork.
+- The supplied logo retains its aspect ratio in the upper centre. The
+  `START GAME` control is centered below the logo in clear artwork space and
+  routes to `/game`.
+- The control uses dark forged-metal/gunmetal material, a restrained
+  antique-gold border, subtle blue-violet accent, dimensional bevel, pale text,
+  and clear hover, pressed, and focus-visible states. It is not a flat
+  application-style button or a high-glow decorative element.
+- Title animation is limited to a restrained page/logo/control entrance and
+  hover transition. It honours reduced-motion preferences. Decorative startup
+  artwork is hidden from screen readers; the logo has descriptive alternative
+  text and the start control remains keyboard accessible.
+
 ### Battlefield Health Panels
 
 - Battlefield health/status panels sit above their associated hero figure.
@@ -58,11 +76,17 @@ _To be documented._
   fallback frame. The aura is centered from that frame; 1v1 opposing figures
   share its feet baseline.
 - `web-ui/lib/battle/assets.ts` owns a per-definition battlefield figure-scale
-  registry. Every current hero starts at `1.0`; adjusting one entry changes
-  only that hero's battlefield art, attached target control/aura/effects, and
-  HP-panel position. Portraits, side cards, and game rules are unaffected.
+  registry. Owner-approved per-hero values adjust only that hero's battlefield
+  art, attached target control/aura/effects, and HP-panel position. Portraits,
+  side cards, and game rules are unaffected; unknown definitions use `1.0`.
 - Overhead health/status UI must retain 12px of visible separation above the
   dynamic figure frame in every format.
+- Stackable status icons show a centered yellow numeral inside the icon's
+  lower-right corner, without a badge fill, border, or separate focus/click
+  target. The numeral retains the established readable size and expands only
+  for `99+`. Show valid counts including `1`; suppress zero, absent, or invalid
+  counts. The status tooltip and accessible name retain the exact authoritative
+  count in both overhead and Team Information icon sizes.
 - Formation layers follow depth: rear is below centre, and centre is below
   front, so a nearer front figure and its health box cannot be covered by a
   farther slot.
@@ -138,3 +162,5 @@ _To be documented._
   all supported definitions initially use the neutral `1.0` ratio.
 - 2026-08-02 — Documented the UI-008 in-scene countdown metric contract and
   accessible non-interactive entry state.
+- 2026-08-05 — Added the cinematic startup title-scene visual and interaction
+  standard for the `/` → `/game` entry flow.

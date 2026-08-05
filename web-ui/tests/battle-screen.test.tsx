@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { BattleScreen } from "@/components/battle/BattleScreen";
 import { MockBattleProvider } from "@/lib/battle/fixture";
+import type { BattleEvent } from "@/lib/battle/types";
 
 const demoDefinitions = [
   ["magic", "Magic attack"], ["healing", "Healing"], ["melee", "Melee"],
@@ -181,6 +182,96 @@ describe("battle screen integration", () => {
     expect(damage.compareDocumentPosition(healing) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect((await screen.findAllByText("45/81")).length).toBeGreaterThanOrEqual(2);
     expect(screen.getAllByText("73/81").length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("presents stacked status updates and removes the badge on the queued removal", async () => {
+    const provider = new MockBattleProvider();
+    const state = await provider.getState();
+    const opening = state.snapshot;
+    const target = opening.combatants["enemy.sashein"];
+    const final = structuredClone(opening);
+    final.combatants["enemy.sashein"].statuses = target.statuses.filter((status) => status.id !== "status.stitch_of_agony");
+    const events = [
+      {
+        id: "stack.apply", sequence: 1, type: "statusApplied", targetId: "enemy.sashein",
+        statusId: "status.poisoned_dagger", roundsRemaining: 3, stacks: 1,
+        statusPresentation: "debuff", effectHint: "status", message: "Stitch gains one stack.",
+      },
+      {
+        id: "stack.refresh", sequence: 2, type: "statusApplied", targetId: "enemy.sashein",
+        statusId: "status.poisoned_dagger", roundsRemaining: 4, stacks: 3,
+        statusPresentation: "debuff", effectHint: "status", message: "Stitch increases to three stacks.",
+      },
+      {
+        id: "stack.reduce", sequence: 3, type: "statusApplied", targetId: "enemy.sashein",
+        statusId: "status.poisoned_dagger", roundsRemaining: 1, stacks: 2,
+        statusPresentation: "debuff", effectHint: "status", message: "Stitch reduces to two stacks.",
+      },
+      {
+        id: "stack.remove", sequence: 4, type: "statusRemoved", targetId: "enemy.sashein",
+        statusId: "status.poisoned_dagger", effectHint: "status", message: "Poison expires.",
+      },
+    ] satisfies BattleEvent[];
+    render(<BattleScreen provider={provider} mockDemos={[{
+      id: "stack-update", label: "Stack update", run: async () => ({
+        id: "stack-update", label: "Stack update", eventType: "status", events, snapshot: final, revision: 2,
+      }),
+    }]} />);
+    await screen.findByRole("region", { name: "Battlefield" });
+    fireEvent.click(screen.getByRole("button", { name: "×2" }));
+    fireEvent.click(screen.getByRole("button", { name: "Stack update" }));
+    const teamStatus = () => screen.getByRole("article", { name: /Sashein/ }).querySelector(".status-stack-badge");
+    const fieldStatus = () => document.querySelector("[data-combatant-id='enemy.sashein'] .status-stack-badge");
+    await waitFor(() => {
+      expect(teamStatus()).toHaveTextContent("1");
+      expect(fieldStatus()).toHaveTextContent("1");
+    });
+    await waitFor(() => {
+      expect(teamStatus()).toHaveTextContent("3");
+      expect(fieldStatus()).toHaveTextContent("3");
+    });
+    await waitFor(() => {
+      expect(teamStatus()).toHaveTextContent("2");
+      expect(fieldStatus()).toHaveTextContent("2");
+    });
+    expect(await screen.findByText("Poison expires.")).toBeVisible();
+    await waitFor(() => {
+      expect(teamStatus()).not.toBeInTheDocument();
+      expect(fieldStatus()).not.toBeInTheDocument();
+    }, { timeout: 2500 });
+  });
+
+  it("reconciles transient stack presentation to the authoritative final snapshot", async () => {
+    const provider = new MockBattleProvider();
+    const state = await provider.getState();
+    const final = structuredClone(state.snapshot);
+    final.combatants["enemy.sashein"].statuses = [{
+      id: "status.poisoned_dagger", instanceId: "final.poison", kind: "debuff",
+      roundsRemaining: 5, stacks: 4, sourceCombatantId: "friendly.arthas",
+    }];
+    const event = {
+      id: "stack.transient", sequence: 1, type: "statusApplied", targetId: "enemy.sashein",
+      statusId: "status.poisoned_dagger", roundsRemaining: 1, stacks: 1,
+      statusPresentation: "debuff", effectHint: "status", message: "Transient poison stack.",
+    } satisfies BattleEvent;
+    render(<BattleScreen provider={provider} mockDemos={[{
+      id: "stack-final", label: "Stack final", run: async () => ({
+        id: "stack-final", label: "Stack final", eventType: "status", events: [event], snapshot: final, revision: 3,
+      }),
+    }]} />);
+    await screen.findByRole("region", { name: "Battlefield" });
+    fireEvent.click(screen.getByRole("button", { name: "×2" }));
+    fireEvent.click(screen.getByRole("button", { name: "Stack final" }));
+    const teamStatus = () => screen.getByRole("article", { name: /Sashein/ }).querySelector(".status-stack-badge");
+    const fieldStatus = () => document.querySelector("[data-combatant-id='enemy.sashein'] .status-stack-badge");
+    await waitFor(() => {
+      expect(teamStatus()).toHaveTextContent("1");
+      expect(fieldStatus()).toHaveTextContent("1");
+    });
+    await waitFor(() => {
+      expect(teamStatus()).toHaveTextContent("4");
+      expect(fieldStatus()).toHaveTextContent("4");
+    }, { timeout: 1500 });
   });
 
   it("changes presentation speed without changing battle authority", async () => {

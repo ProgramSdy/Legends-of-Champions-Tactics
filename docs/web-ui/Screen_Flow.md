@@ -9,17 +9,19 @@ important UI states.
 
 ```text
 Load application
-  -> Load approved roster from GET /api/v1/heroes
-     -> Loading state
-     -> Retryable roster error
-     -> Team Builder
-        -> Validate configuration
-        -> Create live battle
-           -> Retryable battle-service error
-           -> Battle Screen
-              -> Authoritative battle completion
-              -> Completion dialog
-              -> Return to Team Builder
+  -> Startup Title Scene (/)
+     -> START GAME (/game)
+        -> Load approved roster from GET /api/v1/heroes
+           -> Loading state
+           -> Retryable roster error
+           -> Team Builder
+              -> Validate configuration
+              -> Create live battle
+                 -> Retryable battle-service error
+                 -> Battle Screen
+                    -> Authoritative battle completion
+                    -> Completion dialog
+                    -> Return to Team Builder
 ```
 
 Returning to Team Builder unmounts the battle subtree and discards the live
@@ -31,7 +33,7 @@ new provider and API session.
 
 ### Team Builder
 
-The normal application entry point. It provides:
+The playable application entry point at `/game`. It provides:
 
 - battle size: 1v1, 2v2, or 3v3;
 - one player-team selector per required slot;
@@ -73,11 +75,13 @@ returns to Team Builder.
 ### Asset Gallery
 
 Development/reference route at `/assets`; it is not part of the normal battle
-flow.
+flow. Its return link navigates directly to `/game`.
 
 ## Navigation Rules
 
-- `/` opens Team Builder after the roster loads.
+- `/` opens the non-interactive cinematic startup title scene.
+- `/game` opens Team Builder after the roster loads.
+- `START GAME` and the Asset Gallery return link navigate to `/game`.
 - Team Builder launches only live Python-backed sessions.
 - Mock fixtures remain test/development data and are not the normal user entry
   flow.
@@ -100,3 +104,5 @@ flow.
 - 2026-07-26 — Initial document created.
 - 2026-07-31 — Documented UI-006 player selection labels, runtime battle names,
   and the Python-authored Battle Log presentation boundary.
+- 2026-08-05 — Added the startup title scene at `/` and direct playable route
+  at `/game`.

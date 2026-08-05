@@ -50,7 +50,7 @@ export const heroFigureScales: Record<string, number> = {
   "hero.priest.comprehensiveness": 1,
   "hero.priest.discipline": 1,
   "hero.mage.comprehensiveness": 0.9,
-  "hero.warrior.defence": 1.2,
+  "hero.warrior.defence": 1.15,
   "hero.warrior.weapon_master": 1.1,
   "hero.rogue.comprehensiveness": 1,
 };

@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { BattleExperience } from "@/components/battle/BattleExperience";
+import { StartupScreen } from "@/components/startup/StartupScreen";
 
 export const metadata: Metadata = {
-  title: "Team Builder · Legends of Champions Tactics",
-  description: "Build a team and enter an engine-backed tactical battle.",
+  title: "Legends of Champions Tactics · Start",
+  description: "Enter the dark-fantasy world of Legends of Champions Tactics.",
 };
 
 export default function Home() {
-  return <BattleExperience />;
+  return <StartupScreen />;
 }

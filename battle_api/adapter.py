@@ -1049,8 +1049,29 @@ class BattleAdapter:
                         message=f"{combatant_id} recovered {new['hp'] - old['hp']} HP.",
                     )
                 )
+            changed_statuses = {
+                status_id
+                for status_id in new["statuses"].keys() & old["statuses"].keys()
+                if (
+                    any(
+                        new["statuses"][status_id].get(field)
+                        != old["statuses"][status_id].get(field)
+                        for field in ("stacks", "sourceCombatantId", "kind")
+                    )
+                    or (
+                        new["statuses"][status_id].get("roundsRemaining")
+                        != old["statuses"][status_id].get("roundsRemaining")
+                        and (
+                            old["statuses"][status_id].get("roundsRemaining") is None
+                            or new["statuses"][status_id].get("roundsRemaining") is None
+                            or new["statuses"][status_id].get("roundsRemaining")
+                            > old["statuses"][status_id].get("roundsRemaining")
+                        )
+                    )
+                )
+            }
             for status_id in sorted(
-                new["statuses"].keys() - old["statuses"].keys()
+                (new["statuses"].keys() - old["statuses"].keys()) | changed_statuses
             ):
                 status = new["statuses"][status_id]
                 events.append(
@@ -1062,6 +1083,7 @@ class BattleAdapter:
                         skillId=self._skill_id(actor, skill),
                         statusId=status_id,
                         roundsRemaining=status["roundsRemaining"],
+                        stacks=status.get("stacks"),
                         statusPresentation=self._status_presentation(status),
                         effectHint="status",
                         message=f"{status_id} was applied to {combatant_id}.",
@@ -1123,8 +1145,29 @@ class BattleAdapter:
                         message=f"{combatant_id} recovered {new['hp'] - old['hp']} HP.",
                     )
                 )
+            changed_statuses = {
+                status_id
+                for status_id in new["statuses"].keys() & old["statuses"].keys()
+                if (
+                    any(
+                        new["statuses"][status_id].get(field)
+                        != old["statuses"][status_id].get(field)
+                        for field in ("stacks", "sourceCombatantId", "kind")
+                    )
+                    or (
+                        new["statuses"][status_id].get("roundsRemaining")
+                        != old["statuses"][status_id].get("roundsRemaining")
+                        and (
+                            old["statuses"][status_id].get("roundsRemaining") is None
+                            or new["statuses"][status_id].get("roundsRemaining") is None
+                            or new["statuses"][status_id].get("roundsRemaining")
+                            > old["statuses"][status_id].get("roundsRemaining")
+                        )
+                    )
+                )
+            }
             for status_id in sorted(
-                new["statuses"].keys() - old["statuses"].keys()
+                (new["statuses"].keys() - old["statuses"].keys()) | changed_statuses
             ):
                 status = new["statuses"][status_id]
                 events.append(
@@ -1134,6 +1177,7 @@ class BattleAdapter:
                         targetId=combatant_id,
                         statusId=status_id,
                         roundsRemaining=status["roundsRemaining"],
+                        stacks=status.get("stacks"),
                         statusPresentation=self._status_presentation(status),
                         effectHint="status",
                         message=f"{status_id} was applied to {combatant_id}.",

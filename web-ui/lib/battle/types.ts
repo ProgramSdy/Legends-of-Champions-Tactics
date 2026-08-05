@@ -111,6 +111,7 @@ export interface BattleEvent {
   amount?: number;
   hpAfter?: { current: number; maximum: number };
   roundsRemaining?: number | null;
+  stacks?: number | null;
   combatant?: CombatantState;
   movement?: "lunge" | "return" | "offset";
   effectHint?: EffectHint;

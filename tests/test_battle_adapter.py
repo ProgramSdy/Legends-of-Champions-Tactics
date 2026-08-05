@@ -317,6 +317,9 @@ def test_status_application_events_add_authoritative_presentation_without_semant
             **base,
             "statuses": {
                 "status.expiring": {"roundsRemaining": 1, "kind": "debuff"},
+                "status.refresh": {"roundsRemaining": 1, "kind": "buff", "stacks": 1},
+                "status.reduce": {"roundsRemaining": 4, "kind": "debuff", "stacks": 3},
+                "status.tick": {"roundsRemaining": 4, "kind": "debuff", "stacks": 2},
             },
         }
     }
@@ -324,9 +327,12 @@ def test_status_application_events_add_authoritative_presentation_without_semant
         combatant_id: {
             **base,
             "statuses": {
-                "status.beneficial": {"roundsRemaining": 3, "kind": "buff"},
-                "status.control": {"roundsRemaining": 2, "kind": "control"},
-                "status.unclassified": {"roundsRemaining": None},
+                "status.beneficial": {"roundsRemaining": 3, "kind": "buff", "stacks": 2},
+                "status.control": {"roundsRemaining": 2, "kind": "control", "stacks": 1},
+                "status.unclassified": {"roundsRemaining": None, "stacks": None},
+                "status.refresh": {"roundsRemaining": 2, "kind": "buff", "stacks": 3},
+                "status.reduce": {"roundsRemaining": 1, "kind": "debuff", "stacks": 2},
+                "status.tick": {"roundsRemaining": 3, "kind": "debuff", "stacks": 2},
             },
         }
     }
@@ -339,9 +345,11 @@ def test_status_application_events_add_authoritative_presentation_without_semant
     round_events = adapter._state_delta_events(session, before, after)
 
     expected = [
-        ("status.beneficial", "buff", 3),
-        ("status.control", "debuff", 2),
-        ("status.unclassified", "neutral", None),
+        ("status.beneficial", "buff", 3, 2),
+        ("status.control", "debuff", 2, 1),
+        ("status.reduce", "debuff", 1, 2),
+        ("status.refresh", "buff", 2, 3),
+        ("status.unclassified", "neutral", None, None),
     ]
     for events in (command_events, round_events):
         applied = [event for event in events if event["type"] == "statusApplied"]
@@ -350,11 +358,13 @@ def test_status_application_events_add_authoritative_presentation_without_semant
                 event["statusId"],
                 event["statusPresentation"],
                 event.get("roundsRemaining"),
+                event.get("stacks"),
             )
             for event in applied
         ] == expected
         assert all(event["targetId"] == combatant_id for event in applied)
         assert all(event["effectHint"] == "status" for event in applied)
+        assert not any(event["statusId"] == "status.tick" for event in applied)
         removed = next(event for event in events if event["type"] == "statusRemoved")
         assert "statusPresentation" not in removed
         assert removed["effectHint"] == "status"

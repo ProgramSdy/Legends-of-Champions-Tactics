@@ -15,7 +15,8 @@ the thin Python adapter. Python remains the sole gameplay authority.
 - `lib/battle/formations.ts` is the single duel/duo/trio slot registry. Format
   is derived from authoritative team size.
 - `lib/battle/usePresentationQueue.ts` orders semantic events, applies supplied
-  post-event values, and reconciles to the final snapshot. Typed semantic
+  post-event values (including additive status stack counts), and reconciles to
+  the final snapshot. Typed semantic
   events always drive playback and state; additive `battleLog` events carry
   Python-authored display prose. A generation token makes skip/replay
   race-safe.
@@ -23,6 +24,10 @@ the thin Python adapter. Python remains the sole gameplay authority.
   metadata.
 - `lib/battle/battleBackgrounds.ts` owns the fixed BG03 battle-scene background
   constant used by presentation only.
+- `components/startup/StartupScreen.tsx` owns the non-interactive cinematic
+  title presentation at `/`. It uses the supplied direct public startup and
+  logo assets and a semantic link to `/game`; it contains no battle state,
+  roster loading, or adapter logic.
 - `components/battle/BattleExperience.tsx` owns the Team Builder/battle
   lifecycle. It loads the authoritative roster, creates a fresh provider for
   each configuration, and unmounts the battle subtree on return.
@@ -60,6 +65,11 @@ The client displays `battleLog` prose but never parses it for state, legality,
 identity, or animation decisions.
 
 ## Session Lifecycle
+
+The application first opens the cinematic title scene at `/`. Activating its
+keyboard-accessible `START GAME` link navigates to `/game`, which hosts the
+unchanged `BattleExperience` lifecycle. `/assets` remains a development route
+and returns directly to `/game`, never through the title screen.
 
 `BattleCreateConfiguration` contains `battleSize`, `playerTeam`,
 `enemyCompositionMode`, optional `enemyTeam`, `enemyControlMode`, and optional
@@ -110,6 +120,13 @@ reachable, and focus is visible. Team Builder uses native radio, select, and
 input controls. The battle-completion dialog moves and contains focus on its
 Return action. Effects honor reduced motion and never determine outcomes.
 
+`StatusIcon` is the shared status renderer for both battlefield overhead
+HP/status panels and Team Information cards. It displays a supplied valid stack
+count in a compact lower-right badge, retaining the exact count in its tooltip
+and accessible name. The presentation queue uses an explicit event count when
+provided, preserves an existing count for legacy events that omit it, and lets
+the final Python snapshot win after playback.
+
 Battle figures use one contained, bottom-aligned, 172px-wide footprint for
 direct final artwork and the fallback renderer. A loaded final image reports
 its intrinsic dimensions to the figure and establishes its own frame height;
@@ -122,10 +139,10 @@ derived from the acting combatant's side while the authoritative formation and
 combat positions remain unchanged.
 
 `lib/battle/assets.ts` owns `heroFigureScales`, a centralized, stable
-definition-ID registry for battlefield-only visual tuning. Each supported
-definition defaults to `1.0`; the value multiplies its formation scale without
-changing portraits, team cards, engine state, or API payloads. Unknown IDs use
-the neutral default.
+definition-ID registry for battlefield-only visual tuning. Values multiply a
+hero's formation scale without changing portraits, team cards, engine state, or
+API payloads. The present non-neutral values are owner-approved visual tuning;
+unknown IDs use the neutral `1.0` default.
 
 The Team Builder and `/assets` registry are finite, keyboard-focusable desktop
 scroll regions with a stable scrollbar gutter when their content overflows.
@@ -166,3 +183,6 @@ worker.
   opening lifecycle (`openingSnapshot` / `playOpening`).
 - 2026-08-03 — Registered supplied final battlefield figures for Mage
   Comprehensiveness and Rogue Comprehensiveness.
+- 2026-08-05 — Added the cinematic startup title route at `/`, moved the
+  unchanged playable entry to `/game`, and redirected the Asset Registry return
+  link to `/game`.

@@ -73,6 +73,48 @@ describe("battle components", () => {
     expect(screen.getByRole("tooltip")).toHaveTextContent("Suffers authoritative damage at round start.");
   });
 
+  it.each([
+    [null, null], [0, null], [-1, null], [1.5, null], [Number.NaN, null],
+    [1, "1"], [2, "2"], [99, "99"], [100, "99+"], [999, "99+"],
+  ] as const)("renders stack badge %s as %s and exposes exact accessible count", (stacks, badge) => {
+    const status: StatusState = {
+      id: "status.poisoned_dagger", instanceId: `status.stack.${stacks}`, kind: "debuff",
+      roundsRemaining: 2, stacks, sourceCombatantId: null,
+    };
+    const { container } = render(<StatusIcon status={status} />);
+    const icon = screen.getByLabelText(/Poisoned Dagger/);
+    if (badge) expect(container.querySelector(".status-stack-badge")).toHaveTextContent(badge);
+    else expect(container.querySelector(".status-stack-badge")).not.toBeInTheDocument();
+    const validStack = typeof stacks === "number" && Number.isInteger(stacks) && stacks > 0;
+    if (validStack) {
+      expect(icon).toHaveAccessibleName(new RegExp(`Stack count: ${stacks}\\.`));
+      expect(screen.getByRole("tooltip")).toHaveTextContent(`Stack count: ${stacks}.`);
+    } else {
+      expect(icon).not.toHaveAccessibleName(/Stack count/);
+    }
+  });
+
+  it("renders stack badges consistently in hero cards", () => {
+    const hero = structuredClone(initialSnapshot.combatants["friendly.arthas"]);
+    hero.statuses = [{
+      id: "status.poisoned_dagger", instanceId: "hero.stack", kind: "debuff",
+      roundsRemaining: 2, stacks: 3, sourceCombatantId: null,
+    }];
+    const { container } = render(<HeroCard hero={hero} />);
+    expect(container.querySelector(".status-stack-badge")).toHaveTextContent("3");
+  });
+
+  it("renders helpful stack counts with the same accessible contract", () => {
+    const status: StatusState = {
+      id: "status.wrath_of_crusader", instanceId: "status.buff.stack", kind: "buff",
+      roundsRemaining: 3, stacks: 4, sourceCombatantId: null,
+    };
+    const { container } = render(<StatusIcon status={status} />);
+    expect(screen.getByLabelText(/Wrath of Crusader.*Stack count: 4/)).toBeInTheDocument();
+    expect(container.querySelector(".status-stack-badge")).toHaveTextContent("4");
+    expect(screen.getByRole("tooltip")).toHaveTextContent("Stack count: 4.");
+  });
+
   it.each(adapterStatusIds)("maps adapter status %s to useful tooltip metadata", (statusId) => {
     const definition = statusRegistry[statusId];
     const status: StatusState = {

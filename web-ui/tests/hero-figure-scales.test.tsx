@@ -4,16 +4,16 @@ import { BattleScreen } from "@/components/battle/BattleScreen";
 import { heroFigureScaleFor, heroFigureScales } from "@/lib/battle/assets";
 import { createFormatFixture, MockBattleProvider } from "@/lib/battle/fixture";
 
-const KNOWN_DEFINITIONS = [
-  "hero.paladin.protection",
-  "hero.paladin.retribution",
-  "hero.priest.comprehensiveness",
-  "hero.priest.discipline",
-  "hero.mage.comprehensiveness",
-  "hero.warrior.defence",
-  "hero.warrior.weapon_master",
-  "hero.rogue.comprehensiveness",
-] as const;
+const OWNER_CONFIGURED_SCALES = {
+  "hero.paladin.protection": 1.2,
+  "hero.paladin.retribution": 1.2,
+  "hero.priest.comprehensiveness": 1,
+  "hero.priest.discipline": 1,
+  "hero.mage.comprehensiveness": 0.9,
+  "hero.warrior.defence": 1.2,
+  "hero.warrior.weapon_master": 1.1,
+  "hero.rogue.comprehensiveness": 1,
+} as const;
 
 const originalScales = { ...heroFigureScales };
 
@@ -23,8 +23,8 @@ afterEach(() => {
 });
 
 describe("per-definition hero figure scales", () => {
-  it.each(KNOWN_DEFINITIONS)("defaults %s to a neutral 1.0 scale", (definitionId) => {
-    expect(heroFigureScales[definitionId]).toBe(1);
+  it.each(Object.entries(OWNER_CONFIGURED_SCALES))("uses the owner-configured scale for %s", (definitionId, expectedScale) => {
+    expect(heroFigureScales[definitionId]).toBe(expectedScale);
   });
 
   it("uses 1.0 for an unknown definition id", () => {

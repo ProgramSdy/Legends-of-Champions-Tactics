@@ -16,7 +16,8 @@ npm run build
 ```
 
 The development server defaults to `http://localhost:3001`. Open `/` for the
-battle and `/assets` for the asset/fallback gallery.
+cinematic title scene, `/game` for the existing Team Builder and battle
+experience, and `/assets` for the asset/fallback gallery.
 
 Start the live adapter from the repository root:
 

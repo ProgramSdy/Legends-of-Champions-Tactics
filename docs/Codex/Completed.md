@@ -2,6 +2,159 @@
 
 Completed work should be appended in reverse chronological order, with the newest entry first.
 
+## 2026-08-05 — UI-011 Create the Cinematic Startup Title Scene and Route into the Existing Game
+
+**Summary:**
+
+Created a cinematic, accessible title scene at `/` with the owner-supplied
+startup background and logo served directly from public asset paths. Its
+semantic `START GAME` link enters the unchanged Team Builder/battle experience
+at `/game`. The Asset Registry now returns directly to `/game`.
+
+The title presentation is scoped to `.startup-*` styles: a crop-safe background,
+upper-centred logo, restrained vignette, forged-metal/gunmetal start control,
+hover/pressed/focus states, and reduced-motion-safe transitions. No engine,
+adapter, API, game-state, or supplied-asset content changed.
+
+**Agent Selection and Contributions:**
+
+- Complexity/risk assessment — medium frontend route and visual-entry change.
+  `project-manager`, `ui-developer`, `test-automator`, and `reviewer`
+  participated. `game-engine-developer` was intentionally excluded because
+  the approved scope changes no authoritative backend or game boundary.
+- `project-manager` — defined the route migration critical path, scope controls,
+  risk gates, and documentation requirements.
+- `ui-developer` — implemented the startup scene, `/game` route migration,
+  scoped CSS, metadata, and Asset Registry return link.
+- `test-automator` — added focused root/game/assets route regressions and ran
+  focused/full frontend validation.
+- `reviewer` — independently confirmed route integrity, direct asset handling,
+  accessibility/reduced-motion behavior, and scope control; no blockers found.
+
+**Files Changed:**
+
+- `web-ui/app/page.tsx`
+- `web-ui/app/game/page.tsx`
+- `web-ui/app/assets/page.tsx`
+- `web-ui/components/startup/StartupScreen.tsx`
+- `web-ui/app/globals.css`
+- `web-ui/tests/ui-011-startup-routes.test.tsx`
+- `web-ui/README.md`
+- `docs/web-ui/WEB_UI_ARCHITECTURE.md`
+- `docs/web-ui/Style_Guide.md`
+- `docs/web-ui/Screen_Flow.md`
+- `docs/Codex/Completed.md`
+
+**Validation:**
+
+- Focused startup route suite — passed: 3 tests.
+- TypeScript typecheck, ESLint, production build, and `git diff --check` — passed.
+- Full frontend suite — 142 of 144 tests passed. Two failures are existing
+  dirty-worktree expectations outside UI-011: a UI-006 formation y-coordinate
+  assertion and Warrior Defence owner-tuned scale assertion.
+- Browser validation at 2560×1440, 1920×1080, 1440×900, and 1280×720 found
+  no viewport overflow; logo and control remained inside the viewport. Exact
+  public URLs loaded, click and keyboard route activation reached `/game`,
+  focus was visible, reduced motion disabled practical animation duration, and
+  `/assets` returned to `/game`.
+
+**Unresolved Issues or Follow-up:**
+
+- Automated screenshot capture timed out, so durable screenshot evidence was
+  not produced. The measured browser layout and independent review found no
+  blocker; the owner should perform final aesthetic review on the supplied art.
+- A viewport shorter than 480px can clip title content because the title scene
+  intentionally has a 480px minimum height with hidden overflow. This is
+  outside the required desktop/tablet targets and should be addressed only if
+  mobile-landscape support becomes a requirement.
+
+---
+
+## 2026-08-05 — UI-010 Display Authoritative Buff and Debuff Stack Counts on Battle Status Icons
+
+**Summary:**
+
+Added an authoritative stack-count badge to the shared `StatusIcon`, so the
+same count appears in both battlefield overhead HP/status panels and Team
+Information cards. Valid positive integer counts, including `1`, render in an
+yellow numeral inside the icon's lower-right corner, without a badge fill or
+border; counts over 99 render as `99+` while the exact value remains in the
+tooltip and accessible name. Zero, absent, and invalid counts remain badge-free.
+The numeral retains the established readable size and expands only when a
+larger compact count requires it.
+
+The Python adapter now carries an additive `stacks` field on relevant
+`statusApplied` events. The presentation queue applies an explicit event count,
+preserves an existing count for a legacy event that omits it, and reconciles to
+the final authoritative snapshot. The change does not alter status rules,
+stack calculations, duration processing, targeting, event ordering, or battle
+results.
+
+**Agent Selection and Contributions:**
+
+- Complexity/risk assessment — medium cross-boundary presentation work; all
+  five configured roles participated as required by the active task.
+- `project-manager` — scoped the authoritative adapter-to-presentation path,
+  sequenced the work, and identified documentation/completion evidence.
+- `ui-developer` — implemented the shared accessible badge, CSS treatment,
+  event type, and queue reconciliation behaviour.
+- `game-engine-developer` — added the minimal additive adapter event field and
+  retained silent duration-only countdown ticks.
+- `test-automator` — added deterministic badge, accessibility, lifecycle, and
+  final-snapshot reconciliation coverage.
+- `reviewer` — independently reviewed the final diff; found no blocking defect.
+  It confirmed the zero/invalid suppression is consistent with the acceptance
+  criteria and recorded a recommendation for future real API integration
+  coverage.
+
+**Files Changed:**
+
+- `battle_api/adapter.py`
+- `tests/test_battle_adapter.py`
+- `web-ui/components/battle/StatusIcon.tsx`
+- `web-ui/lib/battle/types.ts`
+- `web-ui/lib/battle/usePresentationQueue.ts`
+- `web-ui/app/globals.css`
+- `web-ui/tests/components.test.tsx`
+- `web-ui/tests/battle-screen.test.tsx`
+- `web-ui/tests/hero-figure-scales.test.tsx`
+- `docs/web-ui/BATTLE_DATA_CONTRACT_V1.md`
+- `docs/web-ui/PYTHON_ADAPTER_API.md`
+- `docs/web-ui/WEB_UI_ARCHITECTURE.md`
+- `docs/web-ui/Style_Guide.md`
+- `docs/Codex/Completed.md`
+
+**Validation:**
+
+- `.venv/bin/python -m pytest -q` — passed: 103 tests. One existing Starlette
+  `TestClient` deprecation warning was reported.
+- Focused frontend status/component/battle/figure regression suites — passed:
+  95 tests across five files.
+- `cd web-ui && npm run typecheck` — passed.
+- `cd web-ui && npm run lint` — passed.
+- `cd web-ui && npm run build` — passed. Vinext reported its existing static
+  route-classification caveat only.
+- `git diff --check` — passed.
+- Live adapter validation used a seeded local 1v1 Rogue-versus-Paladin battle.
+  `Poisoned Dagger` returned an authoritative `statusApplied` event with
+  `stacks: 1` and the final snapshot carried that same count. The local health
+  endpoint and roster endpoint each returned HTTP 200.
+- Browser validation reached the live Team Builder and a live 1v1 battle on
+  `http://127.0.0.1:3001` without a battle notice or runtime error. The
+  deterministic integration tests provide the durable proof for queued badge
+  application, refresh/increase, reduction, removal, and final reconciliation
+  in both UI locations.
+
+**Unresolved Issues or Follow-up:**
+
+- The owner confirmed the non-neutral `heroFigureScales` values (`1.2`, `1.1`,
+  and `0.9`) are intentional visual tuning, not a product issue. Their
+  regression expectations now match the configured values.
+- A future API integration test can assert the optional `stacks` field on a
+  full HTTP command response in addition to the current adapter contract test.
+
+---
+
 ## 2026-08-04 — Add Per-Hero Battlefield Figure-Scale Parameters
 
 **Summary:**

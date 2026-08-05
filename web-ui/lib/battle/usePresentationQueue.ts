@@ -123,7 +123,9 @@ export function usePresentationQueue(provider: BattleProvider) {
         if (existing) {
           existing.roundsRemaining = event.roundsRemaining ?? null;
           existing.kind = kind;
-        } else statuses.push({ id: event.statusId, instanceId: `${event.id}.status`, kind, roundsRemaining: event.roundsRemaining ?? null, stacks: null, sourceCombatantId: event.sourceId ?? null });
+          if ("stacks" in event) existing.stacks = event.stacks ?? null;
+          if (event.sourceId) existing.sourceCombatantId = event.sourceId;
+        } else statuses.push({ id: event.statusId, instanceId: `${event.id}.status`, kind, roundsRemaining: event.roundsRemaining ?? null, stacks: event.stacks ?? null, sourceCombatantId: event.sourceId ?? null });
       }
       if (event.type === "statusRemoved" && event.targetId && event.statusId && next.combatants[event.targetId]) {
         next.combatants[event.targetId].statuses = next.combatants[event.targetId].statuses.filter(
