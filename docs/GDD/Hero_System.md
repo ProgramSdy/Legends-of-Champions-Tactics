@@ -1,29 +1,92 @@
 # Hero System
 
-## Purpose
+## Scope and Authority
 
-Authoritative design for heroes, attributes, roles, growth, and team composition.
+This document describes current battle heroes. It does not define a persistent
+collection, levelling, equipment, or rarity system because none is implemented.
 
 ## Hero Identity
 
-_To be documented._
+An engine hero has a runtime name, faculty, specialization (engine field
+`major`), derived profession lookup key, group/side, control ownership, skills,
+and battle state. Runtime names and Python objects are not stable API identity.
+The web adapter therefore adds stable definition IDs and combatant IDs.
 
-## Attributes
+Use the terms consistently:
 
-_To be documented._
+- **Faculty** — broad archetype, such as Warrior or Mage.
+- **Specialization** — public/API name for `major`.
+- **Profession** — internal concatenation of faculty and specialization.
+- **Combatant** — one battle-local hero or summon instance.
 
-## Roles and Classes
+## Approved Web Roster
 
-_To be documented._
+| Definition ID | Faculty | Specialization |
+|---|---|---|
+| `hero.priest.comprehensiveness` | Priest | Comprehensiveness |
+| `hero.priest.discipline` | Priest | Discipline |
+| `hero.paladin.retribution` | Paladin | Retribution |
+| `hero.paladin.protection` | Paladin | Protection |
+| `hero.mage.comprehensiveness` | Mage | Comprehensiveness |
+| `hero.warrior.defence` | Warrior | Defence |
+| `hero.warrior.weapon_master` | Warrior | Weapon Master |
+| `hero.rogue.comprehensiveness` | Rogue | Comprehensiveness |
+
+The legacy engine contains additional specializations across Warrior, Mage,
+Paladin, Priest, Rogue, Necromancer, Warlock, and Death Knight. Generator and
+simulation lists differ again. Those catalogues are legacy implementation
+coverage, not an approved web roster or progression tree.
+
+## Core Attributes
+
+Heroes have current/maximum HP, damage, defence, agility, magic-resistance
+compensation, evasion capability, and fire/frost/arcane/shadow/death/poison/
+nature resistances. They also retain original-stat snapshots for temporary
+effects. Skills, statuses, casting, healing modifiers, resistance modifiers,
+allies/opponents, and cooldown state are battle-local state.
+
+## Attribute Generation and Balance Data
+
+Base ranges are loaded from the project's Excel property/resistance data. Hero
+generation is randomized and intentionally correlates trade-offs such as HP
+versus damage and defence versus agility/resistance compensation. A displayed
+hero's starting values are therefore not fixed solely by specialization. Balance
+governance and accepted ranges remain owner decisions.
+
+## Control and Team Composition
+
+The web path supports 1v1, 2v2, and 3v3. Friendly heroes are player controlled;
+the enemy side can be player or computer controlled. The engine may override
+ordinary control for forced, automatic, casting, or restricted states.
+
+No formal tank/healer/damage/support metadata is encoded as authoritative hero
+data. Such labels may be useful design interpretation, but must not be treated
+as engine rules. Repeated selections and cross-team overlap are allowed for
+player/specified-enemy teams; random enemy construction samples without
+replacement.
+
+## Summoned Units
+
+Water Elemental, Skeleton Warrior, Skeleton Mage, Void Rambler, and Flesh
+Puppet are current factory summon types. A summon is a hero-derived combatant
+with a master, duration, race, AI, and skills. Master defeat defeats its live
+summon; summon defeat clears the master's active-summon reference. The engine
+does not establish one universal single-summon cap or guaranteed activation
+timing.
 
 ## Progression and Upgrades
 
-_To be documented._
+No levels, XP, permanent attributes, equipment, inventory, unlocks, rarity,
+or persistence are implemented. Battle-local buffs/debuffs are not progression.
 
-## Team Composition Rules
+## Open Questions
 
-_To be documented._
+- Canonical release roster and expansion policy.
+- Fixed versus randomized stat communication to players.
+- Formal role labels, duplicate-hero restrictions, and summon limits.
+- Excel ownership, balance review process, and persistent progression design.
 
 ## Change Log
 
-- 2026-07-26 — Initial document created.
+- 2026-08-06 — Rebuilt from current hero, generator, summon, and adapter
+  behavior; separated approved web roster from legacy catalogue scope.

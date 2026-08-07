@@ -2,6 +2,106 @@
 
 Completed work should be appended in reverse chronological order, with the newest entry first.
 
+## 2026-08-06 — Restore Full-HP Healing Presentation
+
+**Summary:**
+
+Fixed the missing green healing effect when a pure healing skill targets a
+combatant already at maximum HP. The Python adapter now emits one typed
+`healingApplied` presentation event with `amount: 0` and unchanged
+authoritative HP for each selected, full-HP healing target. The web UI plays
+the green target effect from that event while suppressing a misleading `+0`
+floating number.
+
+**Agent Selection and Contributions:**
+
+- Direct owner request, not an official `Current_Task.md` assignment. The
+  project manager assessed this as a medium-risk adapter/contract/UI boundary
+  fix and selected all five roles.
+- `project-manager` — established the event-semantics boundary and coordinated
+  the cross-system validation.
+- `game-engine-developer` — implemented the adapter event and backend
+  regression coverage without changing authoritative HP or the HTTP schema.
+- `ui-developer` — retained target-bound healing playback and prevented zero
+  healing from rendering as `+0`.
+- `test-automator` — independently validated normal, full-HP, multi-target,
+  and non-healing cases.
+- `reviewer` — performed an independent contract/reconciliation review.
+
+**Files Changed:**
+
+- `battle_api/adapter.py`
+- `tests/test_battle_adapter.py`
+- `web-ui/components/battle/BattleScreen.tsx`
+- `web-ui/tests/ui-007-regressions.test.tsx`
+- `docs/web-ui/BATTLE_DATA_CONTRACT_V1.md`
+- `docs/Codex/Completed.md`
+
+**Validation:**
+
+- Backend adapter suite — 58 passed.
+- Backend API suite — 18 passed; one existing Starlette `TestClient`
+  deprecation warning.
+- Focused UI-007 and battle-screen suites — 44 passed.
+- Full frontend suite — 143 passed; two unrelated pre-existing failures remain
+  in Warrior Defence scale and UI-006 formation expectations.
+- TypeScript type checking and `git diff --check` — passed.
+
+**Unresolved Issues / Recommended Follow-up:**
+
+- The event is intentionally limited to explicitly selected pure healing
+  targets. Broader healing side effects retain their existing state-delta-only
+  event behavior until separately specified.
+
+---
+
+## 2026-08-06 — Rebuild the Core Game-Design Documentation
+
+**Summary:**
+
+Replaced the four GDD placeholders with professional, code-grounded baseline
+documentation for the game, combat, heroes, and skills. The documents separate
+implemented fact from unapproved design, distinguish the eight-hero web roster
+from legacy engine coverage, and record open decisions rather than inventing
+progression, economy, role taxonomy, or balance intent.
+
+**Agent Selection and Contributions:**
+
+- `project-manager` — assessed the documentation risk, set the authority model,
+  scope, outlines, and validation gates.
+- `game-engine-developer` — performed a read-only engine/API audit and supplied
+  the battle lifecycle, roster, hero, skill, status, summon, and contract facts.
+- `reviewer` — independently found and resolved a web-versus-legacy initiative
+  ordering claim, and improved duplicate-selection and immunity wording.
+- `ui-developer` and `test-automator` — not selected: no frontend or test-code
+  change was required for this documentation-only task.
+
+**Files Changed:**
+
+- `docs/GDD/Game_Design_Document.md`
+- `docs/GDD/Combat_System.md`
+- `docs/GDD/Hero_System.md`
+- `docs/GDD/Skill_System.md`
+- `docs/Codex/Completed.md`
+
+**Validation:**
+
+- Focused Python behavior evidence — 94 passed across adapter, API, action
+  restriction, and evasion-effect boundary tests; one existing Starlette
+  `TestClient` deprecation warning.
+- Placeholder search for `docs/GDD` — no remaining scaffold placeholders.
+- `git diff --check` — passed.
+
+**Open Design Decisions / Follow-up:**
+
+- Confirm canonical round-cap/tiebreak semantics, initiative ties, canonical
+  roster/expansion scope, role taxonomy, progression/economy, and balance-data
+  governance.
+- Status duration/classification and summon same-round activation remain
+  implementation areas requiring focused design and regression work.
+
+---
+
 ## 2026-08-05 — UI-011 Create the Cinematic Startup Title Scene and Route into the Existing Game
 
 **Summary:**

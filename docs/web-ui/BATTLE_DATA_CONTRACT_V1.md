@@ -299,6 +299,13 @@ type BattleEvent = {
 
 Fields irrelevant to an event are omitted. State-changing events include their
 post-change value (`hpAfter`, status duration, or full summoned combatant).
+`healingApplied` also serves as a typed presentation event for an explicitly
+selected target of a pure healing skill that was already at maximum HP. That
+event uses `amount: 0` and an unchanged `hpAfter`; it does not imply an HP
+mutation. Clients should show the target-bound healing presentation but must
+not display a misleading `+0` floating amount. The adapter does not synthesize
+this event for damage, buff, or hybrid skills merely because their HP result is
+unchanged.
 Every `statusApplied` event includes the additive authoritative
 `statusPresentation` cue. Beneficial statuses use `buff`, harmful and control
 statuses use `debuff`, and an unclassified status uses the compatible `neutral`

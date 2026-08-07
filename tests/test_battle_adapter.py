@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 import re
+from types import SimpleNamespace
 
 import pytest
 
@@ -142,6 +143,151 @@ def test_valid_command_returns_ordered_unique_events_and_reconciled_snapshot(ada
     target = result["snapshot"]["combatants"][damage["targetId"]]
     assert damage["hpAfter"] == target["hp"]
     assert damage["amount"] > 0
+
+
+def test_full_hp_healing_skill_emits_zero_delta_presentation_event():
+    adapter = BattleAdapter()
+    session, _ = adapter.create_battle(
+        seed=13,
+        battle_id="battle.full-hp-healing",
+        player_team=["hero.priest.comprehensiveness"],
+        enemy_team=["hero.rogue.comprehensiveness"],
+    )
+    healer = session.game.player_heroes[0]
+    session.game.unactioned_sorted_heroes = [healer]
+    snapshot = adapter.snapshot(session)
+    action = next(
+        action
+        for action in snapshot["legalActions"]
+        if action["skillId"] == "skill.priest.binding_heal"
+    )
+    target_id = action["validTargetIds"][0]
+    hp_before = deepcopy(snapshot["combatants"][target_id]["hp"])
+
+    result = adapter.submit(
+        session,
+        {
+            "type": "useSkill",
+            "commandId": "cmd.full-hp-healing",
+            "expectedRevision": session.revision,
+            "actorId": action["actorId"],
+            "skillId": action["skillId"],
+            "targetIds": [target_id],
+        },
+    )
+
+    healing_events = [
+        event
+        for event in result["events"]
+        if event["type"] == "healingApplied" and event.get("targetId") == target_id
+    ]
+    assert len(healing_events) == 1
+    assert healing_events[0]["sourceId"] == action["actorId"]
+    assert healing_events[0]["skillId"] == action["skillId"]
+    assert healing_events[0]["amount"] == 0
+    assert healing_events[0]["hpAfter"] == hp_before
+    assert healing_events[0]["effectHint"] == "healing"
+    assert result["snapshot"]["combatants"][target_id]["hp"] == hp_before
+
+
+def test_binding_heal_does_not_emit_a_zero_delta_event_for_an_incidental_full_hp_caster():
+    adapter = BattleAdapter()
+    session, _ = adapter.create_battle(
+        seed=13,
+        battle_id="battle.full-hp-binding-heal-ally",
+        battle_size=2,
+        player_team=[
+            "hero.priest.comprehensiveness",
+            "hero.priest.comprehensiveness",
+        ],
+        enemy_team=[
+            "hero.rogue.comprehensiveness",
+            "hero.rogue.comprehensiveness",
+        ],
+    )
+    healer, selected_ally = session.game.player_heroes
+    session.game.unactioned_sorted_heroes = [healer]
+    snapshot = adapter.snapshot(session)
+    action = next(
+        action
+        for action in snapshot["legalActions"]
+        if action["skillId"] == "skill.priest.binding_heal"
+    )
+    selected_ally_id = adapter._combatant_id(session, selected_ally)
+    assert selected_ally_id in action["validTargetIds"]
+
+    result = adapter.submit(
+        session,
+        {
+            "type": "useSkill",
+            "commandId": "cmd.full-hp-binding-heal-ally",
+            "expectedRevision": session.revision,
+            "actorId": action["actorId"],
+            "skillId": action["skillId"],
+            "targetIds": [selected_ally_id],
+        },
+    )
+
+    zero_delta_events = [
+        event
+        for event in result["events"]
+        if event["type"] == "healingApplied"
+        and event.get("skillId") == action["skillId"]
+        and event.get("amount") == 0
+    ]
+    assert len(zero_delta_events) == 1
+    assert zero_delta_events[0]["targetId"] == selected_ally_id
+
+
+def test_zero_delta_healing_events_cover_each_full_hp_target_but_not_damage_skills():
+    adapter = BattleAdapter()
+    session, _ = adapter.create_battle(
+        seed=17,
+        battle_id="battle.multi-full-hp-healing",
+        battle_size=2,
+        player_team=[
+            "hero.priest.comprehensiveness",
+            "hero.priest.comprehensiveness",
+        ],
+        enemy_team=[
+            "hero.rogue.comprehensiveness",
+            "hero.rogue.comprehensiveness",
+        ],
+    )
+    actor = session.game.player_heroes[0]
+    targets = session.game.player_heroes
+    before = adapter._capture(session)
+    healing_skill = SimpleNamespace(
+        name="Test Group Heal",
+        skill_type="healing",
+        last_target_outcomes={},
+    )
+
+    healing_events = adapter._mutation_events(
+        session, actor, healing_skill, targets, before, adapter._capture(session)
+    )
+    target_ids = {adapter._combatant_id(session, target) for target in targets}
+    zero_delta_events = [
+        event
+        for event in healing_events
+        if event["type"] == "healingApplied" and event["amount"] == 0
+    ]
+    zero_delta_targets = {
+        event["targetId"]
+        for event in zero_delta_events
+    }
+    assert len(zero_delta_events) == len(targets)
+    assert zero_delta_targets == target_ids
+
+    damage_skill = SimpleNamespace(
+        name="Test Group Attack",
+        skill_type="damage",
+        last_target_outcomes={},
+    )
+    damage_events = adapter._mutation_events(
+        session, actor, damage_skill, targets, before, adapter._capture(session)
+    )
+    assert not any(event["type"] == "healingApplied" for event in damage_events)
 
 
 @pytest.mark.parametrize(

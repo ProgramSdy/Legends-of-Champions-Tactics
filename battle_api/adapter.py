@@ -1004,6 +1004,16 @@ class BattleAdapter:
     def _mutation_events(self, session, actor, skill, targets, before, after):
         events = []
         actor_id = self._combatant_id(session, actor)
+        full_hp_healing_targets = (
+            {
+                self._combatant_id(session, target): target
+                for target in targets
+                if before[self._combatant_id(session, target)]["hp"]
+                >= before[self._combatant_id(session, target)]["maximum"]
+            }
+            if skill.skill_type == "healing"
+            else set()
+        )
         for target in targets:
             target_id = self._combatant_id(session, target)
             old, new = before[target_id], after[target_id]
@@ -1047,6 +1057,23 @@ class BattleAdapter:
                         hpAfter={"current": new["hp"], "maximum": new["maximum"]},
                         effectHint="healing",
                         message=f"{combatant_id} recovered {new['hp'] - old['hp']} HP.",
+                    )
+                )
+            elif (
+                combatant_id in full_hp_healing_targets
+                and new["hp"] == old["hp"]
+            ):
+                events.append(
+                    self._event(
+                        session,
+                        "healingApplied",
+                        sourceId=actor_id,
+                        targetId=combatant_id,
+                        skillId=self._skill_id(actor, skill),
+                        amount=0,
+                        hpAfter={"current": new["hp"], "maximum": new["maximum"]},
+                        effectHint="healing",
+                        message=f"{full_hp_healing_targets[combatant_id].name} was already at full HP.",
                     )
                 )
             changed_statuses = {

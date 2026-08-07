@@ -117,7 +117,7 @@ function BattlefieldFigure({ hero, active, event, eventSourceSide, selectable, t
           {targetEffect && <span className={`target-effect effect-${targetEffect} ${targetEffect === "debuff" ? "red" : targetEffect === "buff" ? "blue" : "green"}`} data-effect-target={hero.id} aria-hidden="true" />}
         </span>
         {effect === "damageApplied" && eventTarget && event?.amount !== undefined && <span className="combat-text damage">−{event.amount}</span>}
-        {effect === "healingApplied" && eventTarget && event?.amount !== undefined && <span className="combat-text heal">+{event.amount}</span>}
+        {effect === "healingApplied" && eventTarget && event?.amount !== undefined && event.amount > 0 && <span className="combat-text heal">+{event.amount}</span>}
         {effect === "attackEvaded" && <span className="combat-text evade">EVADE</span>}
       </button>
     </div>

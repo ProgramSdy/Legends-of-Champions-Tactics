@@ -164,6 +164,30 @@ describe("UI-007 target-bound battle effects", () => {
     expect(document.querySelector(".effect-layer")).toBeNull();
   });
 
+  it("plays the healing target effect without misleading +0 text at full HP", async () => {
+    const provider = new MockBattleProvider();
+    const snapshot = (await provider.getState()).snapshot;
+    const target = snapshot.combatants["friendly.arthas"];
+    target.hp.current = target.hp.maximum;
+    const healingEvent = {
+      id: "evt.full-hp-heal", sequence: 1, type: "healingApplied", sourceId: "friendly.arthas",
+      targetId: "friendly.arthas", amount: 0, hpAfter: { ...target.hp }, effectHint: "healing",
+      message: "Arthas is already at full health.",
+    } satisfies BattleEvent;
+    render(<BattleScreen provider={provider} mockDemos={[{
+      id: "full-hp-heal", label: "Full HP healing", run: async () => ({
+        id: "full-hp-heal", label: "Full HP healing", eventType: "healing",
+        events: [healingEvent], snapshot, revision: 2,
+      }),
+    }]} />);
+    await screen.findByRole("region", { name: "Battlefield" });
+    fireEvent.click(screen.getByRole("button", { name: "×2" }));
+    fireEvent.click(screen.getByRole("button", { name: "Full HP healing" }));
+
+    await waitFor(() => expect(document.querySelector("[data-combatant-id='friendly.arthas'] .target-effect.effect-healing")).toBeInTheDocument());
+    expect(screen.queryByText("+0")).not.toBeInTheDocument();
+  });
+
   it("anchors a harmful status as a red debuff effect to the enemy target", async () => {
     await renderDemos();
     fireEvent.click(screen.getByRole("button", { name: "Debuff" }));

@@ -1,53 +1,94 @@
 # Skill System
 
-## Purpose
+## Scope and Authority
 
-Authoritative design for active skills, passive abilities, effects, targeting, costs, and cooldowns.
+Skills are specialization-defined engine actions. Python determines availability,
+targets, resolution, cooldowns, status effects, and outcomes. UI names,
+descriptions, glyphs, and art are presentation metadata unless separately
+curated as authoritative design.
 
-## Skill Types
+## Skill Model
 
-_To be documented._
+The active `Skill` model carries an initiator, name, concrete callback, target
+type (`single` or `multi`), skill type, target quantity, instant/casting and
+interrupt/control flags, availability, cooldown state/counter, damage nature/
+type, optional independent-effect callback, and last per-target outcome.
 
-## Activation Rules
+Implemented broad types include `damage`, `healing`, `damage_healing`, `summon`,
+and `buffs`. There is no general passive-skill framework; reactive behavior is
+embedded in hero or status code.
 
-_To be documented._
+## Activation and Targeting
 
-## Costs and Cooldowns
+An ordinary command requires an active directive that accepts player input and
+an available, off-cooldown skill. The adapter publishes legal actor, skill,
+target count, and living target IDs. Damage targets opponents; healing/buffs
+normally target allies; hybrid actions can use both sides; summons and self
+skills can need no selected target. Named skills may legitimately override
+generic targeting behavior.
 
-_To be documented._
+## Execution Pipeline
 
-## Effect Resolution
+`Skill.execute` applies generic target gates and dispatches to the concrete
+hero callback. Damage actions use per-target death/evasion/immunity/hit logic;
+healing, hybrid, summon, and buff actions have separate paths. The engine
+records the latest outcome for each target, so consumers must not infer an
+evade from damage text or a zero amount.
 
-Damage skills resolve their intended targets through the shared `Skill`
-boundary before invoking target-side skill behavior. Harmful target effects
-must be part of the hit-gated action and must not be applied to an evaded
-target.
+Harmful target-side effects belong to the hit-gated callback and do not apply
+to an evaded target. A mixed-effect skill may explicitly register an
+independent caster/ally callback; that benefit can resolve even when its harmful
+target evades. Current registrations are Crusader Strike, Shield of Righteous,
+Heroric Charge (current implementation spelling), Cumbrous Axe, and Shield
+Lash. New mixed effects must use this boundary rather than a skill-name special
+case in shared resolution.
 
-Mixed-effect attacks must declare any caster or ally benefit that is independent
-of the target hit through the skill's independent-effect callback. This keeps
-the target-side action hit-gated while allowing an approved self or ally
-benefit to resolve after a miss. New mixed-effect skills must use this metadata
-instead of adding skill-name checks to shared resolution code.
+## Damage, Healing, Status, and Summon Effects
 
-The current mixed-effect registrations using this boundary are:
+There is no universal formula or duration model. Concrete callbacks calculate
+their own physical/magical/hybrid effects; `Hero` applies HP/healing behavior;
+the round-start status manager handles most ticks, expiries, and restoration.
+Status stacks and durations are skill/status-specific. Summon skills create
+hero-derived combatants without selected targets.
 
-- Crusader Strike;
-- Shield of Righteous;
-- Heroric Charge;
-- Cumbrous Axe; and
-- Shield Lash.
+## Cooldowns, Costs, and Casting
 
-The engine records the most recent resolution outcome separately for each
-target. Adapters and other consumers must use that authoritative outcome to
-distinguish a true evade from a landed attack that happens to deal zero damage.
+Skills use an availability flag plus integer cooldown counter. Counters reduce
+at round start, but skill-specific setup and the later availability check mean
+raw numbers must not be advertised as one universal turn duration. There is no
+implemented mana, stamina, or generic resource cost; API `resourceCost` is
+currently null.
 
-## Skill Data Requirements
+Non-instant skills enter casting state and execute later as engine-owned
+automatic actions. Interruption behavior remains individual skill/hero logic.
+Forced or incapacitated actors may have no ordinary legal action.
 
-_To be documented._
+## Adapter Representation
+
+For approved web heroes, the adapter derives stable skill IDs, target mode,
+maximum targets, current cooldown/availability, and null resource cost. It
+accepts `useSkill` commands only. A documented `endTurn` concept is not an
+implemented API command and must not be presented as active gameplay.
+
+## Requirements for New Skills
+
+1. Define the specialization callback and explicit target/effect metadata.
+2. Keep harmful target effects inside the hit-gated action.
+3. Register any independent self/ally benefit explicitly.
+4. Set and test cooldown/casting/status behavior in its real lifecycle.
+5. Add adapter/UI presentation metadata without duplicating rules.
+6. Add deterministic behavior coverage before treating the skill as canonical.
+
+## Known Limitations and Open Questions
+
+- No approved resource economy or passive framework.
+- No single cooldown, duration, damage, or immunity taxonomy is authoritative.
+- Legacy spellings, notably `Heroric Charge`, require owner approval before
+  player-facing renaming.
+- Full skill descriptions/icons and complete stable IDs outside the approved
+  roster are not engine-owned design data.
 
 ## Change Log
 
-- 2026-07-26 — Initial document created.
-- 2026-07-31 — Documented shared hit-gated target effects, independent
-  beneficial callbacks for mixed-effect attacks, and authoritative per-target
-  outcomes.
+- 2026-08-06 — Rebuilt from current Skill, Hero, status-manager, and adapter
+  behavior; retained hit-gated and independent-benefit combat invariants.
