@@ -10,18 +10,20 @@ important UI states.
 ```text
 Load application
   -> Startup Title Scene (/)
-     -> START GAME (/game)
-        -> Load approved roster from GET /api/v1/heroes
-           -> Loading state
-           -> Retryable roster error
-           -> Team Builder
-              -> Validate configuration
-              -> Create live battle
-                 -> Retryable battle-service error
-                 -> Battle Screen
-                    -> Authoritative battle completion
-                    -> Completion dialog
-                    -> Return to Team Builder
+     -> START GAME (/stages)
+        -> Stage Selection
+           -> Arena (/game)
+              -> Load approved roster from GET /api/v1/heroes
+                 -> Loading state
+                 -> Retryable roster error
+                 -> Team Builder
+                    -> Validate configuration
+                    -> Create live battle
+                       -> Retryable battle-service error
+                       -> Battle Screen
+                          -> Authoritative battle completion
+                          -> Completion dialog
+                          -> Return to Team Builder
 ```
 
 Returning to Team Builder unmounts the battle subtree and discards the live
@@ -30,6 +32,22 @@ event log, selections, and completion-dialog state. A later launch creates a
 new provider and API session.
 
 ## Screen Inventory
+
+### Stage Selection
+
+`/stages` is the presentation-only Valley of Champions selector between the
+title scene and Team Builder. It renders the one owner-supplied map at
+`/game-images/Stage_Map/valley_of_champions.png` in an intrinsic `1672 / 941`
+map container. Stage geometry is percentage-based inside that same container,
+not the viewport.
+
+Only Arena is currently enabled. Its pointer hover and keyboard focus reveal a
+restrained warm overlay and label, and its click, Enter, and Space activation
+navigate to `/game`. Warrior's Barrack, Mage's Tower, Rogue's Forest, Paladin's
+Altar, and Priest's Cathedral exist as inactive configuration metadata only;
+they render no controls, labels, effects, or state treatment. Local development
+may add `?debugHotspots=1` to outline Arena geometry; normal and production
+presentation leave it off.
 
 ### Team Builder
 
@@ -80,8 +98,10 @@ flow. Its return link navigates directly to `/game`.
 ## Navigation Rules
 
 - `/` opens the non-interactive cinematic startup title scene.
+- `/stages` opens the stage-selection map without creating a battle session.
 - `/game` opens Team Builder after the roster loads.
-- `START GAME` and the Asset Gallery return link navigate to `/game`.
+- `START GAME` navigates to `/stages`; Arena and the Asset Gallery return link
+  navigate to `/game`.
 - Team Builder launches only live Python-backed sessions.
 - Mock fixtures remain test/development data and are not the normal user entry
   flow.
@@ -106,3 +126,5 @@ flow. Its return link navigates directly to `/game`.
   and the Python-authored Battle Log presentation boundary.
 - 2026-08-05 — Added the startup title scene at `/` and direct playable route
   at `/game`.
+- 2026-08-08 — Inserted the Valley of Champions `/stages` selector between the
+  title scene and Team Builder; Arena is the sole enabled destination.

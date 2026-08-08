@@ -2,6 +2,92 @@
 
 Completed work should be appended in reverse chronological order, with the newest entry first.
 
+## 2026-08-08 — UI-012 Implement the First Valley of Champions Stage-Selection Flow
+
+**Summary:**
+
+Inserted the presentation-only Stage Selection route between the cinematic
+startup scene and the existing Team Builder:
+
+`/` → `/stages` → Arena → `/game`
+
+The owner-supplied Valley of Champions map remains the sole map visual. A
+single percentage-based Arena hotspot shares its intrinsic `1672 / 941` map
+container with the image, hover/focus glow, label, and optional debug outline.
+The stage configuration records all six named locations, but only Arena is
+enabled. The other five locations render no controls or UI state treatment.
+
+**Agent Selection and Contributions:**
+
+- `project-manager` — confirmed the frontend-only scope, selected the four
+  relevant roles, protected the map-coordinate and route-preservation gates,
+  and excluded the engine role because no API, gameplay, or persistence change
+  was authorized.
+- `ui-developer` — implemented the `/stages` route, stage configuration,
+  accessible Arena control, scoped crossed-swords cursor, hover/focus effects,
+  development-only debug mode, startup routing, and responsive styles.
+- `test-automator` — added deterministic route, map, geometry, inactive-stage,
+  hover/focus, click/keyboard, debug, and production-gate regression coverage.
+- `reviewer` — approved the final work after confirming that the two extra
+  untracked Stage_Map variants predated UI-012, were untouched/unreferenced,
+  and are excluded from delivery.
+- `game-engine-developer` — not selected; engine, adapter, contracts,
+  progression, and battle lifecycle were explicitly out of scope.
+
+**Files Changed:**
+
+- `web-ui/components/startup/StartupScreen.tsx`
+- `web-ui/app/stages/page.tsx`
+- `web-ui/components/stages/StageSelectionScreen.tsx`
+- `web-ui/components/stages/stage-config.ts`
+- `web-ui/app/globals.css`
+- `web-ui/tests/ui-011-startup-routes.test.tsx`
+- `web-ui/tests/ui-012-stage-selection.test.tsx`
+- `docs/web-ui/Screen_Flow.md`
+- `docs/web-ui/WEB_UI_ARCHITECTURE.md`
+- `docs/web-ui/Style_Guide.md`
+- `docs/web-ui/screenshots/UI-012-stage-1280x720.png`
+- `docs/web-ui/screenshots/UI-012-stage-1440x900.png`
+- `docs/web-ui/screenshots/UI-012-stage-1920x1080.png`
+- `docs/web-ui/screenshots/UI-012-stage-2560x1440.png`
+- `docs/web-ui/screenshots/UI-012-stage-hover-debug-1440x900.png`
+- `docs/Codex/Current_Task.md`
+- `docs/Codex/Completed.md`
+
+**Validation:**
+
+- Focused UI-011/UI-012 frontend suite — 11 passed.
+- Full frontend suite — 151 passed; two unrelated pre-existing failures remain:
+  Warrior Defence owner-scale expectation (`1.2` versus current `1.15`) and a
+  UI-006 formation-y expectation (`55` versus `>59`).
+- TypeScript typecheck, ESLint, production build, and task-scoped
+  `git diff --check` — passed. Production build includes `/stages`.
+- The supplied map SHA-256 before and after implementation:
+  `0f995cfebc75d47dfd5a6c0ba54f7dd9474bb101a722817deb3400ae6294df82`.
+- Local browser evidence at 2560×1440, 1920×1080, 1440×900, and 1280×720
+  confirms one undistorted map, one Arena button, zero inactive controls, no
+  document overflow, and map aspect ratio approximately `1.77685` at every
+  viewport. Durable screenshots are listed above.
+- Browser hover/focus evidence confirmed the warm Arena label/glow, scoped
+  crossed-swords cursor, debug outline, click navigation to `/game`, and
+  focused Enter navigation. The deterministic test covers explicit Space
+  activation. Browser automation quota prevented a second live Space-key
+  verification after its control helper did not send Space.
+- `make dev` found an already-running service on port 8001; the frontend
+  launched on fallback port 3002 for route validation and was stopped after
+  testing. No existing process was terminated.
+
+**Unresolved Issues / Recommended Follow-up:**
+
+- Arena geometry (`39.3%, 43.2%, 23.6%, 16.5%`) is presentation tuning data;
+  adjust it only through the development debug mode after owner visual review.
+- The untracked `_02` and `_03` map variants remain owner-owned files outside
+  this task and are deliberately not referenced or staged.
+- Resolve the two unrelated pre-existing frontend test failures in their
+  respective owner-scale and UI-006 formation tasks.
+
+---
+
 ## 2026-08-06 — Restore Full-HP Healing Presentation
 
 **Summary:**

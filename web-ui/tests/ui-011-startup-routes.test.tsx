@@ -25,7 +25,7 @@ describe("UI-011 startup and route boundaries", () => {
     expect(renderedMarkup).toContain("/game-images/Game_Logo/Game_Logo_01.png");
 
     const start = screen.getByRole("link", { name: /start game/i });
-    expect(start).toHaveAttribute("href", "/game");
+    expect(start).toHaveAttribute("href", "/stages");
     expect(start).toBeVisible();
   });
 

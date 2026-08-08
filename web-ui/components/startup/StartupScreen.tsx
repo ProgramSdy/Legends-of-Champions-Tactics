@@ -29,7 +29,7 @@ export function StartupScreen() {
             unoptimized
           />
         </h1>
-        <Link className="startup-action" href="/game">
+        <Link className="startup-action" href="/stages">
           <span>START GAME</span>
         </Link>
       </div>

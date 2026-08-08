@@ -26,8 +26,17 @@ the thin Python adapter. Python remains the sole gameplay authority.
   constant used by presentation only.
 - `components/startup/StartupScreen.tsx` owns the non-interactive cinematic
   title presentation at `/`. It uses the supplied direct public startup and
-  logo assets and a semantic link to `/game`; it contains no battle state,
+  logo assets and a semantic link to `/stages`; it contains no battle state,
   roster loading, or adapter logic.
+- `components/stages/stage-config.ts` owns presentation-only stage IDs, display
+  names, enabled state, and map-percentage geometry. Inactive stage definitions
+  omit destinations and geometry so they cannot render as controls before
+  approval.
+- `components/stages/StageSelectionScreen.tsx` owns the map-bound Arena
+  interaction at `/stages`. The map image, Arena hotspot, label, glow, and
+  optional debug outline share one intrinsic `1672 / 941` positioning parent.
+  It routes to `/game` but owns no Team Builder, battle, API, or progression
+  state.
 - `components/battle/BattleExperience.tsx` owns the Team Builder/battle
   lifecycle. It loads the authoritative roster, creates a fresh provider for
   each configuration, and unmounts the battle subtree on return.
@@ -67,9 +76,10 @@ identity, or animation decisions.
 ## Session Lifecycle
 
 The application first opens the cinematic title scene at `/`. Activating its
-keyboard-accessible `START GAME` link navigates to `/game`, which hosts the
-unchanged `BattleExperience` lifecycle. `/assets` remains a development route
-and returns directly to `/game`, never through the title screen.
+keyboard-accessible `START GAME` link opens `/stages`; the enabled Arena
+control then navigates to `/game`, which hosts the unchanged `BattleExperience`
+lifecycle. `/assets` remains a development route and returns directly to
+`/game`, never through the title screen.
 
 `BattleCreateConfiguration` contains `battleSize`, `playerTeam`,
 `enemyCompositionMode`, optional `enemyTeam`, `enemyControlMode`, and optional
@@ -186,3 +196,6 @@ worker.
 - 2026-08-05 — Added the cinematic startup title route at `/`, moved the
   unchanged playable entry to `/game`, and redirected the Asset Registry return
   link to `/game`.
+- 2026-08-08 — Added the map-bound `/stages` selector, its single enabled Arena
+  control, development-only hotspot debug affordance, and a presentation-only
+  six-location configuration.

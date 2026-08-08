@@ -32,7 +32,7 @@ _To be documented._
   artwork.
 - The supplied logo retains its aspect ratio in the upper centre. The
   `START GAME` control is centered below the logo in clear artwork space and
-  routes to `/game`.
+  routes to `/stages`.
 - The control uses dark forged-metal/gunmetal material, a restrained
   antique-gold border, subtle blue-violet accent, dimensional bevel, pale text,
   and clear hover, pressed, and focus-visible states. It is not a flat
@@ -41,6 +41,24 @@ _To be documented._
   hover transition. It honours reduced-motion preferences. Decorative startup
   artwork is hidden from screen readers; the logo has descriptive alternative
   text and the start control remains keyboard accessible.
+
+### Stage Selection
+
+- `/stages` presents the owner-supplied Valley of Champions map as a dominant,
+  undistorted 16:9 visual. The map and its overlays share an intrinsic map
+  frame; stage coordinates must use percentages of that frame rather than
+  viewport pixels.
+- Arena is the sole enabled location. Its hover and focus state uses a modest
+  warm gold/orange radial illumination, a soft pulse, visible focus outline,
+  and compact frontend-rendered `Arena` / `Available` label. The effect must
+  remain an overlay and must not alter the source map.
+- The crossed-swords cursor is scoped to enabled stage controls and falls back
+  to a normal crosshair when a browser cannot load the cursor image. It must not
+  change the global cursor or appear over inactive landmarks.
+- Inactive locations remain unlabelled and visually untouched: no control,
+  lock, desaturation, glow, cursor, or completion/progression treatment.
+- Development-only hotspot debug may expose the enabled Arena boundary for
+  geometry tuning. It is off by default and unavailable in production.
 
 ### Battlefield Health Panels
 
@@ -164,3 +182,5 @@ _To be documented._
   accessible non-interactive entry state.
 - 2026-08-05 — Added the cinematic startup title-scene visual and interaction
   standard for the `/` → `/game` entry flow.
+- 2026-08-08 — Added map-bound Valley of Champions stage-selection standards
+  and updated the startup entry flow to `/` → `/stages` → `/game`.

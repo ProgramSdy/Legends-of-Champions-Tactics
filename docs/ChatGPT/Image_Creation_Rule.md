@@ -21,6 +21,9 @@ This standard applies to:
 \- status icons and status overlays;  
 \- combat and magic effects;  
 \- UI decorations, frames, badges, and placeholders;  
+\- stage-selection maps;  
+\- stage-location artwork;  
+\- stage-selection effects and overlays;  
 \- other future game image resources.
 
 \#\# 3\. Global Production Principles
@@ -243,6 +246,124 @@ Composition rules:
 \- Do not imitate final art quality.  
 \- Do not contain user-facing text unless specifically required.
 
+\#\#\# 6.15 Stage-selection map
+
+Purpose: a large environmental scene used as the visual foundation of a stage-selection screen. Individual stage locations, interactive markers, labels, buttons, lock states, completion indicators, and other UI may later be layered over this artwork.
+
+Default specification:
+
+\- Aspect ratio: 16:9.  
+\- Master resolution: 3840 x 2160\.  
+\- Minimum working resolution: 1920 x 1080\.  
+\- Runtime target: normally 1920 x 1080 or responsive WebP variants.  
+\- Background: fully opaque.  
+\- Orientation: landscape.  
+\- Style and rendering quality should remain consistent with the game's established environment artwork.
+
+Composition rules:
+
+\- Design the environment as a coherent geographic space rather than a decorative fantasy landscape.  
+\- The scene should support multiple visually distinct stage-location zones.  
+\- Each intended stage zone must have enough surrounding negative space and visual separation for a future stage landmark to remain readable.  
+\- Terrain should naturally explain why different types of locations could exist there.  
+\- Use geography such as valleys, mountains, plateaus, forests, rivers, cliffs, roads, ruins, elevated ground, passes, and similar environmental structures to divide the map naturally.  
+\- Avoid artificial-looking empty circles or obvious placeholder areas.  
+\- Stage zones should appear to belong to the same continuous world.  
+\- Avoid making every zone equally prominent. Visual hierarchy may be used to imply progression, distance, danger, or importance.  
+\- Roads, paths, rivers, bridges, mountain passes, walls, or other environmental features may subtly communicate relationships between stage locations.  
+\- Do not bake explicit navigation arrows or UI connectors into the environmental artwork unless specifically requested.  
+\- Preserve foreground, middle-ground, and background depth.  
+\- The environment must remain visually readable when displayed behind interactive UI.  
+\- Avoid excessive micro-detail in areas intended to receive stage landmarks or UI overlays.  
+\- Avoid strong environmental focal points that would compete with future interactive stage locations.  
+\- Keep essential geography and intended stage zones within the central 80% of the canvas.  
+\- Treat approximately the outer 10% on every side as a responsive crop-risk area.  
+\- Do not place essential stage zones exclusively inside crop-risk areas.  
+\- The composition should remain understandable under moderate responsive cropping.  
+\- Do not include permanent hero characters unless explicitly requested.  
+\- Do not include stage names, UI text, buttons, stars, lock symbols, progression numbers, selection borders, health bars, or other dynamic interface information.  
+\- Lighting should provide one coherent environmental atmosphere while allowing future stage landmarks to use controlled local lighting or colour accents.  
+\- The base terrain should generally use lower visual contrast than important interactive stage landmarks that will later be placed over it.  
+\- Preserve sufficient tonal separation so stage landmarks remain identifiable at normal gameplay display size.
+
+Layering principle:
+
+The stage-selection screen should conceptually support separate layers:
+
+1\. Base stage-selection map/environment.  
+2\. Individual stage-location artwork or landmarks.  
+3\. Optional environmental effects or overlays.  
+4\. Interactive stage-state effects.  
+5\. UI markers, labels, progression information, buttons, and other interface elements.
+
+Do not permanently merge dynamic UI information into the base environment.
+
+\#\#\# 6.16 Stage-location artwork
+
+Purpose: an individual visual landmark representing a selectable stage or destination placed onto a stage-selection map.
+
+Examples of this category may include structures, fortresses, towers, temples, camps, forests, ruins, caves, portals, settlements, or other identifiable destinations.
+
+Default principles:
+
+\- Stage-location artwork should normally be created as an independent asset so it can be positioned, selected, highlighted, locked, animated, replaced, or updated without regenerating the entire stage-selection map.  
+\- Transparency is preferred when the location is intended to be composited onto an existing stage-selection map.  
+\- Use a true alpha channel when transparency is required.  
+\- Do not use fake checkerboard transparency.  
+\- Do not include unrelated background scenery when the location is intended as an isolated composited landmark.  
+\- Maintain clean transparent edges.  
+\- Lighting direction, atmospheric perspective, viewing angle, horizon relationship, and colour temperature must be compatible with the intended stage-selection map.  
+\- The landmark must visually belong to the terrain on which it will be placed.  
+\- Avoid perspective that conflicts with the base map.  
+\- The landmark should have a strong and recognisable silhouette.  
+\- The location must remain identifiable when displayed at its actual runtime size.  
+\- Use one dominant architectural/environmental identity per stage.  
+\- Avoid excessive tiny decorative details that disappear after downscaling.  
+\- Leave sufficient transparent margin around the landmark for selection glows, hover effects, outlines, or other runtime effects.  
+\- Do not bake stage names, stage numbers, lock icons, completion stars, difficulty labels, selection borders, or other dynamic UI information into the artwork.  
+\- Stage-specific colour accents are allowed, but they must remain compatible with the shared environmental lighting.  
+\- Related stage locations belonging to the same map should share compatible perspective, rendering quality, material treatment, lighting discipline, and scale logic.  
+\- Stage locations should feel visually distinct from one another without appearing to originate from unrelated games or art styles.
+
+Integration rule:
+
+When a stage-location asset is intended for a specific base map, design the base map and stage-location asset as one visual system.
+
+Check:
+
+\- intended placement;  
+\- viewing angle;  
+\- approximate scale;  
+\- terrain contact;  
+\- lighting direction;  
+\- atmospheric depth;  
+\- silhouette readability;  
+\- surrounding negative space;  
+\- responsive crop safety;  
+\- UI overlap;  
+\- visual hierarchy.
+
+The final composite should look like the landmark was originally constructed within the environment rather than pasted onto the background.
+
+\#\#\# 6.17 Stage-selection effects and states
+
+Selection, hover, lock, completion, progression, accessibility, or availability states should normally be implemented separately from the base stage artwork.
+
+Possible separate effects include:
+
+\- selection glow;  
+\- outline;  
+\- subtle illumination;  
+\- atmospheric highlight;  
+\- particle accent;  
+\- locked-state treatment;  
+\- completed-state treatment;  
+\- active-path treatment.
+
+These effects must not require permanent modification of the source stage-selection map unless specifically requested.
+
+Keep effects restrained enough that multiple stage locations can coexist without making the map visually noisy.
+
 \#\# 7\. Cropping and Responsive Variants
 
 \- Preserve one uncropped master.  
@@ -344,6 +465,8 @@ Before generation, confirm which category specification applies. After generatio
 | Status overlay | Target-dependent | Match target | Yes | Target-dependent | Low to medium |  
 | Combat effect | 1:1 default | 2048 x 2048 | Yes | 256 x 256 | High |  
 | UI decoration | Target-dependent | At least 2x display size | Usually yes | Actual display size | Medium |
+| Stage-selection map | 16:9 | 3840 x 2160 | No | 1920 x 1080 | Very high |  
+| Stage-location artwork | Target-dependent | At least 2x intended display size | Usually yes | Actual display size | High |
 
 \#\# 14\. Approval Checklist
 
@@ -359,6 +482,13 @@ Before an asset is approved, verify:
 \- readable at intended display size;  
 \- suitable contrast against the expected UI or battlefield;  
 \- consistent appearance with related approved assets;  
+\- intended stage zones remain readable, where applicable;  
+\- important stage zones are outside responsive crop-risk areas, where applicable;  
+\- future landmarks have sufficient visual and negative space, where applicable;  
+\- base terrain does not overpower interactive locations, where applicable;  
+\- stage landmarks match the base map's perspective and lighting, where applicable;  
+\- stage names and dynamic stage-state UI are not baked into artwork, where applicable;  
+\- isolated stage-location assets have clean alpha edges where applicable;  
 \- correct filename and version;  
 \- source master preserved;  
 \- runtime export visually matches the master.
