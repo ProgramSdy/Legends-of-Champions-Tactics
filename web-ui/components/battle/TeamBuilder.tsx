@@ -1,6 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { resolveEnabledStage } from "@/components/stages/stage-config";
 import type {
   BattleCreateConfiguration,
   BattleSize,
@@ -8,51 +11,88 @@ import type {
   EnemyControlMode,
   HeroDefinitionSummary,
 } from "@/lib/battle/types";
+import { AssetImage } from "./AssetImage";
 
 interface TeamBuilderProps {
   roster: HeroDefinitionSummary[];
   onStart: (configuration: BattleCreateConfiguration) => void;
+  selectedStageId?: string;
 }
 
-function TeamSelect({
-  id,
-  label,
+const FIXED_SLOT_INDICES = [0, 1, 2] as const;
+const MATRIX_PAGE_SIZE = 5;
+
+function professionLabel(hero: HeroDefinitionSummary) {
+  return `${hero.faculty} · ${hero.specialization}`;
+}
+
+function portraitRequest(hero: HeroDefinitionSummary) {
+  return {
+    kind: "portrait" as const,
+    key: hero.definitionId,
+    className: hero.faculty,
+    name: `${hero.faculty} ${hero.specialization}`,
+  };
+}
+
+function EnemyTeamSlot({
+  index,
+  enabled,
   value,
   onChange,
   roster,
-  showDefinitionName = true,
 }: {
-  id: string;
-  label: string;
+  index: number;
+  enabled: boolean;
   value: string;
   onChange: (value: string) => void;
   roster: HeroDefinitionSummary[];
-  showDefinitionName?: boolean;
 }) {
+  const id = `enemy-slot-${index}`;
+  const selectedHero = roster.find((hero) => hero.definitionId === value);
   return (
-    <label className="team-slot" htmlFor={id}>
-      <span>{label}</span>
-      <select id={id} value={value} onChange={(event) => onChange(event.target.value)}>
-        <option value="">Choose a hero</option>
-        {roster.map((hero) => (
-          <option key={hero.definitionId} value={hero.definitionId}>
-            {showDefinitionName ? `${hero.displayName} · ${hero.specialization}` : `${hero.faculty} - ${hero.specialization}`}
-          </option>
-        ))}
-      </select>
-    </label>
+    <article
+      className={`enemy-slot-card${enabled ? "" : " disabled"}`}
+      data-enemy-slot={index}
+      data-slot-enabled={enabled}
+    >
+      <div className="builder-hero-media">
+        {enabled && selectedHero ? (
+          <AssetImage request={portraitRequest(selectedHero)} className="builder-hero-image" />
+        ) : (
+          <span className="disabled-slot-mark" aria-hidden="true">◇</span>
+        )}
+      </div>
+      <span className="slot-number">HERO {index + 1}</span>
+      {enabled && selectedHero ? <strong>{professionLabel(selectedHero)}</strong> : <strong>UNAVAILABLE</strong>}
+      <label className="team-slot" htmlFor={id}>
+        <span className="sr-only">Hero {index + 1}</span>
+        {enabled ? <select id={id} value={value} onChange={(event) => onChange(event.target.value)}>
+          <option value="">Choose a hero</option>
+          {roster.map((hero) => (
+            <option key={hero.definitionId} value={hero.definitionId}>
+              {professionLabel(hero)}
+            </option>
+          ))}
+        </select> : null}
+      </label>
+    </article>
   );
 }
 
-export function TeamBuilder({ roster, onStart }: TeamBuilderProps) {
+export function TeamBuilder({ roster, onStart, selectedStageId }: TeamBuilderProps) {
+  const selectedStage = resolveEnabledStage(selectedStageId);
   const defaultPlayer = roster.map((hero) => hero.definitionId);
   const defaultEnemy = [...defaultPlayer].reverse();
   const [battleSize, setBattleSize] = useState<BattleSize>(1);
   const [playerTeam, setPlayerTeam] = useState<string[]>(defaultPlayer.slice(0, 1));
+  const [activePlayerSlot, setActivePlayerSlot] = useState(0);
   const [enemyCompositionMode, setEnemyCompositionMode] = useState<EnemyCompositionMode>("random");
   const [enemyTeam, setEnemyTeam] = useState<string[]>(defaultEnemy.slice(0, 1));
   const [enemyControlMode, setEnemyControlMode] = useState<EnemyControlMode>("computer");
   const [seedText, setSeedText] = useState("");
+  const [selectedFaculty, setSelectedFaculty] = useState("All");
+  const [matrixPage, setMatrixPage] = useState(0);
 
   const resize = (team: string[], size: BattleSize, defaults: readonly string[]) =>
     Array.from({ length: size }, (_, index) => team[index] ?? defaults[index] ?? "");
@@ -61,6 +101,7 @@ export function TeamBuilder({ roster, onStart }: TeamBuilderProps) {
     setBattleSize(size);
     setPlayerTeam((team) => resize(team, size, defaultPlayer));
     setEnemyTeam((team) => resize(team, size, defaultEnemy));
+    setActivePlayerSlot((slot) => Math.min(slot, size - 1));
   };
 
   const parsedSeed = seedText === "" ? undefined : Number(seedText);
@@ -88,12 +129,57 @@ export function TeamBuilder({ roster, onStart }: TeamBuilderProps) {
     });
   };
 
+  const stagePosition = `${selectedStage.geometry.leftPercent + selectedStage.geometry.widthPercent / 2}% ${selectedStage.geometry.topPercent + selectedStage.geometry.heightPercent / 2}%`;
+  const activeHeroId = playerTeam[activePlayerSlot] ?? "";
+  const faculties = useMemo(
+    () => Array.from(new Set(roster.map((hero) => hero.faculty))),
+    [roster],
+  );
+  const filteredRoster = useMemo(
+    () => selectedFaculty === "All"
+      ? roster
+      : roster.filter((hero) => hero.faculty === selectedFaculty),
+    [roster, selectedFaculty],
+  );
+  const matrixPageCount = Math.max(1, Math.ceil(filteredRoster.length / MATRIX_PAGE_SIZE));
+  const visibleMatrixHeroes = filteredRoster.slice(
+    matrixPage * MATRIX_PAGE_SIZE,
+    (matrixPage + 1) * MATRIX_PAGE_SIZE,
+  );
+
+  const selectFaculty = (faculty: string) => {
+    setSelectedFaculty(faculty);
+    setMatrixPage(0);
+  };
+
   return (
     <main className="team-builder" tabIndex={0} aria-label="Team Builder scroll area">
+      <Link className="builder-back" href="/stages">← <span>BACK TO STAGE MAP</span></Link>
+
       <header className="builder-title">
         <span className="builder-crest" aria-hidden="true">L</span>
-        <div><p>LEGENDS OF CHAMPIONS TACTICS</p><h1>Team Builder</h1><span>Assemble both sides, then enter the Fallen Citadel.</span></div>
+        <div><p>LEGENDS OF CHAMPIONS TACTICS</p><h1>Team Builder</h1></div>
       </header>
+
+      <section className="current-stage" aria-labelledby="current-stage-heading">
+        <div className="current-stage-copy">
+          <small>CURRENT STAGE</small>
+          <h2 id="current-stage-heading">{selectedStage.displayName}</h2>
+          <span>Valley of Champions</span>
+        </div>
+        <div className="current-stage-media">
+          <Image
+            className="current-stage-map"
+            src="/game-images/Stage_Map/valley_of_champions.png"
+            alt=""
+            aria-hidden="true"
+            fill
+            sizes="(max-width: 1100px) 100vw, 48vw"
+            style={{ objectPosition: stagePosition }}
+            unoptimized
+          />
+        </div>
+      </section>
 
       <section className="builder-options" aria-labelledby="battle-rules-heading">
         <h2 id="battle-rules-heading">Battle rules</h2>
@@ -126,21 +212,93 @@ export function TeamBuilder({ roster, onStart }: TeamBuilderProps) {
 
       <section className="team-composer friendly" aria-labelledby="player-team-heading">
         <header><div><small>PLAYER CONTROLLED</small><h2 id="player-team-heading">Your Team</h2></div><strong>{battleSize} HERO{battleSize > 1 ? "ES" : ""}</strong></header>
-        <div className="team-slot-list">
-          {playerTeam.map((heroId, index) => <TeamSelect roster={roster} showDefinitionName={false} key={`player-${index}`} id={`player-slot-${index}`} label={`Player slot ${index + 1}`} value={heroId} onChange={(value) => setPlayerTeam((team) => updateSlot(team, index, value))} />)}
+        <div className="visual-team-slots player-slots" data-fixed-slot-count="3">
+          {FIXED_SLOT_INDICES.map((index) => {
+            const enabled = index < battleSize;
+            const hero = enabled ? roster.find((candidate) => candidate.definitionId === playerTeam[index]) : undefined;
+            const active = enabled && index === activePlayerSlot;
+            return (
+              <button
+                key={`player-${index}`}
+                type="button"
+                className={`player-slot-card${active ? " active" : ""}`}
+                data-player-slot={index}
+                data-slot-enabled={enabled}
+                aria-label={enabled && hero
+                  ? `Hero ${index + 1}: ${professionLabel(hero)}`
+                  : `Hero ${index + 1}: unavailable for ${battleSize}v${battleSize}`}
+                aria-pressed={active}
+                disabled={!enabled}
+                onClick={() => setActivePlayerSlot(index)}
+              >
+                <span className="builder-hero-media">
+                  {enabled && hero ? (
+                    <AssetImage request={portraitRequest(hero)} className="builder-hero-image" />
+                  ) : (
+                    <span className="disabled-slot-mark" aria-hidden="true">◇</span>
+                  )}
+                </span>
+                <span className="slot-number">HERO {index + 1}</span>
+                <strong>{hero?.faculty ?? "UNAVAILABLE"}</strong>
+                <small>{hero?.specialization ?? `${battleSize}v${battleSize}`}</small>
+              </button>
+            );
+          })}
         </div>
       </section>
 
       <section className="team-composer enemy" aria-labelledby="enemy-team-heading">
         <header><div><small>{enemyControlMode === "computer" ? "ENGINE CONTROLLED" : "PLAYER CONTROLLED"}</small><h2 id="enemy-team-heading">Enemy Team</h2></div><strong>{enemyCompositionMode === "random" ? "RANDOM" : `${battleSize} HERO${battleSize > 1 ? "ES" : ""}`}</strong></header>
         {enemyCompositionMode === "random"
-          ? <div className="random-team-note"><span aria-hidden="true">?</span><p>Python will assemble the enemy team when the battle begins. A seed makes this choice repeatable.</p></div>
-          : <div className="team-slot-list">{enemyTeam.map((heroId, index) => <TeamSelect roster={roster} showDefinitionName={false} key={`enemy-${index}`} id={`enemy-slot-${index}`} label={`Enemy slot ${index + 1}`} value={heroId} onChange={(value) => setEnemyTeam((team) => updateSlot(team, index, value))} />)}</div>}
+          ? <div className="random-team-note" aria-label="Enemy composition: Python-selected random team"><div className="enemy-slot-list random-enemy-slots" data-fixed-slot-count="3">{FIXED_SLOT_INDICES.map((index) => { const enabled = index < battleSize; return <article className={`enemy-slot-card random-slot${enabled ? "" : " disabled"}`} data-enemy-slot={index} data-slot-enabled={enabled} key={index}><div className="builder-hero-media"><span className="disabled-slot-mark" aria-hidden="true">{enabled ? "?" : "◇"}</span></div><span className="slot-number">HERO {index + 1}</span><strong>{enabled ? "RANDOM" : "UNAVAILABLE"}</strong><small>{enabled ? "PYTHON SELECTED" : `${battleSize}v${battleSize}`}</small></article>; })}</div></div>
+          : <div className="enemy-slot-list" data-fixed-slot-count="3">{FIXED_SLOT_INDICES.map((index) => <EnemyTeamSlot roster={roster} key={`enemy-${index}`} index={index} enabled={index < battleSize} value={enemyTeam[index] ?? ""} onChange={(value) => setEnemyTeam((team) => updateSlot(team, index, value))} />)}</div>}
       </section>
 
-      <section className="hero-roster" aria-labelledby="roster-heading">
-        <header><h2 id="roster-heading">Approved roster</h2><span>8 HERO DEFINITIONS</span></header>
-        <div>{roster.map((hero) => <article key={hero.definitionId}><i aria-hidden="true">{hero.displayName.slice(0, 1)}</i><strong>{hero.displayName}</strong><span>{hero.specialization}</span></article>)}</div>
+      <section className="hero-roster hero-selection-matrix" aria-labelledby="roster-heading">
+        <header><div><small>ASSIGNING HERO {activePlayerSlot + 1}</small><h2 id="roster-heading">Hero Selection Matrix</h2></div><span>{roster.length} HERO DEFINITIONS</span></header>
+        <div className="matrix-toolbar">
+          <div className="faculty-filter" role="group" aria-label="Filter heroes by faculty">
+            {["All", ...faculties].map((faculty) => (
+              <button
+                key={faculty}
+                type="button"
+                data-faculty-filter={faculty}
+                aria-pressed={selectedFaculty === faculty}
+                onClick={() => selectFaculty(faculty)}
+              >
+                {faculty}
+              </button>
+            ))}
+          </div>
+          <div className="matrix-navigation">
+            <button type="button" aria-label="Previous heroes" disabled={matrixPage === 0} onClick={() => setMatrixPage((page) => page - 1)}>←</button>
+            <span className="matrix-page-status" aria-live="polite">{matrixPage + 1} / {matrixPageCount}</span>
+            <button type="button" aria-label="Next heroes" disabled={matrixPage >= matrixPageCount - 1} onClick={() => setMatrixPage((page) => page + 1)}>→</button>
+          </div>
+        </div>
+        <div className="hero-matrix-grid">
+          {visibleMatrixHeroes.map((hero) => {
+            const assigned = hero.definitionId === activeHeroId;
+            return (
+              <button
+                key={hero.definitionId}
+                type="button"
+                className={`matrix-hero-card${assigned ? " assigned" : ""}`}
+                data-hero-id={hero.definitionId}
+                aria-label={`Assign ${professionLabel(hero)} to Hero ${activePlayerSlot + 1}`}
+                aria-pressed={assigned}
+                onClick={() => setPlayerTeam((team) => updateSlot(team, activePlayerSlot, hero.definitionId))}
+              >
+                <span className="builder-hero-media">
+                  <AssetImage request={portraitRequest(hero)} className="builder-hero-image" />
+                </span>
+                <strong>{hero.faculty}</strong>
+                <small>{hero.specialization}</small>
+                {assigned ? <span className="matrix-assigned" aria-hidden="true">✓</span> : null}
+              </button>
+            );
+          })}
+        </div>
       </section>
 
       <footer className="builder-footer">

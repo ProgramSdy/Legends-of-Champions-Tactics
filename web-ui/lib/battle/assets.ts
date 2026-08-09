@@ -32,11 +32,13 @@ const heroClasses: Record<string, string> = {
 export const heroPresentation: Record<string, { className: string; tone: string; assets: Partial<Record<"portrait" | "figure" | "thumbnail" | "class", string>>; placeholder: boolean; animation?: { idle: string; active: string; defeated: string } }> = {
   "hero.paladin.protection": { className: "Paladin", tone: "amber", assets: { figure: "/game-images/heroes/Paladin-Protection/figures/Paladin_Protection.png" }, placeholder: false },
   "hero.paladin.retribution": { className: "Paladin", tone: "amber", assets: { figure: "/game-images/heroes/Paladin-Retribution/figures/Paladin_Retribution.png" }, placeholder: false },
+  "hero.paladin.holy": { className: "Paladin", tone: "amber", assets: { figure: "/game-images/heroes/Paladin-Holy/figures/Paladin_Holy.png" }, placeholder: false },
   "hero.priest.comprehensiveness": { className: "Priest", tone: "blue", assets: { figure: "/game-images/heroes/Priest-Comprehensiveness/figures/Priest_Comprehensiveness.png" }, placeholder: false },
   "hero.priest.discipline": { className: "Priest", tone: "blue", assets: { figure: "/game-images/heroes/Priest-Discipline/figures/Priest_Discipline.png" }, placeholder: false },
   "hero.mage.comprehensiveness": { className: "Mage", tone: "blue", assets: { figure: "/game-images/heroes/Mage-Comprehensiveness/figures/Mage_Comprehensiveness.png" }, placeholder: false },
   "hero.warrior.defence": { className: "Warrior", tone: "amber", assets: { figure: "/game-images/heroes/Warrior-Defence/figures/Warrior_Defence.png" }, placeholder: false },
   "hero.warrior.weapon_master": { className: "Warrior", tone: "amber", assets: { class: classAssets.Warrior, figure: "/game-images/heroes/Warrior-Weapon-Master/figures/Warrior_Weapon_Master.png" }, placeholder: false, animation: { idle: "idle", active: "weapon-ready", defeated: "defeated" } },
+  "hero.warrior.berserker": { className: "Warrior", tone: "red", assets: { figure: "/game-images/heroes/Warrior-Berserker/figures/Warrior_Berserker.png" }, placeholder: false },
   "hero.rogue.comprehensiveness": { className: "Rogue", tone: "violet", assets: { figure: "/game-images/heroes/Rogue-Comprehensiveness/figures/Rogue_Comprehensiveness.png" }, placeholder: false, animation: { idle: "idle", active: "shadow-ready", defeated: "defeated" } },
 };
 
@@ -47,11 +49,13 @@ export const DEFAULT_HERO_FIGURE_SCALE = 1;
 export const heroFigureScales: Record<string, number> = {
   "hero.paladin.protection": 1.2,
   "hero.paladin.retribution": 1.2,
+  "hero.paladin.holy": 1.2,
   "hero.priest.comprehensiveness": 1,
   "hero.priest.discipline": 1,
   "hero.mage.comprehensiveness": 0.9,
   "hero.warrior.defence": 1.15,
   "hero.warrior.weapon_master": 1.1,
+  "hero.warrior.berserker": 1.12,
   "hero.rogue.comprehensiveness": 1,
 };
 

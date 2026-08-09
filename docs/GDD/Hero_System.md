@@ -27,9 +27,11 @@ Use the terms consistently:
 | `hero.priest.discipline` | Priest | Discipline |
 | `hero.paladin.retribution` | Paladin | Retribution |
 | `hero.paladin.protection` | Paladin | Protection |
+| `hero.paladin.holy` | Paladin | Holy |
 | `hero.mage.comprehensiveness` | Mage | Comprehensiveness |
 | `hero.warrior.defence` | Warrior | Defence |
 | `hero.warrior.weapon_master` | Warrior | Weapon Master |
+| `hero.warrior.berserker` | Warrior | Berserker |
 | `hero.rogue.comprehensiveness` | Rogue | Comprehensiveness |
 
 The legacy engine contains additional specializations across Warrior, Mage,

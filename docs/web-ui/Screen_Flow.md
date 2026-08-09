@@ -43,7 +43,7 @@ not the viewport.
 
 Only Arena is currently enabled. Its pointer hover and keyboard focus reveal a
 restrained warm overlay and label, and its click, Enter, and Space activation
-navigate to `/game`. Warrior's Barrack, Mage's Tower, Rogue's Forest, Paladin's
+navigate to `/game?stage=arena`. Warrior's Barrack, Mage's Tower, Rogue's Forest, Paladin's
 Altar, and Priest's Cathedral exist as inactive configuration metadata only;
 they render no controls, labels, effects, or state treatment. Local development
 may add `?debugHotspots=1` to outline Arena geometry; normal and production
@@ -51,19 +51,31 @@ presentation leave it off.
 
 ### Team Builder
 
-The playable application entry point at `/game`. It provides:
+The playable application entry point at `/game`. A valid `stage` query is
+resolved only as presentation context; direct or invalid visits use Arena. It
+provides:
 
 - battle size: 1v1, 2v2, or 3v3;
-- one player-team selector per required slot;
+- three fixed visual hero positions per team. Positions beyond the selected
+  battle size are visibly disabled, non-focusable, and never submitted; active
+  player positions remain keyboard-operable Matrix assignment targets;
 - random or player-specified enemy composition;
 - one enemy-team selector per required slot in specified mode;
 - Python-engine computer control or player control for the enemy team;
 - an optional non-negative integer seed;
-- the eight definitions supplied by the adapter roster endpoint.
+- a Current Stage preview, Back to Stage Map control, and every definition
+  supplied by the adapter roster endpoint in the Hero Selection Matrix.
 
-Player-team selectors identify choices as `Faculty - Specialization` and do
-not expose catalogue roster names as if they were fixed battle identities.
-Player-specified enemy selectors retain catalogue name plus specialization.
+The Team Builder keeps its header/stage preview, Battle Rules, team panels,
+Hero Selection Matrix, and launch footer in normal document flow. At reduced
+viewport heights, its existing vertical scroll area reveals lower sections;
+team cards are not compressed or allowed to overlap the Matrix.
+
+Team Builder shows only faculty and specialization for player slots, enemy
+slots, Matrix cards, and specified-enemy options; it does not expose catalogue
+or runtime hero names. The roster-derived All/faculty filter and bounded
+previous/next Matrix paging assign only the selected player slot. Random enemy
+selection remains Python-owned and is never changed by the matrix.
 When the session is created, Python assigns runtime display names from the
 relevant faculty pools while stable definition and combatant IDs continue to
 identify selections, targets, and commands.
@@ -99,7 +111,8 @@ flow. Its return link navigates directly to `/game`.
 
 - `/` opens the non-interactive cinematic startup title scene.
 - `/stages` opens the stage-selection map without creating a battle session.
-- `/game` opens Team Builder after the roster loads.
+- `/game` opens Team Builder after the roster loads; `/game?stage=arena`
+  identifies its presentation-only current stage.
 - `START GAME` navigates to `/stages`; Arena and the Asset Gallery return link
   navigate to `/game`.
 - Team Builder launches only live Python-backed sessions.
@@ -128,3 +141,6 @@ flow. Its return link navigates directly to `/game`.
   at `/game`.
 - 2026-08-08 — Inserted the Valley of Champions `/stages` selector between the
   title scene and Team Builder; Arena is the sole enabled destination.
+- 2026-08-09 — Reworked Team Builder around visual team slots and the Hero
+  Selection Matrix; Stage Map now passes only the selected Arena presentation
+  context to `/game`.

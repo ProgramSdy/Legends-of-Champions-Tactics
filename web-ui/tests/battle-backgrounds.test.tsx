@@ -10,9 +10,11 @@ const roster = [
   ["hero.priest.discipline", "Seraphine", "Priest", "Discipline"],
   ["hero.paladin.retribution", "Valerius", "Paladin", "Retribution"],
   ["hero.paladin.protection", "Bastion", "Paladin", "Protection"],
+  ["hero.paladin.holy", "Galahad", "Paladin", "Holy"],
   ["hero.mage.comprehensiveness", "Lyra", "Mage", "Comprehensiveness"],
   ["hero.warrior.defence", "Aegis", "Warrior", "Defence"],
   ["hero.warrior.weapon_master", "Ragnar", "Warrior", "Weapon Master"],
+  ["hero.warrior.berserker", "Wrathe", "Warrior", "Berserker"],
   ["hero.rogue.comprehensiveness", "Nighthawk", "Rogue", "Comprehensiveness"],
 ].map(([definitionId, displayName, faculty, specialization]) => ({
   definitionId,

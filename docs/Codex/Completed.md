@@ -2,6 +2,255 @@
 
 Completed work should be appended in reverse chronological order, with the newest entry first.
 
+## 2026-08-09 — UI-015 Prevent Team Builder Overlap at Reduced Viewport Heights
+
+**Summary:**
+
+Fixed the Team Builder's reduced-height overlap. The scrollable Team Builder
+grid now uses content-sized implicit rows, so its team panels reserve their
+full content height and the Hero Selection Matrix/launch footer stay below
+them in normal document flow.
+
+**Agent Selection and Contributions:**
+
+- `project-manager` — assessed this as a medium-risk frontend layout defect,
+  selected the UI, test, and review roles, and excluded the engine role because
+  no API, Python, contract, or gameplay boundary is affected.
+- `ui-developer` — diagnosed compressed implicit grid rows and added the
+  focused `grid-auto-rows: max-content` layout correction.
+- `test-automator` — added a regression suite covering the single scroll area,
+  content-sized grid rows, normal DOM order, retained card sizes, and 1v1–3v3
+  footer reachability.
+- `reviewer` — identified and then approved the explicit regression assertion
+  for the corrective grid rule; confirmed no Battle Rules or API scope creep.
+- `game-engine-developer` — not selected; the confirmed cause and remedy are
+  isolated to frontend layout sizing.
+
+**Files Changed:**
+
+- `web-ui/app/globals.css`
+- `web-ui/tests/ui-015-team-builder-layout.test.tsx`
+- `docs/web-ui/WEB_UI_ARCHITECTURE.md`
+- `docs/web-ui/Screen_Flow.md`
+- `docs/Codex/Backlog.md`
+- `docs/Codex/Completed.md`
+- `docs/Codex/Current_Task.md`
+
+**Validation:**
+
+- Focused UI-013/UI-014/UI-015 Team Builder suites — 26 passed.
+- UI-015 regression suite — 5 passed after the reviewer-required assertion
+  that the content-sized implicit grid rule is present.
+- `npm run typecheck`, lint, production build, and task-scoped
+  `git diff --check` — passed.
+- Local Chromium verification at 1440 px wide and 900 px, 700 px, 550 px, and
+  450 px heights showed all 1v1, 2v2, and 3v3 team panels ending 18 px before
+  the Matrix; vertical scrolling reached the footer, there was no horizontal
+  overflow, and keyboard focus scrolled Enter Battle into view. A 700 px wide
+  responsive check also retained normal stacked flow without horizontal
+  overflow.
+- Final reviewer disposition — approved.
+
+**Unresolved Issues / Recommended Follow-up:**
+
+- No UI-015-specific issue remains. The existing owner-controlled review file
+  and unrelated legacy test expectations remain outside this task.
+
+---
+
+## 2026-08-09 — UI-014 Refine Team Builder Slots, Faculty Navigation, and the Live Hero Roster
+
+**Summary:**
+
+Refined the Team Builder with three fixed visual Hero slots for both teams,
+profession-only identity, roster-derived faculty filters, five-card matrix
+paging, accessible navigation, and compact Python-random enemy presentation.
+The live v1 roster now contains ten definitions: the existing eight plus
+Paladin Holy and Warrior Berserker. Both IDs are selectable in the web client,
+accepted by the typed Python adapter, and participate in live battle creation.
+
+The roster-loader boundary was updated from the previous eight-definition
+assumption to the authoritative ten-definition roster, fixing the Team Builder
+"Hero Roster Unavailable" state after the adapter expansion. The Paladin Holy
+figure is a Git-recognised exact rename of the owner-supplied image:
+`Paladin_Protection.png` to `Paladin_Holy.png`, retaining SHA-256
+`1256c8c54b53cf1d069ec8f3583135c4b8210d8ff328f01dcefedcd7ff7cd25d`
+and its 1024 × 1536 RGBA dimensions. No transformed art is part of the
+delivery.
+
+**Agent Selection and Contributions:**
+
+- `project-manager` — assessed this as high-risk cross-boundary work,
+  coordinated all five roles, protected the Battle Rules/payload boundary,
+  resolved the final asset-provenance and roster-fixture gates, and prepared
+  the follow-up viewport-height task.
+- `ui-developer` — implemented fixed team slots, profession-only Team Builder
+  identity, faculty filtering, matrix paging, fallback-safe asset registry,
+  responsive styling, and the Paladin Holy canonical figure path.
+- `game-engine-developer` — exposed the two existing hero classes through the
+  adapter roster and Pydantic transport literals, preserving live creation,
+  action serialization, random selection, and seeded determinism without
+  changing combat rules.
+- `test-automator` — added adapter/API and Team Builder coverage for the
+  ten-definition roster, fixed slots on both teams, paging/filtering, payloads,
+  image fallback, and the live-roster contract; updated old eight-definition
+  fixture data.
+- `reviewer` — independently approved the protected Battle Rules and payload
+  boundary, documentation alignment, exact art rename, frontend fixture repair,
+  and enemy fixed-slot coverage.
+
+**Files Changed:**
+
+- `battle_api/adapter.py`
+- `battle_api/models.py`
+- `tests/test_battle_adapter.py`
+- `tests/test_battle_api.py`
+- `tests/test_ui014_roster.py`
+- `web-ui/components/battle/TeamBuilder.tsx`
+- `web-ui/components/battle/BattleExperience.tsx`
+- `web-ui/lib/battle/assets.ts`
+- `web-ui/lib/battle/liveProvider.ts`
+- `web-ui/app/globals.css`
+- `web-ui/public/game-images/heroes/Paladin-Holy/figures/Paladin_Holy.png`
+- `web-ui/tests/battle-backgrounds.test.tsx`
+- `web-ui/tests/ui-002-team-builder.test.tsx`
+- `web-ui/tests/ui-013-team-builder.test.tsx`
+- `web-ui/tests/ui-014-team-builder-refinements.test.tsx`
+- `docs/GDD/Game_Design_Document.md`
+- `docs/GDD/Hero_System.md`
+- `docs/web-ui/PYTHON_ADAPTER_API.md`
+- `docs/web-ui/BATTLE_DATA_CONTRACT_V1.md`
+- `docs/web-ui/Screen_Flow.md`
+- `docs/web-ui/Style_Guide.md`
+- `docs/web-ui/WEB_UI_ARCHITECTURE.md`
+- `docs/Codex/Backlog.md`
+- `docs/Codex/Current_Task.md`
+- `docs/Codex/Completed.md`
+
+**Validation:**
+
+- `./.venv/bin/python -m pytest -q` — 116 passed; one pre-existing
+  Starlette/TestClient deprecation warning.
+- Targeted adapter/API/UI-014 Python suite — 86 passed.
+- Focused Team Builder suites, including fixed enemy-slot coverage and the
+  corrected ten-definition fixture — 35 passed; the fixture/slot-focused run
+  was 12 passed.
+- `npm test` — 172/174 passed. The two failures are pre-existing and outside
+  UI-014: an owner-configured Warrior Defence scale (`1.15` compared with an
+  old `1.2` test expectation), and a UI-006 formation expectation (`55` versus
+  historical `>59`).
+- `npm run typecheck`, `npm run lint -- --quiet`, `npm run build`, Python
+  compilation, and task-scoped `git diff --check` — passed.
+- Local browser verification confirmed direct `/game?stage=arena` loaded the
+  Team Builder without a roster error; 1v1, 2v2, and 3v3 correctly enabled
+  one, two, and three slots per side; profession-only visible/accessibility
+  labels, faculty filtering, paging, specified enemies, and both new heroes
+  worked. A configured 3v3 with Paladin Holy and Warrior Berserker on both
+  player and specified enemy teams enabled Enter Battle and mounted the live
+  battle screen without a UI notice.
+- Final reviewer disposition — approved.
+
+**Unresolved Issues / Recommended Follow-up:**
+
+- The owner-reported Team Builder overlap at reduced **viewport height** is
+  intentionally prepared as UI-015 in `docs/Codex/Backlog.md`; it is a focused
+  normal-document-flow/scrolling follow-up, not a gameplay or roster defect.
+- Do not alter the owner-controlled
+  `docs/web-ui/screenshots_debug/UI_Review_Human.md`. Its pre-existing trailing
+  whitespace remains excluded from repository-wide `git diff --check`.
+- Resolve the two unrelated legacy frontend expectations in their separately
+  authorised formation/owner-scale work.
+
+---
+
+## 2026-08-09 — UI-013 Rework Team Builder Around Hero Slots and the Current Stage Preview
+
+**Summary:**
+
+Reworked the `/game` Team Builder around a presentation-only Current Stage
+preview, visual player/enemy slots, and a keyboard-operable Hero Selection
+Matrix. The Stage Map now enters `/game?stage=arena`; `GamePage` resolves that
+against the canonical enabled-stage configuration, while direct or invalid
+`/game` visits safely use Arena. The stage value is passed only as presentation
+context and never enters `BattleCreateConfiguration` or a battle API request.
+
+The protected Battle Rules bar retains its existing controls, labels, native
+radio/input semantics, validation, DOM structure, styling selectors, and launch
+payload. Random enemy selection remains Python-owned with no `enemyTeam` in
+the payload; specified enemy slots keep explicit accessible selects.
+
+**Agent Selection and Contributions:**
+
+- `project-manager` — assessed UI-013 as medium-high frontend integration,
+  coordinated implementation/testing/review gates, enforced the protected
+  Battle Rules and payload boundaries, and excluded the engine role.
+- `ui-developer` — implemented canonical stage resolution and handoff, Current
+  Stage crop, Back to Stage Map navigation, player/enemy slots, Hero Selection
+  Matrix, responsive/accessibility styling, and shared `AssetImage` fallback
+  use.
+- `test-automator` — added/updated slot, matrix, resize, duplicate, payload,
+  stage-handoff, fallback, and route regression coverage.
+- `reviewer` — approved the final implementation after verifying Battle Rules
+  preservation, query-only stage context, payload compatibility, accessibility,
+  responsive scoping, and owner-asset exclusion.
+- `game-engine-developer` — not selected because UI-013 explicitly forbade API,
+  Python, gameplay, and persistence changes; no contract issue was found.
+
+**Files Changed:**
+
+- `web-ui/app/game/page.tsx`
+- `web-ui/app/globals.css`
+- `web-ui/components/battle/BattleExperience.tsx`
+- `web-ui/components/battle/TeamBuilder.tsx`
+- `web-ui/components/stages/StageSelectionScreen.tsx`
+- `web-ui/components/stages/stage-config.ts`
+- `web-ui/tests/ui-002-team-builder.test.tsx`
+- `web-ui/tests/ui-006-refinements.test.tsx`
+- `web-ui/tests/ui-007-regressions.test.tsx`
+- `web-ui/tests/ui-011-startup-routes.test.tsx`
+- `web-ui/tests/ui-012-stage-selection.test.tsx`
+- `web-ui/tests/ui-013-team-builder.test.tsx`
+- `docs/web-ui/WEB_UI_ARCHITECTURE.md`
+- `docs/web-ui/Screen_Flow.md`
+- `docs/web-ui/Style_Guide.md`
+- `docs/Codex/Current_Task.md`
+- `docs/Codex/Completed.md`
+
+**Validation:**
+
+- `npm test -- --run tests/ui-013-team-builder.test.tsx tests/ui-012-stage-selection.test.tsx`
+  — 16 passed.
+- UI-013/UI-011 focused route regression suite — 14 passed after the explicit
+  `GamePage` selected-stage handoff test.
+- Affected UI-002/UI-006/UI-007/UI-011/UI-012/UI-013 suites — 56 passed with
+  one unrelated existing UI-006 formation-coordinate assertion failure
+  (`55` versus its historical `>59` expectation).
+- `npm run typecheck`, `npm run lint`, `npm run build`, and task-scoped
+  `git diff --check` — passed.
+- Full frontend suite — 162/164 passed. The two pre-existing failures are the
+  UI-006 formation expectation and the owner-configured Warrior Defence scale
+  (`1.15` versus an older test expectation of `1.2`); neither file was changed.
+- Local browser validation at narrow 921×639 and desktop 1440×900 confirmed
+  `/stages` → `/game?stage=arena`, the canonical 1672×941 map source, Arena
+  fallback context, 1v1/2v2/3v3 slots, matrix assignment, random/specified
+  enemies, both enemy-control choices, seed input, fallback rendering, and no
+  horizontal overflow. A default live 1v1 launch sent one request to
+  `http://localhost:8001/api/v1/battles` and mounted the battle screen without
+  a UI notice. The canonical map copy was never requested.
+
+**Unresolved Issues / Recommended Follow-up:**
+
+- The pre-existing owner-owned untracked
+  `web-ui/public/game-images/Stage_Map/valley_of_champions copy.png` is
+  intentionally untouched, unreferenced, and excluded from this task; it must
+  not be staged as a UI-013 artifact.
+- Resolve the two unrelated owner-baseline frontend test expectations in their
+  own authorised formation and visual-scale tasks.
+- Revisit stage preview crop geometry only when additional enabled stages are
+  approved; retain `stage-config.ts` as the single source of IDs/names/geometry.
+
+---
+
 ## 2026-08-08 — UI-012 Implement the First Valley of Champions Stage-Selection Flow
 
 **Summary:**

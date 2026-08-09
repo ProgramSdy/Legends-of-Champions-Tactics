@@ -7,7 +7,13 @@ import type { BattleCreateConfiguration, HeroDefinitionSummary } from "@/lib/bat
 import { BATTLE_BACKGROUND } from "@/lib/battle/battleBackgrounds";
 import { TeamBuilder } from "./TeamBuilder";
 
-export function BattleExperience({ countdownStepMs = 1000 }: { countdownStepMs?: number }) {
+export function BattleExperience({
+  countdownStepMs = 1000,
+  selectedStageId,
+}: {
+  countdownStepMs?: number;
+  selectedStageId?: string;
+}) {
   const [configuration, setConfiguration] = useState<BattleCreateConfiguration | null>(null);
   const [sessionKey, setSessionKey] = useState(0);
   const [roster, setRoster] = useState<HeroDefinitionSummary[] | null>(null);
@@ -25,7 +31,7 @@ export function BattleExperience({ countdownStepMs = 1000 }: { countdownStepMs?:
 
   if (!provider && rosterError) return <main className="loading-screen"><section className="connection-state" role="alert"><strong>HERO ROSTER UNAVAILABLE</strong><p>{rosterError}</p><button onClick={() => { setRosterError(null); setRosterAttempt((attempt) => attempt + 1); }}>Retry connection</button></section></main>;
   if (!provider && !roster) return <main className="loading-screen" aria-live="polite"><span className="loading-rune">◇</span>Loading approved heroes…</main>;
-  if (!provider) return <TeamBuilder roster={roster!} onStart={(next) => {
+  if (!provider) return <TeamBuilder roster={roster!} selectedStageId={selectedStageId} onStart={(next) => {
     setSessionKey((key) => key + 1);
     setBattleBackground(BATTLE_BACKGROUND);
     setConfiguration(next);

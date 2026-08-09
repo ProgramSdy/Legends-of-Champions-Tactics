@@ -12,9 +12,11 @@ HeroDefinitionId = Literal[
     "hero.priest.discipline",
     "hero.paladin.retribution",
     "hero.paladin.protection",
+    "hero.paladin.holy",
     "hero.mage.comprehensiveness",
     "hero.warrior.defence",
     "hero.warrior.weapon_master",
+    "hero.warrior.berserker",
     "hero.rogue.comprehensiveness",
 ]
 

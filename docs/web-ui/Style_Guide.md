@@ -150,6 +150,28 @@ _To be documented._
 
 _To be documented._
 
+## Team Builder
+
+- Keep the Battle Rules control bar's labels, native radio/input semantics,
+  validation, and visual treatment stable when changing surrounding layout.
+- Use blue player-slot treatment and red enemy-slot treatment. The active
+  player slot has a visible blue selected state; Hero Selection Matrix cards
+  visibly indicate the hero assigned to that slot.
+- Current Stage previews use the supplied Stage Map image in a clipped,
+  `object-fit: cover` frame. Crop focus derives from canonical stage geometry;
+  source artwork must never be stretched or replaced.
+- Player slots and matrix cards use a fixed, bounded media frame with the
+  shared asset fallback chain. A missing portrait must remain readable and
+  never expose a browser broken-image icon.
+- Narrow layouts stack team slots and retain a two-column Hero Selection Matrix
+  without horizontal document overflow.
+- Always display three Hero positions on both teams. Positions beyond battle
+  size are visibly subdued and unavailable to focus, assignment, selection, or
+  submission; team-card borders and focus treatments retain bottom clearance.
+- Team Builder identity is profession-only: show `Faculty · Specialization`,
+  never a roster catalogue or runtime hero name. Faculty controls derive from
+  the received roster and Matrix navigation pages only the active result set.
+
 ## Change Log
 
 - 2026-07-26 — Initial document created.
@@ -184,3 +206,5 @@ _To be documented._
   standard for the `/` → `/game` entry flow.
 - 2026-08-08 — Added map-bound Valley of Champions stage-selection standards
   and updated the startup entry flow to `/` → `/stages` → `/game`.
+- 2026-08-09 — Added UI-013 Team Builder slot, matrix, current-stage crop, and
+  protected Battle Rules presentation standards.

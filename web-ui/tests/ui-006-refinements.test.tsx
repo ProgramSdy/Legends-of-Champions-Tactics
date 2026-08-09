@@ -23,18 +23,12 @@ describe("UI-006 identity presentation", () => {
     expect(enemy).toHaveTextContent("Rogue · Comprehensiveness");
   });
 
-  it("uses Faculty - Major player-slot labels without definition-time names", () => {
+  it("shows faculty and specialization on the visual player slot", () => {
     render(<TeamBuilder roster={roster} onStart={vi.fn()} />);
 
-    const player = screen.getByLabelText("Player slot 1");
-    const options = within(player).getAllByRole("option");
-    expect(options.map((option) => option.textContent)).toEqual([
-      "Choose a hero",
-      "Paladin - Protection",
-      "Warrior - Weapon Master",
-    ]);
-    expect(player).toHaveValue("hero.paladin.protection");
-    expect(within(player).queryByText(/Bastion|Ragnar/)).not.toBeInTheDocument();
+    const player = screen.getByRole("button", { name: "Hero 1: Paladin · Protection" });
+    expect(player).not.toHaveTextContent("Bastion");
+    expect(player).toHaveTextContent(/Paladin\s*Protection/);
   });
 });
 

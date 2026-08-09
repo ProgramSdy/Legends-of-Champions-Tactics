@@ -51,7 +51,7 @@ export async function fetchHeroRoster(
   }
   if (!response.ok) throw new BattleProviderError(`Battle adapter returned HTTP ${response.status}.`, "adapter");
   const body = await response.json() as { contractVersion: string; heroes: HeroDefinitionSummary[] };
-  const validHeroes = Array.isArray(body.heroes) && body.heroes.length === 8 && body.heroes.every((hero) =>
+  const validHeroes = Array.isArray(body.heroes) && body.heroes.length === 10 && body.heroes.every((hero) =>
     hero !== null
     && typeof hero === "object"
     && typeof hero.definitionId === "string"

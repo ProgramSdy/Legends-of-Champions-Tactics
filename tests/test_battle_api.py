@@ -253,23 +253,57 @@ def test_cors_origin_configuration_is_explicit_and_never_allows_wildcard(monkeyp
     ]
 
 
-def test_roster_endpoint_exposes_only_the_eight_approved_heroes():
+def test_roster_endpoint_exposes_only_the_ten_approved_heroes():
     response = client.get("/api/v1/heroes")
 
     assert response.status_code == 200
     body = response.json()
     assert body["contractVersion"] == "1.0"
-    assert len(body["heroes"]) == 8
+    assert len(body["heroes"]) == 10
     assert {hero["definitionId"] for hero in body["heroes"]} == {
         "hero.priest.comprehensiveness",
         "hero.priest.discipline",
         "hero.paladin.retribution",
         "hero.paladin.protection",
+        "hero.paladin.holy",
         "hero.mage.comprehensiveness",
         "hero.warrior.defence",
         "hero.warrior.weapon_master",
+        "hero.warrior.berserker",
         "hero.rogue.comprehensiveness",
     }
+
+
+def test_api_accepts_new_heroes_in_specified_player_and_enemy_teams():
+    response = client.post(
+        "/api/v1/battles",
+        json={
+            "battleSize": 2,
+            "playerTeam": [
+                "hero.warrior.berserker",
+                "hero.paladin.holy",
+            ],
+            "enemyCompositionMode": "specified",
+            "enemyTeam": [
+                "hero.paladin.holy",
+                "hero.warrior.berserker",
+            ],
+            "enemyControlMode": "player",
+            "seed": 47,
+        },
+    )
+
+    assert response.status_code == 200
+    snapshot = response.json()["data"]["snapshot"]
+    sides = snapshot["sides"]
+    assert [
+        snapshot["combatants"][combatant_id]["definitionId"]
+        for combatant_id in sides[0]["combatantIds"]
+    ] == ["hero.warrior.berserker", "hero.paladin.holy"]
+    assert [
+        snapshot["combatants"][combatant_id]["definitionId"]
+        for combatant_id in sides[1]["combatantIds"]
+    ] == ["hero.paladin.holy", "hero.warrior.berserker"]
 
 
 def test_api_creates_live_three_hero_player_controlled_battle():

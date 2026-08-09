@@ -82,7 +82,7 @@ describe("UI-012 stage-selection flow", () => {
     arena.focus();
     fireEvent.keyDown(arena, { key: "Enter" });
     fireEvent.keyDown(arena, { key: " " });
-    expect(push).toHaveBeenCalledWith("/game");
+    expect(push).toHaveBeenCalledWith("/game?stage=arena");
     expect(push).toHaveBeenCalledTimes(2);
   });
 

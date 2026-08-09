@@ -412,7 +412,7 @@ reconciliation.
 ## Live adapter
 
 `battle_api.adapter.BattleAdapter` implements this contract for configurable
-1v1, 2v2, and 3v3 sessions using the approved eight-hero roster. The legacy
+1v1, 2v2, and 3v3 sessions using the approved ten-hero roster. The legacy
 `ragnar-vs-nighthawk` creation request remains accepted for compatibility.
 Accepted commands invoke the repository's
 existing `Skill.execute` method; the adapter does not reproduce damage, evade,

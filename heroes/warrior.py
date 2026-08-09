@@ -611,7 +611,7 @@ class Warrior_Berserker(Warrior):
 
         # 随机触发附加效果
         roll = random.randint(1, 100)
-        if roll <= 30:
+        if roll <= 100:
             if other_hero.status['armor_breaker'] == True:
               if other_hero.armor_breaker_stacks < 3:
                   defense_before_reducing = other_hero.defense

@@ -22,10 +22,10 @@ import pandas as pd
 from game.game import Game
 from game.hero_generator import HeroGenerator
 from heroes.mage import Mage_Comprehensiveness
-from heroes.paladin import Paladin_Protection, Paladin_Retribution
+from heroes.paladin import Paladin_Holy, Paladin_Protection, Paladin_Retribution
 from heroes.priest import Priest_Comprehensiveness, Priest_Discipline
 from heroes.rogue import Rogue_Comprehensiveness
-from heroes.warrior import Warrior_Defence, Warrior_Weapon_Master
+from heroes.warrior import Warrior_Berserker, Warrior_Defence, Warrior_Weapon_Master
 
 CONTRACT_VERSION = "1.0"
 ROOT = Path(__file__).resolve().parents[1]
@@ -57,6 +57,12 @@ HERO_ROSTER = {
         "faculty": "Paladin",
         "specialization": "Protection",
     },
+    "hero.paladin.holy": {
+        "class": Paladin_Holy,
+        "displayName": "Galahad",
+        "faculty": "Paladin",
+        "specialization": "Holy",
+    },
     "hero.mage.comprehensiveness": {
         "class": Mage_Comprehensiveness,
         "displayName": "Lyra",
@@ -74,6 +80,12 @@ HERO_ROSTER = {
         "displayName": "Ragnar",
         "faculty": "Warrior",
         "specialization": "Weapon Master",
+    },
+    "hero.warrior.berserker": {
+        "class": Warrior_Berserker,
+        "displayName": "Wrathe",
+        "faculty": "Warrior",
+        "specialization": "Berserker",
     },
     "hero.rogue.comprehensiveness": {
         "class": Rogue_Comprehensiveness,

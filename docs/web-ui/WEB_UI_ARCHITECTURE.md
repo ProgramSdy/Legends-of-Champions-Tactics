@@ -35,14 +35,18 @@ the thin Python adapter. Python remains the sole gameplay authority.
 - `components/stages/StageSelectionScreen.tsx` owns the map-bound Arena
   interaction at `/stages`. The map image, Arena hotspot, label, glow, and
   optional debug outline share one intrinsic `1672 / 941` positioning parent.
-  It routes to `/game` but owns no Team Builder, battle, API, or progression
-  state.
+  It routes to `/game?stage=arena`; that query is presentation context only and
+  owns no Team Builder, battle, API, or progression state.
 - `components/battle/BattleExperience.tsx` owns the Team Builder/battle
   lifecycle. It loads the authoritative roster, creates a fresh provider for
   each configuration, and unmounts the battle subtree on return.
 - `components/battle/TeamBuilder.tsx` owns local pre-battle selection and
-  validation only. It contains no hero construction, random composition,
-  combat, AI, or targeting rules.
+  validation only. It resolves the selected enabled stage for the Current Stage
+  preview, manages active player-slot assignment and the Hero Selection Matrix,
+  and contains no hero construction, random composition, combat, AI, or
+  targeting rules. Its scrollable grid uses content-sized implicit rows so its
+  team panels, Matrix, and launch footer remain in normal vertical document
+  flow when viewport height is constrained.
 - `components/battle/BattleScreen.tsx` and its child components are generic.
   They contain no API, hero-name, damage, healing, legality, cooldown, status
   duration, turn, summon, or victory rules.
@@ -77,8 +81,11 @@ identity, or animation decisions.
 
 The application first opens the cinematic title scene at `/`. Activating its
 keyboard-accessible `START GAME` link opens `/stages`; the enabled Arena
-control then navigates to `/game`, which hosts the unchanged `BattleExperience`
-lifecycle. `/assets` remains a development route and returns directly to
+control then navigates to `/game?stage=arena`. The `GamePage` resolves that
+query through the canonical enabled-stage configuration and passes only its
+presentation ID to `BattleExperience`; direct or invalid `/game` visits fall
+back safely to Arena. This does not alter `BattleCreateConfiguration` or any
+battle request. `/assets` remains a development route and returns directly to
 `/game`, never through the title screen.
 
 `BattleCreateConfiguration` contains `battleSize`, `playerTeam`,
@@ -116,9 +123,12 @@ the friendly side and is horizontally mirrored on the enemy side. Mirroring is
 limited to the image pixels; formation movement, target controls, overhead
 health/status UI, labels, portraits, and thumbnails are unchanged.
 
-Current final figure registrations cover Paladin Protection, Paladin
-Retribution, Priest Comprehensiveness, Priest Discipline, Warrior Defence, and
-Warrior Weapon Master, Mage Comprehensiveness, and Rogue Comprehensiveness.
+Current final figure registrations cover Paladin Protection, Retribution, and
+Holy; Priest Comprehensiveness and Discipline; Warrior Defence, Weapon Master,
+and Berserker; Mage Comprehensiveness; and Rogue Comprehensiveness. The Holy
+registry uses the canonical public path
+`/game-images/heroes/Paladin-Holy/figures/Paladin_Holy.png`; it is the
+hash-preserving rename of the owner-supplied Holy artwork.
 
 Battle-session display names come from the adapter and are presentation data;
 stable definition and combatant IDs remain the only identity keys. Side cards
@@ -127,7 +137,10 @@ summon label.
 
 Icon controls have accessible names, status tooltips are pointer/keyboard
 reachable, and focus is visible. Team Builder uses native radio, select, and
-input controls. The battle-completion dialog moves and contains focus on its
+input controls for Battle Rules and specified enemies, plus native buttons for
+player slots and Hero Selection Matrix assignment. Matrix and slot imagery use
+the shared `AssetImage` requested/class/initials fallback chain in a bounded
+media frame. The battle-completion dialog moves and contains focus on its
 Return action. Effects honor reduced motion and never determine outcomes.
 
 `StatusIcon` is the shared status renderer for both battlefield overhead
@@ -199,3 +212,10 @@ worker.
 - 2026-08-08 — Added the map-bound `/stages` selector, its single enabled Arena
   control, development-only hotspot debug affordance, and a presentation-only
   six-location configuration.
+- 2026-08-09 — UI-013 added the presentation-only Arena query handoff, Current
+  Stage preview, Back to Stage Map control, visual player/enemy slots, and the
+  Hero Selection Matrix while preserving Battle Rules and the battle-create
+  contract.
+- 2026-08-09 — UI-014 expanded the live adapter roster to ten definitions and
+  refined Team Builder to fixed disabled slots, profession-only identity,
+  roster-derived faculty filtering, and bounded Matrix paging.

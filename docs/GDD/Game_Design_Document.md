@@ -27,10 +27,10 @@ outcomes.
 
 ## Supported Playable Scope
 
-The current web/API roster contains eight approved definitions: Priest
-Comprehensiveness and Discipline; Paladin Retribution and Protection; Mage
-Comprehensiveness; Warrior Defence and Weapon Master; and Rogue
-Comprehensiveness. This is not the full legacy engine catalogue.
+The current web/API roster contains ten approved definitions: Priest
+Comprehensiveness and Discipline; Paladin Retribution, Protection, and Holy;
+Mage Comprehensiveness; Warrior Defence, Weapon Master, and Berserker; and
+Rogue Comprehensiveness. This is not the full legacy engine catalogue.
 
 The legacy engine contains additional faculty/specialization classes, while
 its generator and simulation tooling expose different subsets. They are

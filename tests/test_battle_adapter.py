@@ -613,6 +613,66 @@ def test_approved_roster_constructs_with_stable_definition_and_skill_ids():
         assert adapter.snapshot(session)["combatants"][friendly_id]["skills"] == combatant["skills"]
 
 
+@pytest.mark.parametrize(
+    ("definition_id", "class_name", "expected_skill_ids"),
+    [
+        (
+            "hero.warrior.berserker",
+            "Warrior_Berserker",
+            {
+                "skill.warrior.moon_slash",
+                "skill.warrior.warlust",
+                "skill.warrior.hammer_of_meteorite",
+            },
+        ),
+        (
+            "hero.paladin.holy",
+            "Paladin_Holy",
+            {
+                "skill.paladin.purify_healing",
+                "skill.paladin.holy_blast",
+                "skill.paladin.shield_of_protection",
+            },
+        ),
+    ],
+)
+def test_new_roster_heroes_serialize_and_execute_live_actions(
+    definition_id, class_name, expected_skill_ids
+):
+    adapter = BattleAdapter()
+    session, envelope = adapter.create_battle(
+        seed=47,
+        battle_id=f"battle.new-roster.{definition_id}",
+        player_team=[definition_id],
+        enemy_team=["hero.rogue.comprehensiveness"],
+    )
+    actor = session.game.player_heroes[0]
+    session.game.unactioned_sorted_heroes = [actor]
+    snapshot = adapter.snapshot(session)
+    actor_id = snapshot["sides"][0]["combatantIds"][0]
+    combatant = snapshot["combatants"][actor_id]
+
+    assert actor.__class__.__name__ == class_name
+    assert combatant["definitionId"] == definition_id
+    assert {skill["id"] for skill in combatant["skills"]} == expected_skill_ids
+
+    action = snapshot["legalActions"][0]
+    result = adapter.submit(
+        session,
+        {
+            "type": "useSkill",
+            "commandId": f"cmd.new-roster.{definition_id}",
+            "expectedRevision": 0,
+            "actorId": actor_id,
+            "skillId": action["skillId"],
+            "targetIds": action["validTargetIds"][: action["minimumTargets"]],
+        },
+    )
+
+    assert result["accepted"] is True
+    assert result["snapshot"]["combatants"][actor_id]["definitionId"] == definition_id
+
+
 @pytest.mark.parametrize("definition_id", list(HERO_ROSTER))
 def test_every_approved_hero_can_submit_a_legal_live_action(definition_id):
     adapter = BattleAdapter()
@@ -725,6 +785,39 @@ def test_seeded_random_enemy_composition_is_complete_and_reproducible():
 
     assert enemy_definitions(first) == enemy_definitions(second)
     assert len(enemy_definitions(first)) == 3
+
+
+def test_equal_seed_random_creation_can_select_new_heroes_with_deterministic_names():
+    kwargs = {
+        "seed": 17,
+        "battle_size": 3,
+        "player_team": [
+            "hero.priest.comprehensiveness",
+            "hero.mage.comprehensiveness",
+            "hero.rogue.comprehensiveness",
+        ],
+        "enemy_composition_mode": "random",
+        "enemy_control_mode": "player",
+    }
+    first = BattleAdapter().create_battle(battle_id="battle.new-random.1", **kwargs)[1]
+    second = BattleAdapter().create_battle(battle_id="battle.new-random.2", **kwargs)[1]
+
+    def enemy_identity(envelope):
+        snapshot = envelope["data"]["snapshot"]
+        return [
+            (
+                snapshot["combatants"][combatant_id]["definitionId"],
+                snapshot["combatants"][combatant_id]["displayName"],
+            )
+            for combatant_id in snapshot["sides"][1]["combatantIds"]
+        ]
+
+    first_identity = enemy_identity(first)
+    assert {definition_id for definition_id, _name in first_identity} >= {
+        "hero.warrior.berserker",
+        "hero.paladin.holy",
+    }
+    assert first_identity == enemy_identity(second)
 
 
 def test_computer_enemy_turns_are_drained_to_human_or_battle_end():

@@ -116,3 +116,32 @@ battle_02_08_2026-02
 1_ Mark_1, When select Choose team for Enemy Composition, enemy slot still shows fake name and major. Please fix it as you fix for Player slot before, where it is suppose to show Faculty-Major.
 2_ Add a scrolling bar at the right side in team builder page.
 3_ Add a scrolling bar at the right side in battle asset registry page.
+
+### Date
+
+2026-08-09
+
+### Screenshot name
+
+team_builder_09_08_2026_01
+
+### Task List
+
+On Team builder page:
+1 Mark 1_ In Your Team box: the bottom line of your team rectangle is higher than the bottom line of Player hero rectangle which make player hero box going out of the your team rectangle. There should be a minimal clearance control.
+
+2 Mark 2_ Make Your Team box alwasy show three player hero boxes. Current 1v1 shows one player hero box, 2v2 shows 2. I want alwasy shows three player hero boxes. when 1v1, grey out two hero box and keep the first one. 2v2 grey out the last hero box at right side. 3v3 keep current setup.
+
+3 Mark 3 and 4_ Remove all hero names (from both Your Team box and Hero Selection Matrix) in this page, there shall not be any name mentioned here, only facutly and major information is displayed.
+
+4 Mark 5_ In Your Team box, change PLAYER 1, PLAYER 2, PLAYER 3 to HERO 1, HERO 2, HERO 3
+
+5 Mark 6_ Add hero faculty tab here including "All, Warrior, Mage, Paladin, etc.." If warrior tab is clicked, then only warriors are list in the hero selection matrix, apply this to all other faculty.
+
+6 Mark 7 and 8_ Add left-right arrow here for exploring more heroes.
+
+7 Mark 9 and 10_ Remove the stentance in the red boxes.
+
+8 Make all above changes that are applied to Your Team area apply to Enemy Team box as wel.
+
+9 Add Warrior_Berserker and Paladin_Holy to the roster. 

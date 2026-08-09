@@ -29,8 +29,8 @@ describe("UI-011 startup and route boundaries", () => {
     expect(start).toBeVisible();
   });
 
-  it("keeps /game pointed at the existing team-builder experience", () => {
-    render(<GamePage />);
+  it("keeps /game pointed at the existing team-builder experience", async () => {
+    render(await GamePage({ searchParams: Promise.resolve({}) }));
 
     expect(screen.getByRole("main", { name: "Existing team builder" })).toBeVisible();
     expect(screen.queryByRole("link", { name: /start game/i })).not.toBeInTheDocument();

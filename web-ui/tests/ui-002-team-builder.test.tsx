@@ -16,6 +16,8 @@ const roster = [
   ["hero.warrior.defence", "Warrior", "Defence"],
   ["hero.warrior.weapon_master", "Warrior", "Weapon Master"],
   ["hero.rogue.comprehensiveness", "Rogue", "Comprehensiveness"],
+  ["hero.paladin.holy", "Paladin", "Holy"],
+  ["hero.warrior.berserker", "Warrior", "Berserker"],
 ].map(([definitionId, displayName, specialization]) => ({ definitionId, displayName, specialization, faculty: displayName }));
 
 describe("UI-002 Team Builder", () => {
@@ -25,8 +27,8 @@ describe("UI-002 Team Builder", () => {
     render(<TeamBuilder roster={roster} onStart={onStart} />);
 
     expect(screen.getByRole("heading", { name: "Team Builder" })).toBeVisible();
-    expect(screen.getAllByRole("article")).toHaveLength(8);
-    expect(roster).toHaveLength(8);
+    expect(screen.getAllByRole("button", { name: /Assign .* to Hero 1/i })).toHaveLength(5);
+    expect(roster).toHaveLength(10);
 
     await user.click(screen.getByRole("radio", { name: "3v3" }));
     await user.click(screen.getByRole("radio", { name: "Choose team" }));
@@ -43,9 +45,9 @@ describe("UI-002 Team Builder", () => {
       ],
       enemyCompositionMode: "specified",
       enemyTeam: [
+        "hero.warrior.berserker",
+        "hero.paladin.holy",
         "hero.rogue.comprehensiveness",
-        "hero.warrior.weapon_master",
-        "hero.warrior.defence",
       ],
       enemyControlMode: "player",
       seed: 42,
@@ -56,13 +58,15 @@ describe("UI-002 Team Builder", () => {
     const onStart = vi.fn();
     render(<TeamBuilder roster={roster} onStart={onStart} />);
     fireEvent.click(screen.getByRole("radio", { name: "2v2" }));
-    fireEvent.change(screen.getByLabelText("Player slot 1"), { target: { value: "hero.warrior.weapon_master" } });
-    fireEvent.change(screen.getByLabelText("Player slot 2"), { target: { value: "hero.warrior.weapon_master" } });
+    fireEvent.click(document.querySelector<HTMLElement>('[data-player-slot="0"]')!);
+    fireEvent.click(document.querySelector<HTMLElement>('[data-hero-id="hero.paladin.retribution"]')!);
+    fireEvent.click(document.querySelector<HTMLElement>('[data-player-slot="1"]')!);
+    fireEvent.click(document.querySelector<HTMLElement>('[data-hero-id="hero.paladin.retribution"]')!);
     fireEvent.click(screen.getByRole("button", { name: "ENTER BATTLE" }));
 
     expect(onStart).toHaveBeenCalledWith({
       battleSize: 2,
-      playerTeam: ["hero.warrior.weapon_master", "hero.warrior.weapon_master"],
+      playerTeam: ["hero.paladin.retribution", "hero.paladin.retribution"],
       enemyCompositionMode: "random",
       enemyControlMode: "computer",
     });
@@ -71,11 +75,11 @@ describe("UI-002 Team Builder", () => {
   it("prevents launch when a required team slot or seed is invalid", () => {
     render(<TeamBuilder roster={roster} onStart={vi.fn()} />);
     fireEvent.click(screen.getByRole("radio", { name: "Choose team" }));
-    fireEvent.change(screen.getByLabelText("Enemy slot 1"), { target: { value: "" } });
+    fireEvent.change(screen.getByLabelText("Hero 1"), { target: { value: "" } });
     expect(screen.getByText("Fill every specified enemy-team slot.")).toBeVisible();
     expect(screen.getByRole("button", { name: "ENTER BATTLE" })).toBeDisabled();
 
-    fireEvent.change(screen.getByLabelText("Enemy slot 1"), { target: { value: "hero.rogue.comprehensiveness" } });
+    fireEvent.change(screen.getByLabelText("Hero 1"), { target: { value: "hero.rogue.comprehensiveness" } });
     fireEvent.change(screen.getByLabelText(/Seed/i), { target: { value: "-1" } });
     expect(screen.getByText("Seed must be a non-negative whole number.")).toBeVisible();
     expect(screen.getByRole("button", { name: "ENTER BATTLE" })).toBeDisabled();

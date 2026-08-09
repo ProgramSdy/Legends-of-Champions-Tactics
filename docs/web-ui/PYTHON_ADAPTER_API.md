@@ -64,11 +64,17 @@ Returns service and contract version health.
 
 ### `GET /api/v1/heroes`
 
-Returns contract version `1.0` and exactly the eight approved hero definitions,
+Returns contract version `1.0` and exactly the ten approved hero definitions,
 including stable `definitionId`, display name, faculty, and specialization.
 The roster display name is catalogue metadata. Each non-summoned battle
 combatant receives a runtime name from its class's `HeroGenerator` faculty pool
 during session creation.
+
+The current roster includes Priest Comprehensiveness and Discipline; Paladin
+Retribution, Protection, and Holy; Mage Comprehensiveness; Warrior Defence,
+Weapon Master, and Berserker; and Rogue Comprehensiveness. `displayName`
+remains a required non-empty transport field even when a presentation surface
+chooses to show only faculty and specialization.
 
 ### `POST /api/v1/battles`
 

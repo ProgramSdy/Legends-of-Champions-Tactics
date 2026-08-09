@@ -5,8 +5,8 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   STAGE_DEFINITIONS,
+  isEnabledStage,
   type PercentageGeometry,
-  type StageDefinition,
 } from "./stage-config";
 
 const STAGE_MAP = "/game-images/Stage_Map/valley_of_champions.png";
@@ -31,31 +31,25 @@ function hotspotStyle(geometry: PercentageGeometry): HotspotStyle {
   };
 }
 
-type InteractiveStage = StageDefinition & {
-  enabled: true;
-  destination: string;
-  geometry: PercentageGeometry;
-};
-
-function isInteractiveStage(stage: StageDefinition): stage is InteractiveStage {
-  return stage.enabled && Boolean(stage.destination && stage.geometry);
-}
-
 export function StageSelectionScreen({ debugHotspots = false }: StageSelectionScreenProps) {
   const router = useRouter();
   const [activeStageId, setActiveStageId] = useState<string | null>(null);
-  const enabledStages = STAGE_DEFINITIONS.filter(isInteractiveStage);
+  const enabledStages = STAGE_DEFINITIONS.filter(isEnabledStage);
 
-  function activateStage(destination: string) {
-    router.push(destination);
+  function activateStage(stageId: string, destination: string) {
+    router.push(`${destination}?stage=${encodeURIComponent(stageId)}`);
   }
 
-  function handleStageKeyDown(event: KeyboardEvent<HTMLButtonElement>, destination: string) {
+  function handleStageKeyDown(
+    event: KeyboardEvent<HTMLButtonElement>,
+    stageId: string,
+    destination: string,
+  ) {
     if (event.key !== "Enter" && event.key !== " ") {
       return;
     }
     event.preventDefault();
-    activateStage(destination);
+    activateStage(stageId, destination);
   }
 
   return (
@@ -87,8 +81,8 @@ export function StageSelectionScreen({ debugHotspots = false }: StageSelectionSc
             onMouseLeave={() => setActiveStageId(null)}
             onFocus={() => setActiveStageId(stage.id)}
             onBlur={() => setActiveStageId(null)}
-            onClick={() => activateStage(stage.destination)}
-            onKeyDown={(event) => handleStageKeyDown(event, stage.destination)}
+            onClick={() => activateStage(stage.id, stage.destination)}
+            onKeyDown={(event) => handleStageKeyDown(event, stage.id, stage.destination)}
           >
             <span className="stage-hotspot-glow" aria-hidden="true" />
             <span className="stage-hotspot-label" aria-hidden="true">

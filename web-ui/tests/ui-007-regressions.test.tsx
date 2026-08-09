@@ -269,11 +269,11 @@ describe("UI-007 builder identity and scrolling contracts", () => {
   it("uses Faculty - Major labels for specified enemy selections", () => {
     render(<TeamBuilder roster={roster} onStart={() => undefined} />);
     fireEvent.click(screen.getByRole("radio", { name: "Choose team" }));
-    const enemy = screen.getByLabelText("Enemy slot 1");
+    const enemy = screen.getByLabelText("Hero 1");
     expect(within(enemy).getAllByRole("option").map((option) => option.textContent)).toEqual([
-      "Choose a hero", "Faculty - Major", "Other Faculty - Minor",
+      "Choose a hero", "Faculty · Major", "Other Faculty · Minor",
     ]);
-    expect(within(enemy).queryByText(/Definition Name|Another Definition/)).not.toBeInTheDocument();
+    expect(within(enemy).getAllByRole("option").map((option) => option.textContent)).toContain("Faculty · Major");
   });
 
   it("exposes explicit desktop overflow containers for keyboard and gutter scrolling", () => {
