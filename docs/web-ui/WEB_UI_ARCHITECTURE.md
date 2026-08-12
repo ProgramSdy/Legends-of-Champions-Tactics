@@ -32,21 +32,26 @@ the thin Python adapter. Python remains the sole gameplay authority.
   names, enabled state, and map-percentage geometry. Inactive stage definitions
   omit destinations and geometry so they cannot render as controls before
   approval.
-- `components/stages/StageSelectionScreen.tsx` owns the map-bound Arena
-  interaction at `/stages`. The map image, Arena hotspot, label, glow, and
+- `components/stages/structured-stage-config.ts` owns reusable frontend-only
+  structured-stage data: approved player definition IDs and ordered fixed
+  battle definitions. It does not model profile state, unlocks, rewards,
+  persistence, or Python gameplay data.
+- `components/stages/StageSelectionScreen.tsx` owns the map-bound Arena and
+  Warrior's Barrack interactions at `/stages`. Their hotspot, label, glow, and
   optional debug outline share one intrinsic `1672 / 941` positioning parent.
-  It routes to `/game?stage=arena`; that query is presentation context only and
-  owns no Team Builder, battle, API, or progression state.
 - `components/battle/BattleExperience.tsx` owns the Team Builder/battle
-  lifecycle. It loads the authoritative roster, creates a fresh provider for
-  each configuration, and unmounts the battle subtree on return.
+  lifecycle. It loads and preflights the authoritative roster, creates a fresh
+  provider for each existing request configuration, and owns the temporary
+  structured-stage battle index in client memory.
 - `components/battle/TeamBuilder.tsx` owns local pre-battle selection and
-  validation only. It resolves the selected enabled stage for the Current Stage
-  preview, manages active player-slot assignment and the Hero Selection Matrix,
-  and contains no hero construction, random composition, combat, AI, or
-  targeting rules. Its scrollable grid uses content-sized implicit rows so its
-  team panels, Matrix, and launch footer remain in normal vertical document
-  flow when viewport height is constrained.
+  validation only. Arena mode retains its complete roster and editable Battle
+  Rules. Structured mode receives data from the stage configuration, filters
+  the adapter roster to its allowed player definitions, and renders fixed
+  format/enemy data without editable counterpart controls. It contains no hero
+  construction, random composition, combat, AI, or targeting rules. Its
+  scrollable grid uses content-sized implicit rows so its team panels, Matrix,
+  and launch footer remain in normal vertical document flow when viewport
+  height is constrained.
 - `components/battle/BattleScreen.tsx` and its child components are generic.
   They contain no API, hero-name, damage, healing, legality, cooldown, status
   duration, turn, summon, or victory rules.
@@ -80,13 +85,12 @@ identity, or animation decisions.
 ## Session Lifecycle
 
 The application first opens the cinematic title scene at `/`. Activating its
-keyboard-accessible `START GAME` link opens `/stages`; the enabled Arena
-control then navigates to `/game?stage=arena`. The `GamePage` resolves that
-query through the canonical enabled-stage configuration and passes only its
-presentation ID to `BattleExperience`; direct or invalid `/game` visits fall
-back safely to Arena. This does not alter `BattleCreateConfiguration` or any
-battle request. `/assets` remains a development route and returns directly to
-`/game`, never through the title screen.
+keyboard-accessible `START GAME` link opens `/stages`; enabled map controls
+navigate to `/game?stage=<stageId>`. `GamePage` resolves the enabled stage and
+passes its ID to `BattleExperience`; direct or invalid `/game` visits fall back
+safely to Arena. This does not alter `BattleCreateConfiguration` or any battle
+request. `/assets` remains a development route and returns directly to `/game`,
+never through the title screen.
 
 `BattleCreateConfiguration` contains `battleSize`, `playerTeam`,
 `enemyCompositionMode`, optional `enemyTeam`, `enemyControlMode`, and optional
@@ -95,9 +99,15 @@ wrong-version or malformed roster responses.
 
 Returning from an ended battle discards the provider and keyed battle
 component. This clears the battle ID, cached snapshot/revision, presentation
-generation, timers, log, selections, and modal state. Relaunch sends a new
-`POST /api/v1/battles` and uses the fixed BG03 cosmetic battle background. It
-is not connected to the engine seed or battle data contract.
+generation, timers, log, selections, and modal state. Arena then returns to
+its local builder. In a structured stage, `BattleScreen` forwards the actual
+typed `BattleOutcome` from the authoritative ended snapshot to
+`BattleExperience`: friendly victory advances the in-memory index, while
+enemy victory, draw, and round limit return to the same preparation state.
+The final friendly victory clears the index and routes to `/stages`. Relaunch
+sends the same existing `POST /api/v1/battles` request shape and uses the fixed
+BG03 cosmetic battle background; no API, profile, save, or persistence state
+is introduced.
 
 After the Team Builder enters a battle, the live `BattleScreen` mounts and
 creates the session while a centered `3 → 2 → 1 → START` overlay keeps the
@@ -136,9 +146,9 @@ show faculty and specialization together, while summons retain their explicit
 summon label.
 
 Icon controls have accessible names, status tooltips are pointer/keyboard
-reachable, and focus is visible. Team Builder uses native radio, select, and
-input controls for Battle Rules and specified enemies, plus native buttons for
-player slots and Hero Selection Matrix assignment. Matrix and slot imagery use
+reachable, and focus is visible. Team Builder uses native radio and input
+controls for Battle Rules, plus native buttons for player slots, specified-enemy
+slots, and Hero Selection Matrix assignment. Matrix and slot imagery use
 the shared `AssetImage` requested/class/initials fallback chain in a bounded
 media frame. The battle-completion dialog moves and contains focus on its
 Return action. Effects honor reduced motion and never determine outcomes.
@@ -160,6 +170,14 @@ Each figure owns its centered aura and transient target-bound effects. Healing a
 rings. The client never classifies a status locally. Attack-lunge direction is
 derived from the acting combatant's side while the authoritative formation and
 combat positions remain unchanged.
+
+The additive typed `damagePrevented` event is rendered only at its supplied
+target as a golden shield and visible zero damage. It is emitted by the adapter
+only for the engine-authored Shield of Protection prevention reason; React does
+not infer prevention from unchanged HP, a snapshot status, or hero identity.
+Status registry expansion is likewise cross-boundary: each adapter-visible
+stable status ID requires matching frontend metadata and shared-icon/effect
+regression coverage before a new hero is exposed.
 
 `lib/battle/assets.ts` owns `heroFigureScales`, a centralized, stable
 definition-ID registry for battlefield-only visual tuning. Values multiply a
@@ -219,3 +237,9 @@ worker.
 - 2026-08-09 — UI-014 expanded the live adapter roster to ten definitions and
   refined Team Builder to fixed disabled slots, profession-only identity,
   roster-derived faculty filtering, and bounded Matrix paging.
+- 2026-08-10 — UI-016 added the typed engine-authored Shield of Protection
+  prevention presentation and completed the adapter/frontend status boundary
+  for Paladin Holy and Warrior Berserker's five player-visible statuses.
+- 2026-08-10 — UI-017 activated Warrior's Barrack using reusable
+  frontend-only structured-stage data, an in-memory outcome-aware three-battle
+  lifecycle, and immutable predefined battle teams.

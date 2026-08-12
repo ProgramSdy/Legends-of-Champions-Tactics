@@ -163,6 +163,15 @@ duration changes. A duration-only countdown tick does not create a synthetic
 status-application event. This changes neither status rules nor the v1 event
 ordering; older consumers can ignore the optional field.
 
+`damagePrevented` is an additive typed semantic event for an incoming action
+that the engine explicitly prevented through Shield of Protection. It includes
+stable `sourceId`, `targetId`, `skillId`, `amount: 0`, and
+`reasonId: "status.shield_of_protection"`. The adapter emits it exactly once
+per protected target from the engine's per-target immunity outcome/reason; it
+does not infer prevention from unchanged HP. Evades, ordinary landed
+zero-damage hits, Glacier, and Anti Magic Shield do not produce this event.
+The event does not mutate HP or status state.
+
 Every snapshot includes additive v1 `turnControl`. Its disposition is
 `playerCommand`, `automaticAction`, `skip`, or `ended`; commands are accepted
 only when `acceptsCommands` is true at a `playerCommand` boundary and the
@@ -228,8 +237,10 @@ implementations.
   `["none"]` and has different scalar/list target shapes; the adapter contains
   narrow compatibility mappings.
 - Event capture covers the approved heroes' explicit status registry. Expanding
-  the whitelist requires adding stable status/source mappings; arbitrary Python
-  attributes are never exposed.
+  the whitelist requires synchronized engine lifecycle verification, stable
+  adapter status/source/event mappings, matching frontend status metadata and
+  effects, and cross-boundary regression tests; arbitrary Python attributes are
+  never exposed.
 - The process-local registry has no persistence, authentication, expiry, quota,
   or multi-worker consistency. Run one API worker for this milestone.
 - Rejections do not mutate engine state. Unexpected exceptions are not yet

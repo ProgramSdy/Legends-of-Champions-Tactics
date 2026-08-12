@@ -86,6 +86,69 @@ def test_api_status_application_exposes_additive_authoritative_presentation():
     )
 
 
+def test_api_exposes_typed_shield_of_protection_prevention_event():
+    created = client.post(
+        "/api/v1/battles",
+        json={
+            "battleSize": 2,
+            "playerTeam": [
+                "hero.mage.comprehensiveness",
+                "hero.priest.comprehensiveness",
+            ],
+            "enemyTeam": [
+                "hero.paladin.holy",
+                "hero.rogue.comprehensiveness",
+            ],
+            "enemyControlMode": "player",
+            "seed": 1611,
+        },
+    ).json()
+    battle_id = created["battleId"]
+    session = registry.get(battle_id)
+    source = session.game.player_heroes[0]
+    target, next_actor = session.game.opponent_heroes
+    for hero in session.game.heroes:
+        hero.actioned = hero not in (source, next_actor)
+    session.game.unactioned_sorted_heroes = [source, next_actor]
+    target.status["shield_of_protection"] = True
+    target.shield_of_protection_duration = 2
+    frost_bolt = next(skill for skill in source.skills if skill.name == "Frost Bolt")
+    frost_bolt.evasion_check = lambda _target: False
+    snapshot = registry.adapter.snapshot(session)
+    action = next(
+        action
+        for action in snapshot["legalActions"]
+        if action["skillId"] == "skill.mage.frost_bolt"
+    )
+
+    response = client.post(
+        f"/api/v1/battles/{battle_id}/commands",
+        json={
+            "type": "useSkill",
+            "commandId": "cmd.ui016.api-prevention",
+            "expectedRevision": session.revision,
+            "actorId": action["actorId"],
+            "skillId": action["skillId"],
+            "targetIds": [registry.adapter._combatant_id(session, target)],
+        },
+    )
+
+    assert response.status_code == 200
+    prevention = [
+        event
+        for event in response.json()["data"]["events"]
+        if event["type"] == "damagePrevented"
+    ]
+    assert len(prevention) == 1
+    assert prevention[0]["sourceId"] == action["actorId"]
+    assert prevention[0]["targetId"] == registry.adapter._combatant_id(
+        session, target
+    )
+    assert prevention[0]["skillId"] == "skill.mage.frost_bolt"
+    assert prevention[0]["amount"] == 0
+    assert prevention[0]["reasonId"] == "status.shield_of_protection"
+
+
 @pytest.mark.parametrize(
     ("enemy_control_mode", "play_opening"),
     [("player", False), ("computer", True)],

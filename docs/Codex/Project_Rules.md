@@ -78,6 +78,26 @@ omit a role that the documented assignment selected.
 - Do not claim validation that was not performed.
 - Record blockers and unresolved risks.
 
+## New Hero and Status Integration Gate
+
+Before exposing a hero through the live roster, Codex must inventory every
+player-visible status and combat outcome that the hero can apply, refresh,
+remove, expire, or prevent. The implementation gate requires synchronized
+evidence that:
+
+- the engine has one authoritative lifecycle, source, duration, and cleanup
+  path for each visible status/outcome;
+- the adapter serializes its stable status IDs and any typed outcome events with
+  authoritative source/target data, without inferring state from snapshots;
+- frontend status metadata, shared icons/tooltips, and target-bound effects
+  consume only those supplied identifiers and typed events; and
+- deterministic backend/frontend regression tests cover application, refresh,
+  removal or expiry, and relevant positive and false-positive outcome paths.
+
+Do not expose the hero until the status/outcome inventory and this
+cross-boundary validation are complete. Whitelist expansion in one layer alone
+is not sufficient.
+
 ## Documentation Rules
 
 - Update documentation when behaviour, architecture, data contracts, or UI

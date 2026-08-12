@@ -273,7 +273,7 @@ type BattleEvent = {
   type:
     | "battleStarted" | "roundStarted" | "turnStarted"
     | "skillStarted" | "characterMoved" | "projectileLaunched"
-    | "damageApplied" | "healingApplied"
+    | "damageApplied" | "damagePrevented" | "healingApplied"
     | "statusApplied" | "statusRemoved" | "attackEvaded"
     | "characterSummoned" | "characterDefeated"
     | "turnEnded" | "battleEnded" | "battleLog";
@@ -325,6 +325,14 @@ produce ordered damage and healing events. Flesh Slam Multi can produce
 multiple target damage events followed by self-damage. Stitch of Agony produces
 `statusApplied` on cast and later `damageApplied` events at authoritative
 round-start processing.
+
+`damagePrevented` is an additive event emitted only when the engine's explicit
+per-target immunity result identifies Shield of Protection. It carries the
+standard event identity plus `sourceId`, `targetId`, `skillId`, `amount: 0`,
+and `reasonId: "status.shield_of_protection"`; it has no HP mutation. The
+frontend renders this supplied target-bound outcome and must not derive it from
+unchanged HP or a shield status in a snapshot. Evade, landed zero damage, and
+other immunity reasons remain distinct and do not use this event.
 
 `characterMoved` and `projectileLaunched` are semantic presentation cues. They
 may be synthesized by the adapter from a versioned skill-presentation registry;

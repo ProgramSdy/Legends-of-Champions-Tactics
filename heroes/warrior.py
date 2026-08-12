@@ -508,7 +508,8 @@ class Warrior_Berserker(Warrior):
         self.damage_type = "physical"
         self.preset_target = None
         self.blood_frenzy_duration = 0
-        self.blood_frenzy_active = False
+        self.agility_increased_amount_by_blood_frenzy = 0
+        self.defense_decreased_amount_by_blood_frenzy = 0
 
         # 技能
         self.add_skill(Skill(self, "Moon Slash", self.moon_slash, target_type="multi", skill_type="damage", target_qty=2))
@@ -517,31 +518,43 @@ class Warrior_Berserker(Warrior):
 
     # ========== 特殊状态：Blood Frenzy ==========
     def trigger_blood_frenzy(self):
-        if self.blood_frenzy_active:  # 已经激活就不重复
-            return
+        if self.status['blood_frenzy']:
+            return False
 
         hp_percent = self.hp / self.hp_max
         roll = random.randint(1, 100)
 
-        if hp_percent <= 0.5 and roll <= 50:
+        # Preserve the live ``Hero.take_damage`` probability bands while
+        # consolidating their implementation in this single activation path.
+        if hp_percent <= 0.1:
             activate = True
-        elif hp_percent <= 0.75 and roll <= 75:
+        elif hp_percent <= 0.25 and roll <= 75:
             activate = True
-        elif hp_percent <= 0.9:  # 100% 触发
+        elif hp_percent <= 0.5 and roll <= 50:
             activate = True
         else:
             activate = False
 
         if activate:
-            self.blood_frenzy_active = True
+            self.status['blood_frenzy'] = True
             self.blood_frenzy_duration = 2
-            self.defense = max(1, int(self.defense * 0.5))  # 降低护甲
-            self.agility += 20  # 提升敏捷
-            self.game.display_battle_info(f"{RED}{self.name} enters Blood Frenzy! Defense halved, Agility boosted, gains lifesteal!{RESET}")
+            self.agility_increased_amount_by_blood_frenzy = 20
+            self.agility += self.agility_increased_amount_by_blood_frenzy
+            self.defense_decreased_amount_by_blood_frenzy = round(
+                self.defense / 2
+            )
+            defense_after_decreasing = max(
+                0,
+                self.defense
+                - self.defense_decreased_amount_by_blood_frenzy,
+            )
+            self.defense = defense_after_decreasing
+            return True
+        return False
 
     def blood_frenzy_effect(self, damage_dealt):
         """每次攻击吸血"""
-        if self.blood_frenzy_active and damage_dealt > 0:
+        if self.status['blood_frenzy'] and damage_dealt > 0:
             heal_amount = int(damage_dealt * 0.3)
             self.take_healing(heal_amount)
             self.game.display_battle_info(f"{self.name} drains {heal_amount} HP from Blood Frenzy!")
@@ -567,6 +580,41 @@ class Warrior_Berserker(Warrior):
                 opponent.status['bleeding_moon_slash'] = True
                 opponent.bleeding_moon_slash_duration = 2
                 opponent.bleeding_moon_slash_continuous_damage = random.randint(6, 10)
+                moon_slash_debuff = next(
+                    (
+                        debuff
+                        for debuff in opponent.debuffs
+                        if debuff.name == "Moon Slash"
+                    ),
+                    None,
+                )
+                if moon_slash_debuff is None:
+                    moon_slash_debuff = next(
+                        (
+                            debuff
+                            for debuff in opponent.buffs_debuffs_recycle_pool
+                            if debuff.name == "Moon Slash"
+                        ),
+                        None,
+                    )
+                    if moon_slash_debuff is not None:
+                        opponent.buffs_debuffs_recycle_pool.remove(
+                            moon_slash_debuff
+                        )
+                        opponent.add_debuff(moon_slash_debuff)
+                    else:
+                        moon_slash_debuff = Debuff(
+                            name="Moon Slash",
+                            duration=2,
+                            initiator=self,
+                            effect=opponent.bleeding_moon_slash_continuous_damage,
+                        )
+                        opponent.add_debuff(moon_slash_debuff)
+                moon_slash_debuff.duration = 2
+                moon_slash_debuff.initiator = self
+                moon_slash_debuff.effect = (
+                    opponent.bleeding_moon_slash_continuous_damage
+                )
                 results.append(f"{opponent.name} is bleeding!")
         return "\n".join(results)
 

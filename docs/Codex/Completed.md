@@ -2,6 +2,92 @@
 
 Completed work should be appended in reverse chronological order, with the newest entry first.
 
+## 2026-08-10 — UI-016 Complete New-Hero Status Presentation and Shield-of-Protection Feedback
+
+**Summary:**
+
+Completed the status path for Paladin Holy's Purify Healing and Shield of
+Protection plus Warrior Berserker's Warlust, Moon Slash bleeding, and Blood
+Frenzy. The adapter now serializes the five stable status IDs with authoritative
+state, while the shared frontend registry renders their icon/tooltip treatment
+in battlefield and Team Information consumers. Shield prevention now has an
+additive engine-authored `damagePrevented` event, rendered at the supplied
+target as a golden shield and visible `0`.
+
+**Agent Selection and Contributions:**
+
+- `project-manager` — assessed the high-risk cross-boundary status/event work,
+  coordinated all five roles, set the authority gates, and added the permanent
+  new-hero/status integration rule.
+- `game-engine-developer` — repaired the Blood Frenzy and Moon Slash lifecycle
+  seams, added authoritative sources/mappings for the five statuses, and
+  produced the exact-once Shield prevention event with false-positive guards.
+- `ui-developer` — added the typed event union, five shared status metadata
+  entries, target-bound golden shield/zero presentation, accessibility hooks,
+  reduced-motion styling, and frontend regression tests without React-side rule
+  inference.
+- `test-automator` — executed the lifecycle, serialization, prevention matrix,
+  and affected frontend suites; reported the only unrelated full-suite
+  failures separately.
+- `reviewer` — verified engine authority, event false-positive exclusions,
+  frontend typed consumption, and documentation requirements; approved after
+  the required stable documentation updates.
+
+**Files Changed:**
+
+- `battle_api/adapter.py`
+- `skills/skill.py`
+- `heroes/hero.py`
+- `heroes/warrior.py`
+- `game/status_effect_manager.py`
+- `game/status_dispell.py`
+- `tests/test_battle_adapter.py`
+- `tests/test_battle_api.py`
+- `tests/test_evasion_effect_boundaries.py`
+- `web-ui/lib/battle/types.ts`
+- `web-ui/lib/battle/fixture.ts`
+- `web-ui/lib/battle/assets.ts`
+- `web-ui/components/battle/StatusIcon.tsx`
+- `web-ui/components/battle/BattleScreen.tsx`
+- `web-ui/app/globals.css`
+- `web-ui/tests/ui-016-status-prevention.test.tsx`
+- `docs/Codex/Project_Rules.md`
+- `docs/web-ui/PYTHON_ADAPTER_API.md`
+- `docs/web-ui/BATTLE_DATA_CONTRACT_V1.md`
+- `docs/web-ui/WEB_UI_ARCHITECTURE.md`
+- `docs/Codex/Completed.md`
+- `docs/Codex/Current_Task.md`
+
+**Validation:**
+
+- Full backend pytest suite — 129 passed with one existing Starlette/httpx
+  deprecation warning; Python compilation and task-scoped diff check passed.
+- Relevant adapter/API/evasion suite — 105 passed.
+- Focused frontend UI-016/shared suites — 78 passed; typecheck, lint, and
+  production build passed.
+- Full frontend suite — 186/188 passed. The two unrelated existing failures
+  remain the owner-configured Warrior Defence scale (`1.15` versus an old `1.2`
+  test expectation) and the UI-006 formation expectation (`55` versus
+  historical `>59`).
+- Live local browser: a Paladin Holy versus Warrior Berserker battle showed
+  Warlust and Shield icons/tooltips in both shared consumers with blue buff
+  application treatment. A real Berserker Hammer of Meteorite attack against
+  Shield of Protection preserved HP and produced the engine-authored prevention
+  log/event path. Deterministic frontend coverage verifies the target-bound
+  golden shield/`0`, event ordering, reduced motion, and false-positive cases.
+- Final reviewer disposition — approved after the integration gate and stable
+  contract/presentation documentation were added.
+
+**Lessons Learned / Follow-up:**
+
+- UI-014 roster expansion exposed heroes before every player-visible status had
+  synchronized engine, adapter, frontend, and test coverage. The new mandatory
+  integration gate prevents that omission for future live-roster additions.
+- No UI-016-specific blocker remains. Do not modify the owner-controlled UI
+  review document or unrelated baseline failures in this task.
+
+---
+
 ## 2026-08-09 — UI-015 Prevent Team Builder Overlap at Reduced Viewport Heights
 
 **Summary:**
@@ -1737,7 +1823,8 @@ task-management workflow.
 - `docs/GDD/Skill_System.md`
 - `docs/Technical/Architecture.md`
 - `docs/Technical/Networking.md`
-- `docs/Technical/Save_System.md`
+- `docs/Technical/Player_Data_and_Save_System.md` (renamed from
+  `Save_System.md` on 2026-08-10)
 - `docs/web-ui/UI_Review.md`
 - `docs/web-ui/Screen_Flow.md`
 - `docs/web-ui/Style_Guide.md`

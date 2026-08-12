@@ -39,18 +39,19 @@ describe("UI-012 stage-selection flow", () => {
       "paladins-altar",
       "priests-cathedral",
     ]);
-    expect(STAGE_DEFINITIONS.filter((stage) => stage.enabled).map((stage) => stage.id)).toEqual(["arena"]);
+    expect(STAGE_DEFINITIONS.filter((stage) => stage.enabled).map((stage) => stage.id)).toEqual(["arena", "warriors-barrack"]);
     const arena = STAGE_DEFINITIONS.find((stage) => stage.id === "arena");
     expect(arena?.geometry).toEqual(expect.objectContaining({ leftPercent: expect.any(Number), topPercent: expect.any(Number), widthPercent: expect.any(Number), heightPercent: expect.any(Number) }));
     expect(arena?.geometry?.leftPercent).toBeGreaterThan(0);
     expect(arena?.geometry?.leftPercent).toBeLessThan(100);
   });
 
-  it("renders only Arena as a native interactive control", () => {
+  it("renders Arena and Warrior's Barrack as native interactive controls", () => {
     render(<StageSelectionScreen />);
     expect(screen.getByRole("button", { name: "Enter Arena" })).toBeVisible();
-    expect(screen.getAllByRole("button")).toHaveLength(1);
-    for (const name of ["Warrior's Barrack", "Mage's Tower", "Rogue's Forest", "Paladin's Altar", "Priest's Cathedral"]) {
+    expect(screen.getByRole("button", { name: "Enter Warrior's Barrack" })).toBeVisible();
+    expect(screen.getAllByRole("button")).toHaveLength(2);
+    for (const name of ["Mage's Tower", "Rogue's Forest", "Paladin's Altar", "Priest's Cathedral"]) {
       expect(screen.queryByRole("button", { name: new RegExp(name, "i") })).not.toBeInTheDocument();
     }
   });
@@ -90,10 +91,9 @@ describe("UI-012 stage-selection flow", () => {
     const { rerender } = render(<StageSelectionScreen />);
     expect(screen.queryByTestId("stage-hotspot-debug")).not.toBeInTheDocument();
     rerender(<StageSelectionScreen debugHotspots />);
-    const debug = screen.getByTestId("stage-hotspot-debug");
-    expect(debug).not.toBeNull();
-    expect(debug).toHaveTextContent("Arena");
-    expect(screen.getAllByTestId("stage-hotspot-debug")).toHaveLength(1);
+    const debug = screen.getAllByTestId("stage-hotspot-debug");
+    expect(debug).toHaveLength(2);
+    expect(debug.map((item) => item.textContent)).toEqual(["Arena", "Warrior's Barrack"]);
   });
 
   it("keeps query-string debug geometry disabled in production", async () => {

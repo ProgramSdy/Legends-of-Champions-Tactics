@@ -201,6 +201,7 @@ class Hero:
         self.shield_of_righteous_duration = 0
         self.wrath_of_crusader_duration = 0
         self.bleeding_slash_duration = 0
+        self.bleeding_moon_slash_duration = 0
         self.shadow_word_pain_debuff_duration = 0
         self.poisoned_dagger_debuff_duration = 0
         self.sharp_blade_debuff_duration = 0
@@ -237,6 +238,7 @@ class Hero:
 
         self.armor_breaker_stacks = 0 # Track number of Armor Breaker applications
         self.bleeding_slash_continuous_damage = 0 # Track the continuous damage of Bleeding Slash
+        self.bleeding_moon_slash_continuous_damage = 0
         self.defense_reduced_amount_by_armor_breaker = 0 # Track the amount of armor breaker
         self.shield_of_righteous_stacks = 0 # Track number of Shield of Righteous applications
         self.wrath_of_crusader_stacks = 0 # Track numberr of wrath of Crusader applications
@@ -632,27 +634,8 @@ class Hero:
           results = []
           results.append(self.take_damage_action(damage_dealt))
           result_defeated_1 = self.check_if_defeated()
-          hp_percent = self.hp / self.hp_max
-          roll = random.randint(1, 100)
-          if hp_percent <= 0.5 and roll <= 50:
-              blood_frenzy_activate = True
-          elif hp_percent <= 0.25 and roll <= 75:
-              blood_frenzy_activate = True
-          elif hp_percent <= 0.1:  # 100% 触发
-              blood_frenzy_activate = True
-          else:
-              blood_frenzy_activate = False
-
           if result_defeated_1 == "0":
-            if blood_frenzy_activate:
-              self.status['blood_frenzy'] = True
-              self.blood_frenzy_duration = 2
-              agility_before_increasing = self.agility # agility increase
-              self.agility_increased_amount_by_blood_frenzy = 20  # Increase hero's agility by 20
-              self.agility += self.agility_increased_amount_by_blood_frenzy
-              defense_before_decreasing = self.defense # defense decrease
-              self.defense_decreased_amount_by_blood_frenzy = round(self.defense / 2)
-              self.defense = max(0, self.defense - self.defense_decreased_amount_by_blood_frenzy)
+            if self.trigger_blood_frenzy():
               results.append(f"{RED}{self.name} enters Blood Frenzy Status! Defense halved, Agility boosted, gains lifesteal!{RESET}")
               return "\n".join(results)
             else:

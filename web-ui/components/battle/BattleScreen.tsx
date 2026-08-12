@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { usePresentationQueue } from "@/lib/battle/usePresentationQueue";
-import type { BattleEvent, BattleEventType, BattleProvider, CombatantState, PresentationScript, SideId } from "@/lib/battle/types";
+import type { BattleEvent, BattleEventType, BattleOutcome, BattleProvider, CombatantState, PresentationScript, SideId } from "@/lib/battle/types";
 import { AssetImage } from "./AssetImage";
 import { HeroCard, Meter } from "./HeroCard";
 import { SkillCard } from "./SkillCard";
@@ -14,7 +14,7 @@ import { heroFigureScaleFor } from "@/lib/battle/assets";
 
 const logGlyph: Record<BattleEventType, string> = {
   battleStarted: "◆", roundStarted: "◎", turnStarted: "▶", skillStarted: "✦",
-  characterMoved: "➜", projectileLaunched: "◌", damageApplied: "✕",
+  characterMoved: "➜", projectileLaunched: "◌", damageApplied: "✕", damagePrevented: "⬡",
   healingApplied: "+", statusApplied: "◇", statusRemoved: "○", attackEvaded: "↝",
   characterSummoned: "♟", characterDefeated: "☠", turnEnded: "■", battleEnded: "★",
   battleLog: "›",
@@ -55,7 +55,7 @@ function TeamPanel({ side, heroes, activeId }: { side: "friendly" | "enemy"; her
   );
 }
 
-type TargetEffect = "healing" | "buff" | "debuff";
+type TargetEffect = "healing" | "buff" | "debuff" | "damage-prevented";
 
 const FIGURE_FRAME_WIDTH = 172;
 const FALLBACK_FIGURE_FRAME_HEIGHT = 202;
@@ -68,6 +68,7 @@ function frameHeightFor({ naturalWidth, naturalHeight }: { naturalWidth: number;
 function targetEffectFor(event: BattleEvent | null, combatantId: string): TargetEffect | null {
   if (!event || event.targetId !== combatantId) return null;
   if (event.type === "healingApplied") return "healing";
+  if (event.type === "damagePrevented") return "damage-prevented";
   if (event.type === "statusApplied" && (event.statusPresentation === "buff" || event.statusPresentation === "debuff")) {
     return event.statusPresentation;
   }
@@ -114,9 +115,10 @@ function BattlefieldFigure({ hero, active, event, eventSourceSide, selectable, t
           <span className="figure-aura" />
           <AssetImage request={{ kind: "figure", key: assetKey, name: hero.displayName, className: hero.faculty }} className="figure-art"
             onImageDimensions={(dimensions) => setFigureFrameHeight(dimensions ? frameHeightFor(dimensions) ?? FALLBACK_FIGURE_FRAME_HEIGHT : FALLBACK_FIGURE_FRAME_HEIGHT)} />
-          {targetEffect && <span className={`target-effect effect-${targetEffect} ${targetEffect === "debuff" ? "red" : targetEffect === "buff" ? "blue" : "green"}`} data-effect-target={hero.id} aria-hidden="true" />}
+          {targetEffect && <span className={`target-effect effect-${targetEffect} ${targetEffect === "debuff" ? "red" : targetEffect === "buff" ? "blue" : targetEffect === "healing" ? "green" : "gold"}`} data-effect-target={hero.id} aria-hidden="true" />}
         </span>
         {effect === "damageApplied" && eventTarget && event?.amount !== undefined && <span className="combat-text damage">−{event.amount}</span>}
+        {event?.type === "damagePrevented" && eventTarget && <span className="combat-text prevented" role="status" aria-label="0 damage">{event.amount}</span>}
         {effect === "healingApplied" && eventTarget && event?.amount !== undefined && event.amount > 0 && <span className="combat-text heal">+{event.amount}</span>}
         {effect === "attackEvaded" && <span className="combat-text evade">EVADE</span>}
       </button>
@@ -130,12 +132,14 @@ interface BattleScreenProps {
   mode?: "live" | "mock";
   backgroundImage?: string;
   entryCountdownStepMs?: number;
+  onBattleComplete?: (outcome: BattleOutcome) => void;
+  completionActionLabel?: (outcome: BattleOutcome) => string;
   onReturnToBuilder?: () => void;
 }
 
 type EntryCountdown = 3 | 2 | 1 | "start" | null;
 
-export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundImage, entryCountdownStepMs, onReturnToBuilder }: BattleScreenProps) {
+export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundImage, entryCountdownStepMs, onBattleComplete, completionActionLabel, onReturnToBuilder }: BattleScreenProps) {
   const mountedBackground = backgroundImage ?? BATTLE_BACKGROUND;
   const { snapshot, revision, activeEvent, log, setLog, speed, setSpeed, isPlaying, isOpening, hasPendingOpening, canSkip, error, errorKind, present, playOpening, skip, retry } = usePresentationQueue(provider);
   const [entryCountdown, setEntryCountdown] = useState<EntryCountdown>(entryCountdownStepMs === undefined ? null : 3);
@@ -199,6 +203,17 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
   const outcomeLabel = snapshot.outcome?.kind === "victory"
     ? `${snapshot.outcome.winningSideId === "friendly" ? "YOUR TEAM" : "ENEMY TEAM"} VICTORIOUS`
     : snapshot.outcome?.kind === "roundLimit" ? "ROUND LIMIT REACHED" : "BATTLE ENDED IN A DRAW";
+  const completionLabel = snapshot.outcome && completionActionLabel
+    ? completionActionLabel(snapshot.outcome)
+    : "RETURN TO TEAM BUILDER";
+
+  const completeBattle = () => {
+    if (snapshot.outcome && onBattleComplete) {
+      onBattleComplete(snapshot.outcome);
+      return;
+    }
+    onReturnToBuilder?.();
+  };
 
   const triggerSkill = () => {
     if (!acceptsCommands || !selectedSkill || !legal || !snapshot.activeCombatantId) return;
@@ -330,7 +345,7 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
           </section>
         </div>
       )}
-      {snapshot.phase === "ended" && !entryLocked && onReturnToBuilder && (
+      {snapshot.phase === "ended" && !entryLocked && (onBattleComplete || onReturnToBuilder) && (
         <div className="completion-backdrop">
           <section className="completion-dialog" role="dialog" aria-modal="true" aria-labelledby="battle-result-title"
             onKeyDown={(event) => {
@@ -343,7 +358,7 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
             <small>BATTLE COMPLETE</small>
             <h2 id="battle-result-title">{outcomeLabel}</h2>
             <p>The Python battle engine has declared the final result.</p>
-            <button ref={completionButtonRef} type="button" onClick={onReturnToBuilder}>RETURN TO TEAM BUILDER</button>
+            <button ref={completionButtonRef} type="button" onClick={completeBattle}>{completionLabel}</button>
           </section>
         </div>
       )}

@@ -25,6 +25,14 @@ outcomes.
 5. Observe authoritative events, update strategy around status/cooldown/turn
    state, and continue until victory, defeat, draw, or round limit.
 
+Warrior's Barrack is also available as a temporary structured training location.
+It offers three fixed practice battles with a four-definition starting player
+selection (Warrior Weapon Master, Mage Comprehensiveness, Priest
+Comprehensiveness, and Rogue Comprehensiveness). Its sequence is not profile
+progression: no unlocks, rewards, persistence, or recovery are implemented.
+Friendly victories advance its current client-memory battle; defeat, draw, and
+round limit retry that same battle.
+
 ## Supported Playable Scope
 
 The current web/API roster contains ten approved definitions: Priest
@@ -76,6 +84,11 @@ neither independently establishes product rules. API sessions can use a seed
 for reproducible session randomness. Direct legacy/simulation execution has no
 equivalent recorded replay contract.
 
+The current temporary Warrior's Barrack training sequence uses the existing
+live 2v2, 1v1, and 3v3 formats with predefined computer enemy teams. It does
+not add a gameplay rule, engine mode, campaign system, or persistent
+progression model.
+
 ## Progression and Meta-Game
 
 No XP, levels, equipment, inventory, rarity, unlock system, campaign, account,
@@ -100,3 +113,5 @@ approved. Battle-local stat and status changes are not persistent progression.
 
 - 2026-08-06 — Rebuilt from the current engine, adapter, and web/API baseline;
   unapproved product decisions are explicitly recorded as open.
+- 2026-08-10 — Recorded the implemented temporary Warrior's Barrack structured
+  training scope and explicitly excluded it from progression/persistence.

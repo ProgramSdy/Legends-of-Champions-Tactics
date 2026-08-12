@@ -923,15 +923,42 @@ class StatusEffectManager:
                     hero.is_immunity_condition_control = False
                     self.game.display_status_updates(f"{BLUE}{hero.name} has recovered from War Lust. Their damage has returned to {hero.damage}.{RESET}")
 
+            # Handle Blood Frenzy Buff
+            if hero.status['blood_frenzy'] and hero.hp > 0:
+                hero.blood_frenzy_duration -= 1
+                if hero.blood_frenzy_duration > 0:
+                    self.game.display_status_updates(f"{BLUE}{hero.name}'s Blood Frenzy lasts {hero.blood_frenzy_duration} rounds.{RESET}")
+                else:
+                    hero.agility -= hero.agility_increased_amount_by_blood_frenzy
+                    hero.defense += hero.defense_decreased_amount_by_blood_frenzy
+                    hero.agility_increased_amount_by_blood_frenzy = 0
+                    hero.defense_decreased_amount_by_blood_frenzy = 0
+                    hero.blood_frenzy_duration = 0
+                    hero.status['blood_frenzy'] = False
+                    self.game.display_status_updates(f"{BLUE}{hero.name}'s Blood Frenzy has ended. Their defense and agility have returned to normal.{RESET}")
+
             # Handle Bleeding_Moon_Slash
             if hero.status['bleeding_moon_slash'] and hero.hp > 0:
-                hero.bleeding_slash_duration -=1
+                hero.bleeding_moon_slash_duration -=1
+                moon_slash_debuff = next(
+                    (
+                        debuff
+                        for debuff in hero.debuffs
+                        if debuff.name == "Moon Slash"
+                    ),
+                    None,
+                )
+                if moon_slash_debuff is not None:
+                    moon_slash_debuff.duration = hero.bleeding_moon_slash_duration
                 if hero.bleeding_moon_slash_duration > 0:
                     variation = random.randint(-2, 2)
                     self.game.display_status_updates(f"{BLUE}{hero.name}'s bleeding effect from Moon Slash is {hero.bleeding_moon_slash_duration} rounds. {hero.take_damage(hero.bleeding_moon_slash_continuous_damage + variation)}{RESET}")
                 elif hero.bleeding_moon_slash_duration == 0:
                     hero.bleeding_moon_slash_continuous_damage = 0
                     hero.status['bleeding_moon_slash'] = False
+                    if moon_slash_debuff is not None:
+                        hero.debuffs.remove(moon_slash_debuff)
+                        hero.buffs_debuffs_recycle_pool.append(moon_slash_debuff)
                     self.game.display_status_updates(f"{BLUE}{hero.name} has stopped bleeding. Their wound from Moon Slash has recovered.{RESET}")
 
             # Handle Death Bolt Debuff Duration
@@ -996,5 +1023,3 @@ class StatusEffectManager:
                     hero.stitch_of_agony_continuous_damage = 0 
                     hero.status['stitch_of_agony'] = False
                     self.game.display_status_updates(f"{BLUE}Stitch of Agony effect has faded away from {hero.name}.{RESET}")
-
-

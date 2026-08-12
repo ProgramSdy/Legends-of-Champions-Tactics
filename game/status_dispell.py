@@ -71,6 +71,23 @@ class StatusDispell:
             hero.bleeding_slash_duration = 0
             hero.bleeding_slash_continuous_damage = 0
             self.game.display_battle_info(f"{BLUE}{hero.name}'s bleeding from slash has stopped. {hero.name}'s wound has been cured{RESET}")
+          elif status == 'bleeding_moon_slash':
+            hero.status['bleeding_moon_slash'] = False
+            hero.bleeding_moon_slash_duration = 0
+            hero.bleeding_moon_slash_continuous_damage = 0
+            moon_slash_debuff = next(
+                (
+                    debuff
+                    for debuff in hero.debuffs
+                    if debuff.name == "Moon Slash"
+                ),
+                None,
+            )
+            if moon_slash_debuff is not None:
+                moon_slash_debuff.duration = 0
+                hero.debuffs.remove(moon_slash_debuff)
+                hero.buffs_debuffs_recycle_pool.append(moon_slash_debuff)
+            self.game.display_battle_info(f"{BLUE}{hero.name}'s bleeding from Moon Slash has stopped.{RESET}")
           elif status == 'bleeding_sharp_blade':
             hero.status['bleeding_sharp_blade'] = False
             hero.sharp_blade_debuff_duration = 0
@@ -264,6 +281,5 @@ class StatusDispell:
                 hero.status['unstable_compound'] = False
                 hero.unstable_compound_damage = hero.unstable_compound_damage + variation
                 self.game.display_status_updates(f"{ORANGE}Unstable Compound from {hero.name} has exploded. {hero.take_damage(hero.sharp_blade_continuous_damage + variation)}{RESET}")
-
 
 

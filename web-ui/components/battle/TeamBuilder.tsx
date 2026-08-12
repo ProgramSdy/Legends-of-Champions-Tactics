@@ -5,6 +5,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { resolveEnabledStage } from "@/components/stages/stage-config";
 import type {
+  StructuredStageBattleDefinition,
+  StructuredStageDefinition,
+} from "@/components/stages/structured-stage-config";
+import type {
   BattleCreateConfiguration,
   BattleSize,
   EnemyCompositionMode,
@@ -13,14 +17,26 @@ import type {
 } from "@/lib/battle/types";
 import { AssetImage } from "./AssetImage";
 
-interface TeamBuilderProps {
+interface TeamBuilderBaseProps {
   roster: HeroDefinitionSummary[];
   onStart: (configuration: BattleCreateConfiguration) => void;
+}
+
+interface ArenaTeamBuilderProps extends TeamBuilderBaseProps {
+  mode?: "arena";
   selectedStageId?: string;
 }
 
+interface StructuredTeamBuilderProps extends TeamBuilderBaseProps {
+  mode: "structured";
+  stage: StructuredStageDefinition;
+  battle: StructuredStageBattleDefinition;
+}
+
+export type TeamBuilderProps = ArenaTeamBuilderProps | StructuredTeamBuilderProps;
+
 const FIXED_SLOT_INDICES = [0, 1, 2] as const;
-const MATRIX_PAGE_SIZE = 5;
+const MATRIX_PAGE_SIZE = 6;
 
 function professionLabel(hero: HeroDefinitionSummary) {
   return `${hero.faculty} · ${hero.specialization}`;
@@ -35,90 +51,102 @@ function portraitRequest(hero: HeroDefinitionSummary) {
   };
 }
 
-function EnemyTeamSlot({
+function FixedEnemyTeamSlot({
   index,
   enabled,
-  value,
-  onChange,
-  roster,
+  hero,
+  battleSize,
 }: {
   index: number;
   enabled: boolean;
-  value: string;
-  onChange: (value: string) => void;
-  roster: HeroDefinitionSummary[];
+  hero?: HeroDefinitionSummary;
+  battleSize: BattleSize;
 }) {
-  const id = `enemy-slot-${index}`;
-  const selectedHero = roster.find((hero) => hero.definitionId === value);
   return (
     <article
-      className={`enemy-slot-card${enabled ? "" : " disabled"}`}
+      className={`enemy-slot-card fixed-enemy-slot${enabled ? "" : " disabled"}`}
       data-enemy-slot={index}
       data-slot-enabled={enabled}
     >
       <div className="builder-hero-media">
-        {enabled && selectedHero ? (
-          <AssetImage request={portraitRequest(selectedHero)} className="builder-hero-image" />
+        {enabled && hero ? (
+          <AssetImage request={portraitRequest(hero)} className="builder-hero-image" />
         ) : (
           <span className="disabled-slot-mark" aria-hidden="true">◇</span>
         )}
       </div>
       <span className="slot-number">HERO {index + 1}</span>
-      {enabled && selectedHero ? <strong>{professionLabel(selectedHero)}</strong> : <strong>UNAVAILABLE</strong>}
-      <label className="team-slot" htmlFor={id}>
-        <span className="sr-only">Hero {index + 1}</span>
-        {enabled ? <select id={id} value={value} onChange={(event) => onChange(event.target.value)}>
-          <option value="">Choose a hero</option>
-          {roster.map((hero) => (
-            <option key={hero.definitionId} value={hero.definitionId}>
-              {professionLabel(hero)}
-            </option>
-          ))}
-        </select> : null}
-      </label>
+      <strong>{enabled && hero ? hero.faculty : "UNAVAILABLE"}</strong>
+      <small className={enabled && hero ? "hero-specialization" : undefined}>{enabled && hero ? hero.specialization : `${battleSize}v${battleSize}`}</small>
     </article>
   );
 }
 
-export function TeamBuilder({ roster, onStart, selectedStageId }: TeamBuilderProps) {
-  const selectedStage = resolveEnabledStage(selectedStageId);
-  const defaultPlayer = roster.map((hero) => hero.definitionId);
-  const defaultEnemy = [...defaultPlayer].reverse();
-  const [battleSize, setBattleSize] = useState<BattleSize>(1);
-  const [playerTeam, setPlayerTeam] = useState<string[]>(defaultPlayer.slice(0, 1));
+export function TeamBuilder(props: TeamBuilderProps) {
+  const { roster, onStart } = props;
+  const structuredStage = props.mode === "structured" ? props.stage : null;
+  const structuredBattle = props.mode === "structured" ? props.battle : null;
+  const selectedStage = resolveEnabledStage(
+    structuredStage?.stageId ?? (props.mode === "structured" ? undefined : props.selectedStageId),
+  );
+  const builderRoster = useMemo(() => {
+    if (!structuredStage) return roster;
+    return structuredStage.allowedPlayerDefinitionIds
+      .map((definitionId) => roster.find((hero) => hero.definitionId === definitionId))
+      .filter((hero): hero is HeroDefinitionSummary => Boolean(hero));
+  }, [roster, structuredStage]);
+  const initialBattleSize = structuredBattle?.battleSize ?? 1;
+  const [battleSize, setBattleSize] = useState<BattleSize>(initialBattleSize);
+  const [playerTeam, setPlayerTeam] = useState<string[]>(Array(initialBattleSize).fill(""));
   const [activePlayerSlot, setActivePlayerSlot] = useState(0);
-  const [enemyCompositionMode, setEnemyCompositionMode] = useState<EnemyCompositionMode>("random");
-  const [enemyTeam, setEnemyTeam] = useState<string[]>(defaultEnemy.slice(0, 1));
+  const [activeEnemySlot, setActiveEnemySlot] = useState(0);
+  const [activeTeamSide, setActiveTeamSide] = useState<"player" | "enemy">("player");
+  const [enemyCompositionMode, setEnemyCompositionMode] = useState<EnemyCompositionMode>(structuredBattle ? "specified" : "random");
+  const [enemyTeam, setEnemyTeam] = useState<string[]>(structuredBattle ? [...structuredBattle.enemyDefinitionIds] : Array(1).fill(""));
   const [enemyControlMode, setEnemyControlMode] = useState<EnemyControlMode>("computer");
   const [seedText, setSeedText] = useState("");
   const [selectedFaculty, setSelectedFaculty] = useState("All");
   const [matrixPage, setMatrixPage] = useState(0);
 
-  const resize = (team: string[], size: BattleSize, defaults: readonly string[]) =>
-    Array.from({ length: size }, (_, index) => team[index] ?? defaults[index] ?? "");
+  const resize = (team: string[], size: BattleSize) =>
+    Array.from({ length: size }, (_, index) => team[index] ?? "");
 
   const setSize = (size: BattleSize) => {
     setBattleSize(size);
-    setPlayerTeam((team) => resize(team, size, defaultPlayer));
-    setEnemyTeam((team) => resize(team, size, defaultEnemy));
+    setPlayerTeam((team) => resize(team, size));
+    setEnemyTeam((team) => resize(team, size));
     setActivePlayerSlot((slot) => Math.min(slot, size - 1));
+    setActiveEnemySlot((slot) => Math.min(slot, size - 1));
   };
 
   const parsedSeed = seedText === "" ? undefined : Number(seedText);
   const validation = useMemo(() => {
     if (playerTeam.length !== battleSize || playerTeam.some((id) => !id)) return "Fill every player-team slot.";
+    if (structuredStage && playerTeam.some((id) => !structuredStage.allowedPlayerDefinitionIds.includes(id))) {
+      return "Choose every player hero from this stage's approved roster.";
+    }
     if (enemyCompositionMode === "specified" && (enemyTeam.length !== battleSize || enemyTeam.some((id) => !id))) {
       return "Fill every specified enemy-team slot.";
     }
     if (seedText !== "" && (!Number.isSafeInteger(parsedSeed) || parsedSeed! < 0)) return "Seed must be a non-negative whole number.";
     return null;
-  }, [battleSize, enemyCompositionMode, enemyTeam, parsedSeed, playerTeam, seedText]);
+  }, [battleSize, enemyCompositionMode, enemyTeam, parsedSeed, playerTeam, seedText, structuredStage]);
 
   const updateSlot = (team: string[], index: number, value: string) =>
     team.map((current, slot) => slot === index ? value : current);
 
   const launch = () => {
     if (validation) return;
+    if (structuredBattle) {
+      onStart({
+        battleSize: structuredBattle.battleSize,
+        playerTeam,
+        enemyCompositionMode: "specified",
+        enemyTeam: [...structuredBattle.enemyDefinitionIds],
+        enemyControlMode: "computer",
+      });
+      return;
+    }
     onStart({
       battleSize,
       playerTeam,
@@ -130,16 +158,18 @@ export function TeamBuilder({ roster, onStart, selectedStageId }: TeamBuilderPro
   };
 
   const stagePosition = `${selectedStage.geometry.leftPercent + selectedStage.geometry.widthPercent / 2}% ${selectedStage.geometry.topPercent + selectedStage.geometry.heightPercent / 2}%`;
-  const activeHeroId = playerTeam[activePlayerSlot] ?? "";
+  const activeHeroId = activeTeamSide === "player"
+    ? playerTeam[activePlayerSlot] ?? ""
+    : enemyTeam[activeEnemySlot] ?? "";
   const faculties = useMemo(
-    () => Array.from(new Set(roster.map((hero) => hero.faculty))),
-    [roster],
+    () => Array.from(new Set(builderRoster.map((hero) => hero.faculty))),
+    [builderRoster],
   );
   const filteredRoster = useMemo(
     () => selectedFaculty === "All"
-      ? roster
-      : roster.filter((hero) => hero.faculty === selectedFaculty),
-    [roster, selectedFaculty],
+      ? builderRoster
+      : builderRoster.filter((hero) => hero.faculty === selectedFaculty),
+    [builderRoster, selectedFaculty],
   );
   const matrixPageCount = Math.max(1, Math.ceil(filteredRoster.length / MATRIX_PAGE_SIZE));
   const visibleMatrixHeroes = filteredRoster.slice(
@@ -165,7 +195,9 @@ export function TeamBuilder({ roster, onStart, selectedStageId }: TeamBuilderPro
         <div className="current-stage-copy">
           <small>CURRENT STAGE</small>
           <h2 id="current-stage-heading">{selectedStage.displayName}</h2>
-          <span>Valley of Champions</span>
+          <span>{structuredBattle
+            ? `Battle ${structuredBattle.displayOrder} of ${structuredStage?.battles.length}`
+            : "Valley of Champions"}</span>
         </div>
         <div className="current-stage-media">
           <Image
@@ -181,7 +213,17 @@ export function TeamBuilder({ roster, onStart, selectedStageId }: TeamBuilderPro
         </div>
       </section>
 
-      <section className="builder-options" aria-labelledby="battle-rules-heading">
+      {structuredBattle && structuredStage ? (
+        <section className="structured-battle-summary" aria-labelledby="structured-battle-heading">
+          <div>
+            <small>STRUCTURED TRAINING</small>
+            <h2 id="structured-battle-heading">Battle {structuredBattle.displayOrder}</h2>
+            <p>Battle {structuredBattle.displayOrder} of {structuredStage.battles.length}</p>
+          </div>
+          <strong>{structuredBattle.battleSize}v{structuredBattle.battleSize}</strong>
+          <span>Fixed format · predefined enemy team</span>
+        </section>
+      ) : <section className="builder-options" aria-labelledby="battle-rules-heading">
         <h2 id="battle-rules-heading">Battle rules</h2>
         <fieldset>
           <legend>Battle size</legend>
@@ -195,7 +237,10 @@ export function TeamBuilder({ roster, onStart, selectedStageId }: TeamBuilderPro
           <legend>Enemy composition</legend>
           <div className="choice-row">
             {(["random", "specified"] as const).map((mode) => (
-              <label key={mode}><input type="radio" name="enemy-composition" checked={enemyCompositionMode === mode} onChange={() => setEnemyCompositionMode(mode)} /><span>{mode === "random" ? "Random" : "Choose team"}</span></label>
+              <label key={mode}><input type="radio" name="enemy-composition" checked={enemyCompositionMode === mode} onChange={() => {
+                setEnemyCompositionMode(mode);
+                if (mode === "random" && activeTeamSide === "enemy") setActiveTeamSide("player");
+              }} /><span>{mode === "random" ? "Random" : "Choose team"}</span></label>
             ))}
           </div>
         </fieldset>
@@ -208,14 +253,14 @@ export function TeamBuilder({ roster, onStart, selectedStageId }: TeamBuilderPro
           </div>
         </fieldset>
         <label className="seed-field" htmlFor="battle-seed"><span>Seed <small>optional</small></span><input id="battle-seed" inputMode="numeric" value={seedText} onChange={(event) => setSeedText(event.target.value)} placeholder="Random" /></label>
-      </section>
+      </section>}
 
       <section className="team-composer friendly" aria-labelledby="player-team-heading">
         <header><div><small>PLAYER CONTROLLED</small><h2 id="player-team-heading">Your Team</h2></div><strong>{battleSize} HERO{battleSize > 1 ? "ES" : ""}</strong></header>
         <div className="visual-team-slots player-slots" data-fixed-slot-count="3">
           {FIXED_SLOT_INDICES.map((index) => {
             const enabled = index < battleSize;
-            const hero = enabled ? roster.find((candidate) => candidate.definitionId === playerTeam[index]) : undefined;
+            const hero = enabled ? builderRoster.find((candidate) => candidate.definitionId === playerTeam[index]) : undefined;
             const active = enabled && index === activePlayerSlot;
             return (
               <button
@@ -225,22 +270,24 @@ export function TeamBuilder({ roster, onStart, selectedStageId }: TeamBuilderPro
                 data-player-slot={index}
                 data-slot-enabled={enabled}
                 aria-label={enabled && hero
-                  ? `Hero ${index + 1}: ${professionLabel(hero)}`
-                  : `Hero ${index + 1}: unavailable for ${battleSize}v${battleSize}`}
+                  ? `Your Hero ${index + 1}: ${professionLabel(hero)}`
+                  : enabled
+                    ? `Select your Hero ${index + 1}`
+                    : `Hero ${index + 1}: unavailable for ${battleSize}v${battleSize}`}
                 aria-pressed={active}
                 disabled={!enabled}
-                onClick={() => setActivePlayerSlot(index)}
+                onClick={() => { setActivePlayerSlot(index); setActiveTeamSide("player"); }}
               >
                 <span className="builder-hero-media">
                   {enabled && hero ? (
                     <AssetImage request={portraitRequest(hero)} className="builder-hero-image" />
                   ) : (
-                    <span className="disabled-slot-mark" aria-hidden="true">◇</span>
+                    <span className="empty-slot-prompt">SELECT YOUR HERO</span>
                   )}
                 </span>
                 <span className="slot-number">HERO {index + 1}</span>
-                <strong>{hero?.faculty ?? "UNAVAILABLE"}</strong>
-                <small>{hero?.specialization ?? `${battleSize}v${battleSize}`}</small>
+                <strong>{hero?.faculty ?? (enabled ? "SELECT HERO" : "UNAVAILABLE")}</strong>
+                <small className={hero ? "hero-specialization" : undefined}>{hero?.specialization ?? (enabled ? "MATRIX ASSIGNMENT" : `${battleSize}v${battleSize}`)}</small>
               </button>
             );
           })}
@@ -249,13 +296,60 @@ export function TeamBuilder({ roster, onStart, selectedStageId }: TeamBuilderPro
 
       <section className="team-composer enemy" aria-labelledby="enemy-team-heading">
         <header><div><small>{enemyControlMode === "computer" ? "ENGINE CONTROLLED" : "PLAYER CONTROLLED"}</small><h2 id="enemy-team-heading">Enemy Team</h2></div><strong>{enemyCompositionMode === "random" ? "RANDOM" : `${battleSize} HERO${battleSize > 1 ? "ES" : ""}`}</strong></header>
-        {enemyCompositionMode === "random"
+        {structuredBattle
+          ? <div
+              className="enemy-slot-list fixed-enemy-team"
+              data-fixed-slot-count="3"
+              aria-label={`Predefined enemy team: ${structuredBattle.enemyDefinitionIds.map((definitionId) => {
+                const hero = roster.find((candidate) => candidate.definitionId === definitionId);
+                return hero ? professionLabel(hero) : definitionId;
+              }).join(", ")}`}
+            >
+              {FIXED_SLOT_INDICES.map((index) => (
+                <FixedEnemyTeamSlot
+                  key={`fixed-enemy-${index}`}
+                  index={index}
+                  enabled={index < structuredBattle.battleSize}
+                  hero={index < structuredBattle.battleSize
+                    ? roster.find((candidate) => candidate.definitionId === structuredBattle.enemyDefinitionIds[index])
+                    : undefined}
+                  battleSize={structuredBattle.battleSize}
+                />
+              ))}
+            </div>
+          : enemyCompositionMode === "random"
           ? <div className="random-team-note" aria-label="Enemy composition: Python-selected random team"><div className="enemy-slot-list random-enemy-slots" data-fixed-slot-count="3">{FIXED_SLOT_INDICES.map((index) => { const enabled = index < battleSize; return <article className={`enemy-slot-card random-slot${enabled ? "" : " disabled"}`} data-enemy-slot={index} data-slot-enabled={enabled} key={index}><div className="builder-hero-media"><span className="disabled-slot-mark" aria-hidden="true">{enabled ? "?" : "◇"}</span></div><span className="slot-number">HERO {index + 1}</span><strong>{enabled ? "RANDOM" : "UNAVAILABLE"}</strong><small>{enabled ? "PYTHON SELECTED" : `${battleSize}v${battleSize}`}</small></article>; })}</div></div>
-          : <div className="enemy-slot-list" data-fixed-slot-count="3">{FIXED_SLOT_INDICES.map((index) => <EnemyTeamSlot roster={roster} key={`enemy-${index}`} index={index} enabled={index < battleSize} value={enemyTeam[index] ?? ""} onChange={(value) => setEnemyTeam((team) => updateSlot(team, index, value))} />)}</div>}
+          : <div className="enemy-slot-list" data-fixed-slot-count="3">{FIXED_SLOT_INDICES.map((index) => {
+            const enabled = index < battleSize;
+            const hero = enabled ? roster.find((candidate) => candidate.definitionId === enemyTeam[index]) : undefined;
+            const active = enabled && activeTeamSide === "enemy" && index === activeEnemySlot;
+            return <button
+              key={`enemy-${index}`}
+              type="button"
+              className={`enemy-slot-card selectable-enemy-slot${active ? " active" : ""}${enabled ? "" : " disabled"}`}
+              data-enemy-slot={index}
+              data-slot-enabled={enabled}
+              aria-label={enabled && hero
+                ? `Enemy Hero ${index + 1}: ${professionLabel(hero)}`
+                : enabled
+                  ? `Select enemy Hero ${index + 1}`
+                  : `Hero ${index + 1}: unavailable for ${battleSize}v${battleSize}`}
+              aria-pressed={active}
+              disabled={!enabled}
+              onClick={() => { setActiveEnemySlot(index); setActiveTeamSide("enemy"); }}
+            >
+              <span className="builder-hero-media">
+                {hero ? <AssetImage request={portraitRequest(hero)} className="builder-hero-image" /> : <span className="empty-slot-prompt">SELECT ENEMY HERO</span>}
+              </span>
+              <span className="slot-number">HERO {index + 1}</span>
+              <strong>{hero?.faculty ?? (enabled ? "SELECT HERO" : "UNAVAILABLE")}</strong>
+              <small className={hero ? "hero-specialization" : undefined}>{hero?.specialization ?? (enabled ? "MATRIX ASSIGNMENT" : `${battleSize}v${battleSize}`)}</small>
+            </button>;
+          })}</div>}
       </section>
 
       <section className="hero-roster hero-selection-matrix" aria-labelledby="roster-heading">
-        <header><div><small>ASSIGNING HERO {activePlayerSlot + 1}</small><h2 id="roster-heading">Hero Selection Matrix</h2></div><span>{roster.length} HERO DEFINITIONS</span></header>
+        <header><div><small id="roster-heading">SELECT {activeTeamSide === "enemy" ? "ENEMY " : ""}HERO {(activeTeamSide === "player" ? activePlayerSlot : activeEnemySlot) + 1}</small></div><span>TOTAL HERO: {builderRoster.length}</span></header>
         <div className="matrix-toolbar">
           <div className="faculty-filter" role="group" aria-label="Filter heroes by faculty">
             {["All", ...faculties].map((faculty) => (
@@ -285,15 +379,17 @@ export function TeamBuilder({ roster, onStart, selectedStageId }: TeamBuilderPro
                 type="button"
                 className={`matrix-hero-card${assigned ? " assigned" : ""}`}
                 data-hero-id={hero.definitionId}
-                aria-label={`Assign ${professionLabel(hero)} to Hero ${activePlayerSlot + 1}`}
+                aria-label={`Assign ${professionLabel(hero)} to ${activeTeamSide === "player" ? "your" : "enemy"} Hero ${(activeTeamSide === "player" ? activePlayerSlot : activeEnemySlot) + 1}`}
                 aria-pressed={assigned}
-                onClick={() => setPlayerTeam((team) => updateSlot(team, activePlayerSlot, hero.definitionId))}
+                onClick={() => activeTeamSide === "player"
+                  ? setPlayerTeam((team) => updateSlot(team, activePlayerSlot, hero.definitionId))
+                  : setEnemyTeam((team) => updateSlot(team, activeEnemySlot, hero.definitionId))}
               >
                 <span className="builder-hero-media">
                   <AssetImage request={portraitRequest(hero)} className="builder-hero-image" />
                 </span>
                 <strong>{hero.faculty}</strong>
-                <small>{hero.specialization}</small>
+                <small className="hero-specialization">{hero.specialization}</small>
                 {assigned ? <span className="matrix-assigned" aria-hidden="true">✓</span> : null}
               </button>
             );

@@ -119,6 +119,11 @@ STATUS_KINDS = {
     "hammer_of_revenge": "debuff",
     "shield_of_righteous": "buff",
     "shield_lash": "buff",
+    "purify_healing": "buff",
+    "shield_of_protection": "buff",
+    "warlust": "buff",
+    "bleeding_moon_slash": "debuff",
+    "blood_frenzy": "buff",
 }
 
 STATUS_DURATIONS = {
@@ -140,6 +145,11 @@ STATUS_DURATIONS = {
     "hammer_of_revenge": "hammer_of_revenge_duration",
     "shield_of_righteous": "shield_of_righteous_duration",
     "shield_lash": None,
+    "purify_healing": None,  # duration is held on the matching Buff
+    "shield_of_protection": "shield_of_protection_duration",
+    "warlust": "warlust_duration",
+    "bleeding_moon_slash": "bleeding_moon_slash_duration",
+    "blood_frenzy": "blood_frenzy_duration",
 }
 
 STATUS_ENGINE_NAMES = {
@@ -149,6 +159,14 @@ STATUS_ENGINE_NAMES = {
     "holy_word_redemption": "Holy Word Redemption",
     "holy_word_punishment": "Holy Word Punishment",
     "shield_lash": "Shield Lash",
+    "purify_healing": "Purify Healing",
+    "bleeding_moon_slash": "Moon Slash",
+}
+
+STATUS_SELF_SOURCED = {
+    "shield_of_protection",
+    "warlust",
+    "blood_frenzy",
 }
 
 StatusPresentation = Literal["buff", "debuff", "neutral"]
@@ -1055,6 +1073,29 @@ class BattleAdapter:
                         message=f"{target.name} evaded {skill.name}.",
                     )
                 )
+            elif (
+                skill.last_target_outcomes.get(id(target))
+                == "immunity_condition_all"
+                and getattr(skill, "last_target_outcome_reasons", {}).get(
+                    id(target)
+                )
+                == "shield_of_protection"
+            ):
+                events.append(
+                    self._event(
+                        session,
+                        "damagePrevented",
+                        sourceId=actor_id,
+                        targetId=target_id,
+                        skillId=self._skill_id(actor, skill),
+                        amount=0,
+                        reasonId="status.shield_of_protection",
+                        message=(
+                            f"{target.name}'s Shield of Protection prevented "
+                            f"{skill.name}."
+                        ),
+                    )
+                )
         for combatant_id, old in before.items():
             new = after[combatant_id]
             if new["hp"] > old["hp"]:
@@ -1131,11 +1172,14 @@ class BattleAdapter:
             for status_id in sorted(
                 old["statuses"].keys() - new["statuses"].keys()
             ):
+                removed_status = old["statuses"][status_id]
                 events.append(
                     self._event(
                         session,
                         "statusRemoved",
-                        sourceId=actor_id,
+                        sourceId=(
+                            removed_status.get("sourceCombatantId") or actor_id
+                        ),
                         targetId=combatant_id,
                         skillId=self._skill_id(actor, skill),
                         statusId=status_id,
@@ -1213,6 +1257,7 @@ class BattleAdapter:
                     self._event(
                         session,
                         "statusApplied",
+                        sourceId=status.get("sourceCombatantId"),
                         targetId=combatant_id,
                         statusId=status_id,
                         roundsRemaining=status["roundsRemaining"],
@@ -1225,10 +1270,12 @@ class BattleAdapter:
             for status_id in sorted(
                 old["statuses"].keys() - new["statuses"].keys()
             ):
+                removed_status = old["statuses"][status_id]
                 events.append(
                     self._event(
                         session,
                         "statusRemoved",
+                        sourceId=removed_status.get("sourceCombatantId"),
                         targetId=combatant_id,
                         statusId=status_id,
                         effectHint="status",
@@ -1297,7 +1344,11 @@ class BattleAdapter:
             if record is not None:
                 duration = record.duration
             status_id = f"status.{key}"
-            source = record.initiator if record is not None else None
+            source = (
+                record.initiator
+                if record is not None
+                else hero if key in STATUS_SELF_SOURCED else None
+            )
             result[status_id] = {
                 "id": status_id,
                 "instanceId": f"{status_id}.{_slug(hero.name)}",

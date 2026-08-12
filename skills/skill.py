@@ -38,14 +38,23 @@ class Skill:
         # Consumers such as adapters must use this instead of inferring a miss
         # from unchanged HP: a successful hit can legitimately deal 0 damage.
         self.last_target_outcomes = {}
+        # Immunity outcomes retain the specific engine status that authored
+        # them.  Keep this separate from ``last_target_outcomes`` so existing
+        # consumers of its stable string values remain compatible.
+        self.last_target_outcome_reasons = {}
 
     def immunity_condition_all_check(self, opponent):
         # Check for immunity to all damage
-        for state in getattr(self, 'immunity_condition_all', []):
-            if opponent.status[state] is True:
-                self.active_state = state
-                return True
-        return False
+        state = self._immunity_reason(opponent, self.immunity_condition_all)
+        self.active_state = state
+        return state is not None
+
+    @staticmethod
+    def _immunity_reason(opponent, conditions):
+        return next(
+            (state for state in conditions if opponent.status[state] is True),
+            None,
+        )
     
     def immunity_condition_physical_check(self, opponent):
         # Check for immunity to physical damage
@@ -96,6 +105,7 @@ class Skill:
             "immunity_condition_control": [],
             "dead": []
         }
+        self.last_target_outcome_reasons = {}
         for target in targets:
             if self.death_check(target):
                 outcomes["dead"].append(target)
@@ -105,18 +115,30 @@ class Skill:
                 continue
             if self.immunity_condition_all_check(target):
                 outcomes["immunity_condition_all"].append(target)
+                self.last_target_outcome_reasons[id(target)] = self._immunity_reason(
+                    target, self.immunity_condition_all
+                )
                 continue
             if self.immunity_condition_physical_check(target):
                 if self.damage_nature == "physical":
                   outcomes["immunity_condition_physical"].append(target)
+                  self.last_target_outcome_reasons[id(target)] = self._immunity_reason(
+                      target, self.immunity_condition_physical
+                  )
                   continue
             if self.immunity_condition_magical_check(target):
                 if self.damage_nature == "magical":
                   outcomes["immunity_condition_magical"].append(target)
+                  self.last_target_outcome_reasons[id(target)] = self._immunity_reason(
+                      target, self.immunity_condition_magical
+                  )
                   continue
             if self.immunity_condition_control_check(target):
                 if self.is_control_skill == True:
                   outcomes["immunity_condition_control"].append(target)
+                  self.last_target_outcome_reasons[id(target)] = self._immunity_reason(
+                      target, self.immunity_condition_control
+                  )
                   continue
             outcomes["hit"].append(target)
         self.last_target_outcomes = {
@@ -129,6 +151,7 @@ class Skill:
     def execute(self, opponents):
         result_message = ""
         self.last_target_outcomes = {}
+        self.last_target_outcome_reasons = {}
         """
         if self.name == "Crushing Wave":
           for hero in opponents:

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+import pytest
+
 from battle_api.adapter import BattleAdapter, _EngineData
 from game.game import Game
 from heroes.death_knight import Death_Knight_Blood
@@ -111,6 +113,122 @@ def test_zero_damage_shield_bash_is_a_landed_hit_not_an_evade():
     assert not any(
         event["type"] == "attackEvaded" and event.get("targetId") == target_id
         for event in result["events"]
+    )
+    assert not any(
+        event["type"] == "damagePrevented" for event in result["events"]
+    )
+
+
+def _shield_prevention_session(source_definition: str):
+    adapter = BattleAdapter()
+    session, _ = adapter.create_battle(
+        seed=1610,
+        battle_id=f"battle.ui016.prevention.{source_definition}",
+        battle_size=2,
+        player_team=[source_definition, "hero.priest.comprehensiveness"],
+        enemy_team=["hero.paladin.holy", "hero.rogue.comprehensiveness"],
+        enemy_control_mode="player",
+    )
+    source = session.game.player_heroes[0]
+    target, next_actor = session.game.opponent_heroes
+    for hero in session.game.heroes:
+        hero.actioned = hero not in (source, next_actor)
+    session.game.unactioned_sorted_heroes = [source, next_actor]
+    target.status["shield_of_protection"] = True
+    target.shield_of_protection_duration = 2
+    return adapter, session, source, target
+
+
+@pytest.mark.parametrize(
+    ("source_definition", "skill_name"),
+    [
+        ("hero.warrior.defence", "Shield Bash"),
+        ("hero.mage.comprehensiveness", "Frost Bolt"),
+    ],
+)
+def test_shield_of_protection_authors_exactly_one_typed_prevention_event(
+    source_definition, skill_name
+):
+    adapter, session, source, target = _shield_prevention_session(
+        source_definition
+    )
+    skill = next(skill for skill in source.skills if skill.name == skill_name)
+    skill.evasion_check = lambda _target: False
+    hp_before = target.hp
+
+    _, result = _submit_named_skill(
+        adapter, session, source, target, skill_name
+    )
+
+    target_id = adapter._combatant_id(session, target)
+    source_id = adapter._combatant_id(session, source)
+    prevented = [
+        event
+        for event in result["events"]
+        if event["type"] == "damagePrevented"
+    ]
+    assert target.hp == hp_before
+    assert target.status["cold"] is False
+    assert target.status["stunned"] is False
+    assert skill.last_target_outcomes[id(target)] == "immunity_condition_all"
+    assert skill.last_target_outcome_reasons[id(target)] == (
+        "shield_of_protection"
+    )
+    assert len(prevented) == 1
+    assert prevented[0] == {
+        "id": prevented[0]["id"],
+        "sequence": prevented[0]["sequence"],
+        "type": "damagePrevented",
+        "sourceId": source_id,
+        "targetId": target_id,
+        "skillId": adapter._skill_id(source, skill),
+        "amount": 0,
+        "reasonId": "status.shield_of_protection",
+        "message": (
+            f"{target.name}'s Shield of Protection prevented {skill.name}."
+        ),
+    }
+    assert not any(
+        event["type"] in {"damageApplied", "attackEvaded"}
+        and event.get("targetId") == target_id
+        for event in result["events"]
+    )
+
+
+@pytest.mark.parametrize("immunity_status", ["glacier", "anti_magic_shield"])
+def test_other_immunity_outcomes_do_not_emit_shield_prevention(immunity_status):
+    adapter, session, source, target = _shield_prevention_session(
+        "hero.mage.comprehensiveness"
+    )
+    target.status["shield_of_protection"] = False
+    target.status[immunity_status] = True
+    skill = next(skill for skill in source.skills if skill.name == "Frost Bolt")
+    skill.evasion_check = lambda _target: False
+
+    _, result = _submit_named_skill(
+        adapter, session, source, target, "Frost Bolt"
+    )
+
+    assert not any(
+        event["type"] == "damagePrevented" for event in result["events"]
+    )
+
+
+def test_evade_takes_precedence_over_shield_and_does_not_emit_prevention():
+    adapter, session, source, target = _shield_prevention_session(
+        "hero.warrior.defence"
+    )
+    skill = next(skill for skill in source.skills if skill.name == "Shield Bash")
+    skill.evasion_check = lambda _target: True
+
+    _, result = _submit_named_skill(
+        adapter, session, source, target, "Shield Bash"
+    )
+
+    assert skill.last_target_outcomes[id(target)] == "evaded"
+    assert any(event["type"] == "attackEvaded" for event in result["events"])
+    assert not any(
+        event["type"] == "damagePrevented" for event in result["events"]
     )
 
 

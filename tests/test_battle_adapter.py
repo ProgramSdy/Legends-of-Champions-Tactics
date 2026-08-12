@@ -14,7 +14,7 @@ from battle_api.adapter import (
     BattleRegistry,
 )
 from game.hero_generator import HeroGenerator
-from skills.skill import Debuff
+from skills.skill import Buff, Debuff
 
 
 @pytest.fixture()
@@ -528,6 +528,333 @@ def test_every_adapter_status_has_frontend_tooltip_metadata():
     )
 
     assert {f"status.{status_key}" for status_key in STATUS_KINDS} <= registry_ids
+
+
+def test_ui016_statuses_serialize_kind_duration_source_and_application_events():
+    adapter = BattleAdapter()
+    session, _ = adapter.create_battle(
+        seed=1601,
+        battle_id="battle.ui016.status-contract",
+        battle_size=2,
+        player_team=["hero.paladin.holy", "hero.warrior.berserker"],
+        enemy_team=[
+            "hero.rogue.comprehensiveness",
+            "hero.warrior.berserker",
+        ],
+    )
+    paladin, berserker = session.game.player_heroes
+    moon_target = session.game.opponent_heroes[0]
+    before = adapter._capture(session)
+
+    paladin.status["purify_healing"] = True
+    paladin.add_buff(Buff("Purify Healing", 2, paladin, 1.0))
+    paladin.status["shield_of_protection"] = True
+    paladin.shield_of_protection_duration = 2
+    berserker.status["warlust"] = True
+    berserker.warlust_duration = 2
+    berserker.status["blood_frenzy"] = True
+    berserker.blood_frenzy_duration = 2
+    moon_target.status["bleeding_moon_slash"] = True
+    moon_target.bleeding_moon_slash_duration = 2
+    moon_target.add_debuff(Debuff("Moon Slash", 2, berserker, 8))
+
+    after = adapter._capture(session)
+    events = adapter._mutation_events(
+        session,
+        berserker,
+        berserker.skills[0],
+        [],
+        before,
+        after,
+    )
+    applied = {
+        event["statusId"]: event
+        for event in events
+        if event["type"] == "statusApplied"
+    }
+    paladin_id = adapter._combatant_id(session, paladin)
+    berserker_id = adapter._combatant_id(session, berserker)
+    moon_target_id = adapter._combatant_id(session, moon_target)
+    expected = {
+        "status.purify_healing": ("buff", 2, paladin_id, paladin_id),
+        "status.shield_of_protection": ("buff", 2, paladin_id, paladin_id),
+        "status.warlust": ("buff", 2, berserker_id, berserker_id),
+        "status.blood_frenzy": ("buff", 2, berserker_id, berserker_id),
+        "status.bleeding_moon_slash": (
+            "debuff",
+            2,
+            berserker_id,
+            moon_target_id,
+        ),
+    }
+
+    assert set(applied) == set(expected)
+    for status_id, (kind, duration, source_id, target_id) in expected.items():
+        event = applied[status_id]
+        serialized = after[target_id]["statuses"][status_id]
+        assert serialized["kind"] == kind
+        assert serialized["roundsRemaining"] == duration
+        assert serialized["sourceCombatantId"] == source_id
+        assert event["sourceId"] == source_id
+        assert event["targetId"] == target_id
+        assert event["roundsRemaining"] == duration
+        assert event["statusPresentation"] == (
+            "debuff" if kind == "debuff" else "buff"
+        )
+
+
+def test_blood_frenzy_has_one_activation_and_restoration_path(monkeypatch):
+    adapter = BattleAdapter()
+    session, _ = adapter.create_battle(
+        seed=1602,
+        battle_id="battle.ui016.blood-frenzy",
+        player_team=["hero.warrior.berserker"],
+        enemy_team=["hero.rogue.comprehensiveness"],
+    )
+    berserker = session.game.player_heroes[0]
+    berserker.hp = int(berserker.hp_max * 0.5)
+    defense_before = berserker.defense
+    agility_before = berserker.agility
+    monkeypatch.setattr("heroes.warrior.random.randint", lambda _low, _high: 1)
+
+    berserker.take_damage(1)
+    assert berserker.status["blood_frenzy"] is True
+    assert berserker.blood_frenzy_duration == 2
+    activated_stats = (berserker.defense, berserker.agility)
+    assert activated_stats == (
+        max(0, defense_before - round(defense_before / 2)),
+        agility_before + 20,
+    )
+    assert berserker.trigger_blood_frenzy() is False
+    assert (berserker.defense, berserker.agility) == activated_stats
+
+    session.game.status_manager.check_heroes_status_effects(berserker)
+    assert berserker.blood_frenzy_duration == 1
+    session.game.status_manager.check_heroes_status_effects(berserker)
+
+    assert berserker.status["blood_frenzy"] is False
+    assert berserker.blood_frenzy_duration == 0
+    assert (berserker.defense, berserker.agility) == (
+        defense_before,
+        agility_before,
+    )
+    assert berserker.defense_decreased_amount_by_blood_frenzy == 0
+    assert berserker.agility_increased_amount_by_blood_frenzy == 0
+
+
+def test_moon_slash_uses_own_duration_and_orders_tick_before_removal(monkeypatch):
+    adapter = BattleAdapter()
+    session, _ = adapter.create_battle(
+        seed=1603,
+        battle_id="battle.ui016.moon-slash",
+        player_team=["hero.warrior.berserker"],
+        enemy_team=["hero.rogue.comprehensiveness"],
+    )
+    source = session.game.player_heroes[0]
+    target = session.game.opponent_heroes[0]
+    target.status["bleeding_moon_slash"] = True
+    target.bleeding_moon_slash_duration = 2
+    target.bleeding_slash_duration = 7
+    target.bleeding_moon_slash_continuous_damage = 8
+    target.add_debuff(Debuff("Moon Slash", 2, source, 8))
+    monkeypatch.setattr(
+        "game.status_effect_manager.random.randint", lambda _low, _high: 0
+    )
+
+    before_tick = adapter._capture(session)
+    session.game.status_manager.check_heroes_status_effects(target)
+    after_tick = adapter._capture(session)
+    tick_events = adapter._state_delta_events(session, before_tick, after_tick)
+    before_removal = adapter._capture(session)
+    session.game.status_manager.check_heroes_status_effects(target)
+    after_removal = adapter._capture(session)
+    removal_events = adapter._state_delta_events(
+        session, before_removal, after_removal
+    )
+
+    assert target.bleeding_slash_duration == 7
+    assert target.status["bleeding_moon_slash"] is False
+    assert [event["type"] for event in tick_events] == ["damageApplied"]
+    assert tick_events[0]["amount"] == 8
+    assert [event["type"] for event in removal_events] == ["statusRemoved"]
+    assert removal_events[0]["statusId"] == "status.bleeding_moon_slash"
+    assert removal_events[0]["sourceId"] == adapter._combatant_id(
+        session, source
+    )
+    assert tick_events[0]["sequence"] < removal_events[0]["sequence"]
+
+
+def test_moon_slash_named_record_tracks_latest_duplicate_berserker_source(
+    monkeypatch,
+):
+    adapter = BattleAdapter()
+    session, _ = adapter.create_battle(
+        seed=1606,
+        battle_id="battle.ui016.moon-source",
+        battle_size=2,
+        player_team=[
+            "hero.warrior.berserker",
+            "hero.warrior.berserker",
+        ],
+        enemy_team=[
+            "hero.rogue.comprehensiveness",
+            "hero.priest.comprehensiveness",
+        ],
+    )
+    first_source, second_source = session.game.player_heroes
+    target = session.game.opponent_heroes[0]
+    target.status["armor_breaker"] = True
+    monkeypatch.setattr("heroes.warrior.random.randint", lambda low, _high: low)
+
+    first_source.moon_slash(target)
+    first = adapter._active_statuses(session, target)[
+        "status.bleeding_moon_slash"
+    ]
+    second_source.moon_slash(target)
+    second = adapter._active_statuses(session, target)[
+        "status.bleeding_moon_slash"
+    ]
+    moon_records = [
+        debuff for debuff in target.debuffs if debuff.name == "Moon Slash"
+    ]
+
+    assert first["sourceCombatantId"] == adapter._combatant_id(
+        session, first_source
+    )
+    assert second["sourceCombatantId"] == adapter._combatant_id(
+        session, second_source
+    )
+    assert second["roundsRemaining"] == 2
+    assert len(moon_records) == 1
+    assert moon_records[0].initiator is second_source
+
+
+def test_purify_healing_refreshes_and_dispels_only_eligible_category(monkeypatch):
+    adapter = BattleAdapter()
+    session, _ = adapter.create_battle(
+        seed=1604,
+        battle_id="battle.ui016.purify",
+        battle_size=2,
+        player_team=[
+            "hero.paladin.holy",
+            "hero.rogue.comprehensiveness",
+        ],
+        enemy_team=[
+            "hero.warrior.weapon_master",
+            "hero.mage.comprehensiveness",
+        ],
+    )
+    paladin, ally = session.game.player_heroes
+    ally.hp -= 40
+    ally.status["bleeding_moon_slash"] = True
+    ally.bleeding_moon_slash_duration = 2
+    ally.bleeding_moon_slash_continuous_damage = 8
+    ally.add_debuff(Debuff("Moon Slash", 2, session.game.opponent_heroes[0], 8))
+    ally.status["stunned"] = True
+    ally.stun_duration = 1
+    monkeypatch.setattr("heroes.paladin.random.randint", lambda _low, _high: 0)
+
+    paladin.purify_healing(ally)
+    purify_buffs = [buff for buff in ally.buffs if buff.name == "Purify Healing"]
+    assert ally.status["purify_healing"] is True
+    assert ally.status["bleeding_moon_slash"] is False
+    assert ally.status["stunned"] is True
+    assert len(purify_buffs) == 1
+    assert purify_buffs[0].duration == 2
+
+    purify_buffs[0].duration = 1
+    paladin.purify_healing(ally)
+    assert len([buff for buff in ally.buffs if buff.name == "Purify Healing"]) == 1
+    assert purify_buffs[0].duration == 2
+    serialized = adapter._active_statuses(session, ally)["status.purify_healing"]
+    assert serialized["roundsRemaining"] == 2
+    assert serialized["sourceCombatantId"] == adapter._combatant_id(
+        session, paladin
+    )
+    before_removal = adapter._capture(session)
+    session.game.status_manager.check_heroes_status_effects(ally)
+    session.game.status_manager.check_heroes_status_effects(ally)
+    removal_events = adapter._state_delta_events(
+        session, before_removal, adapter._capture(session)
+    )
+    assert ally.status["purify_healing"] is False
+    assert not any(buff.name == "Purify Healing" for buff in ally.buffs)
+    assert any(
+        event["type"] == "statusRemoved"
+        and event["statusId"] == "status.purify_healing"
+        and event["sourceId"] == adapter._combatant_id(session, paladin)
+        for event in removal_events
+    )
+
+
+def test_shield_of_protection_activation_and_cleanup_remain_engine_owned():
+    adapter = BattleAdapter()
+    session, _ = adapter.create_battle(
+        seed=1607,
+        battle_id="battle.ui016.shield-lifecycle",
+        player_team=["hero.paladin.holy"],
+        enemy_team=["hero.rogue.comprehensiveness"],
+    )
+    paladin = session.game.player_heroes[0]
+    shield_skill = next(
+        skill for skill in paladin.skills if skill.name == "Shield of Protection"
+    )
+    before = adapter._capture(session)
+
+    paladin.shield_of_protection()
+    applied = adapter._state_delta_events(
+        session, before, adapter._capture(session)
+    )
+
+    assert paladin.status["shield_of_protection"] is True
+    assert paladin.shield_of_protection_duration == 2
+    assert shield_skill.if_cooldown is True
+    assert shield_skill.cooldown == 3
+    assert any(
+        event["type"] == "statusApplied"
+        and event["statusId"] == "status.shield_of_protection"
+        and event["sourceId"] == adapter._combatant_id(session, paladin)
+        for event in applied
+    )
+
+    before_removal = adapter._capture(session)
+    session.game.status_manager.check_heroes_status_effects(paladin)
+    session.game.status_manager.check_heroes_status_effects(paladin)
+    removed = adapter._state_delta_events(
+        session, before_removal, adapter._capture(session)
+    )
+
+    assert paladin.status["shield_of_protection"] is False
+    assert paladin.shield_of_protection_duration == 0
+    assert any(
+        event["type"] == "statusRemoved"
+        and event["statusId"] == "status.shield_of_protection"
+        and event["sourceId"] == adapter._combatant_id(session, paladin)
+        for event in removed
+    )
+
+
+def test_warlust_control_immunity_expires_and_restores_damage():
+    adapter = BattleAdapter()
+    session, _ = adapter.create_battle(
+        seed=1605,
+        battle_id="battle.ui016.warlust",
+        player_team=["hero.warrior.berserker"],
+        enemy_team=["hero.rogue.comprehensiveness"],
+    )
+    berserker = session.game.player_heroes[0]
+    damage_before = berserker.damage
+
+    berserker.warlust()
+    assert berserker.status["warlust"] is True
+    assert berserker.is_immunity_condition_control is True
+    assert berserker.damage > damage_before
+    session.game.status_manager.check_heroes_status_effects(berserker)
+    session.game.status_manager.check_heroes_status_effects(berserker)
+
+    assert berserker.status["warlust"] is False
+    assert berserker.is_immunity_condition_control is False
+    assert berserker.damage == damage_before
 
 
 def test_legal_actions_reference_current_actor_and_only_living_targets(adapter_session):

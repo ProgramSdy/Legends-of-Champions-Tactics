@@ -53,9 +53,9 @@ describe("UI-015 Team Builder vertical-flow contracts", () => {
     expect(childPositions.every((position, index) => index === 0 || position > childPositions[index - 1])).toBe(true);
 
     const source = css();
-    expect(source).toMatch(/\.player-slot-card\{[^}]*min-height:190px/);
-    expect(source).toMatch(/\.enemy-slot-card\{[^}]*min-height:190px/);
-    expect(source).toMatch(/\.matrix-hero-card\{[^}]*min-height:150px/);
+    expect(source).toMatch(/\.player-slot-card\{[^}]*min-height:440px/);
+    expect(source).toMatch(/\.enemy-slot-card\{[^}]*min-height:440px/);
+    expect(source).toMatch(/\.matrix-hero-card\{[^}]*min-height:360px/);
   });
 
   it.each([1, 2, 3] as const)("keeps Enter Battle reachable after the matrix for %iv%i", (size) => {

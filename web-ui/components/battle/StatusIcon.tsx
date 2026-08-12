@@ -9,6 +9,7 @@ export function StatusIcon({ status }: { status: StatusState }) {
   const stackBadge = stacks === null ? null : stacks > 99 ? "99+" : String(stacks);
   return (
     <span className={`status-icon ${definition.harmful ? "harmful" : "helpful"}`} tabIndex={0}
+      data-status-id={status.id}
       onClick={(event) => event.stopPropagation()}
       onKeyDown={(event) => event.stopPropagation()}
       aria-label={`${definition.name}. ${definition.description}${stackDetail}${duration}`}>

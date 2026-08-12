@@ -80,12 +80,17 @@ export interface TurnControl {
   forcedTargetIds: string[];
 }
 
+export type BattleOutcome = {
+  kind: "victory" | "draw" | "roundLimit";
+  winningSideId: SideId | null;
+};
+
 export interface BattleSnapshot {
   phase: "initializing" | "roundStart" | "awaitingCommand" | "resolving" | "roundEnd" | "ended";
   round: number;
   turn: { index: number; total: number };
   activeCombatantId: string | null;
-  outcome: null | { kind: "victory" | "draw" | "roundLimit"; winningSideId: SideId | null };
+  outcome: BattleOutcome | null;
   sides: Array<{ id: SideId; combatantIds: string[]; maxSlots: number }>;
   combatants: Record<string, CombatantState>;
   turnOrder: Array<{ combatantId: string; hasActed: boolean; isCurrent: boolean }>;
@@ -95,11 +100,11 @@ export interface BattleSnapshot {
 
 export type BattleEventType =
   | "battleStarted" | "roundStarted" | "turnStarted" | "skillStarted"
-  | "characterMoved" | "projectileLaunched" | "damageApplied" | "healingApplied"
+  | "characterMoved" | "projectileLaunched" | "damageApplied" | "damagePrevented" | "healingApplied"
   | "statusApplied" | "statusRemoved" | "attackEvaded" | "characterSummoned"
   | "characterDefeated" | "turnEnded" | "battleEnded" | "battleLog";
 
-export interface BattleEvent {
+export interface BattleEventBase {
   id: string;
   sequence: number;
   type: BattleEventType;
@@ -121,6 +126,26 @@ export interface BattleEvent {
   visibleInLog?: boolean;
   message: string;
 }
+
+export interface StandardBattleEvent extends BattleEventBase {
+  type: Exclude<BattleEventType, "damagePrevented">;
+}
+
+/**
+ * Additive engine-authored outcome for an attempted hit prevented by a status.
+ * Presentation code must consume this event instead of deriving prevention from
+ * unchanged HP or from a status found in a snapshot.
+ */
+export interface DamagePreventedEvent extends BattleEventBase {
+  type: "damagePrevented";
+  sourceId: string;
+  targetId: string;
+  skillId: string;
+  amount: 0;
+  reasonId: "status.shield_of_protection";
+}
+
+export type BattleEvent = StandardBattleEvent | DamagePreventedEvent;
 
 export interface PresentationScript {
   id: string;

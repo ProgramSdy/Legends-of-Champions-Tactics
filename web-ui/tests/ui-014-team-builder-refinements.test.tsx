@@ -60,12 +60,12 @@ describe("UI-014 fixed slots and roster exploration", () => {
     const user = userEvent.setup();
     render(<TeamBuilder roster={roster} onStart={vi.fn()} />);
     const activeBefore = document.querySelector("[data-player-slot='0']")?.getAttribute("aria-pressed");
-    expect(screen.getAllByRole("button", { name: /Assign /i })).toHaveLength(5);
+    expect(screen.getAllByRole("button", { name: /Assign /i })).toHaveLength(6);
     await user.click(screen.getByRole("button", { name: "Paladin" }));
     expect(screen.getAllByRole("button", { name: /Assign /i })).toHaveLength(3);
     expect(screen.getAllByRole("button", { name: /Assign /i }).every((button) => button.textContent?.includes("Paladin"))).toBe(true);
     await user.click(screen.getByRole("button", { name: "All" }));
-    expect(screen.getAllByRole("button", { name: /Assign /i })).toHaveLength(5);
+    expect(screen.getAllByRole("button", { name: /Assign /i })).toHaveLength(6);
     expect(document.querySelector("[data-player-slot='0']")).toHaveAttribute("aria-pressed", activeBefore ?? "true");
   });
 
@@ -85,14 +85,14 @@ describe("UI-014 fixed slots and roster exploration", () => {
     expect(screen.getByText(/1\s*\/\s*2/)).toBeVisible();
   });
 
-  it("keeps random mode compact and Python-owned, while specified mode retains accessible enemy selects", async () => {
+  it("keeps random mode compact and Python-owned, while specified mode uses selectable enemy slots", async () => {
     const user = userEvent.setup();
     render(<TeamBuilder roster={roster} onStart={vi.fn()} />);
     expect(screen.getByText("PYTHON SELECTED")).toBeVisible();
     expect(screen.queryByText(/Python will assemble the enemy team/i)).not.toBeInTheDocument();
     await user.click(screen.getByRole("radio", { name: "Choose team" }));
-    expect(screen.getAllByRole("combobox", { name: /Hero [123]/i })).toHaveLength(1);
-    expect(screen.queryByRole("combobox", { name: "Hero 2" })).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /Select enemy Hero/i })).toHaveLength(1);
+    expect(screen.queryByRole("combobox", { name: /Hero [123]/i })).not.toBeInTheDocument();
   });
 
   it("does not submit disabled player slots and keeps new hero IDs in ordered payloads", async () => {

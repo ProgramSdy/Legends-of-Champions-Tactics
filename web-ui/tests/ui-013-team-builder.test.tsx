@@ -27,6 +27,17 @@ describe("UI-013 Team Builder slot and matrix contracts", () => {
     expect(screen.getByTestId("battle-experience-stage")).toHaveTextContent("arena");
   });
 
+  it("passes Warrior's Barrack while direct and invalid game routes fall back to Arena", async () => {
+    const { rerender } = render(await GamePage({ searchParams: Promise.resolve({ stage: "warriors-barrack" }) }));
+    expect(screen.getByTestId("battle-experience-stage")).toHaveTextContent("warriors-barrack");
+
+    rerender(await GamePage({ searchParams: Promise.resolve({}) }));
+    expect(screen.getByTestId("battle-experience-stage")).toHaveTextContent("arena");
+
+    rerender(await GamePage({ searchParams: Promise.resolve({ stage: "unknown-stage" }) }));
+    expect(screen.getByTestId("battle-experience-stage")).toHaveTextContent("arena");
+  });
+
   it.each([
     [1, 1],
     [2, 2],
@@ -39,7 +50,7 @@ describe("UI-013 Team Builder slot and matrix contracts", () => {
     expect(slots).toHaveLength(3);
     expect(slots.filter((slot) => slot.dataset.slotEnabled === "true")).toHaveLength(expected);
     expect(slots.some((slot) => slot.getAttribute("aria-pressed") === "true")).toBe(true);
-    expect(screen.getByRole("heading", { name: "Hero Selection Matrix" })).toBeVisible();
+    expect(screen.getByRole("region", { name: /SELECT HERO/i })).toBeVisible();
   });
 
   it("assigns matrix cards only to the active player slot, preserves duplicates, and submits ordered IDs", async () => {
@@ -76,7 +87,7 @@ describe("UI-013 Team Builder slot and matrix contracts", () => {
     await user.keyboard("{Enter}");
     expect(slot).toHaveAttribute("aria-pressed", "false");
     expect(secondSlot).toHaveAttribute("aria-pressed", "true");
-    screen.getByRole("button", { name: /Assign Paladin · Retribution to Hero 2/i }).focus();
+    screen.getByRole("button", { name: /Assign Paladin · Retribution to your Hero 2/i }).focus();
     await user.keyboard("{Enter}");
     expect(document.querySelector<HTMLElement>('[data-player-slot="1"]')).toHaveTextContent(/Paladin\s*Retribution/);
   });
@@ -88,14 +99,20 @@ describe("UI-013 Team Builder slot and matrix contracts", () => {
     await user.click(screen.getByRole("radio", { name: "2v2" }));
     await user.click(screen.getByRole("radio", { name: "Choose team" }));
     await user.click(screen.getByRole("radio", { name: "Player" }));
-    fireEvent.change(screen.getByLabelText("Hero 1"), { target: { value: roster[7].definitionId } });
-    fireEvent.change(screen.getByLabelText("Hero 2"), { target: { value: roster[6].definitionId } });
+    await user.click(screen.getByRole("button", { name: /Assign Priest · Comprehensiveness to your Hero 1/i }));
+    await user.click(screen.getByRole("button", { name: /Select your Hero 2/i }));
+    await user.click(screen.getByRole("button", { name: /Assign Priest · Discipline to your Hero 2/i }));
+    await user.click(screen.getByRole("button", { name: /Select enemy Hero 1/i }));
+    await user.click(screen.getByRole("button", { name: /Assign Warrior · Defence to enemy Hero 1/i }));
+    await user.click(screen.getByRole("button", { name: /Select enemy Hero 2/i }));
+    await user.click(screen.getByRole("button", { name: "Next heroes" }));
+    await user.click(screen.getByRole("button", { name: /Assign Warrior · Weapon Master to enemy Hero 2/i }));
     fireEvent.change(screen.getByLabelText(/Seed/i), { target: { value: "42" } });
     await user.click(screen.getByRole("button", { name: "ENTER BATTLE" }));
     expect(onStart).toHaveBeenCalledWith(expect.objectContaining({
       battleSize: 2,
       enemyCompositionMode: "specified",
-      enemyTeam: [roster[7].definitionId, roster[6].definitionId],
+      enemyTeam: [roster[5].definitionId, roster[6].definitionId],
       enemyControlMode: "player",
       seed: 42,
     }));
@@ -121,6 +138,7 @@ describe("UI-013 Team Builder slot and matrix contracts", () => {
     const seen = new Set<string>();
     let page = 0;
     while (true) {
+      expect(document.querySelectorAll("[data-hero-id]")).toHaveLength(Math.min(6, roster.length - seen.size));
       for (const card of [...document.querySelectorAll<HTMLElement>("[data-hero-id]")]) {
         const id = card.dataset.heroId;
         if (id) seen.add(id);

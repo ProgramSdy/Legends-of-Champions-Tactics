@@ -36,8 +36,8 @@ export const heroPresentation: Record<string, { className: string; tone: string;
   "hero.priest.comprehensiveness": { className: "Priest", tone: "blue", assets: { figure: "/game-images/heroes/Priest-Comprehensiveness/figures/Priest_Comprehensiveness.png" }, placeholder: false },
   "hero.priest.discipline": { className: "Priest", tone: "blue", assets: { figure: "/game-images/heroes/Priest-Discipline/figures/Priest_Discipline.png" }, placeholder: false },
   "hero.mage.comprehensiveness": { className: "Mage", tone: "blue", assets: { figure: "/game-images/heroes/Mage-Comprehensiveness/figures/Mage_Comprehensiveness.png" }, placeholder: false },
-  "hero.warrior.defence": { className: "Warrior", tone: "amber", assets: { figure: "/game-images/heroes/Warrior-Defence/figures/Warrior_Defence.png" }, placeholder: false },
-  "hero.warrior.weapon_master": { className: "Warrior", tone: "amber", assets: { class: classAssets.Warrior, figure: "/game-images/heroes/Warrior-Weapon-Master/figures/Warrior_Weapon_Master.png" }, placeholder: false, animation: { idle: "idle", active: "weapon-ready", defeated: "defeated" } },
+  "hero.warrior.defence": { className: "Warrior", tone: "amber", assets: { portrait: "/game-images/heroes/Warrior-Defence/portraits/Avatar_Warrior_Defence.png", figure: "/game-images/heroes/Warrior-Defence/figures/Warrior_Defence.png" }, placeholder: false },
+  "hero.warrior.weapon_master": { className: "Warrior", tone: "amber", assets: { class: classAssets.Warrior, portrait: "/game-images/heroes/Warrior-Weapon-Master/portraits/Avatar_Warrior_Weapon_Master.png", figure: "/game-images/heroes/Warrior-Weapon-Master/figures/Warrior_Weapon_Master.png" }, placeholder: false, animation: { idle: "idle", active: "weapon-ready", defeated: "defeated" } },
   "hero.warrior.berserker": { className: "Warrior", tone: "red", assets: { figure: "/game-images/heroes/Warrior-Berserker/figures/Warrior_Berserker.png" }, placeholder: false },
   "hero.rogue.comprehensiveness": { className: "Rogue", tone: "violet", assets: { figure: "/game-images/heroes/Rogue-Comprehensiveness/figures/Rogue_Comprehensiveness.png" }, placeholder: false, animation: { idle: "idle", active: "shadow-ready", defeated: "defeated" } },
 };
@@ -112,6 +112,11 @@ export const statusRegistry: Record<string, { glyph: string; name: string; descr
   "status.shield_of_righteous": { glyph: "⬡", name: "Shield of Righteous", description: "Protected by an authoritative righteous shield.", harmful: false },
   "status.shield_lash": { glyph: "⌁", name: "Shield Lash", description: "Empowered by the authoritative Shield Lash effect.", harmful: false },
   "status.scoff": { glyph: "!", name: "Scoff", description: "Forced to direct hostility toward the status source.", harmful: true },
+  "status.purify_healing": { glyph: "✚", name: "Purify Healing", description: "Removes an eligible bleeding, disease, or toxic effect while this healing buff persists.", harmful: false },
+  "status.shield_of_protection": { glyph: "⬡", name: "Shield of Protection", description: "Prevents all incoming damage while this holy protection persists.", harmful: false },
+  "status.warlust": { glyph: "⚔", name: "Warlust", description: "Increases damage and prevents control effects while active.", harmful: false },
+  "status.bleeding_moon_slash": { glyph: "◒", name: "Moon Slash Bleeding", description: "Suffers authoritative bleeding damage at round start.", harmful: true },
+  "status.blood_frenzy": { glyph: "◆", name: "Blood Frenzy", description: "Grants agility and lifesteal while reducing defense.", harmful: false },
 };
 
 export const effectRegistry = {

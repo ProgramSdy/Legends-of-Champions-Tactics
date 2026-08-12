@@ -15,5 +15,5 @@ export default async function GamePage({ searchParams }: GamePageProps) {
   const query = await searchParams;
   const requestedStageId = typeof query.stage === "string" ? query.stage : null;
   const selectedStage = resolveEnabledStage(requestedStageId);
-  return <BattleExperience selectedStageId={selectedStage.id} />;
+  return <BattleExperience key={selectedStage.id} selectedStageId={selectedStage.id} />;
 }

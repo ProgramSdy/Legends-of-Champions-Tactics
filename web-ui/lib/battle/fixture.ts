@@ -1,4 +1,4 @@
-import type { BattleCommand, BattleEvent, BattleProvider, BattleSnapshot, CombatantState, PresentationScript, SkillState } from "./types";
+import type { BattleCommand, BattleEvent, BattleProvider, BattleSnapshot, CombatantState, PresentationScript, SkillState, StandardBattleEvent } from "./types";
 
 const skill = (id: string, displayName: string, description: string, cooldownRemaining = 0, available = true): SkillState => ({
   id, displayName, description, targetMode: "singleEnemy", maximumTargets: 1,
@@ -126,7 +126,7 @@ export function createFormatFixture(size: 1 | 2 | 3): BattleSnapshot {
 }
 
 const clone = <T,>(value: T): T => structuredClone(value);
-const event = (sequence: number, type: BattleEvent["type"], message: string, rest: Partial<BattleEvent> = {}): BattleEvent =>
+const event = (sequence: number, type: StandardBattleEvent["type"], message: string, rest: Partial<StandardBattleEvent> = {}): StandardBattleEvent =>
   ({ id: `evt.demo.${sequence}`, sequence, type, message, ...rest });
 
 function script(id: string, current: BattleSnapshot, revision: number, selectedTargetId?: string): PresentationScript {

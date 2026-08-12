@@ -5,7 +5,7 @@
 Authoritative map of web-client screens, navigation, entry points, exits, and
 important UI states.
 
-## Current Flow
+## Current Implemented Flow
 
 ```text
 Load application
@@ -31,6 +31,64 @@ provider, battle ID, authoritative snapshot cache, presentation queue, timers,
 event log, selections, and completion-dialog state. A later launch creates a
 new provider and API session.
 
+## Agreed Startup and Profile Flow (Not Yet Implemented)
+
+The following flow is agreed product design for the future persistent
+player-data/save system. It supersedes the current direct `START GAME` → Stage
+Map entry only when the corresponding backend-authoritative profile and save
+implementation is explicitly authorised. Persistence details live in
+[Player Data and Save System](../Technical/Player_Data_and_Save_System.md).
+
+```text
+Start Page
+  -> [ START ]
+     -> hide/remove START
+     -> [ NEW GAME ] [ CONTINUE GAME ]
+
+NEW GAME
+  -> create player profile with a stable profile ID
+  -> assign default initial roster/progression
+  -> persist player record
+  -> make profile active
+  -> Stage Map
+
+CONTINUE GAME
+  -> list saved player profiles
+  -> select profile
+     -> no unfinished battle: load profile -> Stage Map
+     -> unfinished battle: show saved-battle summary
+        -> [ RESUME BATTLE ] -> load authoritative saved state -> Battle page
+        -> [ ABANDON BATTLE ] -> confirmation
+           -> Cancel: retain battle summary
+           -> Confirm: end/remove unfinished battle -> Stage Map
+```
+
+Initial display names may use a simple sequence such as `Player 1`, `Player 2`,
+and `Player 3`, but a stable internal profile ID—not the display name—identifies
+the profile. New Game assigns the initial roster/progression through the
+backend; the client does not author persistent state.
+
+Continue Game lists all saved local profiles. If none exist, it must be disabled
+or show a clear **No saved games** state; exact visual presentation is an
+implementation decision. When an unfinished battle exists, the summary should
+identify useful context such as stage/training name and round (for example,
+`Warrior's Barrack`, `Defensive Training`, `Round 4`).
+
+Abandon Battle must ask for confirmation before destroying the unfinished
+battle, for example:
+
+```text
+Abandon the current battle?
+Your progress in this battle will be lost.
+
+[ CANCEL ] [ ABANDON BATTLE ]
+```
+
+Confirmed abandonment removes/ends only the active unfinished battle. It does
+not award that battle's completion or unlock rewards and does not remove
+previously earned permanent player progress. Future PvP disconnect/reconnect/
+forfeit flow is out of scope.
+
 ## Screen Inventory
 
 ### Stage Selection
@@ -41,26 +99,27 @@ title scene and Team Builder. It renders the one owner-supplied map at
 map container. Stage geometry is percentage-based inside that same container,
 not the viewport.
 
-Only Arena is currently enabled. Its pointer hover and keyboard focus reveal a
-restrained warm overlay and label, and its click, Enter, and Space activation
-navigate to `/game?stage=arena`. Warrior's Barrack, Mage's Tower, Rogue's Forest, Paladin's
-Altar, and Priest's Cathedral exist as inactive configuration metadata only;
-they render no controls, labels, effects, or state treatment. Local development
-may add `?debugHotspots=1` to outline Arena geometry; normal and production
+Arena and Warrior's Barrack are currently enabled. Each uses the same
+map-bound pointer hover and keyboard-focus treatment, and click, Enter, or Space
+navigation. Arena opens `/game?stage=arena`. Warrior's Barrack opens
+`/game?stage=warriors-barrack` through a percentage-based hotspot over the
+left-side red-banner fortress. Mage's Tower, Rogue's Forest, Paladin's Altar,
+and Priest's Cathedral remain inactive configuration metadata only; they render
+no controls, labels, effects, or state treatment. Local development may add
+`?debugHotspots=1` to outline enabled-stage geometry; normal and production
 presentation leave it off.
 
 ### Team Builder
 
-The playable application entry point at `/game`. A valid `stage` query is
-resolved only as presentation context; direct or invalid visits use Arena. It
-provides:
+The playable application entry point is `/game`. Direct or invalid stage-query
+visits use Arena configuration mode. Arena provides:
 
 - battle size: 1v1, 2v2, or 3v3;
 - three fixed visual hero positions per team. Positions beyond the selected
   battle size are visibly disabled, non-focusable, and never submitted; active
   player positions remain keyboard-operable Matrix assignment targets;
 - random or player-specified enemy composition;
-- one enemy-team selector per required slot in specified mode;
+- Matrix-assigned enemy positions per required slot in specified mode;
 - Python-engine computer control or player control for the enemy team;
 - an optional non-negative integer seed;
 - a Current Stage preview, Back to Stage Map control, and every definition
@@ -74,8 +133,10 @@ team cards are not compressed or allowed to overlap the Matrix.
 Team Builder shows only faculty and specialization for player slots, enemy
 slots, Matrix cards, and specified-enemy options; it does not expose catalogue
 or runtime hero names. The roster-derived All/faculty filter and bounded
-previous/next Matrix paging assign only the selected player slot. Random enemy
-selection remains Python-owned and is never changed by the matrix.
+previous/next Matrix paging assign the selected player slot or, in
+specified-enemy mode, the selected enemy slot. Player and specified-enemy
+slots start empty and show a clear selection prompt until assigned. Random
+enemy selection remains Python-owned and is never changed by the matrix.
 When the session is created, Python assigns runtime display names from the
 relevant faculty pools while stable definition and combatant IDs continue to
 identify selections, targets, and commands.
@@ -83,6 +144,27 @@ identify selections, targets, and commands.
 The launch action is disabled until all required selectors and seed input are
 valid. Repeated definitions and overlap between teams are permitted because no
 authoritative design rule currently prohibits them.
+
+Warrior's Barrack uses the same Team Builder in a separate structured-stage
+mode. It is a temporary in-memory training sequence, not a profile, save,
+unlock, reward, or campaign system. The builder exposes only its approved
+four-definition player Matrix (Warrior Weapon Master, Mage Comprehensiveness,
+Priest Comprehensiveness, and Rogue Comprehensiveness), its fixed battle
+format, and an accessible immutable predefined enemy summary. Arena-style
+battle-size, enemy composition, enemy-control, seed, and enemy-team controls
+are absent from structured mode.
+
+The current ordered Warrior's Barrack sequence is:
+
+1. Battle 1 — 2v2 against Warrior Defence and Priest Comprehensiveness.
+2. Battle 2 — 1v1 against Warrior Weapon Master.
+3. Battle 3 — 3v3 against Warrior Defence, Warrior Berserker, and Priest
+   Comprehensiveness.
+
+The exact fixed-team request continues to use the existing battle-create
+contract. The client validates that every configured definition is supplied by
+the adapter roster before revealing the builder; missing definitions show a
+retryable configuration/roster error rather than a substitute hero.
 
 ### Battle Screen
 
@@ -99,8 +181,12 @@ to avoid duplicate lines without suppressing the typed event itself.
 ### Completion Dialog
 
 Appears only when the authoritative snapshot phase is `ended`. It announces the
-outcome, initially focuses the Return action, contains keyboard Tab focus, and
-returns to Team Builder.
+outcome, initially focuses its action, and contains keyboard Tab focus. Arena
+returns to its Team Builder. In Warrior's Barrack, the typed authoritative
+outcome drives the action: a friendly victory advances Battle 1 → 2 → 3, and
+the third victory returns to `/stages`; enemy victory, draw, and round-limit
+results show **Retry Battle** and return to preparation for that same battle.
+No result is inferred from a log line or visual label.
 
 ### Asset Gallery
 
@@ -109,17 +195,36 @@ flow. Its return link navigates directly to `/game`.
 
 ## Navigation Rules
 
+### Current Implementation
+
 - `/` opens the non-interactive cinematic startup title scene.
 - `/stages` opens the stage-selection map without creating a battle session.
-- `/game` opens Team Builder after the roster loads; `/game?stage=arena`
-  identifies its presentation-only current stage.
-- `START GAME` navigates to `/stages`; Arena and the Asset Gallery return link
-  navigate to `/game`.
+- `/game` opens Arena Team Builder after the roster loads; `/game?stage=arena`
+  identifies Arena configuration mode.
+- `/game?stage=warriors-barrack` starts the temporary Warrior's Barrack
+  sequence at Battle 1 preparation.
+- `START GAME` navigates to `/stages`; Arena, Warrior's Barrack, and the Asset
+  Gallery return link navigate through their documented destinations.
 - Team Builder launches only live Python-backed sessions.
 - Mock fixtures remain test/development data and are not the normal user entry
   flow.
-- Battle state is not retained when returning to Team Builder.
-- Browser reload during a battle does not resume the process-local session.
+- Battle state is not retained when returning to Team Builder. Warrior's
+  Barrack retains only its current sequence position in client memory while the
+  page remains active; completing Battle 3 clears it by returning to the Stage
+  Map.
+- Browser reload during a battle does not resume the process-local session and
+  may restart or lose the temporary Warrior's Barrack sequence.
+
+### Agreed Persistence Design
+
+- The future Start action opens New Game / Continue Game choices rather than
+  entering Stage Map immediately.
+- New Game creates, persists, and activates a profile before Stage Map.
+- Continue Game loads a selected profile, then opens Stage Map or offers Resume
+  Battle / Abandon Battle for its unfinished PvE/training battle.
+- Resume returns directly to the saved Battle page from backend-authoritative
+  state. Abandonment requires confirmation and returns to Stage Map after the
+  backend ends/removes only that unfinished battle.
 
 ## Error, Empty, and Loading States
 
@@ -128,7 +233,9 @@ flow. Its return link navigates directly to `/game`.
 - Battle creation failure: existing battle-service error boundary with Retry.
 - Invalid Team Builder configuration: precise inline validation and disabled
   launch.
-- Ended battle: modal outcome and Return to Team Builder.
+- Ended Arena battle: modal outcome and Return to Team Builder.
+- Ended Warrior's Barrack battle: modal continuation, Stage Map return, or
+  Retry Battle according to the supplied authoritative outcome.
 
 ## Change Log
 
@@ -144,3 +251,8 @@ flow. Its return link navigates directly to `/game`.
 - 2026-08-09 — Reworked Team Builder around visual team slots and the Hero
   Selection Matrix; Stage Map now passes only the selected Arena presentation
   context to `/game`.
+- 2026-08-10 — Added agreed, not-yet-implemented New Game / Continue Game,
+  profile, resume, and abandonment flow; cross-referenced the authoritative
+  player-data/save design.
+- 2026-08-10 — Activated the temporary Warrior's Barrack three-battle
+  structured training sequence without persistence or battle API changes.

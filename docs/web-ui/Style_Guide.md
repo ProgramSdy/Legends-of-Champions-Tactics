@@ -48,16 +48,17 @@ _To be documented._
   undistorted 16:9 visual. The map and its overlays share an intrinsic map
   frame; stage coordinates must use percentages of that frame rather than
   viewport pixels.
-- Arena is the sole enabled location. Its hover and focus state uses a modest
-  warm gold/orange radial illumination, a soft pulse, visible focus outline,
-  and compact frontend-rendered `Arena` / `Available` label. The effect must
-  remain an overlay and must not alter the source map.
+- Arena and Warrior's Barrack are enabled locations. Their hover and focus
+  state uses a modest warm gold/orange radial illumination, a soft pulse,
+  visible focus outline, and compact frontend-rendered stage-name / `Available`
+  label. Warrior's Barrack geometry covers the left-side red-banner fortress.
+  The treatment remains an overlay and must not alter the source map.
 - The crossed-swords cursor is scoped to enabled stage controls and falls back
   to a normal crosshair when a browser cannot load the cursor image. It must not
   change the global cursor or appear over inactive landmarks.
 - Inactive locations remain unlabelled and visually untouched: no control,
   lock, desaturation, glow, cursor, or completion/progression treatment.
-- Development-only hotspot debug may expose the enabled Arena boundary for
+- Development-only hotspot debug may expose enabled-stage boundaries for
   geometry tuning. It is off by default and unavailable in production.
 
 ### Battlefield Health Panels
@@ -155,8 +156,8 @@ _To be documented._
 - Keep the Battle Rules control bar's labels, native radio/input semantics,
   validation, and visual treatment stable when changing surrounding layout.
 - Use blue player-slot treatment and red enemy-slot treatment. The active
-  player slot has a visible blue selected state; Hero Selection Matrix cards
-  visibly indicate the hero assigned to that slot.
+  player or specified-enemy slot has a visible side-appropriate selected state;
+  Hero Selection Matrix cards visibly indicate the hero assigned to that slot.
 - Current Stage previews use the supplied Stage Map image in a clipped,
   `object-fit: cover` frame. Crop focus derives from canonical stage geometry;
   source artwork must never be stretched or replaced.
@@ -208,3 +209,5 @@ _To be documented._
   and updated the startup entry flow to `/` → `/stages` → `/game`.
 - 2026-08-09 — Added UI-013 Team Builder slot, matrix, current-stage crop, and
   protected Battle Rules presentation standards.
+- 2026-08-10 — Added Warrior's Barrack's active map-hotspot treatment while
+  retaining the existing Arena and inactive-landmark visual rules.
