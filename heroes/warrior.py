@@ -224,9 +224,9 @@ class Warrior_Defence(Warrior):
             self.probability_shield_bash = 0
             self.probability_slash = 0
             self.preset_target = None
-            self.add_skill(Skill(self, "Devastate", self.devastate, target_type = "single", skill_type= "damage",))
-            self.add_skill(Skill(self, "Shield Bash", self.shield_bash, target_type = "single", skill_type= "damage", capable_interrupt_magic_casting = True))
-            self.add_skill(Skill(self, "Shield Lash", self.shield_lash, target_type = "single", skill_type= "damage", is_control_skill = True, independent_effect_action=self.independent_shield_lash))
+            self.add_skill(Skill(self, "Devastate", self.devastate, target_type = "single", skill_type= "damage",attack_type = "melee"))
+            self.add_skill(Skill(self, "Shield Bash", self.shield_bash, target_type = "single", skill_type= "damage", attack_type = "melee", capable_interrupt_magic_casting = True))
+            self.add_skill(Skill(self, "Shield Lash", self.shield_lash, target_type = "single", skill_type= "damage", attack_type = "ranged_projectile", is_control_skill = True, independent_effect_action=self.independent_shield_lash))
 
     def shield_bash(self, other_hero):
         accuracy = 100  # Shield Bash has a 100% chance to succeed
@@ -373,8 +373,8 @@ class Warrior_Weapon_Master(Warrior):
             self.probability_shield_bash = 0
             self.probability_slash = 0
             self.preset_target = None
-            self.add_skill(Skill(self, "Fatal Strike", self.fatal_strike, target_type = "single", skill_type= "damage",))
-            self.add_skill(Skill(self, "Armor Crush", self.armor_crush, target_type = "single", skill_type= "damage"))
+            self.add_skill(Skill(self, "Fatal Strike", self.fatal_strike, target_type = "single", skill_type= "damage",attack_type = "melee"))
+            self.add_skill(Skill(self, "Armor Crush", self.armor_crush, target_type = "single", skill_type= "damage", attack_type = "melee"))
             self.add_skill(Skill(self, "Antivenom Potion", self.antivenom_potion, target_type = "single", skill_type= "buffs", target_qty= 0))
 
     def fatal_strike(self, other_hero):
@@ -512,9 +512,9 @@ class Warrior_Berserker(Warrior):
         self.defense_decreased_amount_by_blood_frenzy = 0
 
         # 技能
-        self.add_skill(Skill(self, "Moon Slash", self.moon_slash, target_type="multi", skill_type="damage", target_qty=2))
+        self.add_skill(Skill(self, "Moon Slash", self.moon_slash, target_type="multi", skill_type="damage", target_qty=2, attack_type = "ranged_instant"))
         self.add_skill(Skill(self, "Warlust", self.warlust, target_type="single", skill_type="buffs", target_qty=0))
-        self.add_skill(Skill(self, "Hammer of Meteorite", self.hammer_of_meteorite, target_type="single", skill_type="damage", capable_interrupt_magic_casting=True))
+        self.add_skill(Skill(self, "Strike of Meteorite", self.strike_of_meteorite, target_type="single", skill_type="damage", attack_type = "melee", capable_interrupt_magic_casting=True))
 
     # ========== 特殊状态：Blood Frenzy ==========
     def trigger_blood_frenzy(self):
@@ -645,7 +645,7 @@ class Warrior_Berserker(Warrior):
 
     # ========== 技能 3：Hammer of Meteorite ==========
     # Attack single target, chance to cause armor break or weaken, interrupt magic casting
-    def hammer_of_meteorite(self, other_hero):
+    def strike_of_meteorite(self, other_hero):
         variation = random.randint(-3, 3)
         actual_damage = self.damage + variation
         damage_dealt = max(actual_damage - other_hero.defense, 0)

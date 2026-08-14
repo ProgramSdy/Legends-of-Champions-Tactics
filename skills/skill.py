@@ -13,7 +13,7 @@ CYAN = "\033[96m"
 RESET = "\033[0m"
 
 class Skill:
-    def __init__(self, initiator, name, skill_action, target_type, skill_type, target_qty = 1, capable_interrupt_magic_casting = False, is_control_skill = False, is_instant_skill = True, damage_nature = "NA", damage_type = "NA", independent_effect_action = None):
+    def __init__(self, initiator, name, skill_action, target_type, skill_type, target_qty = 1, capable_interrupt_magic_casting = False, is_control_skill = False, is_instant_skill = True, damage_nature = "NA", damage_type = "NA", attack_type = "NA", independent_effect_action = None):
         self.initiator = initiator  # Reference to the hero instance who initiated the skill
         self.name = name            # Name of the skill, e.g., "Fireball"
         self.skill_action = skill_action   # This is a method reference that performs the skill's action
@@ -33,6 +33,7 @@ class Skill:
         self.active_state = None
         self.damage_nature = damage_nature
         self.damage_type = damage_type
+        self.attack_type = attack_type
         self.independent_effect_action = independent_effect_action
         # Authoritative outcome of the most recent execution, keyed by target.
         # Consumers such as adapters must use this instead of inferring a miss

@@ -293,7 +293,7 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
 
       <section className="command-deck">
         {active
-          ? <div className="acting-card"><AssetImage request={{ kind: "portrait", key: active.definitionId, name: active.displayName, className: active.faculty }} className="portrait" /><div><small>ACTING HERO</small><h2>{active.displayName}</h2><p>{active.faculty} · {active.specialization}</p><span className="turn-intent">{
+          ? <div className="acting-card"><AssetImage request={{ kind: "figure", key: active.definitionId, name: active.displayName, className: active.faculty }} className="portrait" /><div><small>ACTING HERO</small><h2>{active.displayName}</h2><p>{active.faculty} · {active.specialization}</p><span className="turn-intent">{
             snapshot.turnControl.disposition === "skip"
               ? "ACTION RESTRICTED · TURN SKIPPED"
               : isPlaying && activeEvent
