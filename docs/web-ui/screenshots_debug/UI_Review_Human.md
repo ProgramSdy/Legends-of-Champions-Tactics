@@ -145,3 +145,244 @@ On Team builder page:
 8 Make all above changes that are applied to Your Team area apply to Enemy Team box as wel.
 
 9 Add Warrior_Berserker and Paladin_Holy to the roster. 
+
+
+### Date
+
+2026-08-14
+
+### Screenshot name
+
+Task_14_08_2026_01
+
+### Task List
+This task invovles both UI and Python Engine change. We will involve battle formation into our battle, we will start with 2v2 first, not start 3v3 yet.
+Check picture Task_14_08_2026_01.png, it hight the rough location where hero shall appear in the 2v2 battle. Red circle is the location for player heroes and green circle is the location for enemy heroes.
+There are two battle formation to choose,
+Formation 1: hero stay in circle 1 and 2, hero stay in circle 1, position mark as "front", hero stay in circle 2, position mark as "rear". This represent the hero in circle 1 is standing front, and hero in circle two is standing behand.
+Formation 2: hero stay in circle 3 and 4, both hero position mark as "front". This represennt the two heroes are standing side by side, both are standing front.
+This setup applies to both player and enemy heroes.
+
+UI:
+1_ In Team Builder Page, add an option button where player can select battle formation. make option button for enemy team as well. Make good UI design in appearance. enemy team will random select a formation when enemy control is computer.
+
+2_ In Battle page, heroes. will be located in those circles as described above after besing decided from Team Builder Page.
+
+Python Engine:
+1_ When hero position is decided in Team Builder Page, those values (either "front" or "rear") will be passed to hero instance. in Hero Class in hero.py, there is a argument "position" being defined in __init__() function (see below), the value of hero position shall be passed to this argument and kept in hero instance.
+def __init__(self, sys_init, name, group, is_player_controlled, major, faculty, position):
+
+2_ Hero damage type Skills now have an extra argument called attack_type, for example, see below code piece from warrior berserker. pay attention, this extra argument only apply to those skills where their skill_type="damage", other type of skills are not impact.
+self.add_skill(Skill(self, "Strike of Meteorite", self.strike_of_meteorite, target_type="single", skill_type="damage", attack_type = "melee", capable_interrupt_magic_casting=True))
+
+This new argument has now just been applied to warrior, and later when we test, we shall only use warrior weapon master, defence and berserker to make test, other heroes have not been updated with this argument yet. Definition of values of attack_type for each skill from all heroes shall only be authorized by project owner, core team from Codex shall not do it.
+
+attack_type has three value "melee", "ranged_instant", and "ranged_projectile". final damage calculation will be run differently depending on the Hero position we defined before and the attack_type of the damaging skill being used. 
+Rule_melee:
+ 1_ If attacking hero is in a positioin marked as "front", his melee attack can only apply on the defending hero also with a position "front". defending hero with a position "rear" can not be attacked. This shall be applied in both UI (hero in rear position not selectable) and selectable hero list for the skill in python engine (This make sure the Computer controled hero also not able to select rear hero when using melee attack).
+ 2_ when all defending heroes are defeated, a melee attack from attacking hero can appoach to the defending heroes which has a "rear" position.
+ 3_ If attacking hero is in a positioin marked as "rear", target selection will follow rule 1_ and 2_
+ 4_ If attacking hero is in a positioin marked as "rear", his attack will receive a Damage Punishment. final damage will be reduced by 30%. damage calculation management in code will be discussed seperatedly from following up content.
+
+Rule_ranged_projectile:
+ 1_ attacking hero can attack defending hero from any position.
+ 2_ Damage Punishment:
+     Attack Hero in "front", Defending Hero in "front", no punishment.
+     Attack Hero in "front", Defending Hero in "rear", final damage will be reduced by 12.5%.
+     Attack Hero in "rear", Defending Hero in "front", final damage will be reduced by 12.5%.
+     Attack Hero in "rear", Defending Hero in "rear", final damage will be reduced by 25%.
+     damage calculation management in code will be discussed seperatedly from following up content.
+
+Rule_ranged_instant:
+ 1_ attacking hero can attack defending hero from any position.
+ 2_ No Damage Punishment for this attack_type skills.
+
+3_ Methodology of passing attack_type through the skill execution pipeline into Hero.take_damage().
+Implement a backward-compatible way to pass each Skill.attack_type through the skill execution pipeline into Hero.take_damage().
+
+Objective:
+
+attack_type is already defined on each Skill, for example:
+
+Skill(
+    self,
+    "Strike of Meteorite",
+    self.strike_of_meteorite,
+    target_type="single",
+    skill_type="damage",
+    attack_type="melee",
+)
+
+and:
+
+Skill(
+    self,
+    "Moon Slash",
+    self.moon_slash,
+    target_type="multi",
+    skill_type="damage",
+    attack_type="ranged_instant",
+)
+
+The goal is for that value to flow automatically like this:
+
+Skill.attack_type
+    ↓
+Skill.execute()
+    ↓
+hero skill method
+    ↓
+target.take_damage(..., attack_type=...)
+
+Do not duplicate "melee", "ranged_instant", etc. inside hero skill methods.
+
+Important compatibility requirement:
+
+There are many existing hero skill methods with different function signatures. Do not make a global breaking change that forces every skill method to immediately accept an attack_type parameter.
+
+Implement a compatibility layer in Skill so existing skill methods continue to work unchanged.
+
+Recommended implementation:
+
+1. In skill.py, import inspect.
+2. Add a helper method inside Skill, for example:
+
+def run_skill_action(self, *args):
+    signature = inspect.signature(self.skill_action)
+    if "attack_type" in signature.parameters:
+        return self.skill_action(
+            *args,
+            attack_type=self.attack_type,
+        )
+    return self.skill_action(*args)
+
+This helper should:
+
+* inspect the bound hero skill method;
+* pass attack_type=self.attack_type only when that skill method explicitly accepts an attack_type parameter;
+* otherwise call the existing method exactly as before.
+
+3. In Skill.execute(), route normal skill execution through this helper instead of directly calling self.skill_action(...) where appropriate.
+
+At minimum, update the normal damage execution paths:
+
+Single-target damage:
+
+return self.run_skill_action(hits[0])
+
+Multi-target damage:
+
+return self.run_skill_action(hits)
+
+Review the other self.skill_action(...) calls carefully and only migrate them where doing so is safe and semantically correct.
+
+Do not break special-case skills or functions that intentionally use additional positional parameters such as ally/opponent mode.
+
+4. Update Hero.take_damage() from something like:
+
+def take_damage(self, damage):
+
+to:
+
+def take_damage(self, damage, attack_type="NA"):
+
+Preserve all existing behaviour when attack_type is not provided.
+
+5. Migrate Warrior_Berserker as the first concrete example.
+
+Change:
+
+def moon_slash(self, other_heroes):
+
+to:
+
+def moon_slash(self, other_heroes, attack_type="NA"):
+
+and pass the received value into:
+
+opponent.take_damage(
+    damage_dealt,
+    attack_type=attack_type,
+)
+
+Change:
+
+def strike_of_meteorite(self, other_hero):
+
+to:
+
+def strike_of_meteorite(self, other_hero, attack_type="NA"):
+
+and pass the received value into every take_damage() call:
+
+other_hero.take_damage(
+    damage_dealt,
+    attack_type=attack_type,
+)
+
+Ensure both Blood Frenzy and non-Blood-Frenzy return paths are updated.
+
+6. Preserve the existing Skill definitions as the authoritative source of attack type.
+
+For example:
+
+attack_type="melee"
+
+and:
+
+attack_type="ranged_instant"
+
+must remain defined on the Skill object rather than being repeated inside hero skill functions.
+
+Expected result:
+
+Strike of Meteorite
+Skill.attack_type = "melee"
+    ↓
+Skill.execute()
+    ↓
+run_skill_action(target)
+    ↓
+strike_of_meteorite(target, attack_type="melee")
+    ↓
+target.take_damage(damage, attack_type="melee")
+
+and:
+
+Moon Slash
+Skill.attack_type = "ranged_instant"
+    ↓
+Skill.execute()
+    ↓
+run_skill_action(targets)
+    ↓
+moon_slash(targets, attack_type="ranged_instant")
+    ↓
+target.take_damage(damage, attack_type="ranged_instant")
+
+Constraints:
+
+* Keep existing combat calculations unchanged.
+* Do not duplicate damage formulas.
+* Do not refactor unrelated hero skills.
+* Maintain backward compatibility for skills that do not yet accept attack_type.
+* Preserve existing API/adapter behaviour unless required by this change.
+* Add or update tests to verify:
+    * existing skills still execute;
+    * migrated skills receive the correct attack type;
+    * take_damage() receives "melee" for Strike of Meteorite;
+    * take_damage() receives "ranged_instant" for Moon Slash;
+    * skills without an attack_type parameter remain unaffected.
+
+3_ update Hero.take_damage_action(), make it can recieve attack_type argument from Hero.take_damage() 
+def take_damage_action(self, damage_dealt, attack_type):
+
+4_ add a new function in Hero class called take_damage_calculation,
+def take_damage_calculation(self, damage_dealt, attack_type):
+This function will receive damage_dealt and attack_type from Hero.take_damage_action()
+This function is where the final damamge calculation take place. use this function to replace below code from Hero.take_damage_action()
+{
+  self.hp = self.hp - damage_dealt
+}
+This function shall also recieve the arguments of the position of both the attack hero and the defending hero. (Find a proper way to realize this)
+Final damage will be based on the Damage Punishment rule we defined previously for differnt hero position for both attack and defending hero. Therefore in this function, damage_dealt, attack_type, attack hero position and defending hero position are necessary. 
