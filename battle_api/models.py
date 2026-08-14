@@ -20,6 +20,8 @@ HeroDefinitionId = Literal[
     "hero.rogue.comprehensiveness",
 ]
 
+FormationId = Literal["front-rear", "side-by-side"]
+
 
 class ApiModel(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
@@ -61,6 +63,12 @@ class CreateBattleRequest(ApiModel):
     enemy_control_mode: Literal["computer", "player"] = Field(
         default="player", alias="enemyControlMode"
     )
+    player_formation: FormationId | None = Field(
+        default=None, alias="playerFormation"
+    )
+    enemy_formation: FormationId | None = Field(
+        default=None, alias="enemyFormation"
+    )
     seed: int | None = None
 
     @model_validator(mode="after")
@@ -80,6 +88,21 @@ class CreateBattleRequest(ApiModel):
                 )
         elif self.enemy_team not in (None, []):
             raise ValueError("enemyTeam must be omitted when enemyCompositionMode is random")
+        if self.battle_size == 2:
+            if self.player_formation is None:
+                raise ValueError("playerFormation is required for a 2v2 battle")
+            if (
+                self.enemy_control_mode == "player"
+                and self.enemy_formation is None
+            ):
+                raise ValueError(
+                    "enemyFormation is required for a player-controlled 2v2 enemy"
+                )
+        elif (
+            self.player_formation is not None
+            or self.enemy_formation is not None
+        ):
+            raise ValueError("formation fields are only valid for a 2v2 battle")
         return self
 
 

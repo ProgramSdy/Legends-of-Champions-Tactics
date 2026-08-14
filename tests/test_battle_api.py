@@ -100,6 +100,8 @@ def test_api_exposes_typed_shield_of_protection_prevention_event():
                 "hero.rogue.comprehensiveness",
             ],
             "enemyControlMode": "player",
+            "playerFormation": "front-rear",
+            "enemyFormation": "front-rear",
             "seed": 1611,
         },
     ).json()
@@ -352,6 +354,8 @@ def test_api_accepts_new_heroes_in_specified_player_and_enemy_teams():
                 "hero.warrior.berserker",
             ],
             "enemyControlMode": "player",
+            "playerFormation": "front-rear",
+            "enemyFormation": "side-by-side",
             "seed": 47,
         },
     )

@@ -121,6 +121,8 @@ visits use Arena configuration mode. Arena provides:
 - random or player-specified enemy composition;
 - Matrix-assigned enemy positions per required slot in specified mode;
 - Python-engine computer control or player control for the enemy team;
+- for 2v2 only, a friendly **Front and Rear** / **Side by Side** formation
+  choice; the enemy choice is editable only when enemy control is Player;
 - an optional non-negative integer seed;
 - a Current Stage preview, Back to Stage Map control, and every definition
   supplied by the adapter roster endpoint in the Hero Selection Matrix.
@@ -145,6 +147,12 @@ The launch action is disabled until all required selectors and seed input are
 valid. Repeated definitions and overlap between teams are permitted because no
 authoritative design rule currently prohibits them.
 
+The formation selector uses stable values `front-rear` and `side-by-side` and
+shows the resulting Hero 1/Hero 2 position labels. For a computer-controlled
+enemy, Team Builder shows an explanation instead of an editable selector and
+omits `enemyFormation`; Python returns its seeded choice through combatant
+snapshot positions. Formation controls and fields are absent in 1v1 and 3v3.
+
 Warrior's Barrack uses the same Team Builder in a separate structured-stage
 mode. It is a temporary in-memory training sequence, not a profile, save,
 unlock, reward, or campaign system. The builder exposes only its approved
@@ -161,6 +169,11 @@ The current ordered Warrior's Barrack sequence is:
 3. Battle 3 — 3v3 against Warrior Defence, Warrior Berserker, and Priest
    Comprehensiveness.
 
+Battle 1 uses the same friendly 2v2 formation selector. Its predefined enemy
+team remains immutable and computer-controlled, so the enemy formation is
+chosen authoritatively and represented by the same non-editable explanation.
+Battles 2 and 3 show no formation controls.
+
 The exact fixed-team request continues to use the existing battle-create
 contract. The client validates that every configured definition is supplied by
 the adapter roster before revealing the builder; missing definitions show a
@@ -172,6 +185,13 @@ Renders the selected live formation and authoritative snapshot. All friendly
 heroes are player-controlled. Enemy turns are either submitted by the player or
 resolved by the adapter through existing Python AI, according to the Team
 Builder configuration.
+
+For 2v2, each side's two supplied `position` values plus ordered combatant
+slots select the approved percentage coordinate pair independently. A
+Front-and-Rear side has one `front` and one `rear`; a Side-by-Side side has two
+`front` combatants. Duel and trio coordinates are unchanged. Target
+selectability comes exclusively from the current legal action's
+`validTargetIds`, even when a supplied valid target is `rear`.
 
 The Battle Log presents ordered, sanitized lines authored by Python through the
 battle-info and status-update channels. Typed battle events remain the source
@@ -256,3 +276,6 @@ flow. Its return link navigates directly to `/game`.
   player-data/save design.
 - 2026-08-10 — Activated the temporary Warrior's Barrack three-battle
   structured training sequence without persistence or battle API changes.
+- 2026-08-14 — Added 2v2-only formation selection, computer-enemy formation
+  explanation, structured Battle 1 compatibility, and authoritative
+  snapshot-position battlefield placement.

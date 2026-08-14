@@ -77,6 +77,7 @@ describe("UI-002 Team Builder", () => {
     expect(onStart).toHaveBeenCalledWith({
       battleSize: 2,
       playerTeam: ["hero.paladin.retribution", "hero.paladin.retribution"],
+      playerFormation: "front-rear",
       enemyCompositionMode: "random",
       enemyControlMode: "computer",
     });

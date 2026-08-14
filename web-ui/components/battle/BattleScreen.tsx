@@ -275,8 +275,8 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
           {(activeEvent?.effectHint === "magic" || activeEvent?.effectHint === "summon")
             && <div className={`effect-layer ${activeEvent.effectHint}`} aria-hidden="true"><span /></div>}
           {battlefield.map((hero) => {
-            const position = formationFor(snapshot, hero.sideId, hero.slot);
-            return <div className="formation-slot" key={hero.id} data-slot={position.slot} style={{ left: `${position.x}%`, top: `${position.y}%`, "--figure-scale": position.scale } as CSSProperties}>
+            const position = formationFor(snapshot, hero.sideId, hero.slot, hero.position);
+            return <div className="formation-slot" key={hero.id} data-slot={position.slot} data-position={hero.position} style={{ left: `${position.x}%`, top: `${position.y}%`, "--figure-scale": position.scale } as CSSProperties}>
             <BattlefieldFigure hero={hero} active={hero.id === snapshot.activeCombatantId}
               event={activeEvent} eventSourceSide={eventSourceSide}
               selectable={acceptsCommands && Boolean(legal?.validTargetIds.includes(hero.id)) && !isPlaying}

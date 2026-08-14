@@ -2,6 +2,84 @@
 
 Completed work should be appended in reverse chronological order, with the newest entry first.
 
+## 2026-08-14 — UI-018 Authoritative 2v2 Formations and Warrior Attack Positions
+
+**Summary:**
+
+Added the approved `front-rear` and `side-by-side` 2v2 formation contract from
+Team Builder through the FastAPI adapter and Python engine to the live scene.
+Each combatant now has an engine-owned `front`/`rear` position. Warrior Weapon
+Master, Defence, and Berserker attack types now use the approved authoritative
+melee legality and one-time position damage adjustments; 1v1, 3v3, and
+non-Warrior/missing attack types retain their compatible behaviour.
+
+**Agent Selection and Contributions:**
+
+- `project-manager` — classified the work as high-risk, protected the dirty
+  owner baseline and UI-017 boundary, locked the transport contract, and
+  coordinated completion evidence.
+- `game-engine-developer` — implemented request validation, seeded computer
+  formation selection, constructor-safe positions, snapshots, legal-target/AI
+  filtering, the inspected attack-type dispatcher, Warrior propagation, and
+  engine/API documentation.
+- `ui-developer` — implemented typed 2v2 controls, computer explanation,
+  structured Barrack Battle 1 compatibility, snapshot-driven placement,
+  responsive styling, frontend docs, and the typed snapshot formation field.
+- `test-automator` — validated dedicated formation suites, cross-boundary
+  payload/snapshot/target/damage coverage, and recorded baseline failures.
+- `reviewer` — independently audited engine authority, UI-017 preservation,
+  documentation, and the corrected typed snapshot contract; final disposition:
+  approved.
+
+**Files Changed:**
+
+- `battle_api/adapter.py`, `battle_api/app.py`, `battle_api/models.py`
+- `heroes/hero.py`, `heroes/mage.py`, `heroes/paladin.py`, `heroes/priest.py`,
+  `heroes/rogue.py`, `heroes/warrior.py`, `skills/skill.py`
+- `tests/test_ui018_formations.py`, `tests/test_battle_adapter.py`,
+  `tests/test_battle_api.py`, `tests/test_ui014_roster.py`
+- `web-ui/components/battle/TeamBuilder.tsx`,
+  `web-ui/components/battle/BattleScreen.tsx`, `web-ui/lib/battle/types.ts`,
+  `web-ui/lib/battle/fixture.ts`, `web-ui/lib/battle/formations.ts`,
+  `web-ui/app/globals.css`, `web-ui/tests/ui-018-formations.test.tsx`, and
+  affected Team Builder regression tests
+- `docs/GDD/Combat_System.md`, `docs/GDD/Hero_System.md`,
+  `docs/web-ui/PYTHON_ADAPTER_API.md`,
+  `docs/web-ui/BATTLE_DATA_CONTRACT_V1.md`,
+  `docs/web-ui/WEB_UI_ARCHITECTURE.md`, `docs/web-ui/Screen_Flow.md`,
+  `docs/web-ui/Style_Guide.md`, `docs/Codex/Current_Task.md`, and this record
+
+**Validation:**
+
+- `.venv/bin/python -m pytest -q tests` — 156 passed; one existing
+  Starlette/httpx deprecation warning.
+- Dedicated backend formation suite — 16 passed; combined UI-018 backend
+  coverage — 27 passed.
+- UI-018 frontend suite — 10 passed; combined UI-002/UI-013/UI-017/UI-018
+  regression run — 43 passed.
+- Python compilation, TypeScript typecheck, lint, production build, and
+  task-scoped whitespace checks passed.
+- Live local browser: a specified player-controlled 2v2 submitted both
+  formation fields and rendered authoritative front/rear positions. A random
+  computer 2v2 submitted only `playerFormation`; the returned snapshot rendered
+  the engine-selected side-by-side positions. At 720px width the 2v2 Team
+  Builder controls had no horizontal overflow.
+- Full frontend Vitest result — 199/214 passed. The 15 failures exactly match
+  the pre-UI-018 baseline: stale Team Builder assumptions after prior Matrix
+  work, historic formation/scale expectations, and duplicate image-query
+  isolation assertions. They are not attributed to UI-018.
+
+**Unresolved Issues / Recommended Follow-up:**
+
+- 3v3 formation positioning and non-Warrior attack-type classification remain
+  intentionally out of scope.
+- UI-017's temporary structured sequence remains intact; its 2v2 Battle 1
+  uses the same friendly formation handoff with an immutable computer enemy.
+- Preserve the owner-controlled review file and its pre-existing whitespace;
+  do not include it in a task-scoped delivery.
+
+---
+
 ## 2026-08-10 — UI-016 Complete New-Hero Status Presentation and Shield-of-Protection Feedback
 
 **Summary:**

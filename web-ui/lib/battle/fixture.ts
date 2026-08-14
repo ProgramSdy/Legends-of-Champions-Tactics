@@ -9,7 +9,7 @@ const skill = (id: string, displayName: string, description: string, cooldownRem
 const combatant = (partial: Partial<CombatantState> & Pick<CombatantState, "id" | "displayName" | "specialization" | "sideId" | "slot">): CombatantState => ({
   definitionId: `fixture.${partial.id}`, faculty: partial.specialization, isSummon: false,
   masterCombatantId: null, summonRoundsRemaining: null, isPlayerControlled: partial.sideId === "friendly",
-  alive: true, hp: { current: 80, maximum: 80 }, resource: null, statuses: [], skills: [], ...partial,
+  alive: true, position: "front", hp: { current: 80, maximum: 80 }, resource: null, statuses: [], skills: [], ...partial,
 });
 
 export const fleshPuppet = combatant({
@@ -21,6 +21,7 @@ export const fleshPuppet = combatant({
 
 export const initialSnapshot: BattleSnapshot = {
   phase: "awaitingCommand", round: 2, turn: { index: 1, total: 6 }, activeCombatantId: "friendly.arthas", outcome: null,
+  formations: { friendly: "front-rear", enemy: "front-rear" },
   turnControl: {
     disposition: "playerCommand", acceptsCommands: true,
     reasonId: null, actorCombatantId: "friendly.arthas",
@@ -43,6 +44,7 @@ export const initialSnapshot: BattleSnapshot = {
     }),
     "friendly.black_heart": combatant({
       id: "friendly.black_heart", displayName: "Black Heart", specialization: "Warlock", sideId: "friendly", slot: 1,
+      position: "rear",
       hp: { current: 91, maximum: 91 }, skills: [skill("skill.shadow_bolt", "Shadow Bolt", "Launch a volatile bolt of shadow.")],
     }),
     "enemy.sashein": combatant({
@@ -52,6 +54,7 @@ export const initialSnapshot: BattleSnapshot = {
     }),
     "enemy.andonidas": combatant({
       id: "enemy.andonidas", displayName: "Andonidas", specialization: "Mage", sideId: "enemy", slot: 1,
+      position: "rear",
       hp: { current: 49, maximum: 76 },
       statuses: [{ id: "status.arcane_guard", instanceId: "status.arcane_guard.2", kind: "buff", roundsRemaining: 1, stacks: null, sourceCombatantId: "enemy.andonidas" }],
     }),
@@ -93,6 +96,9 @@ const nighthawk = combatant({
 
 export function createFormatFixture(size: 1 | 2 | 3): BattleSnapshot {
   const snapshot = clone(initialSnapshot);
+  snapshot.formations = size === 2
+    ? { friendly: "front-rear", enemy: "front-rear" }
+    : { friendly: null, enemy: null };
   const friendlyIds = ["friendly.ragnar", "friendly.black_heart", "friendly.arthas"].slice(0, size);
   const enemyIds = ["enemy.nighthawk", "enemy.andonidas", "enemy.sashein"].slice(0, size);
   snapshot.combatants["friendly.ragnar"] = clone(ragnar);

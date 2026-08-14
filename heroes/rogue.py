@@ -16,8 +16,8 @@ class Rogue(Hero):
 
     faculty = "Rogue"
 
-    def __init__(self, sys_init, name, group, is_player_controlled, major):
-            super().__init__(sys_init, name, group, is_player_controlled, major, faculty=self.__class__.faculty)
+    def __init__(self, sys_init, name, group, is_player_controlled, major, position="front"):
+            super().__init__(sys_init, name, group, is_player_controlled, major, faculty=self.__class__.faculty, position=position)
             self.hero_damage_type = "physical"
             self.is_after_vanish = False
 
@@ -25,8 +25,8 @@ class Rogue_Comprehensiveness(Rogue):
 
     major = "Comprehensiveness"
 
-    def __init__(self, sys_init, name, group, is_player_controlled):
-            super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major)
+    def __init__(self, sys_init, name, group, is_player_controlled, position="front"):
+            super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major, position=position)
             self.add_skill(Skill(self, "Sharp Blade", self.sharp_blade, target_type = "single", skill_type= "damage",))
             self.add_skill(Skill(self, "Poisoned Dagger", self.poisoned_dagger, target_type = "single", skill_type= "damage"))
             self.add_skill(Skill(self, "Shadow Evasion", self.shadow_evasion, target_type = "single", skill_type= "buffs", target_qty= 0))

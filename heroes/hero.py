@@ -123,13 +123,23 @@ class Hero:
     # status debuff control is repeated status with above status
     list_status_debuff_control = ['shadow_word_insanity','fear', 'glacier','stunned', 'paralyzed','scoff']
 
-    def __init__(self, sys_init, name, group, is_player_controlled, major, faculty):
+    def __init__(
+        self,
+        sys_init,
+        name,
+        group,
+        is_player_controlled,
+        major,
+        faculty,
+        position="front",
+    ):
         self.sys_init = sys_init
         self.name = name
         self.faculty = faculty
         self.major = major
         self.profession = self.faculty + "_" + self.major
         self.is_player_controlled = is_player_controlled
+        self.position = position
         self.game = None
         self.interface = None
         self.is_summoned = False
@@ -605,7 +615,7 @@ class Hero:
           results = "0"
           return results
 
-    def take_damage(self, damage_dealt):
+    def take_damage(self, damage_dealt, attack_type="NA", attacker=None):
       is_ally_priest_devine = False
       for ally in self.allies:
         if ally.major == "Devine" and not ally.status['holy_infusion'] and ally.holy_infusion_cooldown == 0:
@@ -614,7 +624,7 @@ class Hero:
       #Check if void connection is activated
       if self.status['void_connection'] == True and self.summoned_unit != None and self.summoned_unit.hp > 0:
         results = []
-        results.append(self.take_damage_action(damage_dealt))
+        results.append(self.take_damage_action(damage_dealt, attack_type, attacker))
         result_defeated_1 = self.check_if_defeated()
         result_defeated_2 = self.summoned_unit.check_if_defeated()
         if result_defeated_1 == "0" and result_defeated_2 == "0":
@@ -632,7 +642,7 @@ class Hero:
       #Check if self is a warrior_berserker
       elif self.major == "Berserker":
           results = []
-          results.append(self.take_damage_action(damage_dealt))
+          results.append(self.take_damage_action(damage_dealt, attack_type, attacker))
           result_defeated_1 = self.check_if_defeated()
           if result_defeated_1 == "0":
             if self.trigger_blood_frenzy():
@@ -646,7 +656,7 @@ class Hero:
       #Check if self is a priest_devine
       elif is_ally_priest_devine:
           results = []
-          results.append(self.take_damage_action(damage_dealt))
+          results.append(self.take_damage_action(damage_dealt, attack_type, attacker))
           result_defeated_1 = self.check_if_defeated()
           if result_defeated_1 == "0":
             if self.hp <= self.hp_max *0.35:
@@ -659,7 +669,7 @@ class Hero:
             return "\n".join(results)
       else: # normal sitation
           results = []
-          results.append(self.take_damage_action(damage_dealt))
+          results.append(self.take_damage_action(damage_dealt, attack_type, attacker))
           result_defeated_1 = self.check_if_defeated()
           if result_defeated_1 == "0":
             return "".join(results)
@@ -668,8 +678,29 @@ class Hero:
             return "\n".join(results)
 
 
-    def take_damage_action(self, damage_dealt):
+    def take_damage_calculation(self, damage_dealt, attack_type="NA", attacker=None):
+          """Apply the one authoritative formation modifier to final damage."""
           damage_dealt = max(0, damage_dealt)
+          if attacker is None or attack_type not in {
+              "melee", "ranged_projectile", "ranged_instant"
+          }:
+              return damage_dealt
+          attacker_position = getattr(attacker, "position", "front")
+          defender_position = getattr(self, "position", "front")
+          multiplier = 1.0
+          if attack_type == "melee" and attacker_position == "rear":
+              multiplier = 0.7
+          elif attack_type == "ranged_projectile":
+              if attacker_position == "rear" and defender_position == "rear":
+                  multiplier = 0.75
+              elif attacker_position != defender_position:
+                  multiplier = 0.875
+          return max(0, math.floor(damage_dealt * multiplier))
+
+    def take_damage_action(self, damage_dealt, attack_type="NA", attacker=None):
+          damage_dealt = self.take_damage_calculation(
+              damage_dealt, attack_type, attacker
+          )
           accuracy = 30  # any attack has 30% chance to interrupt fear effect
           if self.status['holy_word_shell'] == True:
             if damage_dealt < self.holy_word_shell_absorption:

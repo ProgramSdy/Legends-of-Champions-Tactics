@@ -1,4 +1,4 @@
-import type { BattleSnapshot, SideId } from "./types";
+import type { BattleFormationId, BattleSnapshot, CombatantPosition, SideId } from "./types";
 
 export type BattleFormat = "duel" | "duo" | "trio";
 export type FormationSlot = "front" | "centre" | "rear";
@@ -10,20 +10,37 @@ export interface FormationPosition {
   scale: number;
 }
 
+export const duoFormationRegistry: Record<BattleFormationId, Record<SideId, FormationPosition[]>> = {
+  "front-rear": {
+    friendly: [
+      { slot: "front", x: 42, y: 68, scale: 1.02 },
+      { slot: "rear", x: 22, y: 68, scale: .94 },
+    ],
+    enemy: [
+      { slot: "front", x: 59, y: 68, scale: 1.04 },
+      { slot: "rear", x: 78, y: 68, scale: .94 },
+    ],
+  },
+  "side-by-side": {
+    friendly: [
+      { slot: "front", x: 33, y: 54, scale: .94 },
+      { slot: "front", x: 33, y: 85, scale: 1.02 },
+    ],
+    enemy: [
+      { slot: "front", x: 68, y: 54, scale: .94 },
+      { slot: "front", x: 68, y: 85, scale: 1.04 },
+    ],
+  },
+};
+
 export const formationRegistry: Record<BattleFormat, Record<SideId, FormationPosition[]>> = {
   duel: {
     friendly: [{ slot: "centre", x: 29, y: 80, scale: 1.5 }],
     enemy: [{ slot: "centre", x: 71, y: 80, scale: 1.5 }],
   },
   duo: {
-    friendly: [
-      { slot: "front", x: 38, y: 90, scale: 1.02 },
-      { slot: "rear", x: 25, y: 65, scale: .94 },
-    ],
-    enemy: [
-      { slot: "front", x: 62, y: 90, scale: 1.04 },
-      { slot: "rear", x: 75, y: 65, scale: .94 },
-    ],
+    friendly: duoFormationRegistry["front-rear"].friendly,
+    enemy: duoFormationRegistry["front-rear"].enemy,
   },
   trio: {
     friendly: [
@@ -46,7 +63,34 @@ export function getBattleFormat(snapshot: BattleSnapshot): BattleFormat {
   return largestTeam <= 1 ? "duel" : largestTeam === 2 ? "duo" : "trio";
 }
 
-export function formationFor(snapshot: BattleSnapshot, sideId: SideId, slot: number): FormationPosition {
+export function duoFormationFor(snapshot: BattleSnapshot, sideId: SideId): BattleFormationId {
+  const positions = snapshot.sides
+    .find((side) => side.id === sideId)
+    ?.combatantIds
+    .map((id) => snapshot.combatants[id])
+    .filter((combatant) => combatant && !combatant.isSummon)
+    .slice(0, 2)
+    .map((combatant) => combatant.position) ?? [];
+  return positions.length === 2 && positions.every((position) => position === "front")
+    ? "side-by-side"
+    : "front-rear";
+}
+
+export function formationFor(
+  snapshot: BattleSnapshot,
+  sideId: SideId,
+  slot: number,
+  position?: CombatantPosition,
+): FormationPosition {
   const format = getBattleFormat(snapshot);
-  return formationRegistry[format][sideId][slot] ?? formationRegistry.trio[sideId][Math.min(slot, 2)];
+  if (format !== "duo") {
+    return formationRegistry[format][sideId][slot] ?? formationRegistry.trio[sideId][Math.min(slot, 2)];
+  }
+  const layout = duoFormationRegistry[duoFormationFor(snapshot, sideId)][sideId];
+  const coordinate = layout[slot] ?? formationRegistry.trio[sideId][Math.min(slot, 2)];
+  const authoritativePosition = position
+    ?? snapshot.sides.find((side) => side.id === sideId)?.combatantIds
+      .map((id) => snapshot.combatants[id])
+      .find((combatant) => combatant?.slot === slot)?.position;
+  return { ...coordinate, slot: authoritativePosition === "rear" ? "rear" : "front" };
 }

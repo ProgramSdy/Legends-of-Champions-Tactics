@@ -12,8 +12,11 @@ the thin Python adapter. Python remains the sole gameplay authority.
   transport, and normalized rejection/network errors.
 - `lib/battle/fixture.ts` owns stateful scripted fixtures; they are presentation
   outcomes, not TypeScript battle rules.
-- `lib/battle/formations.ts` is the single duel/duo/trio slot registry. Format
-  is derived from authoritative team size.
+- `lib/battle/formations.ts` is the single duel/duo/trio coordinate registry.
+  Format is derived from authoritative team size; for 2v2 it selects the
+  approved coordinate pair from the side's two supplied combatant `position`
+  values and uses each supplied ordered `slot`. It never assigns a gameplay
+  position.
 - `lib/battle/usePresentationQueue.ts` orders semantic events, applies supplied
   post-event values (including additive status stack counts), and reconciles to
   the final snapshot. Typed semantic
@@ -59,8 +62,12 @@ the thin Python adapter. Python remains the sole gameplay authority.
 ## Authority and Reconciliation
 
 Team Builder sends battle size, ordered teams, enemy composition mode, enemy
-control mode, and optional seed. The adapter validates and constructs the
-engine session. Random enemy selection and all computer turns happen in Python.
+control mode, and optional seed. A 2v2 request additionally sends the selected
+`playerFormation`; it sends `enemyFormation` only for a player-controlled
+enemy. For a computer-controlled enemy the field is omitted and the adapter
+uses the seeded session random source. The adapter validates the request,
+assigns each engine hero's `front`/`rear` position, and constructs the session.
+Random enemy selection and all computer turns happen in Python.
 
 Commands carry the expected revision, actor, skill, and selected target IDs.
 The explicit provider `turnControl` boundary must accept commands before the UI
@@ -68,6 +75,11 @@ enables interaction; `legalActions` then enables exact skills and targets.
 React never interprets Stun, Scoff, or another status to decide command
 ownership. Local selection is allowed; HP, statuses, cooldowns, turns, defeat,
 and outcomes are never optimistic.
+
+The battlefield consumes each snapshot combatant's `position` and `slot` only
+for 2v2 presentation placement. Target controls continue to use only the
+adapter's `legalActions.validTargetIds`; React does not recreate melee
+front/rear legality or position-based damage rules.
 
 During playback, explicit turn events identify the transient acting hero,
 restriction reason, status application/removal, and supplied post-values while
@@ -94,8 +106,10 @@ never through the title screen.
 
 `BattleCreateConfiguration` contains `battleSize`, `playerTeam`,
 `enemyCompositionMode`, optional `enemyTeam`, `enemyControlMode`, and optional
-`seed`. The roster is loaded from `GET /api/v1/heroes`; the client rejects
-wrong-version or malformed roster responses.
+`seed`. Its discriminated 2v2 branch requires `playerFormation` and additionally
+requires `enemyFormation` when enemy control is `player`; the 1v1/3v3 branches
+prohibit both formation fields. The roster is loaded from `GET /api/v1/heroes`;
+the client rejects wrong-version or malformed roster responses.
 
 Returning from an ended battle discards the provider and keyed battle
 component. This clears the battle ID, cached snapshot/revision, presentation
@@ -243,3 +257,7 @@ worker.
 - 2026-08-10 — UI-017 activated Warrior's Barrack using reusable
   frontend-only structured-stage data, an in-memory outcome-aware three-battle
   lifecycle, and immutable predefined battle teams.
+- 2026-08-14 — UI-018 added the typed 2v2 formation request handoff,
+  snapshot-position-driven duo placement, player-selectable formation controls,
+  computer-enemy formation explanation, and `validTargetIds`-only target
+  presentation. Duel and trio placement remain unchanged.

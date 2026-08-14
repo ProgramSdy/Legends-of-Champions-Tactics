@@ -4,15 +4,35 @@ export type StatusPresentation = "buff" | "debuff" | "neutral";
 export type BattleSize = 1 | 2 | 3;
 export type EnemyCompositionMode = "random" | "specified";
 export type EnemyControlMode = "computer" | "player";
+export type BattleFormationId = "front-rear" | "side-by-side";
+export type CombatantPosition = "front" | "rear";
 
-export interface BattleCreateConfiguration {
-  battleSize: BattleSize;
+interface BattleCreateConfigurationBase {
   playerTeam: string[];
   enemyCompositionMode: EnemyCompositionMode;
   enemyTeam?: string[];
-  enemyControlMode: EnemyControlMode;
   seed?: number;
 }
+
+export type BattleCreateConfiguration =
+  | (BattleCreateConfigurationBase & {
+      battleSize: 1 | 3;
+      enemyControlMode: EnemyControlMode;
+      playerFormation?: never;
+      enemyFormation?: never;
+    })
+  | (BattleCreateConfigurationBase & {
+      battleSize: 2;
+      playerFormation: BattleFormationId;
+      enemyControlMode: "computer";
+      enemyFormation?: never;
+    })
+  | (BattleCreateConfigurationBase & {
+      battleSize: 2;
+      playerFormation: BattleFormationId;
+      enemyControlMode: "player";
+      enemyFormation: BattleFormationId;
+    });
 
 export interface HeroDefinitionSummary {
   definitionId: string;
@@ -47,6 +67,7 @@ export interface CombatantState {
   definitionId: string;
   sideId: SideId;
   slot: number;
+  position: CombatantPosition;
   displayName: string;
   faculty: string;
   specialization: string;
@@ -91,6 +112,7 @@ export interface BattleSnapshot {
   turn: { index: number; total: number };
   activeCombatantId: string | null;
   outcome: BattleOutcome | null;
+  formations: Record<SideId, BattleFormationId | null>;
   sides: Array<{ id: SideId; combatantIds: string[]; maxSlots: number }>;
   combatants: Record<string, CombatantState>;
   turnOrder: Array<{ combatantId: string; hasActed: boolean; isCurrent: boolean }>;

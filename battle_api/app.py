@@ -71,6 +71,8 @@ async def create_battle(request: CreateBattleRequest) -> dict:
         enemy_composition_mode=request.enemy_composition_mode,
         enemy_team=list(request.enemy_team) if request.enemy_team else None,
         enemy_control_mode=request.enemy_control_mode,
+        player_formation=request.player_formation,
+        enemy_formation=request.enemy_formation,
     )
     return envelope
 

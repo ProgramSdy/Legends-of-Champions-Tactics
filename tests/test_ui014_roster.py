@@ -29,6 +29,8 @@ def test_new_definition_ids_are_accepted_by_the_v1_create_model():
         enemyCompositionMode="specified",
         enemyTeam=[NEW_HEROES[1], NEW_HEROES[0]],
         enemyControlMode="player",
+        playerFormation="front-rear",
+        enemyFormation="side-by-side",
         seed=19,
     )
     assert request.player_team == list(NEW_HEROES)

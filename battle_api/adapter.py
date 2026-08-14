@@ -31,6 +31,13 @@ CONTRACT_VERSION = "1.0"
 ROOT = Path(__file__).resolve().parents[1]
 ENGINE_RANDOM_LOCK = threading.RLock()
 ANSI_ESCAPE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
+FormationId = Literal["front-rear", "side-by-side"]
+Position = Literal["front", "rear"]
+FORMATION_IDS: tuple[FormationId, ...] = ("front-rear", "side-by-side")
+FORMATION_POSITIONS: dict[FormationId, tuple[Position, Position]] = {
+    "front-rear": ("front", "rear"),
+    "side-by-side": ("front", "front"),
+}
 
 HERO_ROSTER = {
     "hero.priest.comprehensiveness": {
@@ -215,6 +222,8 @@ class BattleSession:
     rng_state: object
     battle_size: int = 1
     enemy_control_mode: str = "player"
+    player_formation: FormationId | None = None
+    enemy_formation: FormationId | None = None
     revision: int = 0
     event_sequence: int = 0
     presentation_log_cursor: int = 0
@@ -245,6 +254,8 @@ class BattleAdapter:
         enemy_composition_mode: str = "specified",
         enemy_team: list[str] | None = None,
         enemy_control_mode: str = "player",
+        player_formation: FormationId | None = None,
+        enemy_formation: FormationId | None = None,
     ) -> tuple[BattleSession, dict[str, Any]]:
         if player_team is None:
             player_team = ["hero.warrior.weapon_master"]
@@ -259,6 +270,8 @@ class BattleAdapter:
             enemy_composition_mode=enemy_composition_mode,
             enemy_team=enemy_team,
             enemy_control_mode=enemy_control_mode,
+            player_formation=player_formation,
+            enemy_formation=enemy_formation,
         )
         with ENGINE_RANDOM_LOCK:
             global_state = random.getstate()
@@ -272,6 +285,17 @@ class BattleAdapter:
                     if enemy_composition_mode == "random"
                     else list(enemy_team or [])
                 )
+                if battle_size == 2:
+                    # Direct adapter callers pre-dating the public formation
+                    # contract retain a deterministic default. Pydantic owns
+                    # the stricter HTTP requirement for playerFormation.
+                    player_formation = player_formation or "front-rear"
+                    if enemy_formation is None:
+                        enemy_formation = (
+                            random.choice(FORMATION_IDS)
+                            if enemy_control_mode == "computer"
+                            else "front-rear"
+                        )
                 # Derive names from this session's seeded stream without
                 # perturbing established combat/stat generation rolls.
                 pre_name_state = random.getstate()
@@ -284,12 +308,18 @@ class BattleAdapter:
                     runtime_names[:battle_size],
                     group="Group_A",
                     player_controlled=True,
+                    positions=self._formation_positions(
+                        battle_size, player_formation
+                    ),
                 )
                 opponent_heroes = self._create_team(
                     selected_enemy_team,
                     runtime_names[battle_size:],
                     group="Group_B",
                     player_controlled=enemy_control_mode == "player",
+                    positions=self._formation_positions(
+                        battle_size, enemy_formation
+                    ),
                 )
                 game = Game(player_heroes, opponent_heroes, "simulation")
                 game.game_initialization()
@@ -301,6 +331,8 @@ class BattleAdapter:
                     rng_state=random.getstate(),
                     battle_size=battle_size,
                     enemy_control_mode=enemy_control_mode,
+                    player_formation=player_formation,
+                    enemy_formation=enemy_formation,
                 )
                 for side, heroes in (
                     ("friendly", player_heroes),
@@ -367,6 +399,8 @@ class BattleAdapter:
         enemy_composition_mode: str,
         enemy_team: list[str] | None,
         enemy_control_mode: str,
+        player_formation: FormationId | None,
+        enemy_formation: FormationId | None,
     ) -> None:
         if battle_size not in (1, 2, 3):
             raise ValueError("battle_size must be 1, 2, or 3")
@@ -383,6 +417,27 @@ class BattleAdapter:
                 raise ValueError("enemy_team contains an unsupported hero")
         if enemy_control_mode not in ("computer", "player"):
             raise ValueError("enemy_control_mode must be computer or player")
+        if battle_size == 2:
+            if (
+                player_formation is not None
+                and player_formation not in FORMATION_IDS
+            ):
+                raise ValueError("player_formation must be front-rear or side-by-side")
+            if (
+                enemy_formation is not None
+                and enemy_formation not in FORMATION_IDS
+            ):
+                raise ValueError("enemy_formation must be front-rear or side-by-side")
+        elif player_formation is not None or enemy_formation is not None:
+            raise ValueError("formations are only valid for a 2v2 battle")
+
+    @staticmethod
+    def _formation_positions(
+        battle_size: int, formation: FormationId | None
+    ) -> tuple[Position, ...]:
+        if battle_size != 2:
+            return tuple("front" for _ in range(battle_size))
+        return FORMATION_POSITIONS[formation or "front-rear"]
 
     def _create_team(
         self,
@@ -391,6 +446,7 @@ class BattleAdapter:
         *,
         group: str,
         player_controlled: bool,
+        positions: tuple[Position, ...],
     ) -> list[Any]:
         return [
             HERO_ROSTER[definition_id]["class"](
@@ -398,8 +454,11 @@ class BattleAdapter:
                 runtime_name,
                 group,
                 player_controlled,
+                position,
             )
-            for definition_id, runtime_name in zip(definition_ids, runtime_names)
+            for definition_id, runtime_name, position in zip(
+                definition_ids, runtime_names, positions
+            )
         ]
 
     def _runtime_names(self, definition_ids: list[str]) -> list[str]:
@@ -443,6 +502,10 @@ class BattleAdapter:
             "activeCombatantId": active_id,
             "turnControl": self._turn_control(session, active, ended=ended),
             "outcome": outcome,
+            "formations": {
+                "friendly": session.player_formation,
+                "enemy": session.enemy_formation,
+            },
             "sides": [
                 {
                     "id": side,
@@ -803,16 +866,21 @@ class BattleAdapter:
                     if directive.skill.target_qty == 0
                     else min(directive.skill.target_qty, len(valid_target_ids))
                 )
-                if (
-                    len(target_ids) != required_targets
-                    or len(set(target_ids)) != len(target_ids)
-                    or any(
-                        target_id not in valid_target_ids
-                        for target_id in target_ids
-                    )
-                ):
-                    raise RuntimeError(
-                        f"{actor.name}'s engine-selected Scoff targets are not legal"
+                target_ids = [
+                    target_id
+                    for target_id in target_ids
+                    if target_id in valid_target_ids
+                ][:required_targets]
+                remaining = [
+                    target_id
+                    for target_id in valid_target_ids
+                    if target_id not in target_ids
+                ]
+                if len(target_ids) < required_targets:
+                    target_ids.extend(
+                        random.sample(
+                            remaining, required_targets - len(target_ids)
+                        )
                     )
                 result = self._resolve(
                     session,
@@ -1302,6 +1370,7 @@ class BattleAdapter:
             "definitionId": HERO_DEFINITIONS.get(hero.profession, f"hero.{_slug(hero.profession)}"),
             "sideId": side,
             "slot": team.index(hero),
+            "position": hero.position,
             "displayName": hero.name,
             "faculty": hero.faculty,
             "specialization": hero.major,
@@ -1408,6 +1477,12 @@ class BattleAdapter:
             pool = actor.opponents + actor.allies
         else:
             pool = actor.opponents
+        if skill.skill_type == "damage" and skill.attack_type == "melee":
+            alive_front = any(
+                hero.hp > 0 and hero.position == "front" for hero in pool
+            )
+            if alive_front:
+                pool = [hero for hero in pool if hero.position == "front"]
         return [self._combatant_id(session, hero) for hero in pool if hero.hp > 0]
 
     def _skill_by_id(self, hero, skill_id):
@@ -1525,6 +1600,8 @@ class BattleRegistry:
         enemy_composition_mode: str = "specified",
         enemy_team: list[str] | None = None,
         enemy_control_mode: str = "player",
+        player_formation: FormationId | None = None,
+        enemy_formation: FormationId | None = None,
     ) -> tuple[BattleSession, dict[str, Any]]:
         session, envelope = self.adapter.create_battle(
             seed=seed,
@@ -1533,6 +1610,8 @@ class BattleRegistry:
             enemy_composition_mode=enemy_composition_mode,
             enemy_team=enemy_team,
             enemy_control_mode=enemy_control_mode,
+            player_formation=player_formation,
+            enemy_formation=enemy_formation,
         )
         with self._lock:
             self._sessions[session.battle_id] = session

@@ -77,10 +77,15 @@ _To be documented._
 ### Battle Formations
 
 - Hero figures must read as grounded on the arena floor in every live format.
-- The formation registry is the single source for slot coordinates. Current
-  vertical anchors are 80% for duel; 82% and 100% for duo; and 75%, 88%, and
-  100% for trio. Within duo and trio, the lower (nearer) slot uses the larger
-  scale so visual depth agrees with the ground position.
+- The formation registry is the single source for presentation coordinates.
+  Duel and trio retain their established coordinates. The approved 2v2 pairs
+  are percentage anchors inside the unmodified battlefield: Front and Rear is
+  friendly `(42,68)` / `(22,68)` and enemy `(59,68)` / `(78,68)` in ordered
+  slots; Side by Side is friendly `(33,54)` / `(33,85)` and enemy `(68,54)` /
+  `(68,85)`. These correspond to the owner reference's pink 1/2 and 3/4 plus
+  green 1/2 and 4/3 locations; numbered reference markers never render.
+- A duo figure's `front`/`rear` depth label comes from the combatant snapshot,
+  not from a frontend slot rule. Side-by-Side figures are both `front`.
 - Duel figures use scale 1.5. The two duel teams retain matching y and scale
   values so their presentation remains symmetric.
 - Format scaling must preserve clear separation between figures, overhead
@@ -155,6 +160,10 @@ _To be documented._
 
 - Keep the Battle Rules control bar's labels, native radio/input semantics,
   validation, and visual treatment stable when changing surrounding layout.
+- Show formation selectors only for 2v2. They use native radio inputs, visible
+  focus, blue friendly and red enemy selected treatments, and explicit Hero 1 /
+  Hero 2 `Front`/`Rear` labels. A computer-controlled enemy shows a readable
+  non-editable explanation instead of a selected-looking control.
 - Use blue player-slot treatment and red enemy-slot treatment. The active
   player or specified-enemy slot has a visible side-appropriate selected state;
   Hero Selection Matrix cards visibly indicate the hero assigned to that slot.
@@ -211,3 +220,6 @@ _To be documented._
   protected Battle Rules presentation standards.
 - 2026-08-10 — Added Warrior's Barrack's active map-hotspot treatment while
   retaining the existing Arena and inactive-landmark visual rules.
+- 2026-08-14 — Added the UI-018 2v2 formation-control language, approved
+  snapshot-driven percentage coordinate pairs, responsive selector stacking,
+  and the prohibition on numbered reference markers.

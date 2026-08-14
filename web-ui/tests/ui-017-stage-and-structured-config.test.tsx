@@ -167,6 +167,7 @@ describe("UI-017 stage and structured battle contracts", () => {
     await user.click(screen.getByRole("button", { name: /ENTER BATTLE/i }));
     expect(onStart).toHaveBeenCalledWith({
       battleSize: 2,
+      playerFormation: "front-rear",
       playerTeam: ["hero.warrior.weapon_master", "hero.mage.comprehensiveness"],
       enemyCompositionMode: "specified",
       enemyTeam: ["hero.warrior.defence", "hero.priest.comprehensiveness"],

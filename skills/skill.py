@@ -1,4 +1,5 @@
 import math
+import inspect
 import random
 from heroes import *
 from skills import *
@@ -43,6 +44,18 @@ class Skill:
         # them.  Keep this separate from ``last_target_outcomes`` so existing
         # consumers of its stable string values remain compatible.
         self.last_target_outcome_reasons = {}
+
+    def _call_skill_action(self, *args):
+        """Invoke a skill while preserving legacy action signatures.
+
+        Warrior damage actions opt in by declaring ``attack_type``. Other
+        existing actions, including those with extra positional mode values,
+        receive exactly the arguments they received before UI-018.
+        """
+        parameters = inspect.signature(self.skill_action).parameters
+        if "attack_type" in parameters:
+            return self.skill_action(*args, attack_type=self.attack_type)
+        return self.skill_action(*args)
 
     def immunity_condition_all_check(self, opponent):
         # Check for immunity to all damage
@@ -161,12 +174,12 @@ class Skill:
 
         # Manage healing skills
         if self.skill_type == "healing":
-            return self.skill_action(opponents)
+            return self._call_skill_action(opponents)
        
         # Manage damage skills
         elif self.skill_type == "damage":
           if self.is_instant_skill == False and self.initiator.status['magic_casting'] == False:
-            return self.skill_action(opponents)
+            return self._call_skill_action(opponents)
           if not isinstance(opponents, list):
             opponents = [opponents]
           outcomes = self.resolve_targets(opponents)
@@ -184,11 +197,11 @@ class Skill:
             if self.name == "Rain of Fire":
                if not self.initiator.status['hell_flame']:
                   if self.initiator.status['magic_casting'] == False:
-                    return self.skill_action(opponents)
+                    return self._call_skill_action(opponents)
             elif self.name == "Blizzard":
                if not self.initiator.status['bless_of_frost']:
                   if self.initiator.status['magic_casting'] == False:
-                    return self.skill_action(opponents)
+                    return self._call_skill_action(opponents)
 
             if not hits:
               #result_message = ""
@@ -244,7 +257,7 @@ class Skill:
                 result_message += f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immuned to control effect. \n"
               if result_message:
                 self.initiator.game.display_battle_info(result_message)
-              return self.skill_action(hits)
+              return self._call_skill_action(hits)
 
           elif self.target_type == "single": # Manage single target damage skill
               if not hits:
@@ -268,7 +281,7 @@ class Skill:
                   if self.name == "Heroric Charge" or self.name == "Cumbrous Axe" or self.name == "Shield Lash":
                     target_names = ', '.join([t.name for t in immune_ctrl])
                     result_message += f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immuned to control effect. {target_names} avoids being scoffed."
-                    result_message += f" {self.skill_action(immune_ctrl[0])}"
+                    result_message += f" {self._call_skill_action(immune_ctrl[0])}"
                   else:
                     target_names = ', '.join([t.name for t in immune_ctrl])
                     result_message += f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immuned to control effect."
@@ -290,7 +303,7 @@ class Skill:
                 #else:
                    #print(f"{RED}Debug Skill: skill name = {self.name}{RESET}")
               else:
-                return self.skill_action(hits[0])
+                return self._call_skill_action(hits[0])
 
         # Manage damage healing skill
         elif self.skill_type == "damage_healing":

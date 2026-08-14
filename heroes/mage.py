@@ -19,16 +19,16 @@ class Mage(Hero):
 
     faculty = "Mage"
 
-    def __init__(self, sys_init, name, group, is_player_controlled, major):
-            super().__init__(sys_init, name, group, is_player_controlled, major, faculty=self.__class__.faculty)
+    def __init__(self, sys_init, name, group, is_player_controlled, major, position="front"):
+            super().__init__(sys_init, name, group, is_player_controlled, major, faculty=self.__class__.faculty, position=position)
             self.hero_damage_type = "elemental"
 
 class Mage_Comprehensiveness(Mage):
 
     major = "Comprehensiveness"
 
-    def __init__(self, sys_init, name, group, is_player_controlled):
-        super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major)
+    def __init__(self, sys_init, name, group, is_player_controlled, position="front"):
+        super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major, position=position)
         self.add_skill(Skill(self, "Fireball", self.fireball, target_type = "single", skill_type= "damage", damage_nature = "magical", damage_type = "fire"))
         self.add_skill(Skill(self, "Arcane Missiles", self.arcane_missiles, target_type = "multi", skill_type= "damage", target_qty= 2, damage_nature = "magical", damage_type = "arcane"))
         self.add_skill(Skill(self, "Frost Bolt", self.frost_bolt, target_type = "single", skill_type= "damage", damage_nature = "magical", damage_type = "frost"))

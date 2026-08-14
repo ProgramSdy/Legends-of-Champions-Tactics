@@ -67,6 +67,14 @@ as engine rules. Repeated selections and cross-team overlap are allowed for
 player/specified-enemy teams; random enemy construction samples without
 replacement.
 
+Every hero has an engine-owned battle `position` of `front` or `rear`.
+Construction defaults to `front` for legacy simulations, generators, summons,
+and non-2v2 battles. In an adapter-created 2v2 battle, the ordered team and its
+formation assign the position through the hero constructor: `front-rear`
+produces front then rear, while `side-by-side` produces front then front. The
+position is stable battle state and is serialized for clients; React does not
+derive or author it from a visual slot.
+
 ## Summoned Units
 
 Water Elemental, Skeleton Warrior, Skeleton Mage, Void Rambler, and Flesh
@@ -90,5 +98,7 @@ or persistence are implemented. Battle-local buffs/debuffs are not progression.
 
 ## Change Log
 
+- 2026-08-14 — Documented the backward-compatible hero position field and
+  authoritative 2v2 constructor mapping.
 - 2026-08-06 — Rebuilt from current hero, generator, summon, and adapter
   behavior; separated approved web roster from legacy catalogue scope.

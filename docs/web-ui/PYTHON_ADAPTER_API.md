@@ -82,19 +82,19 @@ Request:
 
 ```json
 {
-  "battleSize": 3,
+  "battleSize": 2,
   "playerTeam": [
-    "hero.priest.comprehensiveness",
-    "hero.priest.discipline",
-    "hero.paladin.retribution"
-  ],
-  "enemyCompositionMode": "specified",
-  "enemyTeam": [
-    "hero.rogue.comprehensiveness",
     "hero.warrior.weapon_master",
     "hero.warrior.defence"
   ],
-  "enemyControlMode": "computer",
+  "playerFormation": "front-rear",
+  "enemyCompositionMode": "specified",
+  "enemyTeam": [
+    "hero.rogue.comprehensiveness",
+    "hero.priest.comprehensiveness"
+  ],
+  "enemyControlMode": "player",
+  "enemyFormation": "side-by-side",
   "seed": 42
 }
 ```
@@ -103,6 +103,14 @@ Request:
 size and contain only roster IDs. `enemyTeam` is omitted in random mode.
 Repeated definitions and cross-team overlap are allowed. `seed` is optional.
 The legacy `{"scenarioId":"ragnar-vs-nighthawk"}` request remains accepted.
+
+For `battleSize: 2`, `playerFormation` is required and is exactly
+`front-rear` or `side-by-side`. `enemyFormation` is required for a
+player-controlled enemy. It may be omitted for a computer-controlled enemy;
+the adapter then chooses one permitted value from the session-seeded random
+stream. Formation fields are rejected for 1v1 and 3v3. The adapter maps each
+formation and ordered team to engine constructor positions and serializes the
+selected formations plus each combatant's `front`/`rear` position.
 
 Random composition is selected inside the adapter with session-seeded
 randomness. The response is a v1 envelope containing ordered initial and
@@ -178,6 +186,12 @@ only when `acceptsCommands` is true at a `playerCommand` boundary and the
 submitted action matches the published `legalActions`. Automatic and skipped
 states are classified by the engine-owned `Hero.turn_directive()` seam rather
 than by adapter-local status rules.
+
+For Warrior damage skills carrying an approved `attack_type`, legal actions
+also enforce formation targeting. Melee excludes rear defenders while any
+front defender lives; forced and computer actions consume this same target
+list. Position damage adjustment remains inside `Hero.take_damage_calculation`
+and is never calculated by the adapter or frontend.
 
 Freeze, stun, paralysis, and fear are authoritative automatic skip states.
 Affected player or computer actors expose no legal actions; the adapter emits

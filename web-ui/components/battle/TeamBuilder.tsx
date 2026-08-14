@@ -10,6 +10,7 @@ import type {
 } from "@/components/stages/structured-stage-config";
 import type {
   BattleCreateConfiguration,
+  BattleFormationId,
   BattleSize,
   EnemyCompositionMode,
   EnemyControlMode,
@@ -37,6 +38,10 @@ export type TeamBuilderProps = ArenaTeamBuilderProps | StructuredTeamBuilderProp
 
 const FIXED_SLOT_INDICES = [0, 1, 2] as const;
 const MATRIX_PAGE_SIZE = 6;
+const FORMATIONS: ReadonlyArray<{ id: BattleFormationId; name: string; positions: string }> = [
+  { id: "front-rear", name: "Front and Rear", positions: "Hero 1 Front · Hero 2 Rear" },
+  { id: "side-by-side", name: "Side by Side", positions: "Hero 1 Front · Hero 2 Front" },
+];
 
 function professionLabel(hero: HeroDefinitionSummary) {
   return `${hero.faculty} · ${hero.specialization}`;
@@ -49,6 +54,40 @@ function portraitRequest(hero: HeroDefinitionSummary) {
     className: hero.faculty,
     name: `${hero.faculty} ${hero.specialization}`,
   };
+}
+
+function FormationSelector({
+  side,
+  value,
+  onChange,
+}: {
+  side: "friendly" | "enemy";
+  value: BattleFormationId;
+  onChange: (formation: BattleFormationId) => void;
+}) {
+  const sideLabel = side === "friendly" ? "Your" : "Enemy";
+  return (
+    <fieldset className={`formation-selector ${side}`}>
+      <legend>{sideLabel} formation</legend>
+      <div className="formation-choices">
+        {FORMATIONS.map((formation) => (
+          <label key={formation.id}>
+            <input
+              type="radio"
+              name={`${side}-formation`}
+              value={formation.id}
+              checked={value === formation.id}
+              onChange={() => onChange(formation.id)}
+            />
+            <span>
+              <strong>{formation.name}</strong>
+              <small>{formation.positions}</small>
+            </span>
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
 }
 
 function FixedEnemyTeamSlot({
@@ -104,6 +143,8 @@ export function TeamBuilder(props: TeamBuilderProps) {
   const [enemyCompositionMode, setEnemyCompositionMode] = useState<EnemyCompositionMode>(structuredBattle ? "specified" : "random");
   const [enemyTeam, setEnemyTeam] = useState<string[]>(structuredBattle ? [...structuredBattle.enemyDefinitionIds] : Array(1).fill(""));
   const [enemyControlMode, setEnemyControlMode] = useState<EnemyControlMode>("computer");
+  const [playerFormation, setPlayerFormation] = useState<BattleFormationId>("front-rear");
+  const [enemyFormation, setEnemyFormation] = useState<BattleFormationId>("front-rear");
   const [seedText, setSeedText] = useState("");
   const [selectedFaculty, setSelectedFaculty] = useState("All");
   const [matrixPage, setMatrixPage] = useState(0);
@@ -138,23 +179,34 @@ export function TeamBuilder(props: TeamBuilderProps) {
   const launch = () => {
     if (validation) return;
     if (structuredBattle) {
-      onStart({
-        battleSize: structuredBattle.battleSize,
+      const structuredConfiguration = {
         playerTeam,
-        enemyCompositionMode: "specified",
+        enemyCompositionMode: "specified" as const,
         enemyTeam: [...structuredBattle.enemyDefinitionIds],
-        enemyControlMode: "computer",
-      });
+        enemyControlMode: "computer" as const,
+      };
+      if (structuredBattle.battleSize === 2) {
+        onStart({ ...structuredConfiguration, battleSize: 2, playerFormation });
+      } else {
+        onStart({ ...structuredConfiguration, battleSize: structuredBattle.battleSize });
+      }
       return;
     }
-    onStart({
-      battleSize,
+    const arenaConfiguration = {
       playerTeam,
       enemyCompositionMode,
       ...(enemyCompositionMode === "specified" ? { enemyTeam } : {}),
-      enemyControlMode,
       ...(parsedSeed === undefined ? {} : { seed: parsedSeed }),
-    });
+    };
+    if (battleSize === 2) {
+      if (enemyControlMode === "player") {
+        onStart({ ...arenaConfiguration, battleSize: 2, enemyControlMode, playerFormation, enemyFormation });
+      } else {
+        onStart({ ...arenaConfiguration, battleSize: 2, enemyControlMode, playerFormation });
+      }
+      return;
+    }
+    onStart({ ...arenaConfiguration, battleSize, enemyControlMode });
   };
 
   const stagePosition = `${selectedStage.geometry.leftPercent + selectedStage.geometry.widthPercent / 2}% ${selectedStage.geometry.topPercent + selectedStage.geometry.heightPercent / 2}%`;
@@ -257,6 +309,7 @@ export function TeamBuilder(props: TeamBuilderProps) {
 
       <section className="team-composer friendly" aria-labelledby="player-team-heading">
         <header><div><small>PLAYER CONTROLLED</small><h2 id="player-team-heading">Your Team</h2></div><strong>{battleSize} HERO{battleSize > 1 ? "ES" : ""}</strong></header>
+        {battleSize === 2 ? <FormationSelector side="friendly" value={playerFormation} onChange={setPlayerFormation} /> : null}
         <div className="visual-team-slots player-slots" data-fixed-slot-count="3">
           {FIXED_SLOT_INDICES.map((index) => {
             const enabled = index < battleSize;
@@ -296,6 +349,11 @@ export function TeamBuilder(props: TeamBuilderProps) {
 
       <section className="team-composer enemy" aria-labelledby="enemy-team-heading">
         <header><div><small>{enemyControlMode === "computer" ? "ENGINE CONTROLLED" : "PLAYER CONTROLLED"}</small><h2 id="enemy-team-heading">Enemy Team</h2></div><strong>{enemyCompositionMode === "random" ? "RANDOM" : `${battleSize} HERO${battleSize > 1 ? "ES" : ""}`}</strong></header>
+        {battleSize === 2 && enemyControlMode === "player"
+          ? <FormationSelector side="enemy" value={enemyFormation} onChange={setEnemyFormation} />
+          : battleSize === 2
+            ? <p className="formation-computer-note" role="note"><strong>Computer formation</strong><span>The computer will choose Front and Rear or Side by Side when this battle is created.</span></p>
+            : null}
         {structuredBattle
           ? <div
               className="enemy-slot-list fixed-enemy-team"

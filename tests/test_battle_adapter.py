@@ -949,7 +949,7 @@ def test_approved_roster_constructs_with_stable_definition_and_skill_ids():
             {
                 "skill.warrior.moon_slash",
                 "skill.warrior.warlust",
-                "skill.warrior.hammer_of_meteorite",
+                    "skill.warrior.strike_of_meteorite",
             },
         ),
         (

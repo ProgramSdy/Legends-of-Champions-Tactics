@@ -117,6 +117,10 @@ type BattleSnapshot = {
     kind: "victory" | "draw" | "roundLimit";
     winningSideId: "friendly" | "enemy" | null;
   };
+  formations: {
+    friendly: "front-rear" | "side-by-side" | null;
+    enemy: "front-rear" | "side-by-side" | null;
+  };
   sides: Array<{
     id: "friendly" | "enemy";
     combatantIds: string[]; // stable slot order, including summons
@@ -144,6 +148,7 @@ type CombatantState = {
   definitionId: string;
   sideId: "friendly" | "enemy";
   slot: number;
+  position: "front" | "rear";
   displayName: string;
   faculty: string;
   specialization: string;
@@ -195,6 +200,13 @@ determines the exact skills and targets available at that boundary. The client
 may calculate bar width from authoritative current/maximum values, but it may
 not derive command ownership or legality from skill labels, status names,
 cooldown math, HP, or local status interpretation.
+
+`formations` is non-null for both sides of a 2v2 battle and null for existing
+1v1/3v3 battles. Each combatant's `position` is engine-owned. Clients use it
+for presentation but must not derive target legality or damage. For approved
+Warrior melee actions, an unavailable protected rear target is absent from
+`validTargetIds`; it becomes selectable only in a later authoritative snapshot
+after no living front defender remains.
 
 An `awaitingCommand` snapshot may expose legal actions before command
 submission; these entries communicate the actor, skills, and targets the client
@@ -459,9 +471,11 @@ version. UI-002 additively extends session creation and adds roster discovery:
 type BattleCreateConfiguration = {
   battleSize: 1 | 2 | 3;
   playerTeam: string[];
+  playerFormation?: "front-rear" | "side-by-side";
   enemyCompositionMode: "random" | "specified";
   enemyTeam?: string[];
   enemyControlMode: "computer" | "player";
+  enemyFormation?: "front-rear" | "side-by-side";
   seed?: number;
 };
 ```
@@ -471,6 +485,13 @@ type BattleCreateConfiguration = {
 must be omitted in `random` mode. Repeated definitions and cross-team overlap
 are accepted. In random mode Python selects a complete enemy team from the
 approved roster using session-seeded randomness.
+
+Formation fields are a 2v2-only additive contract. `playerFormation` is
+required for 2v2. `enemyFormation` is required when the 2v2 enemy is
+player-controlled and may be omitted for a computer enemy so Python chooses
+one of the two values from the seeded session stream. A request carrying either
+formation field for 1v1 or 3v3 is rejected. The values are stable identifiers,
+not display strings.
 
 All friendly combatants are player-controlled. Enemy combatants follow
 `enemyControlMode`. The adapter resolves consecutive computer actors through

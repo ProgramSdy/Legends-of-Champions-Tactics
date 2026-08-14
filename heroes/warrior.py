@@ -16,16 +16,16 @@ class Warrior(Hero):
     
     faculty = "Warrior"
 
-    def __init__(self, sys_init, name, group, is_player_controlled, major):
-            super().__init__(sys_init, name, group, is_player_controlled, major, faculty=self.__class__.faculty)
+    def __init__(self, sys_init, name, group, is_player_controlled, major, position="front"):
+            super().__init__(sys_init, name, group, is_player_controlled, major, faculty=self.__class__.faculty, position=position)
             self.hero_damage_type = "physical"
 
 class Warrior_Comprehensiveness(Warrior):
     
     major = "Comprehensiveness"
 
-    def __init__(self, sys_init, name, group, is_player_controlled):
-            super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major)
+    def __init__(self, sys_init, name, group, is_player_controlled, position="front"):
+            super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major, position=position)
             self.damage_type = "physical"
             self.probability_armor_breaker = 0
             self.probability_shield_bash = 0
@@ -217,8 +217,8 @@ class Warrior_Defence(Warrior):
     
     major = "Defence"
 
-    def __init__(self, sys_init, name, group, is_player_controlled):
-            super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major)
+    def __init__(self, sys_init, name, group, is_player_controlled, position="front"):
+            super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major, position=position)
             self.damage_type = "physical"
             self.probability_armor_breaker = 0
             self.probability_shield_bash = 0
@@ -228,7 +228,7 @@ class Warrior_Defence(Warrior):
             self.add_skill(Skill(self, "Shield Bash", self.shield_bash, target_type = "single", skill_type= "damage", attack_type = "melee", capable_interrupt_magic_casting = True))
             self.add_skill(Skill(self, "Shield Lash", self.shield_lash, target_type = "single", skill_type= "damage", attack_type = "ranged_projectile", is_control_skill = True, independent_effect_action=self.independent_shield_lash))
 
-    def shield_bash(self, other_hero):
+    def shield_bash(self, other_hero, attack_type="NA"):
         accuracy = 100  # Shield Bash has a 100% chance to succeed
         roll = random.randint(1, 100)  # Simulate a roll of 100-sided dice
         if other_hero.status['magic_casting'] == True:
@@ -256,9 +256,9 @@ class Warrior_Defence(Warrior):
         actual_damage = self.damage + variation
         damage_dealt = int((actual_damage - other_hero.defense)/4)
         damage_dealt = max(damage_dealt, 0)
-        return other_hero.take_damage(damage_dealt)
+        return other_hero.take_damage(damage_dealt, attack_type, self)
 
-    def devastate(self, other_hero):
+    def devastate(self, other_hero, attack_type="NA"):
         variation = random.randint(-1, 1)
         actual_damage = self.damage + variation
         damage_dealt = math.ceil((actual_damage - other_hero.defense) * 0.75)
@@ -285,9 +285,9 @@ class Warrior_Defence(Warrior):
           other_hero.armor_breaker_duration = 2  # Effect lasts for 2 rounds
           self.game.display_battle_info(f"{self.name} uses Devastate on {other_hero.name}, reducing their defense from {defense_before_reducing} to {other_hero.defense}.")
 
-        return other_hero.take_damage(damage_dealt)
+        return other_hero.take_damage(damage_dealt, attack_type, self)
 
-    def shield_lash(self, other_hero):
+    def shield_lash(self, other_hero, attack_type="NA"):
         self.status['shield_lash'] = True
         self.fire_resistance_boost_amount['shield_lash'] = 45
         self.frost_resistance_boost_amount['shield_lash'] = 45
@@ -309,9 +309,9 @@ class Warrior_Defence(Warrior):
         if other_hero.is_immunity_condition_control == True:
            if other_hero.status['magic_casting'] == True:
              result = self.interrupt_magic_casting(other_hero)
-             return f"{result}. {other_hero.take_damage(actual_damage)}."
+             return f"{result}. {other_hero.take_damage(actual_damage, attack_type, self)}."
            else:
-             return f"{other_hero.take_damage(actual_damage)}."
+             return f"{other_hero.take_damage(actual_damage, attack_type, self)}."
         else:
           other_hero.status['scoff'] = True
           for skill in self.skills:
@@ -355,10 +355,10 @@ class Warrior_Defence(Warrior):
           if other_hero.status['magic_casting'] == True:
             result = self.interrupt_magic_casting(other_hero)
             other_hero.scoff_shield_lash_duration = 2
-            return f"{self.name} casts Shield Lash on {other_hero.name}. {result}. {other_hero.take_damage(actual_damage)}. {self.name}'s magical resistance is boost. {other_hero.name} developed a deep hatred toward {self.name}."
+            return f"{self.name} casts Shield Lash on {other_hero.name}. {result}. {other_hero.take_damage(actual_damage, attack_type, self)}. {self.name}'s magical resistance is boost. {other_hero.name} developed a deep hatred toward {self.name}."
           else:
             other_hero.scoff_shield_lash_duration = 2
-            return f"{self.name} casts Shield Lash on {other_hero.name}. {other_hero.take_damage(actual_damage)}. {self.name}'s magical resistance is boost. {other_hero.name} developed a deep hatred toward {self.name}."
+            return f"{self.name} casts Shield Lash on {other_hero.name}. {other_hero.take_damage(actual_damage, attack_type, self)}. {self.name}'s magical resistance is boost. {other_hero.name} developed a deep hatred toward {self.name}."
 
     # Battling Strategy_________________________________________________________
 
@@ -366,8 +366,8 @@ class Warrior_Weapon_Master(Warrior):
     
     major = "Weapon_Master"
 
-    def __init__(self, sys_init, name, group, is_player_controlled):
-            super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major)
+    def __init__(self, sys_init, name, group, is_player_controlled, position="front"):
+            super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major, position=position)
             self.damage_type = "physical"
             self.probability_armor_breaker = 0
             self.probability_shield_bash = 0
@@ -377,7 +377,7 @@ class Warrior_Weapon_Master(Warrior):
             self.add_skill(Skill(self, "Armor Crush", self.armor_crush, target_type = "single", skill_type= "damage", attack_type = "melee"))
             self.add_skill(Skill(self, "Antivenom Potion", self.antivenom_potion, target_type = "single", skill_type= "buffs", target_qty= 0))
 
-    def fatal_strike(self, other_hero):
+    def fatal_strike(self, other_hero, attack_type="NA"):
       variation = random.randint(-3, 3)
       actual_damage = self.damage + variation
       damage_dealt = actual_damage - other_hero.defense
@@ -391,7 +391,7 @@ class Warrior_Weapon_Master(Warrior):
                   debuff.duration = 2
                   other_hero.add_debuff(debuff)
                   self.game.display_battle_info(f"{self.name} uses Fatal Strike on {other_hero.name}. The healing they receive will be reduced sharply.")
-                  return other_hero.take_damage(damage_dealt)
+                  return other_hero.take_damage(damage_dealt, attack_type, self)
           
           debuff = Debuff(
               name='Fatal Strike',
@@ -401,12 +401,12 @@ class Warrior_Weapon_Master(Warrior):
           )
           other_hero.add_debuff(debuff)
           self.game.display_battle_info(f"{self.name} uses Fatal Strike on {other_hero.name}. The healing they receive will be reduced sharply.")
-          return other_hero.take_damage(damage_dealt)
+          return other_hero.take_damage(damage_dealt, attack_type, self)
       else:
           self.game.display_battle_info(f"{self.name} uses Fatal Strike on {other_hero.name}.")
-      return other_hero.take_damage(damage_dealt)
+      return other_hero.take_damage(damage_dealt, attack_type, self)
 
-    def armor_crush(self, other_hero):
+    def armor_crush(self, other_hero, attack_type="NA"):
         #damage_dealt_stack_0 = self.random_in_range((6, 10))  # Small damage
         variation = random.randint(-3, 3)
         actual_damage = self.damage + variation
@@ -456,7 +456,7 @@ class Warrior_Weapon_Master(Warrior):
           other_hero.armor_breaker_stacks += 1
           other_hero.armor_breaker_duration = 2  # Effect lasts for 2 rounds
           self.game.display_battle_info(f"{self.name} uses Armor Crush on {other_hero.name}, reducing their defense from {defense_before_reducing} to {other_hero.defense}.")
-        return other_hero.take_damage(damage_dealt)
+        return other_hero.take_damage(damage_dealt, attack_type, self)
 
     def antivenom_potion(self):
         self.status['antivenom_potion'] = True
@@ -503,8 +503,8 @@ class Warrior_Berserker(Warrior):
 
     major = "Berserker"
 
-    def __init__(self, sys_init, name, group, is_player_controlled):
-        super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major)
+    def __init__(self, sys_init, name, group, is_player_controlled, position="front"):
+        super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major, position=position)
         self.damage_type = "physical"
         self.preset_target = None
         self.blood_frenzy_duration = 0
@@ -561,7 +561,7 @@ class Warrior_Berserker(Warrior):
 
     # ========== 技能 1：Moon Slash ========== 
     # attack 2 targets, cause bleeding if target is armor broken
-    def moon_slash(self, other_heroes):
+    def moon_slash(self, other_heroes, attack_type="NA"):
         if not isinstance(other_heroes, list):
           other_heroes = [other_heroes]
         results = []
@@ -572,7 +572,7 @@ class Warrior_Berserker(Warrior):
             damage_dealt = math.ceil((actual_damage - opponent.defense) * 2/3)
             damage_dealt = max(damage_dealt, 1)
             self.game.display_battle_info(f"{self.name} uses Moon Slash at {opponent.name}.")
-            results.append(opponent.take_damage(damage_dealt))
+            results.append(opponent.take_damage(damage_dealt, attack_type, self))
             if self.status['blood_frenzy']:
                blood_drain = int(damage_dealt * 0.3)
                results.append(f"{self.name} is draining blood due to Blood Frenzy. {self.take_healing(blood_drain)}")
@@ -645,7 +645,7 @@ class Warrior_Berserker(Warrior):
 
     # ========== 技能 3：Hammer of Meteorite ==========
     # Attack single target, chance to cause armor break or weaken, interrupt magic casting
-    def strike_of_meteorite(self, other_hero):
+    def strike_of_meteorite(self, other_hero, attack_type="NA"):
         variation = random.randint(-3, 3)
         actual_damage = self.damage + variation
         damage_dealt = max(actual_damage - other_hero.defense, 0)
@@ -685,6 +685,6 @@ class Warrior_Berserker(Warrior):
         if self.status['blood_frenzy']:
                blood_drain = int(damage_dealt * 0.3)
                self.game.display_battle_info(f"{self.name} is draining blood due to Blood Frenzy. {self.take_healing(blood_drain)}")
-               return other_hero.take_damage(damage_dealt)
+               return other_hero.take_damage(damage_dealt, attack_type, self)
         else:
-          return other_hero.take_damage(damage_dealt)
+          return other_hero.take_damage(damage_dealt, attack_type, self)

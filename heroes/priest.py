@@ -15,16 +15,16 @@ class Priest(Hero):
 
     faculty = "Priest"
 
-    def __init__(self, sys_init, name, group, is_player_controlled, major):
-            super().__init__(sys_init, name, group, is_player_controlled, major, faculty=self.__class__.faculty)
+    def __init__(self, sys_init, name, group, is_player_controlled, major, position="front"):
+            super().__init__(sys_init, name, group, is_player_controlled, major, faculty=self.__class__.faculty, position=position)
             self.hero_damage_type = "holy"
 
 class Priest_Comprehensiveness(Priest):
 
     major = "Comprehensiveness"
 
-    def __init__(self, sys_init, name, group, is_player_controlled):
-            super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major)
+    def __init__(self, sys_init, name, group, is_player_controlled, position="front"):
+            super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major, position=position)
             self.add_skill(Skill(self, "Holy Smite", self.holy_smite, target_type = "single", skill_type= "damage"))
             self.add_skill(Skill(self, "Shadow Word Pain", self.shadow_word_pain, target_type = "single", skill_type= "damage"))
             self.add_skill(Skill(self, "Binding Heal", self.binding_heal, "single", skill_type= "healing"))
@@ -254,8 +254,8 @@ class Priest_Discipline(Priest):
 
     major = "Discipline"
 
-    def __init__(self, sys_init, name, group, is_player_controlled=False):
-            super().__init__(sys_init, name, group, is_player_controlled, major = self.__class__.major)
+    def __init__(self, sys_init, name, group, is_player_controlled=False, position="front"):
+            super().__init__(sys_init, name, group, is_player_controlled, major = self.__class__.major, position=position)
             self.add_skill(Skill(self, "Penance", self.penance, "single", skill_type= "damage_healing"))
             self.add_skill(Skill(self, "Holy Word Redemption", self.holy_word_redemption, "single", skill_type= "buffs"))
             self.add_skill(Skill(self, "Holy Word Punishment", self.holy_word_punishment, target_type = "multi", skill_type= "damage", target_qty= 2))
