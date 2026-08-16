@@ -43,6 +43,24 @@ Heroric Charge (current implementation spelling), Cumbrous Axe, and Shield
 Lash. New mixed effects must use this boundary rather than a skill-name special
 case in shared resolution.
 
+### Attack Type and Formation Compatibility
+
+`Skill.attack_type` is the authoritative optional classification for approved
+damage skills. `Skill.execute` uses a backwards-compatible bound-method
+dispatcher: it supplies the value only to a concrete skill method that declares
+an `attack_type` parameter, leaving legacy signatures unchanged. A migrated
+skill passes the same value and its attacking hero to `Hero.take_damage`; the
+engine's single damage-calculation path then applies an authorized
+formation-position modifier once.
+
+This is deliberately limited to the currently classified Warrior Weapon Master,
+Warrior Defence, Warrior Berserker, and Mage Comprehensiveness damage skills.
+Mage Comprehensiveness's Fireball, Arcane Missiles, and Frost Bolt are approved
+`ranged_projectile` skills. `melee`, `ranged_projectile`, and
+`ranged_instant` are not generic UI labels or default values for other skills.
+The classification stays on `Skill`, not in individual damage formulas or the
+frontend.
+
 ## Damage, Healing, Status, and Summon Effects
 
 There is no universal formula or duration model. Concrete callbacks calculate

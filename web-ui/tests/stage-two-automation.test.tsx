@@ -284,10 +284,21 @@ describe("format and fallback invariants", () => {
     expect(new Set(coordinates)).toHaveProperty("size", size * 2);
   });
 
-  it("uses class fallback for Ragnar and initials fallback for Nighthawk", () => {
+  it("uses the registered Warrior portraits and initials fallback when no portrait exists", () => {
     expect(resolveAsset({
       kind: "portrait", key: "hero.warrior.weapon_master", name: "Ragnar", className: "Warrior",
-    })).toMatchObject({ fallback: "class", status: "placeholder" });
+    })).toMatchObject({
+      src: "/game-images/heroes/Warrior-Weapon-Master/portraits/Avatar_Warrior_Weapon_Master.png",
+      fallback: "requested",
+      status: "final",
+    });
+    expect(resolveAsset({
+      kind: "portrait", key: "hero.warrior.defence", name: "Wrathe", className: "Warrior",
+    })).toMatchObject({
+      src: "/game-images/heroes/Warrior-Defence/portraits/Avatar_Warrior_Defence.png",
+      fallback: "requested",
+      status: "final",
+    });
     expect(resolveAsset({
       kind: "portrait", key: "hero.rogue.comprehensiveness", name: "Nighthawk", className: "Rogue",
     })).toMatchObject({ fallback: "initials", src: null, status: "placeholder" });

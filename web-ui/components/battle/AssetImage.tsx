@@ -18,6 +18,15 @@ export function AssetImage(props: AssetImageProps) {
   if (!src || failed) {
     return <span className={`asset-fallback fallback-${asset.fallback} ${props.className ?? ""}`} role="img" aria-label={asset.label}>{initials(request.name)}<small>{asset.fallback === "class" ? "CLASS PLACEHOLDER" : "PLACEHOLDER"}</small></span>;
   }
+  // Hero artwork is already shipped as high-resolution local files.  A native
+  // image preserves the source's natural pixel dimensions on high-DPI screens
+  // instead of giving the browser Next's fixed 160px responsive-image hint.
+  if (request.kind === "portrait" && src.startsWith("/game-images/")) {
+    // eslint-disable-next-line @next/next/no-img-element -- local game art intentionally bypasses Next's fixed-size image contract.
+    return <img className={`${props.className ?? ""} fallback-${asset.fallback}`} src={src} alt="" aria-label={asset.label} width={160} height={160} decoding="async"
+      onLoad={(event) => props.onImageDimensions?.({ naturalWidth: event.currentTarget.naturalWidth, naturalHeight: event.currentTarget.naturalHeight })}
+      onError={() => { setFailed(true); props.onImageDimensions?.(null); }} />;
+  }
   return <Image className={`${props.className ?? ""} fallback-${asset.fallback}`} src={src} alt="" aria-label={asset.label} width={160} height={160} unoptimized={src.startsWith("/game-images/")}
     onLoad={(event) => props.onImageDimensions?.({ naturalWidth: event.currentTarget.naturalWidth, naturalHeight: event.currentTarget.naturalHeight })}
     onError={() => { setFailed(true); props.onImageDimensions?.(null); }} />;

@@ -69,11 +69,19 @@ replacement.
 
 Every hero has an engine-owned battle `position` of `front` or `rear`.
 Construction defaults to `front` for legacy simulations, generators, summons,
-and non-2v2 battles. In an adapter-created 2v2 battle, the ordered team and its
-formation assign the position through the hero constructor: `front-rear`
-produces front then rear, while `side-by-side` produces front then front. The
-position is stable battle state and is serialized for clients; React does not
-derive or author it from a visual slot.
+and 1v1 battles. In an adapter-created 2v2 or 3v3 battle, the ordered team and
+its size-specific formation assign the position through the hero constructor.
+The 2v2 mappings are `front-rear` (front/rear) and `side-by-side`
+(front/front). The 3v3 mappings are `one-front-two-rear` (front/rear/rear),
+`two-front-one-rear` (front/front/rear), and `all-front`
+(front/front/front). The position is stable battle state and is serialized for
+clients; React does not derive or author it from a visual slot.
+
+Combat position is not the same as visual depth. In a 3v3 scene the
+owner-approved nearest/middle/furthest order is formation-, side-, and ordered
+slot-specific. That visual ordering changes image scale and stacking only; it
+does not change the engine-owned front/rear value, target legality, damage, or
+hero identity.
 
 ## Summoned Units
 
@@ -98,6 +106,8 @@ or persistence are implemented. Battle-local buffs/debuffs are not progression.
 
 ## Change Log
 
+- 2026-08-15 — Added the three adapter-owned 3v3 position mappings while
+  retaining the existing constructor default for legacy paths.
 - 2026-08-14 — Documented the backward-compatible hero position field and
   authoritative 2v2 constructor mapping.
 - 2026-08-06 — Rebuilt from current hero, generator, summon, and adapter

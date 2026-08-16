@@ -121,8 +121,10 @@ visits use Arena configuration mode. Arena provides:
 - random or player-specified enemy composition;
 - Matrix-assigned enemy positions per required slot in specified mode;
 - Python-engine computer control or player control for the enemy team;
-- for 2v2 only, a friendly **Front and Rear** / **Side by Side** formation
-  choice; the enemy choice is editable only when enemy control is Player;
+- for 2v2, a friendly **Front and Rear** / **Side by Side** formation choice;
+- for 3v3, a separate friendly **One Front, Two Rear** / **Two Front, One
+  Rear** / **All Front** choice; in either size, the enemy choice is editable
+  only when enemy control is Player;
 - an optional non-negative integer seed;
 - a Current Stage preview, Back to Stage Map control, and every definition
   supplied by the adapter roster endpoint in the Hero Selection Matrix.
@@ -147,11 +149,13 @@ The launch action is disabled until all required selectors and seed input are
 valid. Repeated definitions and overlap between teams are permitted because no
 authoritative design rule currently prohibits them.
 
-The formation selector uses stable values `front-rear` and `side-by-side` and
-shows the resulting Hero 1/Hero 2 position labels. For a computer-controlled
-enemy, Team Builder shows an explanation instead of an editable selector and
-omits `enemyFormation`; Python returns its seeded choice through combatant
-snapshot positions. Formation controls and fields are absent in 1v1 and 3v3.
+The 2v2 selector uses stable values `front-rear` and `side-by-side`. The 3v3
+selector instead uses `one-front-two-rear`, `two-front-one-rear`, and
+`all-front`. Each option shows every ordered Hero slot's Front/Rear position.
+For a computer-controlled enemy, Team Builder shows the size-specific
+explanation instead of an editable selector and omits `enemyFormation`; Python
+returns its seeded choice through the snapshot formation and combatant
+positions. Formation controls and fields remain absent in 1v1.
 
 Warrior's Barrack uses the same Team Builder in a separate structured-stage
 mode. It is a temporary in-memory training sequence, not a profile, save,
@@ -169,10 +173,11 @@ The current ordered Warrior's Barrack sequence is:
 3. Battle 3 — 3v3 against Warrior Defence, Warrior Berserker, and Priest
    Comprehensiveness.
 
-Battle 1 uses the same friendly 2v2 formation selector. Its predefined enemy
-team remains immutable and computer-controlled, so the enemy formation is
-chosen authoritatively and represented by the same non-editable explanation.
-Battles 2 and 3 show no formation controls.
+Battle 1 uses the same friendly 2v2 formation selector and Battle 3 uses the
+friendly 3v3 selector. Their predefined enemy teams remain immutable and
+computer-controlled, so each enemy formation is chosen authoritatively and
+represented by the size-specific non-editable explanation. Battle 2 shows no
+formation controls.
 
 The exact fixed-team request continues to use the existing battle-create
 contract. The client validates that every configured definition is supplied by
@@ -187,9 +192,11 @@ resolved by the adapter through existing Python AI, according to the Team
 Builder configuration.
 
 For 2v2, each side's two supplied `position` values plus ordered combatant
-slots select the approved percentage coordinate pair independently. A
-Front-and-Rear side has one `front` and one `rear`; a Side-by-Side side has two
-`front` combatants. Duel and trio coordinates are unchanged. Target
+slots retain the approved coordinate pair independently. For 3v3, each side's
+snapshot formation selects one approved presentation registry and the ordered
+slots select its three anchors and formation-specific visual depth. That depth
+is not inferred from a hero's supplied combat `position`. Duel and duo
+coordinates remain unchanged. Target
 selectability comes exclusively from the current legal action's
 `validTargetIds`, even when a supplied valid target is `rear`.
 
@@ -279,3 +286,6 @@ flow. Its return link navigates directly to `/game`.
 - 2026-08-14 — Added 2v2-only formation selection, computer-enemy formation
   explanation, structured Battle 1 compatibility, and authoritative
   snapshot-position battlefield placement.
+- 2026-08-15 — Added the three size-specific 3v3 formation choices, computer
+  explanation, structured Battle 3 selection, typed request handoff, and
+  snapshot-formation-driven trio placement.

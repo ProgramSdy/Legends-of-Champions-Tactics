@@ -85,6 +85,8 @@ def test_runtime_name_pool_overflow_allows_repetition_without_creation_failure()
         player_team=team,
         enemy_team=team,
         enemy_control_mode="player",
+        player_formation="one-front-two-rear",
+        enemy_formation="two-front-one-rear",
     )
     names = _display_names(envelope)
 
@@ -135,6 +137,8 @@ def test_seeded_runtime_names_are_reproducible_and_session_isolated():
         battle_id="battle.ui006.seeded.first",
         battle_size=3,
         enemy_control_mode="player",
+        player_formation="all-front",
+        enemy_formation="one-front-two-rear",
         **teams,
     )
     before = _display_names(first)
@@ -144,6 +148,8 @@ def test_seeded_runtime_names_are_reproducible_and_session_isolated():
         battle_id="battle.ui006.unrelated",
         battle_size=3,
         enemy_control_mode="player",
+        player_formation="all-front",
+        enemy_formation="one-front-two-rear",
         **teams,
     )
     _, repeated = BattleAdapter().create_battle(
@@ -151,6 +157,8 @@ def test_seeded_runtime_names_are_reproducible_and_session_isolated():
         battle_id="battle.ui006.seeded.repeated",
         battle_size=3,
         enemy_control_mode="player",
+        player_formation="all-front",
+        enemy_formation="one-front-two-rear",
         **teams,
     )
 

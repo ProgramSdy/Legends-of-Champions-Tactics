@@ -19,6 +19,12 @@ from typing import Any, Literal
 
 import pandas as pd
 
+from .models import (
+    FormationId,
+    THREE_HERO_FORMATION_IDS,
+    TWO_HERO_FORMATION_IDS,
+    TwoHeroFormationId,
+)
 from game.game import Game
 from game.hero_generator import HeroGenerator
 from heroes.mage import Mage_Comprehensiveness
@@ -31,12 +37,16 @@ CONTRACT_VERSION = "1.0"
 ROOT = Path(__file__).resolve().parents[1]
 ENGINE_RANDOM_LOCK = threading.RLock()
 ANSI_ESCAPE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
-FormationId = Literal["front-rear", "side-by-side"]
 Position = Literal["front", "rear"]
-FORMATION_IDS: tuple[FormationId, ...] = ("front-rear", "side-by-side")
-FORMATION_POSITIONS: dict[FormationId, tuple[Position, Position]] = {
+# Backward-compatible UI-018 name: this remains the two-hero set. Callers that
+# need 3v3 choices use the explicitly size-scoped constant above.
+FORMATION_IDS: tuple[TwoHeroFormationId, ...] = TWO_HERO_FORMATION_IDS
+FORMATION_POSITIONS: dict[FormationId, tuple[Position, ...]] = {
     "front-rear": ("front", "rear"),
     "side-by-side": ("front", "front"),
+    "one-front-two-rear": ("front", "rear", "rear"),
+    "two-front-one-rear": ("front", "front", "rear"),
+    "all-front": ("front", "front", "front"),
 }
 
 HERO_ROSTER = {
@@ -292,10 +302,14 @@ class BattleAdapter:
                     player_formation = player_formation or "front-rear"
                     if enemy_formation is None:
                         enemy_formation = (
-                            random.choice(FORMATION_IDS)
+                            random.choice(TWO_HERO_FORMATION_IDS)
                             if enemy_control_mode == "computer"
                             else "front-rear"
                         )
+                elif battle_size == 3 and enemy_control_mode == "computer":
+                    # The caller supplies the friendly formation, while the
+                    # computer formation is an authoritative seeded choice.
+                    enemy_formation = random.choice(THREE_HERO_FORMATION_IDS)
                 # Derive names from this session's seeded stream without
                 # perturbing established combat/stat generation rolls.
                 pre_name_state = random.getstate()
@@ -420,24 +434,52 @@ class BattleAdapter:
         if battle_size == 2:
             if (
                 player_formation is not None
-                and player_formation not in FORMATION_IDS
+                and player_formation not in TWO_HERO_FORMATION_IDS
             ):
                 raise ValueError("player_formation must be front-rear or side-by-side")
             if (
                 enemy_formation is not None
-                and enemy_formation not in FORMATION_IDS
+                and enemy_formation not in TWO_HERO_FORMATION_IDS
             ):
                 raise ValueError("enemy_formation must be front-rear or side-by-side")
+        elif battle_size == 3:
+            if player_formation is None:
+                raise ValueError("player_formation is required for a 3v3 battle")
+            if player_formation not in THREE_HERO_FORMATION_IDS:
+                raise ValueError(
+                    "player_formation must be one-front-two-rear, "
+                    "two-front-one-rear, or all-front for a 3v3 battle"
+                )
+            if enemy_control_mode == "player":
+                if enemy_formation is None:
+                    raise ValueError(
+                        "enemy_formation is required for a player-controlled "
+                        "3v3 enemy"
+                    )
+                if enemy_formation not in THREE_HERO_FORMATION_IDS:
+                    raise ValueError(
+                        "enemy_formation must be one-front-two-rear, "
+                        "two-front-one-rear, or all-front for a 3v3 battle"
+                    )
+            elif enemy_formation is not None:
+                raise ValueError(
+                    "enemy_formation must be omitted for a computer-controlled "
+                    "3v3 enemy"
+                )
         elif player_formation is not None or enemy_formation is not None:
-            raise ValueError("formations are only valid for a 2v2 battle")
+            raise ValueError("formations are only valid for 2v2 or 3v3 battles")
 
     @staticmethod
     def _formation_positions(
         battle_size: int, formation: FormationId | None
     ) -> tuple[Position, ...]:
-        if battle_size != 2:
+        if battle_size == 1:
             return tuple("front" for _ in range(battle_size))
-        return FORMATION_POSITIONS[formation or "front-rear"]
+        if battle_size == 2:
+            return FORMATION_POSITIONS[formation or "front-rear"]
+        if formation is None:
+            raise ValueError("formation is required for a 3v3 battle")
+        return FORMATION_POSITIONS[formation]
 
     def _create_team(
         self,

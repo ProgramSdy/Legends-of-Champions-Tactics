@@ -20,7 +20,23 @@ HeroDefinitionId = Literal[
     "hero.rogue.comprehensiveness",
 ]
 
-FormationId = Literal["front-rear", "side-by-side"]
+TwoHeroFormationId = Literal["front-rear", "side-by-side"]
+ThreeHeroFormationId = Literal[
+    "one-front-two-rear",
+    "two-front-one-rear",
+    "all-front",
+]
+FormationId = TwoHeroFormationId | ThreeHeroFormationId
+
+TWO_HERO_FORMATION_IDS: tuple[TwoHeroFormationId, ...] = (
+    "front-rear",
+    "side-by-side",
+)
+THREE_HERO_FORMATION_IDS: tuple[ThreeHeroFormationId, ...] = (
+    "one-front-two-rear",
+    "two-front-one-rear",
+    "all-front",
+)
 
 
 class ApiModel(BaseModel):
@@ -91,6 +107,11 @@ class CreateBattleRequest(ApiModel):
         if self.battle_size == 2:
             if self.player_formation is None:
                 raise ValueError("playerFormation is required for a 2v2 battle")
+            if self.player_formation not in TWO_HERO_FORMATION_IDS:
+                raise ValueError(
+                    "playerFormation must be front-rear or side-by-side "
+                    "for a 2v2 battle"
+                )
             if (
                 self.enemy_control_mode == "player"
                 and self.enemy_formation is None
@@ -98,11 +119,42 @@ class CreateBattleRequest(ApiModel):
                 raise ValueError(
                     "enemyFormation is required for a player-controlled 2v2 enemy"
                 )
+            if (
+                self.enemy_formation is not None
+                and self.enemy_formation not in TWO_HERO_FORMATION_IDS
+            ):
+                raise ValueError(
+                    "enemyFormation must be front-rear or side-by-side "
+                    "for a 2v2 battle"
+                )
+        elif self.battle_size == 3:
+            if self.player_formation is None:
+                raise ValueError("playerFormation is required for a 3v3 battle")
+            if self.player_formation not in THREE_HERO_FORMATION_IDS:
+                raise ValueError(
+                    "playerFormation must be one-front-two-rear, "
+                    "two-front-one-rear, or all-front for a 3v3 battle"
+                )
+            if self.enemy_control_mode == "player":
+                if self.enemy_formation is None:
+                    raise ValueError(
+                        "enemyFormation is required for a player-controlled 3v3 enemy"
+                    )
+                if self.enemy_formation not in THREE_HERO_FORMATION_IDS:
+                    raise ValueError(
+                        "enemyFormation must be one-front-two-rear, "
+                        "two-front-one-rear, or all-front for a 3v3 battle"
+                    )
+            elif self.enemy_formation is not None:
+                raise ValueError(
+                    "enemyFormation must be omitted for a computer-controlled "
+                    "3v3 enemy"
+                )
         elif (
             self.player_formation is not None
             or self.enemy_formation is not None
         ):
-            raise ValueError("formation fields are only valid for a 2v2 battle")
+            raise ValueError("formation fields are only valid for 2v2 or 3v3 battles")
         return self
 
 

@@ -1035,6 +1035,14 @@ def test_every_approved_hero_can_submit_a_legal_live_action(definition_id):
 def test_configured_battle_preserves_slots_duplicates_and_control_mode(battle_size):
     adapter = BattleAdapter()
     repeated = ["hero.priest.comprehensiveness"] * battle_size
+    formations = (
+        {
+            "player_formation": "one-front-two-rear",
+            "enemy_formation": "two-front-one-rear",
+        }
+        if battle_size == 3
+        else {}
+    )
     session, envelope = adapter.create_battle(
         seed=7,
         battle_id=f"battle.size.{battle_size}",
@@ -1042,6 +1050,7 @@ def test_configured_battle_preserves_slots_duplicates_and_control_mode(battle_si
         player_team=repeated,
         enemy_team=repeated,
         enemy_control_mode="player",
+        **formations,
     )
     snapshot = envelope["data"]["snapshot"]
 
@@ -1099,6 +1108,8 @@ def test_seeded_random_enemy_composition_is_complete_and_reproducible():
         "player_team": list(HERO_ROSTER)[:3],
         "enemy_composition_mode": "random",
         "enemy_control_mode": "player",
+        "player_formation": "one-front-two-rear",
+        "enemy_formation": "two-front-one-rear",
     }
     first = BattleAdapter().create_battle(battle_id="battle.random.1", **kwargs)[1]
     second = BattleAdapter().create_battle(battle_id="battle.random.2", **kwargs)[1]
@@ -1125,6 +1136,8 @@ def test_equal_seed_random_creation_can_select_new_heroes_with_deterministic_nam
         ],
         "enemy_composition_mode": "random",
         "enemy_control_mode": "player",
+        "player_formation": "all-front",
+        "enemy_formation": "one-front-two-rear",
     }
     first = BattleAdapter().create_battle(battle_id="battle.new-random.1", **kwargs)[1]
     second = BattleAdapter().create_battle(battle_id="battle.new-random.2", **kwargs)[1]
@@ -1156,6 +1169,7 @@ def test_computer_enemy_turns_are_drained_to_human_or_battle_end():
         player_team=list(HERO_ROSTER)[:3],
         enemy_composition_mode="random",
         enemy_control_mode="computer",
+        player_formation="one-front-two-rear",
     )
     snapshot = envelope["data"]["snapshot"]
 

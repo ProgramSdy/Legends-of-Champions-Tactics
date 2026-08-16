@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { BattleScreen } from "@/components/battle/BattleScreen";
 import { TeamBuilder } from "@/components/battle/TeamBuilder";
@@ -121,11 +121,11 @@ describe("UI-007 battlefield geometry contracts", () => {
     const css = readFileSync("app/globals.css", "utf8").replace(/\s+/g, "");
     const zIndex = (slot: string) => Number(css.match(new RegExp(`\\.formation-slot\\[data-slot=${slot}\\]\\{[^}]*z-index:(\\d+)`))?.[1]);
     expect(zIndex("front")).toBeGreaterThan(zIndex("rear"));
-    for (const size of [2, 3] as const) {
+    for (const [size, fronts, rears] of [[2, 2, 2], [3, 2, 4]] as const) {
       const { container } = render(<BattleScreen provider={new MockBattleProvider(createFormatFixture(size))} />);
       await screen.findByRole("region", { name: "Battlefield" });
-      expect(container.querySelectorAll(`.formation-slot[data-slot="front"]`)).toHaveLength(2);
-      expect(container.querySelectorAll(`.formation-slot[data-slot="rear"]`)).toHaveLength(2);
+      expect(container.querySelectorAll(`.formation-slot[data-slot="front"]`)).toHaveLength(fronts);
+      expect(container.querySelectorAll(`.formation-slot[data-slot="rear"]`)).toHaveLength(rears);
     }
   });
 
@@ -266,14 +266,12 @@ describe("UI-007 target-bound battle effects", () => {
 });
 
 describe("UI-007 builder identity and scrolling contracts", () => {
-  it("uses Faculty - Major labels for specified enemy selections", () => {
+  it("uses Faculty - Major labels for Matrix-driven specified enemy assignment", () => {
     render(<TeamBuilder roster={roster} onStart={() => undefined} />);
     fireEvent.click(screen.getByRole("radio", { name: "Choose team" }));
-    const enemy = screen.getByLabelText("Hero 1");
-    expect(within(enemy).getAllByRole("option").map((option) => option.textContent)).toEqual([
-      "Choose a hero", "Faculty · Major", "Other Faculty · Minor",
-    ]);
-    expect(within(enemy).getAllByRole("option").map((option) => option.textContent)).toContain("Faculty · Major");
+    fireEvent.click(screen.getByRole("button", { name: "Select enemy Hero 1" }));
+    expect(screen.getByRole("button", { name: "Assign Faculty · Major to enemy Hero 1" })).toBeVisible();
+    expect(screen.queryByRole("combobox", { name: "Hero 1" })).not.toBeInTheDocument();
   });
 
   it("exposes explicit desktop overflow containers for keyboard and gutter scrolling", () => {

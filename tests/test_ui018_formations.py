@@ -327,6 +327,62 @@ def test_live_warrior_skills_propagate_declared_attack_type(
     assert all(call[3] is actor for call in captured)
 
 
+@pytest.mark.parametrize(
+    "skill_name",
+    ["Fireball", "Arcane Missiles", "Frost Bolt"],
+)
+def test_live_mage_projectiles_propagate_attack_type_through_adapter(skill_name):
+    adapter = BattleAdapter()
+    session, _ = adapter.create_battle(
+        battle_size=2,
+        player_team=[
+            "hero.mage.comprehensiveness",
+            "hero.priest.comprehensiveness",
+        ],
+        enemy_team=ENEMY,
+        player_formation="front-rear",
+        enemy_formation="front-rear",
+        seed=1809,
+    )
+    actor = session.game.player_heroes[0]
+    targets = session.game.opponent_heroes
+    for hero in session.game.heroes:
+        hero.actioned = hero is not actor
+    session.game.unactioned_sorted_heroes = [actor]
+
+    captured = []
+    for target in targets:
+        def capture(damage, attack_type="NA", attacker=None, *, _target=target):
+            captured.append((_target, damage, attack_type, attacker))
+            return "captured"
+
+        target.take_damage = capture
+
+    skill = next(skill for skill in actor.skills if skill.name == skill_name)
+    skill.evasion_check = lambda _target: False
+    action = next(
+        action
+        for action in adapter._legal_actions(session, actor)
+        if action["skillId"] == adapter._skill_id(actor, skill)
+    )
+    result = adapter.submit(
+        session,
+        {
+            "type": "useSkill",
+            "commandId": f"cmd.ui018.{skill_name}",
+            "expectedRevision": session.revision,
+            "actorId": action["actorId"],
+            "skillId": action["skillId"],
+            "targetIds": action["validTargetIds"][: action["minimumTargets"]],
+        },
+    )
+
+    assert result["accepted"] is True
+    assert len(captured) == action["minimumTargets"]
+    assert all(call[2] == "ranged_projectile" for call in captured)
+    assert all(call[3] is actor for call in captured)
+
+
 def test_strike_of_meteorite_propagates_attack_type_during_blood_frenzy():
     adapter = BattleAdapter()
     session, _ = adapter.create_battle(

@@ -692,9 +692,9 @@ class Hero:
               multiplier = 0.7
           elif attack_type == "ranged_projectile":
               if attacker_position == "rear" and defender_position == "rear":
-                  multiplier = 0.75
+                  multiplier = 0.60
               elif attacker_position != defender_position:
-                  multiplier = 0.875
+                  multiplier = 0.80
           return max(0, math.floor(damage_dealt * multiplier))
 
     def take_damage_action(self, damage_dealt, attack_type="NA", attacker=None):

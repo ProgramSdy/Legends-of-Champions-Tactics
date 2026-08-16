@@ -281,5 +281,7 @@ class StatusDispell:
                 hero.status['unstable_compound'] = False
                 hero.unstable_compound_damage = hero.unstable_compound_damage + variation
                 self.game.display_status_updates(f"{ORANGE}Unstable Compound from {hero.name} has exploded. {hero.take_damage(hero.sharp_blade_continuous_damage + variation)}{RESET}")
-
-
+          elif status == 'bleeding_armor_crush':
+                hero.bleeding_armor_crush_continuous_damage = 0
+                hero.status['bleeding_armor_crush'] = False
+                self.game.display_status_updates(f"{BLUE}{hero.name}'s bleeding from Armor Crush has been cured.{RESET}")

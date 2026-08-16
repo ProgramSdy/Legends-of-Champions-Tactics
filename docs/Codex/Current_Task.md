@@ -6,8 +6,7 @@ No active task.
 
 ## Instructions for Codex
 
-- Do not select a backlog item automatically unless the project owner has
-  authorised it.
+- Do not select a backlog item automatically unless the project owner has authorised it.
 - When a task is assigned, replace the placeholder sections below.
 - Keep the scope focused and update the completion record when finished.
 

@@ -73,6 +73,8 @@ def test_equal_seeded_random_configuration_is_deterministic_with_expanded_roster
         "player_team": ["hero.warrior.berserker", "hero.paladin.holy", "hero.mage.comprehensiveness"],
         "enemy_composition_mode": "random",
         "enemy_control_mode": "player",
+        "player_formation": "two-front-one-rear",
+        "enemy_formation": "all-front",
     }
     first = BattleAdapter().create_battle(battle_id="battle.ui014.random.a", **kwargs)[1]
     second = BattleAdapter().create_battle(battle_id="battle.ui014.random.b", **kwargs)[1]

@@ -27,8 +27,8 @@ class Rogue_Comprehensiveness(Rogue):
 
     def __init__(self, sys_init, name, group, is_player_controlled, position="front"):
             super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major, position=position)
-            self.add_skill(Skill(self, "Sharp Blade", self.sharp_blade, target_type = "single", skill_type= "damage",))
-            self.add_skill(Skill(self, "Poisoned Dagger", self.poisoned_dagger, target_type = "single", skill_type= "damage"))
+            self.add_skill(Skill(self, "Sharp Blade", self.sharp_blade, target_type = "single", skill_type= "damage",attack_type = "melee"))
+            self.add_skill(Skill(self, "Poisoned Dagger", self.poisoned_dagger, target_type = "single", skill_type= "damage", attack_type = "ranged_instant"))
             self.add_skill(Skill(self, "Shadow Evasion", self.shadow_evasion, target_type = "single", skill_type= "buffs", target_qty= 0))
 
     def sharp_blade(self, other_hero):

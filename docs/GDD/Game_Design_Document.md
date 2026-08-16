@@ -2,7 +2,7 @@
 
 ## Status and Authority
 
-This document records the implemented gameplay baseline as of 2026-08-06. It
+This document records the implemented gameplay baseline as of 2026-08-15. It
 does not approve unimplemented progression, economy, campaign, or online
 features. When current engine behavior and a future owner decision differ, the
 owner decision takes priority and this document must be updated deliberately.
@@ -19,7 +19,9 @@ outcomes.
 
 1. Open the startup title scene and enter the Team Builder.
 2. Choose a 1v1, 2v2, or 3v3 battle, player heroes, enemy composition mode,
-   enemy control mode, and optionally a seed.
+   enemy control mode, and optionally a seed. In 2v2 and 3v3, choose an
+   approved friendly formation; a player-controlled enemy also chooses its
+   formation, while Python chooses the computer enemy's formation.
 3. Create a battle; Python constructs the combatants and begins round flow.
 4. On a player-controlled turn, choose a legal skill and its legal targets.
 5. Observe authoritative events, update strategy around status/cooldown/turn
@@ -46,12 +48,44 @@ implementation coverage differences, not an approved expansion of the web
 roster. Repeated definitions and cross-team overlap are permitted for player
 and specified-enemy teams; random enemy composition samples without replacement.
 
+## Battle Formations
+
+Formations are an implemented tactical setup feature for 2v2 and 3v3 only.
+They assign each ordered hero a battle position of `front` or `rear`; Python is
+authoritative for this state, legal targets, computer targeting, and applicable
+damage adjustments. The web client presents the returned formation and
+positions but does not calculate them.
+
+| Battle size | Formation | Ordered positions |
+|---|---|---|
+| 2v2 | Front and Rear (`front-rear`) | front, rear |
+| 2v2 | Side by Side (`side-by-side`) | front, front |
+| 3v3 | One Front, Two Rear (`one-front-two-rear`) | front, rear, rear |
+| 3v3 | Two Front, One Rear (`two-front-one-rear`) | front, front, rear |
+| 3v3 | All Front (`all-front`) | front, front, front |
+
+In either size, the friendly formation is selected before battle. A
+player-controlled enemy uses an explicitly selected formation; a
+computer-controlled enemy receives a formation selected by the adapter from
+the seeded battle random stream. One-versus-one has no formation input.
+
+Formation positions matter to the currently approved Warrior Weapon Master,
+Warrior Defence, Warrior Berserker, and Mage Comprehensiveness damage skills
+that carry an authorized attack type. Mage Comprehensiveness Fireball, Arcane
+Missiles, and Frost Bolt are authorized ranged projectiles. Melee cannot target a rear defender while any front defender is
+alive, and approved position damage adjustments are applied once by Python.
+Other faculties and Mage specializations do not receive inferred attack types.
+See `Combat_System.md` for the exact rules.
+
 ## Design Pillars Evidenced by the Current Build
 
 - **Tactical turn pressure:** current agility establishes round initiative and
   can be changed by effects.
 - **Skill-kit decisions:** heroes use specialization-defined skills with target
   rules, cooldowns, casting behavior, and effects.
+- **Formation choices:** 2v2 and 3v3 team ordering and formation determine
+  front/rear combat positions before battle begins; presentation preserves the
+  selected formation without becoming a separate client-side rule.
 - **Per-target resolution:** multi-target attacks resolve evasion, immunity,
   hit, damage, and harmful on-hit effects independently.
 - **Persistent combat state:** buffs, debuffs, control, damage-over-time,
@@ -111,6 +145,8 @@ approved. Battle-local stat and status changes are not persistent progression.
 
 ## Change Log
 
+- 2026-08-15 — Added the implemented 2v2/3v3 formation milestone, including
+  size-specific pre-battle selection and Python-owned Warrior position rules.
 - 2026-08-06 — Rebuilt from the current engine, adapter, and web/API baseline;
   unapproved product decisions are explicitly recorded as open.
 - 2026-08-10 — Recorded the implemented temporary Warrior's Barrack structured

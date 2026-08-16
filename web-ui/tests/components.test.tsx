@@ -141,4 +141,14 @@ describe("battle components", () => {
     fireEvent.error(container.querySelector("img")!);
     expect(screen.getByRole("img", { name: "Sashein placeholder artwork" })).toHaveTextContent("S");
   });
+
+  it("loads registered portrait artwork directly rather than through a fixed Next image candidate", () => {
+    render(<AssetImage request={{ kind: "portrait", key: "hero.warrior.weapon_master", name: "Ragnar", className: "Warrior" }} className="portrait" />);
+
+    const portrait = screen.getByLabelText("Ragnar portrait");
+    expect(portrait).toHaveAttribute("src", "/game-images/heroes/Warrior-Weapon-Master/portraits/Avatar_Warrior_Weapon_Master.png");
+    expect(portrait).not.toHaveAttribute("srcset");
+    expect(portrait).toHaveAttribute("width", "160");
+    expect(portrait).toHaveAttribute("height", "160");
+  });
 });

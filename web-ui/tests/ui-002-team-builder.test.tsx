@@ -49,6 +49,7 @@ describe("UI-002 Team Builder", () => {
 
     expect(onStart).toHaveBeenCalledWith({
       battleSize: 3,
+      playerFormation: "one-front-two-rear",
       playerTeam: [
         "hero.priest.comprehensiveness",
         "hero.priest.discipline",
@@ -57,6 +58,7 @@ describe("UI-002 Team Builder", () => {
       enemyCompositionMode: "specified",
       enemyTeam: ["hero.warrior.defence", "hero.mage.comprehensiveness", "hero.priest.comprehensiveness"],
       enemyControlMode: "player",
+      enemyFormation: "one-front-two-rear",
       seed: 42,
     });
   });

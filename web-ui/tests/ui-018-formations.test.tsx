@@ -28,7 +28,7 @@ async function assignTwoPlayers(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe("UI-018 Team Builder formation contract", () => {
-  it("shows keyboard-native formation choices only for 2v2 and explains computer authority", async () => {
+  it("keeps the two UI-018 choices isolated to 2v2", async () => {
     const user = userEvent.setup();
     render(<TeamBuilder roster={roster} onStart={vi.fn()} />);
     expect(screen.queryByRole("group", { name: "Your formation" })).not.toBeInTheDocument();
@@ -41,8 +41,9 @@ describe("UI-018 Team Builder formation contract", () => {
     expect(screen.queryByRole("group", { name: "Enemy formation" })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("radio", { name: "3v3" }));
-    expect(screen.queryByRole("group", { name: /formation/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("note")).not.toBeInTheDocument();
+    const trio = screen.getByRole("group", { name: "Your formation" });
+    expect(within(trio).queryByRole("radio", { name: /Front and Rear/i })).not.toBeInTheDocument();
+    expect(within(trio).queryByRole("radio", { name: /Side by Side/i })).not.toBeInTheDocument();
   });
 
   it("submits friendly 2v2 formation while omitting the computer-selected enemy formation", async () => {
@@ -141,7 +142,7 @@ describe("UI-018 authoritative duo placement and targeting", () => {
   it("keeps the adapter-authored formation keys present for every battle size", () => {
     expect(createFormatFixture(1).formations).toEqual({ friendly: null, enemy: null });
     expect(createFormatFixture(2).formations).toEqual({ friendly: "front-rear", enemy: "front-rear" });
-    expect(createFormatFixture(3).formations).toEqual({ friendly: null, enemy: null });
+    expect(createFormatFixture(3).formations).toEqual({ friendly: "one-front-two-rear", enemy: "one-front-two-rear" });
   });
 
   it("maps independent friendly and enemy snapshot positions to the approved percentage pairs", () => {
@@ -202,7 +203,7 @@ describe("UI-018 authoritative duo placement and targeting", () => {
 
   it("keeps formation controls responsive without introducing placement markers", () => {
     const css = readFileSync("app/globals.css", "utf8").replace(/\s+/g, "");
-    expect(css).toMatch(/@media\(max-width:720px\)[\s\S]*\.formation-choices\{grid-template-columns:1fr\}/);
+    expect(css).toMatch(/@media\(max-width:720px\)[\s\S]*\.formation-choices,\.formation-choices\.options-3\{grid-template-columns:1fr\}/);
     expect(css).toMatch(/\.formation-choices\{[^}]*grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
     expect(css).not.toMatch(/\.formation-(?:selector|choices)[^{]*::(?:before|after)\{[^}]*content:["']?[1-4]/);
   });

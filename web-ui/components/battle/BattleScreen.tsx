@@ -276,7 +276,7 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
             && <div className={`effect-layer ${activeEvent.effectHint}`} aria-hidden="true"><span /></div>}
           {battlefield.map((hero) => {
             const position = formationFor(snapshot, hero.sideId, hero.slot, hero.position);
-            return <div className="formation-slot" key={hero.id} data-slot={position.slot} data-position={hero.position} style={{ left: `${position.x}%`, top: `${position.y}%`, "--figure-scale": position.scale } as CSSProperties}>
+            return <div className="formation-slot" key={hero.id} data-slot={position.slot} data-position={hero.position} style={{ left: `${position.x}%`, top: `${position.y}%`, zIndex: position.depth, "--figure-scale": position.scale, "--overhead-offset-x": `${position.panelOffsetX ?? 0}px` } as CSSProperties}>
             <BattlefieldFigure hero={hero} active={hero.id === snapshot.activeCombatantId}
               event={activeEvent} eventSourceSide={eventSourceSide}
               selectable={acceptsCommands && Boolean(legal?.validTargetIds.includes(hero.id)) && !isPlaying}

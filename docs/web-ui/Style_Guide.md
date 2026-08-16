@@ -78,14 +78,30 @@ _To be documented._
 
 - Hero figures must read as grounded on the arena floor in every live format.
 - The formation registry is the single source for presentation coordinates.
-  Duel and trio retain their established coordinates. The approved 2v2 pairs
-  are percentage anchors inside the unmodified battlefield: Front and Rear is
+  Duel retains its established coordinates. The approved 2v2 pairs are
+  percentage anchors inside the unmodified battlefield: Front and Rear is
   friendly `(42,68)` / `(22,68)` and enemy `(59,68)` / `(78,68)` in ordered
   slots; Side by Side is friendly `(33,54)` / `(33,85)` and enemy `(68,54)` /
   `(68,85)`. These correspond to the owner reference's pink 1/2 and 3/4 plus
   green 1/2 and 4/3 locations; numbered reference markers never render.
-- A duo figure's `front`/`rear` depth label comes from the combatant snapshot,
-  not from a frontend slot rule. Side-by-Side figures are both `front`.
+- Approved 3v3 ordered anchors are: One Front, Two Rear friendly `(42,68)` /
+  `(28,80)` / `(28,53)` and enemy `(59,68)` / `(73,53)` / `(73,80)`; Two
+  Front, One Rear friendly `(42,54)` / `(42,81)` / `(23,67)` and enemy
+  `(59,81)` / `(59,54)` / `(78,67)`; All Front friendly `(39.5,52)` /
+  `(39.5,71)` / `(39.5,90)` and enemy `(60.5,90)` / `(60.5,71)` /
+  `(60.5,52)`. These are percentage interpretations of the three supplied
+  owner references; their colored numbered markers never render.
+- A duo figure's `front`/`rear` depth label comes from the combatant snapshot.
+  In a trio, combat `front`/`rear` remains snapshot-owned, but the visual
+  nearest/middle/furthest depth order is explicitly keyed by formation, side,
+  and ordered slot. It must not be inferred solely from front/rear: nearest is
+  larger and renders above middle, which renders above furthest. The figure's
+  HP/status panel, aura, effects, and target hit area share that figure layer.
+- Crowded Side by Side and trio anchors may declare a formation-local horizontal
+  HP/status-panel lane. The panel remains inside its own figure layer and keeps
+  its scale-aware vertical clearance; the lane prevents a nearer/lower panel
+  from obscuring adjacent figure art. This is presentation-only and must not
+  alter combat positions, targetability, effects, or figure depth.
 - Duel figures use scale 1.5. The two duel teams retain matching y and scale
   values so their presentation remains symmetric.
 - Format scaling must preserve clear separation between figures, overhead
@@ -111,9 +127,12 @@ _To be documented._
   for `99+`. Show valid counts including `1`; suppress zero, absent, or invalid
   counts. The status tooltip and accessible name retain the exact authoritative
   count in both overhead and Team Information icon sizes.
-- Formation layers follow depth: rear is below centre, and centre is below
-  front, so a nearer front figure and its health box cannot be covered by a
-  farther slot.
+- Formation layers follow the approved presentation-depth registry. For 3v3:
+  One Front, Two Rear is friendly 2/1/3 and enemy 3/1/2 nearest-to-furthest;
+  Two Front, One Rear is friendly 2/3/1 and enemy 1/3/2; All Front is friendly
+  3/2/1 and enemy 1/2/3. This visual order is independent of the combat
+  front/rear position, and keeps nearer figures and attached health boxes above
+  farther figures.
 
 ### Battle Side Cards
 
@@ -160,10 +179,12 @@ _To be documented._
 
 - Keep the Battle Rules control bar's labels, native radio/input semantics,
   validation, and visual treatment stable when changing surrounding layout.
-- Show formation selectors only for 2v2. They use native radio inputs, visible
-  focus, blue friendly and red enemy selected treatments, and explicit Hero 1 /
-  Hero 2 `Front`/`Rear` labels. A computer-controlled enemy shows a readable
-  non-editable explanation instead of a selected-looking control.
+- Show distinct formation selectors for 2v2 and 3v3, never a mixed option set.
+  They use native radio inputs, visible focus, blue friendly and red enemy
+  selected treatments, and explicit ordered Hero `Front`/`Rear` labels. A
+  computer-controlled enemy shows a readable size-specific non-editable
+  explanation instead of a selected-looking control. Three-option controls use
+  three columns when space permits and stack to one column at 720px or below.
 - Use blue player-slot treatment and red enemy-slot treatment. The active
   player or specified-enemy slot has a visible side-appropriate selected state;
   Hero Selection Matrix cards visibly indicate the hero assigned to that slot.
@@ -223,3 +244,11 @@ _To be documented._
 - 2026-08-14 — Added the UI-018 2v2 formation-control language, approved
   snapshot-driven percentage coordinate pairs, responsive selector stacking,
   and the prohibition on numbered reference markers.
+- 2026-08-15 — Added the three UI-019 3v3 formation option sets, owner-reference
+  percentage anchors, snapshot-owned depth, and responsive three-choice
+  selector treatment while keeping duel and duo placement stable.
+- 2026-08-15 — Clarified the approved formation/side/slot-specific 3v3 visual
+  depth, scale, and stacking order after the UI-019 depth correction.
+- 2026-08-15 — Added formation-local overhead panel lanes for crowded 2v2 and
+  3v3 layouts; panels stay attached to their figure layer while avoiding
+  adjacent hero art.

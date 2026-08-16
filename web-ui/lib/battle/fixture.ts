@@ -1,4 +1,4 @@
-import type { BattleCommand, BattleEvent, BattleProvider, BattleSnapshot, CombatantState, PresentationScript, SkillState, StandardBattleEvent } from "./types";
+import type { BattleCommand, BattleEvent, BattleProvider, BattleSnapshot, CombatantPosition, CombatantState, PresentationScript, SkillState, StandardBattleEvent } from "./types";
 
 const skill = (id: string, displayName: string, description: string, cooldownRemaining = 0, available = true): SkillState => ({
   id, displayName, description, targetMode: "singleEnemy", maximumTargets: 1,
@@ -98,7 +98,9 @@ export function createFormatFixture(size: 1 | 2 | 3): BattleSnapshot {
   const snapshot = clone(initialSnapshot);
   snapshot.formations = size === 2
     ? { friendly: "front-rear", enemy: "front-rear" }
-    : { friendly: null, enemy: null };
+    : size === 3
+      ? { friendly: "one-front-two-rear", enemy: "one-front-two-rear" }
+      : { friendly: null, enemy: null };
   const friendlyIds = ["friendly.ragnar", "friendly.black_heart", "friendly.arthas"].slice(0, size);
   const enemyIds = ["enemy.nighthawk", "enemy.andonidas", "enemy.sashein"].slice(0, size);
   snapshot.combatants["friendly.ragnar"] = clone(ragnar);
@@ -106,6 +108,16 @@ export function createFormatFixture(size: 1 | 2 | 3): BattleSnapshot {
   [...friendlyIds, ...enemyIds].forEach((id, index) => {
     snapshot.combatants[id].slot = index % size;
   });
+  const positions: CombatantPosition[] = size === 2
+    ? ["front", "rear"]
+    : size === 3
+      ? ["front", "rear", "rear"]
+      : ["front"];
+  for (const ids of [friendlyIds, enemyIds]) {
+    ids.forEach((id, index) => {
+      snapshot.combatants[id].position = positions[index];
+    });
+  }
   snapshot.sides = [
     { id: "friendly", combatantIds: friendlyIds, maxSlots: size },
     { id: "enemy", combatantIds: enemyIds, maxSlots: size },

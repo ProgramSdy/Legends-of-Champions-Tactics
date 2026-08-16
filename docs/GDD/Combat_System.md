@@ -14,14 +14,16 @@ engine accepts hero lists more generally. Duplicates and cross-team duplicate
 definitions are valid for player and specified-enemy selections; random enemy
 composition samples the approved roster without replacement.
 
-Two-versus-two battles additionally use one formation per side. `front-rear`
-assigns the first ordered hero to `front` and the second to `rear`;
-`side-by-side` assigns both to `front`. The friendly formation is required at
-the HTTP boundary. A player-controlled enemy formation is also required, while
-a computer-controlled enemy may omit it so the adapter selects one of the two
-formations from the session-seeded random stream. One-versus-one and
-three-versus-three heroes retain the compatible `front` default and do not
-accept formation input.
+Two-versus-two and three-versus-three battles use size-specific formations.
+For 2v2, `front-rear` assigns the ordered slots to front/rear and
+`side-by-side` assigns both to front. For 3v3, `one-front-two-rear` assigns
+front/rear/rear, `two-front-one-rear` assigns front/front/rear, and `all-front`
+assigns all three to front. The friendly formation is required at the HTTP
+boundary for both sizes. A player-controlled enemy formation is also required
+and must belong to the same battle size. A computer-controlled enemy omits its
+3v3 formation so the adapter selects one of the three approved values from the
+session-seeded random stream; existing 2v2 seeded selection is unchanged.
+One-versus-one does not accept formation input.
 
 ## Round Lifecycle
 
@@ -45,9 +47,10 @@ by the active directive. Legal API actions publish the acting combatant, exact
 target count, and living valid targets. Player clients cannot issue ordinary
 commands during engine-owned automatic, forced, restricted, or ended states.
 
-Formation targeting is currently authoritative only for damage skills whose
-Warrior-owned `Skill.attack_type` is `melee`, `ranged_projectile`, or
-`ranged_instant`. A melee action cannot target a living rear defender while
+Formation targeting is currently authoritative only for damage skills with an
+approved `Skill.attack_type`. This includes the classified Warrior skills and
+Mage Comprehensiveness's Fireball, Arcane Missiles, and Frost Bolt
+`ranged_projectile` skills. A melee action cannot target a living rear defender while
 any living front defender exists; after the last front defender is defeated,
 the rear target becomes legal. The adapter applies the same legal target set to
 player commands, forced actions, and computer target selection. Missing,
@@ -84,7 +87,7 @@ Core resistance schools are fire, frost, arcane, shadow, death, poison, and
 nature. Exact coefficients, floors, and balance intent remain skill/data
 specific.
 
-For the approved Warrior attack types, the skill first produces its existing
+For approved attack types, the skill first produces its existing
 final damage value. `Hero.take_damage_calculation` then applies exactly one
 position adjustment before shields and HP mutation:
 
@@ -94,9 +97,9 @@ position adjustment before shields and HP mutation:
 - ranged instant is unchanged.
 
 The adjusted value uses `floor` after multiplication and is then clamped to
-zero. These rules currently apply only to Warrior Weapon Master, Warrior
-Defence, and Warrior Berserker skills that already declare an approved attack
-type; no attack type is inferred for another faculty.
+zero. These rules apply to the classified Warrior skills and the three approved
+Mage Comprehensiveness `ranged_projectile` skills; no attack type is inferred
+for another faculty or Mage specialization.
 
 ## Status, Control, Casting, and Cooldowns
 
@@ -135,6 +138,8 @@ owner confirmation.
 
 ## Change Log
 
+- 2026-08-15 — Extended authoritative formations to the three approved 3v3
+  mappings without changing Warrior targeting or damage formulas.
 - 2026-08-14 — Added authoritative 2v2 formations, Warrior attack-position
   target legality, and one-time floor-and-clamp damage adjustments.
 - 2026-08-06 — Rebuilt from current engine and adapter behavior; retained the

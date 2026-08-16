@@ -70,6 +70,7 @@ describe("UI-013 Team Builder slot and matrix contracts", () => {
     await user.click(screen.getByRole("button", { name: "ENTER BATTLE" }));
     expect(onStart).toHaveBeenCalledWith(expect.objectContaining({
       battleSize: 3,
+      playerFormation: "one-front-two-rear",
       playerTeam: ["hero.paladin.retribution", "hero.paladin.retribution", "hero.mage.comprehensiveness"],
       enemyCompositionMode: "random",
       enemyControlMode: "computer",

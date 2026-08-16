@@ -12,9 +12,11 @@ import type {
   BattleCreateConfiguration,
   BattleFormationId,
   BattleSize,
+  DuoFormationId,
   EnemyCompositionMode,
   EnemyControlMode,
   HeroDefinitionSummary,
+  TrioFormationId,
 } from "@/lib/battle/types";
 import { AssetImage } from "./AssetImage";
 
@@ -38,9 +40,17 @@ export type TeamBuilderProps = ArenaTeamBuilderProps | StructuredTeamBuilderProp
 
 const FIXED_SLOT_INDICES = [0, 1, 2] as const;
 const MATRIX_PAGE_SIZE = 6;
-const FORMATIONS: ReadonlyArray<{ id: BattleFormationId; name: string; positions: string }> = [
+type FormationChoice<T extends BattleFormationId> = { id: T; name: string; positions: string };
+
+const DUO_FORMATIONS: ReadonlyArray<FormationChoice<DuoFormationId>> = [
   { id: "front-rear", name: "Front and Rear", positions: "Hero 1 Front · Hero 2 Rear" },
   { id: "side-by-side", name: "Side by Side", positions: "Hero 1 Front · Hero 2 Front" },
+];
+
+const TRIO_FORMATIONS: ReadonlyArray<FormationChoice<TrioFormationId>> = [
+  { id: "one-front-two-rear", name: "One Front, Two Rear", positions: "Hero 1 Front · Hero 2 Rear · Hero 3 Rear" },
+  { id: "two-front-one-rear", name: "Two Front, One Rear", positions: "Hero 1 Front · Hero 2 Front · Hero 3 Rear" },
+  { id: "all-front", name: "All Front", positions: "Hero 1 Front · Hero 2 Front · Hero 3 Front" },
 ];
 
 function professionLabel(hero: HeroDefinitionSummary) {
@@ -56,21 +66,23 @@ function portraitRequest(hero: HeroDefinitionSummary) {
   };
 }
 
-function FormationSelector({
+function FormationSelector<T extends BattleFormationId>({
   side,
+  choices,
   value,
   onChange,
 }: {
   side: "friendly" | "enemy";
-  value: BattleFormationId;
-  onChange: (formation: BattleFormationId) => void;
+  choices: ReadonlyArray<FormationChoice<T>>;
+  value: T;
+  onChange: (formation: T) => void;
 }) {
   const sideLabel = side === "friendly" ? "Your" : "Enemy";
   return (
     <fieldset className={`formation-selector ${side}`}>
       <legend>{sideLabel} formation</legend>
-      <div className="formation-choices">
-        {FORMATIONS.map((formation) => (
+      <div className={`formation-choices options-${choices.length}`}>
+        {choices.map((formation) => (
           <label key={formation.id}>
             <input
               type="radio"
@@ -143,8 +155,10 @@ export function TeamBuilder(props: TeamBuilderProps) {
   const [enemyCompositionMode, setEnemyCompositionMode] = useState<EnemyCompositionMode>(structuredBattle ? "specified" : "random");
   const [enemyTeam, setEnemyTeam] = useState<string[]>(structuredBattle ? [...structuredBattle.enemyDefinitionIds] : Array(1).fill(""));
   const [enemyControlMode, setEnemyControlMode] = useState<EnemyControlMode>("computer");
-  const [playerFormation, setPlayerFormation] = useState<BattleFormationId>("front-rear");
-  const [enemyFormation, setEnemyFormation] = useState<BattleFormationId>("front-rear");
+  const [playerDuoFormation, setPlayerDuoFormation] = useState<DuoFormationId>("front-rear");
+  const [enemyDuoFormation, setEnemyDuoFormation] = useState<DuoFormationId>("front-rear");
+  const [playerTrioFormation, setPlayerTrioFormation] = useState<TrioFormationId>("one-front-two-rear");
+  const [enemyTrioFormation, setEnemyTrioFormation] = useState<TrioFormationId>("one-front-two-rear");
   const [seedText, setSeedText] = useState("");
   const [selectedFaculty, setSelectedFaculty] = useState("All");
   const [matrixPage, setMatrixPage] = useState(0);
@@ -186,9 +200,11 @@ export function TeamBuilder(props: TeamBuilderProps) {
         enemyControlMode: "computer" as const,
       };
       if (structuredBattle.battleSize === 2) {
-        onStart({ ...structuredConfiguration, battleSize: 2, playerFormation });
+        onStart({ ...structuredConfiguration, battleSize: 2, playerFormation: playerDuoFormation });
+      } else if (structuredBattle.battleSize === 3) {
+        onStart({ ...structuredConfiguration, battleSize: 3, playerFormation: playerTrioFormation });
       } else {
-        onStart({ ...structuredConfiguration, battleSize: structuredBattle.battleSize });
+        onStart({ ...structuredConfiguration, battleSize: 1 });
       }
       return;
     }
@@ -200,13 +216,21 @@ export function TeamBuilder(props: TeamBuilderProps) {
     };
     if (battleSize === 2) {
       if (enemyControlMode === "player") {
-        onStart({ ...arenaConfiguration, battleSize: 2, enemyControlMode, playerFormation, enemyFormation });
+        onStart({ ...arenaConfiguration, battleSize: 2, enemyControlMode, playerFormation: playerDuoFormation, enemyFormation: enemyDuoFormation });
       } else {
-        onStart({ ...arenaConfiguration, battleSize: 2, enemyControlMode, playerFormation });
+        onStart({ ...arenaConfiguration, battleSize: 2, enemyControlMode, playerFormation: playerDuoFormation });
       }
       return;
     }
-    onStart({ ...arenaConfiguration, battleSize, enemyControlMode });
+    if (battleSize === 3) {
+      if (enemyControlMode === "player") {
+        onStart({ ...arenaConfiguration, battleSize: 3, enemyControlMode, playerFormation: playerTrioFormation, enemyFormation: enemyTrioFormation });
+      } else {
+        onStart({ ...arenaConfiguration, battleSize: 3, enemyControlMode, playerFormation: playerTrioFormation });
+      }
+      return;
+    }
+    onStart({ ...arenaConfiguration, battleSize: 1, enemyControlMode });
   };
 
   const stagePosition = `${selectedStage.geometry.leftPercent + selectedStage.geometry.widthPercent / 2}% ${selectedStage.geometry.topPercent + selectedStage.geometry.heightPercent / 2}%`;
@@ -309,7 +333,11 @@ export function TeamBuilder(props: TeamBuilderProps) {
 
       <section className="team-composer friendly" aria-labelledby="player-team-heading">
         <header><div><small>PLAYER CONTROLLED</small><h2 id="player-team-heading">Your Team</h2></div><strong>{battleSize} HERO{battleSize > 1 ? "ES" : ""}</strong></header>
-        {battleSize === 2 ? <FormationSelector side="friendly" value={playerFormation} onChange={setPlayerFormation} /> : null}
+        {battleSize === 2
+          ? <FormationSelector side="friendly" choices={DUO_FORMATIONS} value={playerDuoFormation} onChange={setPlayerDuoFormation} />
+          : battleSize === 3
+            ? <FormationSelector side="friendly" choices={TRIO_FORMATIONS} value={playerTrioFormation} onChange={setPlayerTrioFormation} />
+            : null}
         <div className="visual-team-slots player-slots" data-fixed-slot-count="3">
           {FIXED_SLOT_INDICES.map((index) => {
             const enabled = index < battleSize;
@@ -349,10 +377,14 @@ export function TeamBuilder(props: TeamBuilderProps) {
 
       <section className="team-composer enemy" aria-labelledby="enemy-team-heading">
         <header><div><small>{enemyControlMode === "computer" ? "ENGINE CONTROLLED" : "PLAYER CONTROLLED"}</small><h2 id="enemy-team-heading">Enemy Team</h2></div><strong>{enemyCompositionMode === "random" ? "RANDOM" : `${battleSize} HERO${battleSize > 1 ? "ES" : ""}`}</strong></header>
-        {battleSize === 2 && enemyControlMode === "player"
-          ? <FormationSelector side="enemy" value={enemyFormation} onChange={setEnemyFormation} />
-          : battleSize === 2
-            ? <p className="formation-computer-note" role="note"><strong>Computer formation</strong><span>The computer will choose Front and Rear or Side by Side when this battle is created.</span></p>
+        {(battleSize === 2 || battleSize === 3) && enemyControlMode === "player"
+          ? battleSize === 2
+            ? <FormationSelector side="enemy" choices={DUO_FORMATIONS} value={enemyDuoFormation} onChange={setEnemyDuoFormation} />
+            : <FormationSelector side="enemy" choices={TRIO_FORMATIONS} value={enemyTrioFormation} onChange={setEnemyTrioFormation} />
+          : battleSize === 2 || battleSize === 3
+            ? <p className="formation-computer-note" role="note"><strong>Computer formation</strong><span>{battleSize === 2
+              ? "The computer will choose Front and Rear or Side by Side when this battle is created."
+              : "The computer will choose one of three formations when this battle is created: One Front, Two Rear; Two Front, One Rear; or All Front."}</span></p>
             : null}
         {structuredBattle
           ? <div

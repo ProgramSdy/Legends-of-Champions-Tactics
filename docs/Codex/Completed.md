@@ -2,6 +2,189 @@
 
 Completed work should be appended in reverse chronological order, with the newest entry first.
 
+## 2026-08-15 — Mage Comprehensiveness Ranged-Projectile Activation
+
+**Summary:**
+
+Activated the owner-approved `ranged_projectile` classification for Mage
+Comprehensiveness Fireball, Arcane Missiles, and Frost Bolt. Each callback now
+receives the `Skill.attack_type` supplied by the compatible dispatcher and
+passes it, with the Mage attacker, through the authoritative damage path.
+Damage formulas, target quantities, Frost Bolt's existing status behavior, API
+schema, and frontend target calculations were not changed.
+
+**Files Changed:**
+
+- `heroes/mage.py`
+- `tests/test_ui018_formations.py`
+- `tests/test_mage_attack_type_propagation.py`
+- `docs/GDD/Combat_System.md`
+- `docs/GDD/Skill_System.md`
+- `docs/GDD/Game_Design_Document.md`
+- `docs/Technical/Architecture.md`
+- `docs/web-ui/PYTHON_ADAPTER_API.md`
+- `docs/Codex/Completed.md`
+
+**Validation:**
+
+- `.venv/bin/python -m pytest -q tests/test_ui018_formations.py tests/test_mage_attack_type_propagation.py` — 33 passed.
+- `.venv/bin/python -m compileall -q heroes skills battle_api game` — passed.
+- Task-scoped whitespace check — passed.
+
+**Unresolved Issues / Recommended Follow-up:**
+
+- Projectile animation remains a separate presentation concern: the adapter
+  does not currently emit a projectile-specific event for Mage skills.
+- The change applies only to Mage Comprehensiveness; same-named skills in
+  legacy Mage specializations were intentionally not classified.
+
+---
+
+## 2026-08-15 — UI-019 Follow-up: Crowded Formation Panel Readability
+
+**Summary:**
+
+Added formation-local HP/status-panel lanes for 2v2 Side by Side and all
+approved 3v3 layouts. The panels remain attached to their own figure layer,
+including status icons, effects, and target controls, while avoiding adjacent
+hero art in the crowded vertical/clustered arrangements. No engine positions,
+combat rules, formation IDs, side cards, or 1v1 behavior changed.
+
+**Files Changed:**
+
+- `web-ui/lib/battle/formations.ts`
+- `web-ui/components/battle/BattleScreen.tsx`
+- `web-ui/app/globals.css`
+- `web-ui/tests/ui-019-formations.test.tsx`
+- `docs/web-ui/Style_Guide.md`
+- `docs/web-ui/WEB_UI_ARCHITECTURE.md`
+- `docs/Codex/Completed.md`
+
+**Validation:**
+
+- `web-ui/tests/ui-019-formations.test.tsx` — 27 passed.
+- TypeScript typecheck, lint, and task-scoped whitespace check passed.
+- Live local 2v2 Side by Side verification with mixed placeholder/final
+  artwork confirmed the lower friendly/enemy panels use their outward lanes
+  (`-105px` / `105px`) with no browser alert.
+
+**Unresolved Issues / Recommended Follow-up:**
+
+- At very narrow battlefield widths, the fixed outward lanes are bounded by
+  the existing battlefield clipping; no separate mobile-only layout was added.
+  Verify future artwork with unusually wide silhouettes at the target device
+  widths before changing these presentation-only offsets.
+
+---
+
+## 2026-08-15 — UI-019 Follow-up: 3v3 Visual Depth Correction
+
+**Summary:**
+
+Corrected the 3v3 battlefield presentation so visual depth is explicitly
+formation-, side-, and ordered-slot-specific. The nearest hero now renders
+larger and above the middle and furthest heroes in all six approved
+formation/side mappings. This is visual-only: 1v1, 2v2, combat positions,
+target legality, and damage rules are unchanged.
+
+**Files Changed:**
+
+- `web-ui/lib/battle/formations.ts`
+- `web-ui/components/battle/BattleScreen.tsx`
+- `web-ui/tests/ui-019-formations.test.tsx`
+- `docs/Codex/Completed.md`
+
+**Validation:**
+
+- `web-ui/tests/ui-019-formations.test.tsx` — 20 passed.
+- TypeScript typecheck, lint, and task-scoped whitespace check passed.
+- Live local 3v3 One Front, Two Rear inspection confirmed friendly slot 2 and
+  enemy slot 3 have the highest layer (`z-index: 5`) and largest scale (1.04);
+  their HP/status panels remain within the same figure slot. The corresponding
+  middle/furthest slots used 4/3 depth and 0.94/0.80 scale.
+
+**Unresolved Issues / Recommended Follow-up:**
+
+- None for this focused visual correction. Keep future depth adjustments in
+  the trio presentation registry rather than deriving them from combat
+  `front`/`rear` position.
+
+---
+
+## 2026-08-15 — UI-019 Authoritative 3v3 Formations
+
+**Summary:**
+
+Extended the authoritative formation system to 3v3. Team Builder now presents
+the three approved choices—`one-front-two-rear`, `two-front-one-rear`, and
+`all-front`—with size-specific request validation. The Python adapter owns
+computer formation selection, formation-to-position mapping, snapshots, and
+existing Warrior legality/AI behavior. The battle scene consumes the returned
+formation and positions for responsive trio placement; it does not infer game
+rules locally.
+
+**Agent Selection and Contributions:**
+
+- `project-manager` — classified the cross-boundary task as high risk, locked
+  the size-specific contract, protected the owner baseline, and coordinated
+  evidence and handoff.
+- `game-engine-developer` — implemented the 3v3 Pydantic/adapter contract,
+  deterministic computer selection, authoritative snapshot positions, backend
+  tests, and engine/API/GDD documentation.
+- `ui-developer` — added discriminated frontend configuration, Team Builder
+  controls, structured Barrack Battle 3 compatibility, snapshot-driven trio
+  layouts, responsive styling, UI documentation, and frontend tests.
+- `test-automator` — executed dedicated and regression validation, updated the
+  obsolete Matrix-assignment regression expectation, and separated inherited
+  failures from UI-019 results.
+- `reviewer` — independently audited the authority boundaries, mappings,
+  Warrior legality/AI reuse, UI-017 path, documentation, tests, and protected
+  owner assets; final disposition: approved.
+
+**Files Changed:**
+
+- `battle_api/models.py`, `battle_api/adapter.py`
+- `tests/test_ui019_formations.py`, `tests/test_battle_adapter.py`,
+  `tests/test_battle_api.py`, `tests/test_ui006_identity_and_logs.py`,
+  `tests/test_ui014_roster.py`
+- `web-ui/components/battle/TeamBuilder.tsx`, `web-ui/lib/battle/types.ts`,
+  `web-ui/lib/battle/fixture.ts`, `web-ui/lib/battle/formations.ts`,
+  `web-ui/app/globals.css`, `web-ui/tests/ui-019-formations.test.tsx`, and
+  affected Team Builder regression tests
+- `docs/GDD/Combat_System.md`, `docs/GDD/Hero_System.md`,
+  `docs/web-ui/PYTHON_ADAPTER_API.md`,
+  `docs/web-ui/BATTLE_DATA_CONTRACT_V1.md`,
+  `docs/web-ui/WEB_UI_ARCHITECTURE.md`, `docs/web-ui/Screen_Flow.md`,
+  `docs/web-ui/Style_Guide.md`, `docs/Codex/Current_Task.md`, and this record
+
+**Validation:**
+
+- `.venv/bin/pytest -q` — 173 passed; one existing Starlette TestClient
+  deprecation warning.
+- Dedicated UI-018/UI-019 backend formations suites — 44 passed.
+- Focused Team Builder and UI-017/UI-018/UI-019 frontend coverage — 51 passed.
+- TypeScript typecheck, lint, production build, Python compilation, and
+  task-scoped whitespace checks passed.
+- Live local browser: a specified 3v3 request submitted `all-front` and
+  `two-front-one-rear` and rendered their returned positions. A computer 3v3
+  request submitted only `playerFormation`; the adapter selected an approved
+  formation and the snapshot drove the enemy placement. No browser alerts
+  occurred during either flow.
+- Full frontend Vitest result — 214/228 passed. The 14 remaining failures are
+  inherited: old empty-slot setup assumptions, an owner-scale expectation, a
+  historical UI-006 Y-coordinate expectation, an older Ragnar fallback
+  assertion, and duplicate-query figure tests. None exercise a UI-019 failure.
+
+**Unresolved Issues / Recommended Follow-up:**
+
+- Keep the owner-controlled review document and the three annotated reference
+  images read-only and excluded from delivery.
+- The process-local adapter registry remains unsuitable for multi-worker
+  deployment without shared persistence; this is outside UI-019.
+- Resolve the inherited frontend test assumptions in separately scoped work.
+
+---
+
 ## 2026-08-14 — UI-018 Authoritative 2v2 Formations and Warrior Attack Positions
 
 **Summary:**

@@ -386,3 +386,33 @@ This function is where the final damamge calculation take place. use this functi
 }
 This function shall also recieve the arguments of the position of both the attack hero and the defending hero. (Find a proper way to realize this)
 Final damage will be based on the Damage Punishment rule we defined previously for differnt hero position for both attack and defending hero. Therefore in this function, damage_dealt, attack_type, attack hero position and defending hero position are necessary. 
+
+### Date
+
+2026-08-15
+
+### Screenshot name
+
+Task_15_08_2026_01.png
+Task_15_08_2026_02.png
+Task_15_08_2026_03.png
+
+### Task List
+This task is a continuous task from UI-018. Major job is to add battle formation for 3v3 battle. Check attached pictures where they have lighlighted the rough location where hero shall appear in the 3v3 battle. Red circle is the location for player heroes and green circle is the location for enemy heroes.
+There are three battle formation to choose:
+
+Task_15_08_2026_01.png demonstrates Formation 1: hero stay in circle 1, 2 and 3, hero stay in circle 1, position mark as "front", hero stay in circle 2 and 3, position mark as "rear". This represent the hero in circle 1 is standing front, and hero in circle 2 and 3 are standing behand.
+
+Task_15_08_2026_02.png demonstrates Formation 2: hero stay in circle 1, 2 and 3, hero stay in circle 1 and 2 position mark as "front", hero stay in circle 3, position mark as "rear". This represent the hero in circle 1 and 2 are standing front, and hero in circle 3 is standing behand.
+
+Task_15_08_2026_03.png deonstrates Formation 3: hero stay in circle 1, 2 and 3, all heroes position mark as "front". This represennt the all three heroes are standing side by side, they are all standing front.
+
+This setup applies to both player and enemy heroes.
+
+UI:
+1_ In Team Builder Page, add an option button where player can select battle formation in 3v3. make option button for enemy team as well. Make good UI design in appearance. enemy team will random select a formation when enemy control is computer.
+
+2_ In Battle page, heroes. will be located in those circles as described above after besing decided from Team Builder Page.
+
+Python Engine:
+Core project team from Codex can decide if python engine need to be modified to reflect this change.

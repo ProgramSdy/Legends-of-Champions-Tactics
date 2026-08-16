@@ -118,8 +118,10 @@ type BattleSnapshot = {
     winningSideId: "friendly" | "enemy" | null;
   };
   formations: {
-    friendly: "front-rear" | "side-by-side" | null;
-    enemy: "front-rear" | "side-by-side" | null;
+    friendly: "front-rear" | "side-by-side" |
+      "one-front-two-rear" | "two-front-one-rear" | "all-front" | null;
+    enemy: "front-rear" | "side-by-side" |
+      "one-front-two-rear" | "two-front-one-rear" | "all-front" | null;
   };
   sides: Array<{
     id: "friendly" | "enemy";
@@ -201,12 +203,18 @@ may calculate bar width from authoritative current/maximum values, but it may
 not derive command ownership or legality from skill labels, status names,
 cooldown math, HP, or local status interpretation.
 
-`formations` is non-null for both sides of a 2v2 battle and null for existing
-1v1/3v3 battles. Each combatant's `position` is engine-owned. Clients use it
-for presentation but must not derive target legality or damage. For approved
-Warrior melee actions, an unavailable protected rear target is absent from
-`validTargetIds`; it becomes selectable only in a later authoritative snapshot
-after no living front defender remains.
+`formations` is non-null for both sides of 2v2 and 3v3 battles and null for
+1v1. Its values always belong to the battle size's approved set. Each
+combatant's `position` is engine-owned. Clients use it for presentation but
+must not derive target legality or damage. For approved Warrior melee actions,
+an unavailable protected rear target is absent from `validTargetIds`; it
+becomes selectable only in a later authoritative snapshot after no living
+front defender remains.
+
+The contract does not serialize visual depth. For 3v3, the frontend maps the
+authoritative formation, side, and ordered slot to the approved nearest/middle/
+furthest visual scale and stacking order. This is presentation-only and does
+not alter the serialized combat `position` or any legal action.
 
 An `awaitingCommand` snapshot may expose legal actions before command
 submission; these entries communicate the actor, skills, and targets the client
@@ -468,16 +476,37 @@ Contract version `1.0` remains the snapshot, command, event, and envelope
 version. UI-002 additively extends session creation and adds roster discovery:
 
 ```ts
-type BattleCreateConfiguration = {
-  battleSize: 1 | 2 | 3;
+type TwoHeroFormationId = "front-rear" | "side-by-side";
+type ThreeHeroFormationId =
+  | "one-front-two-rear"
+  | "two-front-one-rear"
+  | "all-front";
+
+type BattleCreateBase = {
   playerTeam: string[];
-  playerFormation?: "front-rear" | "side-by-side";
   enemyCompositionMode: "random" | "specified";
   enemyTeam?: string[];
   enemyControlMode: "computer" | "player";
-  enemyFormation?: "front-rear" | "side-by-side";
   seed?: number;
 };
+
+type BattleCreateConfiguration = BattleCreateBase & (
+  | {
+      battleSize: 1;
+      playerFormation?: never;
+      enemyFormation?: never;
+    }
+  | {
+      battleSize: 2;
+      playerFormation: TwoHeroFormationId;
+      enemyFormation?: TwoHeroFormationId;
+    }
+  | {
+      battleSize: 3;
+      playerFormation: ThreeHeroFormationId;
+      enemyFormation?: ThreeHeroFormationId;
+    }
+);
 ```
 
 `playerTeam` must contain exactly `battleSize` approved definition IDs.
@@ -486,12 +515,14 @@ must be omitted in `random` mode. Repeated definitions and cross-team overlap
 are accepted. In random mode Python selects a complete enemy team from the
 approved roster using session-seeded randomness.
 
-Formation fields are a 2v2-only additive contract. `playerFormation` is
-required for 2v2. `enemyFormation` is required when the 2v2 enemy is
-player-controlled and may be omitted for a computer enemy so Python chooses
-one of the two values from the seeded session stream. A request carrying either
-formation field for 1v1 or 3v3 is rejected. The values are stable identifiers,
-not display strings.
+Formation fields are size-specific stable identifiers, not display strings.
+`playerFormation` is required for 2v2 and 3v3 and must use that size's literal
+set. `enemyFormation` is required for a player-controlled enemy of either size.
+For a computer-controlled 3v3 enemy it must be omitted so Python chooses one of
+the three approved values from the seeded session stream. The established 2v2
+computer omission and seeded choice remain supported. A 1v1 request carrying
+either formation field is rejected, as is any wrong-size ID; no value is
+coerced across sizes.
 
 All friendly combatants are player-controlled. Enemy combatants follow
 `enemyControlMode`. The adapter resolves consecutive computer actors through

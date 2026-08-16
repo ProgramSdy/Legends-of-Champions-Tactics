@@ -390,6 +390,8 @@ def test_api_creates_live_three_hero_player_controlled_battle():
                 "hero.rogue.comprehensiveness",
             ],
             "enemyControlMode": "player",
+            "playerFormation": "one-front-two-rear",
+            "enemyFormation": "two-front-one-rear",
             "seed": 12,
         },
     )
@@ -399,6 +401,10 @@ def test_api_creates_live_three_hero_player_controlled_battle():
     assert len(snapshot["sides"][0]["combatantIds"]) == 3
     assert len(snapshot["sides"][1]["combatantIds"]) == 3
     assert len(snapshot["combatants"]) == 6
+    assert snapshot["formations"] == {
+        "friendly": "one-front-two-rear",
+        "enemy": "two-front-one-rear",
+    }
     assert all(
         combatant["isPlayerControlled"]
         for combatant in snapshot["combatants"].values()

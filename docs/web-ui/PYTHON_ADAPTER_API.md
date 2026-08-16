@@ -108,9 +108,17 @@ For `battleSize: 2`, `playerFormation` is required and is exactly
 `front-rear` or `side-by-side`. `enemyFormation` is required for a
 player-controlled enemy. It may be omitted for a computer-controlled enemy;
 the adapter then chooses one permitted value from the session-seeded random
-stream. Formation fields are rejected for 1v1 and 3v3. The adapter maps each
-formation and ordered team to engine constructor positions and serializes the
-selected formations plus each combatant's `front`/`rear` position.
+stream.
+
+For `battleSize: 3`, `playerFormation` is required and is exactly
+`one-front-two-rear`, `two-front-one-rear`, or `all-front`. A
+player-controlled enemy requires `enemyFormation` from the same three-value
+set. A computer-controlled enemy must omit `enemyFormation`; the adapter
+chooses one of those three values using the session-seeded random stream.
+Wrong-size formation IDs are rejected rather than coerced. Formation fields
+remain prohibited for 1v1. The adapter maps each size-specific formation and
+ordered team to engine constructor positions and serializes the actual
+formations plus each combatant's `front`/`rear` position.
 
 Random composition is selected inside the adapter with session-seeded
 randomness. The response is a v1 envelope containing ordered initial and
@@ -187,8 +195,10 @@ submitted action matches the published `legalActions`. Automatic and skipped
 states are classified by the engine-owned `Hero.turn_directive()` seam rather
 than by adapter-local status rules.
 
-For Warrior damage skills carrying an approved `attack_type`, legal actions
-also enforce formation targeting. Melee excludes rear defenders while any
+For approved damage skills carrying an `attack_type`, legal actions also enforce
+formation targeting. This currently includes the classified Warrior skills and
+Mage Comprehensiveness's Fireball, Arcane Missiles, and Frost Bolt as
+`ranged_projectile`. Melee excludes rear defenders while any
 front defender lives; forced and computer actions consume this same target
 list. Position damage adjustment remains inside `Hero.take_damage_calculation`
 and is never calculated by the adapter or frontend.

@@ -6,28 +6,83 @@ Authoritative high-level technical architecture for **Legends of Champions Tacti
 
 ## Current Sources
 
-The existing onboarding document `onboarding/ENGINE_ARCHITECTURE.md` contains Codex's current architecture analysis and should be consulted before this document is expanded.
+`onboarding/ENGINE_ARCHITECTURE.md` contains the foundation analysis. Current
+HTTP/snapshot details are authoritative in `web-ui/PYTHON_ADAPTER_API.md` and
+`web-ui/BATTLE_DATA_CONTRACT_V1.md`; gameplay rules are in `GDD/`.
 
 ## System Overview
 
-_To be confirmed from the repository and agreed architecture._
+The web product is a Next.js presentation client (`web-ui/`) connected over
+HTTP to a thin FastAPI battle adapter. The adapter constructs and advances the
+existing Python `Game`, `Hero`, and `Skill` objects. Python is the sole owner
+of combat state, legality, randomness, AI, damage, and outcomes. The browser
+submits intent and renders authoritative snapshots/events; it does not simulate
+combat.
 
 ## Major Components
 
-_To be documented._
+- **Team Builder (Next.js):** gathers ordered teams, battle size, control and
+  composition modes, optional seed, and the size-specific formation choice.
+- **Live provider (Next.js):** the only HTTP-aware client module; creates a
+  session, submits commands, validates envelopes, and normalizes failures.
+- **Battle adapter (FastAPI):** validates public requests, uses seeded session
+  randomness, maps formation plus ordered slots to hero positions, serializes
+  snapshots/legal actions/events, and advances computer turns.
+- **Combat engine (Python):** `Game`, `Hero`, `Skill`, status services, and
+  concrete hero classes resolve all live rules.
+- **Battle Screen (Next.js):** renders snapshots, queues supplied events, and
+  uses a presentation-only formation registry for figure coordinates/depth.
 
 ## Ownership Boundaries
 
-_To be documented, including the authoritative owner of battle logic, presentation, persistence, and interfaces._
+| Concern | Authoritative owner |
+|---|---|
+| Team composition randomness, computer turns, target legality, damage, outcomes | Python adapter/engine |
+| Hero `front`/`rear` position | Python adapter/engine |
+| 2v2/3v3 formation selection input | Team Builder; validated and resolved by Python |
+| Snapshot formation/position data | Python adapter |
+| Figure anchors, scale, stacking, UI effects, accessibility | Next.js presentation registry |
+| Profiles, saves, rewards, progression | Not implemented |
+
+The formation registry must never assign combat positions or decide legal
+targets. Conversely, visual 3v3 depth is formation-, side-, and slot-specific
+presentation data, not an additional Python gameplay state.
 
 ## Data Flow
 
-_To be documented._
+```text
+Team Builder configuration
+  → POST /api/v1/battles
+  → FastAPI validation and seeded formation resolution
+  → Hero construction with authoritative front/rear positions
+  → Game session + snapshot/events/legal actions
+  → browser live provider
+  → Battle Screen presentation queue and formation registry
+```
+
+For 2v2, the only formation IDs are `front-rear` and `side-by-side`; for 3v3,
+they are `one-front-two-rear`, `two-front-one-rear`, and `all-front`. The
+friendly formation is required for either size. A player-controlled enemy
+supplies a matching-size formation; a computer enemy omits it and receives the
+adapter's seeded selection. 1v1 has no formation fields.
 
 ## Architectural Decisions
 
-Record approved decisions here or link to the relevant dated meeting note.
+- The creation/snapshot/event contract remains version `1.0`; formation fields
+  are additive, size-discriminated values inside that contract.
+- `Hero.position` defaults to `front` for legacy constructors, simulations,
+  generators, and summons. Adapter-created 2v2/3v3 sessions pass the resolved
+  value through the normal constructor chain.
+- Approved attack-type target/damage rules stay in the engine. The UI consumes
+  adapter `validTargetIds` and never infers protection of a rear hero. Mage
+  Comprehensiveness projectile classification follows the same engine-owned
+  path as the existing Warrior classifications.
+- The 3v3 visual-depth correction is stored in the frontend trio registry so
+  scale and stacking follow the approved per-side ordered-slot map without
+  altering combat positions.
 
 ## Change Log
 
+- 2026-08-15 — Documented the implemented UI-018/UI-019 cross-boundary
+  formation architecture and the visual-depth ownership boundary.
 - 2026-07-26 — Initial authoritative architecture document created.

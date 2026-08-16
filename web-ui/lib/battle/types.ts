@@ -4,7 +4,9 @@ export type StatusPresentation = "buff" | "debuff" | "neutral";
 export type BattleSize = 1 | 2 | 3;
 export type EnemyCompositionMode = "random" | "specified";
 export type EnemyControlMode = "computer" | "player";
-export type BattleFormationId = "front-rear" | "side-by-side";
+export type DuoFormationId = "front-rear" | "side-by-side";
+export type TrioFormationId = "one-front-two-rear" | "two-front-one-rear" | "all-front";
+export type BattleFormationId = DuoFormationId | TrioFormationId;
 export type CombatantPosition = "front" | "rear";
 
 interface BattleCreateConfigurationBase {
@@ -16,22 +18,34 @@ interface BattleCreateConfigurationBase {
 
 export type BattleCreateConfiguration =
   | (BattleCreateConfigurationBase & {
-      battleSize: 1 | 3;
+      battleSize: 1;
       enemyControlMode: EnemyControlMode;
       playerFormation?: never;
       enemyFormation?: never;
     })
   | (BattleCreateConfigurationBase & {
       battleSize: 2;
-      playerFormation: BattleFormationId;
+      playerFormation: DuoFormationId;
       enemyControlMode: "computer";
       enemyFormation?: never;
     })
   | (BattleCreateConfigurationBase & {
       battleSize: 2;
-      playerFormation: BattleFormationId;
+      playerFormation: DuoFormationId;
       enemyControlMode: "player";
-      enemyFormation: BattleFormationId;
+      enemyFormation: DuoFormationId;
+    })
+  | (BattleCreateConfigurationBase & {
+      battleSize: 3;
+      playerFormation: TrioFormationId;
+      enemyControlMode: "computer";
+      enemyFormation?: never;
+    })
+  | (BattleCreateConfigurationBase & {
+      battleSize: 3;
+      playerFormation: TrioFormationId;
+      enemyControlMode: "player";
+      enemyFormation: TrioFormationId;
     });
 
 export interface HeroDefinitionSummary {

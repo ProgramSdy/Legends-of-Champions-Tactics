@@ -13,10 +13,13 @@ the thin Python adapter. Python remains the sole gameplay authority.
 - `lib/battle/fixture.ts` owns stateful scripted fixtures; they are presentation
   outcomes, not TypeScript battle rules.
 - `lib/battle/formations.ts` is the single duel/duo/trio coordinate registry.
-  Format is derived from authoritative team size; for 2v2 it selects the
-  approved coordinate pair from the side's two supplied combatant `position`
-  values and uses each supplied ordered `slot`. It never assigns a gameplay
-  position.
+  Format is derived from authoritative team size. The 2v2 presentation retains
+  its supplied-position mapping; 3v3 selects a size-specific coordinate set
+  from each side's snapshot `formations` value. Both use the supplied ordered
+  combatant `slot` and `position`; the registry never assigns or infers a
+  gameplay position. It may also provide visual-only depth, scale, and
+  overhead-panel-lane values for crowded layouts; these values travel with the
+  same figure layer as its HP/status panel, effects, and target control.
 - `lib/battle/usePresentationQueue.ts` orders semantic events, applies supplied
   post-event values (including additive status stack counts), and reconciles to
   the final snapshot. Typed semantic
@@ -62,12 +65,13 @@ the thin Python adapter. Python remains the sole gameplay authority.
 ## Authority and Reconciliation
 
 Team Builder sends battle size, ordered teams, enemy composition mode, enemy
-control mode, and optional seed. A 2v2 request additionally sends the selected
-`playerFormation`; it sends `enemyFormation` only for a player-controlled
-enemy. For a computer-controlled enemy the field is omitted and the adapter
-uses the seeded session random source. The adapter validates the request,
-assigns each engine hero's `front`/`rear` position, and constructs the session.
-Random enemy selection and all computer turns happen in Python.
+control mode, and optional seed. Both 2v2 and 3v3 requests additionally send a
+size-specific `playerFormation`; they send the matching `enemyFormation` only
+for a player-controlled enemy. For a computer-controlled enemy the field is
+omitted and the adapter uses the seeded session random source. The adapter
+validates the request, assigns each engine hero's `front`/`rear` position, and
+constructs the session. Random enemy selection and all computer turns happen
+in Python.
 
 Commands carry the expected revision, actor, skill, and selected target IDs.
 The explicit provider `turnControl` boundary must accept commands before the UI
@@ -76,10 +80,14 @@ React never interprets Stun, Scoff, or another status to decide command
 ownership. Local selection is allowed; HP, statuses, cooldowns, turns, defeat,
 and outcomes are never optimistic.
 
-The battlefield consumes each snapshot combatant's `position` and `slot` only
-for 2v2 presentation placement. Target controls continue to use only the
-adapter's `legalActions.validTargetIds`; React does not recreate melee
-front/rear legality or position-based damage rules.
+The battlefield consumes each snapshot combatant's `position` and `slot` for
+ordered placement. A 3v3 side's presentation coordinates and visual depth are
+keyed by its adapter-authored snapshot formation ID, side, and ordered slot;
+they are not derived solely from combat `front`/`rear`. The frontend registry
+controls only visual scale/stacking and keeps attached UI in the same layer.
+Target controls continue to use only the adapter's `legalActions.validTargetIds`;
+React does not recreate melee front/rear legality or position-based damage
+rules.
 
 During playback, explicit turn events identify the transient acting hero,
 restriction reason, status application/removal, and supplied post-values while
@@ -106,10 +114,11 @@ never through the title screen.
 
 `BattleCreateConfiguration` contains `battleSize`, `playerTeam`,
 `enemyCompositionMode`, optional `enemyTeam`, `enemyControlMode`, and optional
-`seed`. Its discriminated 2v2 branch requires `playerFormation` and additionally
-requires `enemyFormation` when enemy control is `player`; the 1v1/3v3 branches
-prohibit both formation fields. The roster is loaded from `GET /api/v1/heroes`;
-the client rejects wrong-version or malformed roster responses.
+`seed`. Its discriminated 2v2 and 3v3 branches require a size-specific
+`playerFormation` and additionally require a same-size `enemyFormation` when
+enemy control is `player`; the 1v1 branch prohibits both formation fields. The
+roster is loaded from `GET /api/v1/heroes`; the client rejects wrong-version or
+malformed roster responses.
 
 Returning from an ended battle discards the provider and keyed battle
 component. This clears the battle ID, cached snapshot/revision, presentation
@@ -260,4 +269,13 @@ worker.
 - 2026-08-14 — UI-018 added the typed 2v2 formation request handoff,
   snapshot-position-driven duo placement, player-selectable formation controls,
   computer-enemy formation explanation, and `validTargetIds`-only target
-  presentation. Duel and trio placement remain unchanged.
+  presentation. Duel placement remains unchanged.
+- 2026-08-15 — UI-019 extended the same typed request/snapshot boundary to the
+  three approved 3v3 IDs, added size-specific Arena and structured Battle 3
+  controls, and replaced static trio coordinates with snapshot-authored
+  formation placement while preserving adapter-owned positions and targets.
+- 2026-08-15 — Recorded UI-019's formation/side/slot-specific trio visual
+  depth boundary: frontend scale/stacking only, never a duplicate combat rule.
+- 2026-08-15 — Added registry-owned overhead-panel lanes for crowded duo/trio
+  layouts. They are CSS custom properties consumed only by the figure's own
+  overhead panel and have no adapter, contract, or gameplay effect.
