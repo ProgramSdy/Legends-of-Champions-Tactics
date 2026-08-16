@@ -226,28 +226,20 @@ class Warrior_Defence(Warrior):
             self.preset_target = None
             self.add_skill(Skill(self, "Devastate", self.devastate, target_type = "single", skill_type= "damage",attack_type = "melee"))
             self.add_skill(Skill(self, "Shield Bash", self.shield_bash, target_type = "single", skill_type= "damage", attack_type = "melee", capable_interrupt_magic_casting = True))
-            self.add_skill(Skill(self, "Shield Lash", self.shield_lash, target_type = "single", skill_type= "damage", attack_type = "ranged_projectile", is_control_skill = True, independent_effect_action=self.independent_shield_lash))
+            self.add_skill(Skill(self, "Thunder Pot", self.thunder_pot, target_type = "multi", skill_type= "damage", target_qty=2, attack_type = "ranged_projectile", is_control_skill = True, independent_effect_action=self.independent_shield_lash))
 
     def shield_bash(self, other_hero, attack_type="NA"):
-        accuracy = 100  # Shield Bash has a 100% chance to succeed
-        roll = random.randint(1, 100)  # Simulate a roll of 100-sided dice
         if other_hero.status['magic_casting'] == True:
-          result = self.interrupt_magic_casting(other_hero)
-          if roll <= accuracy:
-              other_hero.status['stunned'] = True
-              other_hero.status['normal'] = False
-              other_hero.stun_duration += 1
-              self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Shield Bash, {other_hero.name} is stunned. {result}")
-          else:
-              self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Shield Bash. {result}")
+          interrupt_magic_result = self.interrupt_magic_casting(other_hero)
+          other_hero.status['stunned'] = True
+          other_hero.status['normal'] = False
+          other_hero.stun_duration += 1
+          self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Shield Bash, {other_hero.name} is stunned. {interrupt_magic_result}")
         else:
-          if roll <= accuracy:
-            other_hero.status['stunned'] = True
-            other_hero.status['normal'] = False
-            other_hero.stun_duration += 1
-            self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Shield Bash, {other_hero.name} is stunned.")
-          else:
-              self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Shield Bash")
+          other_hero.status['stunned'] = True
+          other_hero.status['normal'] = False
+          other_hero.stun_duration += 1
+          self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Shield Bash, {other_hero.name} is stunned.")
         for skill in self.skills:
             if skill.name == "Shield Bash":
               skill.if_cooldown = True
@@ -255,7 +247,7 @@ class Warrior_Defence(Warrior):
         variation = random.randint(-2, 2)
         actual_damage = self.damage + variation
         damage_dealt = int((actual_damage - other_hero.defense)/4)
-        damage_dealt = max(damage_dealt, 0)
+        damage_dealt = max(damage_dealt, 1)
         return other_hero.take_damage(damage_dealt, attack_type, self)
 
     def devastate(self, other_hero, attack_type="NA"):
@@ -287,79 +279,87 @@ class Warrior_Defence(Warrior):
 
         return other_hero.take_damage(damage_dealt, attack_type, self)
 
-    def shield_lash(self, other_hero, attack_type="NA"):
+    def thunder_pot(self, other_heroes, attack_type="NA"):
         self.status['shield_lash'] = True
         self.fire_resistance_boost_amount['shield_lash'] = 45
         self.frost_resistance_boost_amount['shield_lash'] = 45
         self.death_resistance_boost_amount['shield_lash'] = 45
         self.nature_resistance_boost_amount['shield_lash'] = 45
-        basic_damage = round((self.damage - other_hero.defense) * 1/3)
-        variation = random.randint(-1, 1)
-        actual_damage = max(1, basic_damage + variation)
 
-        fire_resistance_before_increasing = self.fire_resistance
-        frost_resistance_before_increasing = self.frost_resistance 
-        death_resistance_before_increasing = self.death_resistance
-        nature_resistance_before_increasing = self.nature_resistance
         self.fire_resistance = self.fire_resistance + self.fire_resistance_boost_amount['shield_lash']
         self.frost_resistance = self.frost_resistance + self.frost_resistance_boost_amount['shield_lash']
         self.death_resistance = self.death_resistance + self.death_resistance_boost_amount['shield_lash']
         self.nature_resistance = self.nature_resistance + self.nature_resistance_boost_amount['shield_lash']
-        
-        if other_hero.is_immunity_condition_control == True:
-           if other_hero.status['magic_casting'] == True:
-             result = self.interrupt_magic_casting(other_hero)
-             return f"{result}. {other_hero.take_damage(actual_damage, attack_type, self)}."
-           else:
-             return f"{other_hero.take_damage(actual_damage, attack_type, self)}."
-        else:
-          other_hero.status['scoff'] = True
-          for skill in self.skills:
-              if skill.name == "Shield Lash":
+        for skill in self.skills:
+            if skill.name == "Thunder Pot":
                 skill.if_cooldown = True
                 skill.cooldown = 3
-          for debuff in other_hero.debuffs:
-            if debuff.name == "Scoff":
-              other_hero.debuffs.remove(debuff)
-              other_hero.buffs_debuffs_recycle_pool.append(debuff)
-          for debuff in other_hero.buffs_debuffs_recycle_pool:
-            if debuff.name == "Scoff" and debuff.initiator == self:
-                other_hero.buffs_debuffs_recycle_pool.remove(debuff)
-                debuff.duration = 1
-                other_hero.add_debuff(debuff)
-                break   
-          else:
-              debuff = Debuff(
-                  name='Scoff',
-                  duration=1,
-                  initiator=self,
-                  effect=1
-              )
-              other_hero.add_debuff(debuff)
 
-          for buff in self.buffs_debuffs_recycle_pool:
-                  if buff.name == "Shield Lash" and buff.initiator == self:
-                      self.buffs_debuffs_recycle_pool.remove(buff)
-                      buff.duration = 2
-                      self.add_buff(buff)   
-                      break
-          else:
-              buff = Buff(
-                  name='Shield Lash',
-                  duration=2,
-                  initiator=self,
-                  effect=1
-              )
-              self.add_buff(buff)
+        if not isinstance(other_heroes, list):
+            other_heroes = [other_heroes]
+        results = []
+        selected_opponents = other_heroes
+        for opponent in selected_opponents:
+            basic_damage = round((self.damage - opponent.defense) * 1/3)
+            variation = random.randint(-1, 1)
+            actual_damage = max(1, basic_damage + variation)
 
-          if other_hero.status['magic_casting'] == True:
-            result = self.interrupt_magic_casting(other_hero)
-            other_hero.scoff_shield_lash_duration = 2
-            return f"{self.name} casts Shield Lash on {other_hero.name}. {result}. {other_hero.take_damage(actual_damage, attack_type, self)}. {self.name}'s magical resistance is boost. {other_hero.name} developed a deep hatred toward {self.name}."
-          else:
-            other_hero.scoff_shield_lash_duration = 2
-            return f"{self.name} casts Shield Lash on {other_hero.name}. {other_hero.take_damage(actual_damage, attack_type, self)}. {self.name}'s magical resistance is boost. {other_hero.name} developed a deep hatred toward {self.name}."
+            if opponent.is_immunity_condition_control == True:
+                if opponent.status['magic_casting'] == True:
+                    interrupt_magic_result = self.interrupt_magic_casting(opponent)
+                    self.game.display_battle_info(f"{self.name} casts Thunder Pot on {opponent.name}. {interrupt_magic_result}")
+                    results.append(opponent.take_damage(actual_damage, attack_type, self))
+                else:
+                    self.game.display_battle_info(f"{self.name} casts Thunder Pot on {opponent.name}.")
+                    results.append(opponent.take_damage(actual_damage, attack_type, self))
+            else:
+                opponent.status['scoff'] = True
+                for debuff in opponent.debuffs:
+                    if debuff.name == "Scoff":
+                        opponent.debuffs.remove(debuff)
+                        opponent.buffs_debuffs_recycle_pool.append(debuff)
+                for debuff in opponent.buffs_debuffs_recycle_pool:
+                    if debuff.name == "Scoff" and debuff.initiator == self:
+                        opponent.buffs_debuffs_recycle_pool.remove(debuff)
+                        debuff.duration = 1
+                        opponent.add_debuff(debuff)
+                        break   
+                else:
+                    debuff = Debuff(
+                        name='Scoff',
+                        duration=1,
+                        initiator=self,
+                        effect=1
+                    )
+                    opponent.add_debuff(debuff)
 
+                for buff in self.buffs_debuffs_recycle_pool:
+                        if buff.name == "Shield Lash" and buff.initiator == self:
+                            self.buffs_debuffs_recycle_pool.remove(buff)
+                            buff.duration = 2
+                            self.add_buff(buff)   
+                            break
+                else:
+                    buff = Buff(
+                        name='Shield Lash',
+                        duration=2,
+                        initiator=self,
+                        effect=1
+                    )
+                    self.add_buff(buff)
+
+                if opponent.status['magic_casting'] == True:
+                    interrupt_magic_result = self.interrupt_magic_casting(opponent)
+                    opponent.scoff_shield_lash_duration = 2
+                    self.game.display_battle_info(f"{self.name} casts Thunder Pot on {opponent.name}. {interrupt_magic_result}. {self.name}'s magical resistance is boost. {opponent.name} developed a deep hatred toward {self.name}.")
+                    results.append(opponent.take_damage(actual_damage, attack_type, self))
+                else:
+                    opponent.scoff_shield_lash_duration = 2
+                    self.game.display_battle_info(f"{self.name} casts Thunder Pot on {opponent.name}. {self.name}'s magical resistance is boost. {opponent.name} developed a deep hatred toward {self.name}.")
+                    results.append(opponent.take_damage(actual_damage, attack_type, self))
+
+        return "\n".join(results)
+ 
     # Battling Strategy_________________________________________________________
 
 class Warrior_Weapon_Master(Warrior):
