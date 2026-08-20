@@ -27,13 +27,12 @@ outcomes.
 5. Observe authoritative events, update strategy around status/cooldown/turn
    state, and continue until victory, defeat, draw, or round limit.
 
-Warrior's Barrack is also available as a temporary structured training location.
-It offers three fixed practice battles with a four-definition starting player
-selection (Warrior Weapon Master, Mage Comprehensiveness, Priest
-Comprehensiveness, and Rogue Comprehensiveness). Its sequence is not profile
-progression: no unlocks, rewards, persistence, or recovery are implemented.
-Friendly victories advance its current client-memory battle; defeat, draw, and
-round limit retry that same battle.
+The Stage Map also offers two backend-authoritative structured training stages:
+Paladin's Altar and Warrior's Barrack. Each has nine fixed battles with an
+ordered predefined computer enemy team and a fixed formation. The player can
+choose only heroes currently unlocked for the stable local profile. Friendly
+victory is the only progression trigger; defeat, draw, and round limit retry
+the same battle. A completed step unlocks only the next step in its own stage.
 
 ## Supported Playable Scope
 
@@ -69,13 +68,16 @@ player-controlled enemy uses an explicitly selected formation; a
 computer-controlled enemy receives a formation selected by the adapter from
 the seeded battle random stream. One-versus-one has no formation input.
 
-Formation positions matter to the currently approved Warrior Weapon Master,
-Warrior Defence, Warrior Berserker, and Mage Comprehensiveness damage skills
-that carry an authorized attack type. Mage Comprehensiveness Fireball, Arcane
-Missiles, and Frost Bolt are authorized ranged projectiles. Melee cannot target a rear defender while any front defender is
-alive, and approved position damage adjustments are applied once by Python.
-Other faculties and Mage specializations do not receive inferred attack types.
-See `Combat_System.md` for the exact rules.
+Formation positions matter to the currently authorized Warrior Weapon Master,
+Warrior Defence, Warrior Berserker, Mage Comprehensiveness, Paladin
+Retribution, Paladin Protection, Paladin Holy, Priest Comprehensiveness, and
+Priest Discipline skills that carry an owner-approved attack type. The expanded
+Paladin/Priest classifications are limited to Hammer of Anger, Crusader Strike,
+Hammer of Revenge, Shield of Righteous, Heroric Charge, Holy Blast, Holy Smite,
+Shadow Word Pain, Penance's opponent branch, and Holy Word Punishment. Melee
+cannot target a rear defender while any front defender is alive, and approved
+position damage adjustments are applied once by Python. Other skills do not
+receive inferred attack types. See `Combat_System.md` for the exact rules.
 
 ## Design Pillars Evidenced by the Current Build
 
@@ -118,16 +120,23 @@ neither independently establishes product rules. API sessions can use a seed
 for reproducible session randomness. Direct legacy/simulation execution has no
 equivalent recorded replay contract.
 
-The current temporary Warrior's Barrack training sequence uses the existing
-live 2v2, 1v1, and 3v3 formats with predefined computer enemy teams. It does
-not add a gameplay rule, engine mode, campaign system, or persistent
-progression model.
+Paladin's Altar and Warrior's Barrack use the existing 1v1, 2v2, and 3v3
+combat formats with predefined computer enemy teams and fixed formations. They
+do not add combat rules or a campaign system. Their completion only changes the
+minimal persisted training progression described below.
 
 ## Progression and Meta-Game
 
-No XP, levels, equipment, inventory, rarity, unlock system, campaign, account,
-save progression, or resource/mana economy is currently implemented or
-approved. Battle-local stat and status changes are not persistent progression.
+UI-020 implements the smallest local progression slice for the stable default
+profile. Initially unavailable player definitions are Paladin Protection,
+Paladin Retribution, Paladin Holy, Warrior Berserker, and Warrior Defence.
+They unlock only from the named third, sixth, or ninth training battle reward.
+Warrior's Barrack Battle 6 grants the single persistent generic reward ID
+`reward.item-card.basic`; it has no art, combat effect, inventory, equipment,
+economy, or item name. The backend persists each first friendly-victory reward
+atomically with the stage update and exposes availability to the UI. XP, levels,
+attributes, inventory/equipment, campaign, accounts, cloud sync, and active
+battle recovery remain unimplemented.
 
 ## Open Product Decisions
 
@@ -147,7 +156,9 @@ approved. Battle-local stat and status changes are not persistent progression.
 
 - 2026-08-15 — Added the implemented 2v2/3v3 formation milestone, including
   size-specific pre-battle selection and Python-owned Warrior position rules.
+- 2026-08-19 — Replaced the temporary Warrior's Barrack sequence with the two
+  persisted nine-battle training stages and their limited unlock/item rewards.
 - 2026-08-06 — Rebuilt from the current engine, adapter, and web/API baseline;
   unapproved product decisions are explicitly recorded as open.
-- 2026-08-10 — Recorded the implemented temporary Warrior's Barrack structured
-  training scope and explicitly excluded it from progression/persistence.
+- 2026-08-10 — Recorded the then-temporary Warrior's Barrack structured
+  training scope; superseded by the persisted UI-020 training slice.

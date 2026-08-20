@@ -133,19 +133,28 @@ describe("UI-002 Team Builder", () => {
       revision: 9,
       data: { events: [], snapshot: ended },
     };
-    const fetchMock = vi.spyOn(globalThis, "fetch")
-      .mockResolvedValueOnce(new Response(JSON.stringify({
-        contractVersion: "1.0",
-        heroes: roster,
-      }), { status: 200, headers: { "Content-Type": "application/json" } }))
-      .mockResolvedValueOnce(new Response(JSON.stringify(battleEnvelope), {
+    let battleCount = 0;
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const path = String(input);
+      const response = path.endsWith("/api/v1/heroes")
+        ? { contractVersion: "1.0", heroes: roster }
+        : path.endsWith("/api/v1/progression")
+          ? {
+              contractVersion: "1.0",
+              profileId: "profile.local.default",
+              unlockedHeroDefinitionIds: roster.map((hero) => hero.definitionId),
+              stageProgress: [
+                { stageId: "paladins-altar", highestCompletedBattle: 0, unlockedBattle: 1, completed: false },
+                { stageId: "warriors-barrack", highestCompletedBattle: 0, unlockedBattle: 1, completed: false },
+              ],
+              grantedRewards: [],
+            }
+          : { ...battleEnvelope, battleId: battleCount++ === 0 ? "battle.ui-002" : "battle.ui-002.relaunch" };
+      return new Response(JSON.stringify(response), {
         status: 200,
         headers: { "Content-Type": "application/json" },
-      }))
-      .mockResolvedValueOnce(new Response(JSON.stringify({
-        ...battleEnvelope,
-        battleId: "battle.ui-002.relaunch",
-      }), { status: 200, headers: { "Content-Type": "application/json" } }));
+      });
+    });
 
     render(<BattleExperience countdownStepMs={0} />);
 

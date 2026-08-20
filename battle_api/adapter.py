@@ -234,6 +234,8 @@ class BattleSession:
     enemy_control_mode: str = "player"
     player_formation: FormationId | None = None
     enemy_formation: FormationId | None = None
+    stage_id: str | None = None
+    stage_battle_index: int | None = None
     revision: int = 0
     event_sequence: int = 0
     presentation_log_cursor: int = 0
@@ -266,6 +268,9 @@ class BattleAdapter:
         enemy_control_mode: str = "player",
         player_formation: FormationId | None = None,
         enemy_formation: FormationId | None = None,
+        fixed_computer_formation: bool = False,
+        stage_id: str | None = None,
+        stage_battle_index: int | None = None,
     ) -> tuple[BattleSession, dict[str, Any]]:
         if player_team is None:
             player_team = ["hero.warrior.weapon_master"]
@@ -282,6 +287,7 @@ class BattleAdapter:
             enemy_control_mode=enemy_control_mode,
             player_formation=player_formation,
             enemy_formation=enemy_formation,
+            fixed_computer_formation=fixed_computer_formation,
         )
         with ENGINE_RANDOM_LOCK:
             global_state = random.getstate()
@@ -306,7 +312,11 @@ class BattleAdapter:
                             if enemy_control_mode == "computer"
                             else "front-rear"
                         )
-                elif battle_size == 3 and enemy_control_mode == "computer":
+                elif (
+                    battle_size == 3
+                    and enemy_control_mode == "computer"
+                    and not fixed_computer_formation
+                ):
                     # The caller supplies the friendly formation, while the
                     # computer formation is an authoritative seeded choice.
                     enemy_formation = random.choice(THREE_HERO_FORMATION_IDS)
@@ -347,6 +357,8 @@ class BattleAdapter:
                     enemy_control_mode=enemy_control_mode,
                     player_formation=player_formation,
                     enemy_formation=enemy_formation,
+                    stage_id=stage_id,
+                    stage_battle_index=stage_battle_index,
                 )
                 for side, heroes in (
                     ("friendly", player_heroes),
@@ -415,6 +427,7 @@ class BattleAdapter:
         enemy_control_mode: str,
         player_formation: FormationId | None,
         enemy_formation: FormationId | None,
+        fixed_computer_formation: bool = False,
     ) -> None:
         if battle_size not in (1, 2, 3):
             raise ValueError("battle_size must be 1, 2, or 3")
@@ -461,7 +474,12 @@ class BattleAdapter:
                         "enemy_formation must be one-front-two-rear, "
                         "two-front-one-rear, or all-front for a 3v3 battle"
                     )
-            elif enemy_formation is not None:
+            elif fixed_computer_formation and enemy_formation not in THREE_HERO_FORMATION_IDS:
+                raise ValueError(
+                    "fixed computer enemy_formation must be one-front-two-rear, "
+                    "two-front-one-rear, or all-front for a 3v3 battle"
+                )
+            elif enemy_formation is not None and not fixed_computer_formation:
                 raise ValueError(
                     "enemy_formation must be omitted for a computer-controlled "
                     "3v3 enemy"
@@ -1644,6 +1662,9 @@ class BattleRegistry:
         enemy_control_mode: str = "player",
         player_formation: FormationId | None = None,
         enemy_formation: FormationId | None = None,
+        fixed_computer_formation: bool = False,
+        stage_id: str | None = None,
+        stage_battle_index: int | None = None,
     ) -> tuple[BattleSession, dict[str, Any]]:
         session, envelope = self.adapter.create_battle(
             seed=seed,
@@ -1654,6 +1675,9 @@ class BattleRegistry:
             enemy_control_mode=enemy_control_mode,
             player_formation=player_formation,
             enemy_formation=enemy_formation,
+            fixed_computer_formation=fixed_computer_formation,
+            stage_id=stage_id,
+            stage_battle_index=stage_battle_index,
         )
         with self._lock:
             self._sessions[session.battle_id] = session

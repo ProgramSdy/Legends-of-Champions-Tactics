@@ -9,6 +9,12 @@ export type TrioFormationId = "one-front-two-rear" | "two-front-one-rear" | "all
 export type BattleFormationId = DuoFormationId | TrioFormationId;
 export type CombatantPosition = "front" | "rear";
 
+export type StructuredBattleCreateConfiguration = {
+  playerTeam: string[];
+  playerFormation?: BattleFormationId;
+  seed?: number;
+};
+
 interface BattleCreateConfigurationBase {
   playerTeam: string[];
   enemyCompositionMode: EnemyCompositionMode;
@@ -53,6 +59,69 @@ export interface HeroDefinitionSummary {
   displayName: string;
   faculty: string;
   specialization: string;
+}
+
+export type StructuredStageId = "paladins-altar" | "warriors-barrack";
+
+export interface StageProgress {
+  stageId: StructuredStageId;
+  highestCompletedBattle: number;
+  unlockedBattle: number;
+  completed: boolean;
+}
+
+export interface GrantedReward {
+  rewardId: string;
+  count: number;
+}
+
+export interface PlayerProgression {
+  profileId: "profile.local.default";
+  unlockedHeroDefinitionIds: string[];
+  stageProgress: StageProgress[];
+  grantedRewards: GrantedReward[];
+}
+
+export interface PlayerProgressionResponse extends PlayerProgression {
+  contractVersion: "1.0";
+}
+
+export interface StageReward {
+  rewardId: string;
+  kind: "heroUnlock" | "itemCard";
+  heroDefinitionId: string | null;
+  notification: string;
+}
+
+export interface AuthoritativeStageBattleDefinition {
+  id: string;
+  displayOrder: number;
+  battleSize: BattleSize;
+  formation: BattleFormationId | null;
+  enemyDefinitionIds: string[];
+  reward: StageReward | null;
+  unlocked: boolean;
+  completed: boolean;
+}
+
+export interface AuthoritativeStructuredStageDefinition {
+  stageId: StructuredStageId;
+  displayName: string;
+  progress: StageProgress;
+  battles: AuthoritativeStageBattleDefinition[];
+}
+
+export interface StructuredStagesResponse {
+  contractVersion: "1.0";
+  stages: AuthoritativeStructuredStageDefinition[];
+}
+
+export interface VictoryCommitResponse {
+  contractVersion: "1.0";
+  battleId: string;
+  alreadyCommitted: boolean;
+  newlyGrantedRewards: StageReward[];
+  progression: PlayerProgression;
 }
 
 export interface StatusState {

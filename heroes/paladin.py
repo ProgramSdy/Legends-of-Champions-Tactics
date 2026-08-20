@@ -26,11 +26,11 @@ class Paladin_Retribution(Paladin):
 
     def __init__(self, sys_init, name, group, is_player_controlled, position="front"):
             super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major, position=position)
-            self.add_skill(Skill(self, "Hammer of Anger", self.hammer_of_anger, target_type = "single", skill_type= "damage"))
-            self.add_skill(Skill(self, "Crusader Strike", self.crusader_strike, target_type = "single", skill_type= "damage", independent_effect_action=self.independent_crusader_strike))
+            self.add_skill(Skill(self, "Hammer of Anger", self.hammer_of_anger, target_type = "single", skill_type= "damage", attack_type = "ranged_projectile"))
+            self.add_skill(Skill(self, "Crusader Strike", self.crusader_strike, target_type = "single", skill_type= "damage", attack_type = "melee", independent_effect_action=self.independent_crusader_strike))
             self.add_skill(Skill(self, "Flash of Light", self.flash_of_light, "single", skill_type= "healing"))
 
-    def hammer_of_anger(self, other_hero):
+    def hammer_of_anger(self, other_hero, attack_type="NA"):
         variation = random.randint(-2, 2)
         actual_damage = self.damage + variation
         damage_dealt = actual_damage - other_hero.defense
@@ -45,9 +45,9 @@ class Paladin_Retribution(Paladin):
           self.game.display_battle_info(f"{self.name} uses Hammer of Anger on {other_hero.name}, due to Shield of Righteous, this attack causes extra {extra_holy_damage} holy damage.")
         else:
           self.game.display_battle_info(f"{self.name} uses Hammer of Anger on {other_hero.name}.")
-        return other_hero.take_damage(damage_dealt)
+        return other_hero.take_damage(damage_dealt, attack_type, self)
 
-    def crusader_strike(self, other_hero):
+    def crusader_strike(self, other_hero, attack_type="NA"):
         accuracy = 100  # Crusader strike has 100% chance to activate the wrath of crusader effect
         roll = random.randint(1, 100)  # Simulate a roll of 100-sided dice
         if roll <= accuracy:
@@ -77,7 +77,7 @@ class Paladin_Retribution(Paladin):
         basic_damage = 20
         variation = random.randint(-2, 2)
         damage_dealt = basic_damage + variation
-        return other_hero.take_damage(damage_dealt)
+        return other_hero.take_damage(damage_dealt, attack_type, self)
 
     def flash_of_light(self, other_hero):
         variation = random.randint(0, 2)
@@ -187,11 +187,11 @@ class Paladin_Protection(Paladin):
 
     def __init__(self, sys_init, name, group, is_player_controlled, position="front"):
             super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major, position=position)
-            self.add_skill(Skill(self, "Hammer of Revenge", self.hammer_of_revenge, target_type = "single", skill_type= "damage"))
-            self.add_skill(Skill(self, "Shield of Righteous", self.shield_of_righteous, target_type = "single", skill_type= "damage", independent_effect_action=self.independent_shield_of_righteous))
-            self.add_skill(Skill(self, "Heroric Charge", self.heroric_charge, target_type = "single", skill_type= "damage", is_control_skill = True, independent_effect_action=self.independent_heroric_charge))
+            self.add_skill(Skill(self, "Hammer of Revenge", self.hammer_of_revenge, target_type = "single", skill_type= "damage", attack_type = "ranged_instant"))
+            self.add_skill(Skill(self, "Shield of Righteous", self.shield_of_righteous, target_type = "single", skill_type= "damage", attack_type = "melee", independent_effect_action=self.independent_shield_of_righteous))
+            self.add_skill(Skill(self, "Heroric Charge", self.heroric_charge, target_type = "single", skill_type= "damage", attack_type = "ranged_instant", is_control_skill = True, independent_effect_action=self.independent_heroric_charge))
 
-    def hammer_of_revenge(self, other_hero):
+    def hammer_of_revenge(self, other_hero, attack_type="NA"):
         variation = random.randint(-4, -1)
         actual_damage = self.damage + variation
         damage_dealt = actual_damage - other_hero.defense
@@ -225,9 +225,9 @@ class Paladin_Protection(Paladin):
           self.game.display_battle_info(f"{self.name} uses Hammer of Revenge on {other_hero.name}, due to Shield of Righteous, {other_hero.name}'s damage is reduced from {damage_before_reducing} to {other_hero.damage}.")
         else:
           self.game.display_battle_info(f"{self.name} uses Hammer of Revenge on {other_hero.name}.")
-        return other_hero.take_damage(damage_dealt)
+        return other_hero.take_damage(damage_dealt, attack_type, self)
 
-    def shield_of_righteous(self, other_hero):
+    def shield_of_righteous(self, other_hero, attack_type="NA"):
         accuracy = 100  # Shield of Righteous has a 100% chance to activate the defense increasing effect
         roll = random.randint(1, 100)  # Simulate a roll of 100-sided dice
         if roll <= accuracy:
@@ -257,9 +257,9 @@ class Paladin_Protection(Paladin):
         basic_damage = 20
         variation = random.randint(-2, 2)
         damage_dealt = basic_damage + variation
-        return other_hero.take_damage(damage_dealt)
+        return other_hero.take_damage(damage_dealt, attack_type, self)
 
-    def heroric_charge(self, other_hero):
+    def heroric_charge(self, other_hero, attack_type="NA"):
         basic_damage = round((self.damage - other_hero.defense) * 1)
         variation = random.randint(-1, 1)
         actual_damage = max(1, basic_damage + variation)
@@ -269,9 +269,9 @@ class Paladin_Protection(Paladin):
         if other_hero.is_immunity_condition_control == True:
            if other_hero.status['magic_casting'] == True:
              result = self.interrupt_magic_casting(other_hero)
-             return f"{result}. {other_hero.take_damage(actual_damage)}."
+             return f"{result}. {other_hero.take_damage(actual_damage, attack_type, self)}."
            else:
-             return f"{other_hero.take_damage(actual_damage)}."
+             return f"{other_hero.take_damage(actual_damage, attack_type, self)}."
         else:
           other_hero.status['scoff'] = True
           for debuff in other_hero.debuffs:
@@ -298,13 +298,13 @@ class Paladin_Protection(Paladin):
               if skill.name == "Heroric Charge":
                 skill.if_cooldown = True
                 skill.cooldown = 3
-            return f"Holy light showers {self.name}. {self.take_healing(actual_healing)}. {self.name} casts Heroric Charge on {other_hero.name}. {result}. {other_hero.take_damage(actual_damage)}. {other_hero.name} developed a deep hatred toward {self.name}."
+            return f"Holy light showers {self.name}. {self.take_healing(actual_healing)}. {self.name} casts Heroric Charge on {other_hero.name}. {result}. {other_hero.take_damage(actual_damage, attack_type, self)}. {other_hero.name} developed a deep hatred toward {self.name}."
           else:
             for skill in self.skills:
               if skill.name == "Heroric Charge":
                 skill.if_cooldown = True
                 skill.cooldown = 3
-            return f"Holy light showers {self.name}. {self.take_healing(actual_healing)}. {self.name} casts Heroric Charge on {other_hero.name}. {other_hero.take_damage(actual_damage)}. {other_hero.name} developed a deep hatred toward {self.name}."
+            return f"Holy light showers {self.name}. {self.take_healing(actual_healing)}. {self.name} casts Heroric Charge on {other_hero.name}. {other_hero.take_damage(actual_damage, attack_type, self)}. {other_hero.name} developed a deep hatred toward {self.name}."
 
 # Battling Strategy_________________________________________________________
 '''
@@ -400,7 +400,7 @@ class Paladin_Holy(Paladin):
     def __init__(self, sys_init, name, group, is_player_controlled, position="front"):
             super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major, position=position)
             self.add_skill(Skill(self, "Purify Healing", self.purify_healing, target_type = "single", skill_type= "healing"))
-            self.add_skill(Skill(self, "Holy Blast", self.holy_blast, target_type = "multi", skill_type= "damage", target_qty= 2))
+            self.add_skill(Skill(self, "Holy Blast", self.holy_blast, target_type = "multi", skill_type= "damage", attack_type = "ranged_projectile", target_qty= 2))
             self.add_skill(Skill(self, "Shield of Protection", self.shield_of_protection, target_type = "single", skill_type= "buffs", target_qty= 0))
 
     def purify_healing(self, other_hero):
@@ -441,7 +441,7 @@ class Paladin_Holy(Paladin):
           self.game.status_dispeller.dispell_status([status_list_for_action[0]], other_hero)
         return other_hero.take_healing(actual_healing)
 
-    def holy_blast(self, other_heros):
+    def holy_blast(self, other_heros, attack_type="NA"):
         if not isinstance(other_heros, list):
           other_heros = [other_heros]
         results = []
@@ -457,7 +457,7 @@ class Paladin_Holy(Paladin):
           damage = math.ceil(actual_damage * damage_multiplier)
           #print(f"damage = {damage}")
           self.game.display_battle_info(f"{self.name} casts Holy Blast at {opponent.name}.")
-          results.append(opponent.take_damage(damage))
+          results.append(opponent.take_damage(damage, attack_type, self))
         return "\n".join(results)
 
     def shield_of_protection(self):

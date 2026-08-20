@@ -89,28 +89,24 @@ describe("UI-018 Team Builder formation contract", () => {
     }));
   });
 
-  it("keeps structured Barrack Battle 1 enemy composition immutable and computer formation omitted", async () => {
+  it("keeps the structured enemy fixed while allowing the player to choose Battle 1 formation", async () => {
     const user = userEvent.setup();
     const onStart = vi.fn();
     const stage = resolveStructuredStage("warriors-barrack")!;
     render(<TeamBuilder mode="structured" stage={stage} battle={stage.battles[0]} roster={roster} onStart={onStart} />);
     expect(screen.getByRole("group", { name: "Your formation" })).toBeVisible();
-    expect(screen.getByRole("note")).toHaveTextContent(/computer will choose/i);
-    expect(screen.queryByRole("group", { name: "Enemy formation" })).not.toBeInTheDocument();
+    const enemyFormationNote = screen.getByRole("note");
+    expect(enemyFormationNote).toHaveTextContent(/enemy uses front rear/i);
+    expect(enemyFormationNote.closest(".team-composer.enemy")).not.toBeNull();
     expect(screen.getByLabelText(/Predefined enemy team/i)).toBeVisible();
-    await user.click(within(screen.getByRole("group", { name: "Your formation" })).getByRole("radio", { name: /Side by Side/i }));
+    await user.click(screen.getByRole("radio", { name: /Side by Side/i }));
     await assignTwoPlayers(user);
     await user.click(screen.getByRole("button", { name: "ENTER BATTLE" }));
 
     expect(onStart).toHaveBeenCalledWith({
-      battleSize: 2,
       playerTeam: ["hero.warrior.weapon_master", "hero.mage.comprehensiveness"],
       playerFormation: "side-by-side",
-      enemyCompositionMode: "specified",
-      enemyTeam: ["hero.warrior.defence", "hero.priest.comprehensiveness"],
-      enemyControlMode: "computer",
     });
-    expect(onStart.mock.calls[0][0]).not.toHaveProperty("enemyFormation");
   });
 
   it("passes the typed 2v2 payload unchanged through the live provider", async () => {

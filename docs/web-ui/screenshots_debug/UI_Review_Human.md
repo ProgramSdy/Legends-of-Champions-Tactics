@@ -416,3 +416,55 @@ UI:
 
 Python Engine:
 Core project team from Codex can decide if python engine need to be modified to reflect this change.
+
+## Date
+
+2026-08-19
+
+### Screenshot name
+
+N/A
+
+### Task List
+
+1_ Activate a new stage in Stage Map. Stage Name: Paladin's Altar. Location is at the right middle side of the map, where there is a Altar. All design follow the same style as Warrior's Barrack. 
+There will be totally 9 battles in this stage.
+Battle 1: 2v2, Formation: Front and Rear, Heroes: Paladin_Protection (front), Mage_Comprehensiveness(Rear). 
+Battle 2: 1v1, Formation: NA, Hero: Paladin_Protection.
+Battle 3: 3v3, Formation: Front 2 and Rear 1, Heroes: Paladin_Protection (front), Warrior_Defence (front), Mage_Comprehensiveness(Rear). 
+
+After finish battle 3, Paladin_Protection is unlocked and can be chosen by player. Pop up a windlow tell player that "Paladin_Protection is unlocked"
+
+Battle 4: 2v2, Formation: Side by Side, Heroes: Paladin_Retribution, Warrior_Weapon_Master. 
+Battle 5: 1v1, Formation: NA, Hero: Paladin_Retribution.
+Battle 6: 3v3, Formation: Front 2 and Rear 1, Heroes: Paladin_Protection (front), Paladin_Retribution (front), Priest_Descipline (Rear). 
+
+After finish battle 6, Paladin_Retribution is unlocked and can be chosen by player. Pop up a windlow tell player that "Paladin_Retribution is unlocked"
+
+Battle 7: 2v2, Formation: Side by Side, Heroes: Paladin_Holy , Rogue_Comprehensiveness.
+Battle 8: 1v1, Formation: NA, Hero: Paladin_Holy.
+Battle 9: 3v3, Formation: Side by Side, Heroes: Paladin_Retribution, Paladin_Protection, Paladin_Holy.
+
+After finish battle 9, Paladin_Holy is unlocked and can be chosen by player. Pop up a windlow tell player that "Paladin_Holy is unlocked"
+
+2_ Update battles in Warrior's Barrack.
+There will be totally 9 battles in this stage.
+Battle 1: 2v2, Formation: Front and Rear, Heroes: Warrior_Baserker (front), Priest_Comprehensiveness(Rear). 
+Battle 2: 1v1, Formation: NA, Hero: Warrior_Baserker.
+Battle 3: 3v3, Formation: Front 2 and Rear 1, Heroes: Warrior_Baserker (front), Rogue_Comprehensiveness (front), Mage_Comprehensiveness (Rear). 
+
+After finish battle 3, Warrior_Baserker is unlocked and can be chosen by player. Pop up a windlow tell player that "Warrior_Baserker is unlocked"
+
+Battle 4: 2v2, Formation: Side by Side, Heroes: Warrior_Baserker, Warrior_Weapon_Master. 
+Battle 5: 1v1, Formation: NA, Hero: Warrior_Weapon_Master.
+Battle 6: 3v3, Formation: Front 2 and Rear 1, Heroes: Warrior_Weapon_Master (front), Paladin_Retribution (front), Priest_Descipline (Rear). 
+
+After finish battle 6, Player is granted with a item card. Pop up a windlow tell player that "You have granted an item card".
+
+Battle 7: 2v2, Formation: Front and Rear, Heroes: Warrior_Defence (Front), Priest_Descipline (Rear). 
+Battle 8: 1v1, Formation: NA, Hero: Warrior_Defence.
+Battle 9: 3v3, Formation: Side by Side, Heroes: Warrior_Weapon_Master, Warrior_Defence, Warrior_Baserker.
+
+After finish battle 9, Warrior_Defence is unlocked and can be chosen by player. Pop up a windlow tell player that "Warrior_Defence is unlocked"
+
+

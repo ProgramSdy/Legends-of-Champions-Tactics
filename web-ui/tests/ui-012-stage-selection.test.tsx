@@ -30,7 +30,7 @@ describe("UI-012 stage-selection flow", () => {
     expect(document.querySelector(".stage-map-frame")).toHaveAttribute("data-coordinate-system", "map-percent");
   });
 
-  it("defines the extensible six-location roster with only Arena enabled", () => {
+  it("defines the extensible six-location roster with only the three approved locations enabled", () => {
     expect(STAGE_DEFINITIONS.map((stage) => stage.id)).toEqual([
       "arena",
       "warriors-barrack",
@@ -39,19 +39,20 @@ describe("UI-012 stage-selection flow", () => {
       "paladins-altar",
       "priests-cathedral",
     ]);
-    expect(STAGE_DEFINITIONS.filter((stage) => stage.enabled).map((stage) => stage.id)).toEqual(["arena", "warriors-barrack"]);
+    expect(STAGE_DEFINITIONS.filter((stage) => stage.enabled).map((stage) => stage.id)).toEqual(["arena", "warriors-barrack", "paladins-altar"]);
     const arena = STAGE_DEFINITIONS.find((stage) => stage.id === "arena");
     expect(arena?.geometry).toEqual(expect.objectContaining({ leftPercent: expect.any(Number), topPercent: expect.any(Number), widthPercent: expect.any(Number), heightPercent: expect.any(Number) }));
     expect(arena?.geometry?.leftPercent).toBeGreaterThan(0);
     expect(arena?.geometry?.leftPercent).toBeLessThan(100);
   });
 
-  it("renders Arena and Warrior's Barrack as native interactive controls", () => {
+  it("renders Arena, Warrior's Barrack, and Paladin's Altar as native interactive controls", () => {
     render(<StageSelectionScreen />);
     expect(screen.getByRole("button", { name: "Enter Arena" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Enter Warrior's Barrack" })).toBeVisible();
-    expect(screen.getAllByRole("button")).toHaveLength(2);
-    for (const name of ["Mage's Tower", "Rogue's Forest", "Paladin's Altar", "Priest's Cathedral"]) {
+    expect(screen.getByRole("button", { name: "Enter Paladin's Altar" })).toBeVisible();
+    expect(screen.getAllByRole("button")).toHaveLength(3);
+    for (const name of ["Mage's Tower", "Rogue's Forest", "Priest's Cathedral"]) {
       expect(screen.queryByRole("button", { name: new RegExp(name, "i") })).not.toBeInTheDocument();
     }
   });
@@ -87,13 +88,13 @@ describe("UI-012 stage-selection flow", () => {
     expect(push).toHaveBeenCalledTimes(2);
   });
 
-  it("keeps debug geometry hidden by default and exposes only Arena when enabled", () => {
+  it("keeps debug geometry hidden by default and exposes only enabled locations", () => {
     const { rerender } = render(<StageSelectionScreen />);
     expect(screen.queryByTestId("stage-hotspot-debug")).not.toBeInTheDocument();
     rerender(<StageSelectionScreen debugHotspots />);
     const debug = screen.getAllByTestId("stage-hotspot-debug");
-    expect(debug).toHaveLength(2);
-    expect(debug.map((item) => item.textContent)).toEqual(["Arena", "Warrior's Barrack"]);
+    expect(debug).toHaveLength(3);
+    expect(debug.map((item) => item.textContent)).toEqual(["Arena", "Warrior's Barrack", "Paladin's Altar"]);
   });
 
   it("keeps query-string debug geometry disabled in production", async () => {

@@ -67,6 +67,29 @@ events. When false or omitted, `snapshot` is immediately usable and the
 ordinary initial-event path is retained. These additive fields do not create a
 new contract version.
 
+## Default-profile training progression
+
+Progression is a separate additive v1 transport concern, never a field of
+`BattleCreateConfiguration` or a battle snapshot. `GET /api/v1/progression`
+returns the stable default profile's unlocked definition IDs, per-stage
+progress, and granted reward counts. `GET /api/v1/stages` returns the
+authoritative two nine-battle curricula with fixed enemy IDs/formations and
+server-computed access flags.
+
+`POST /api/v1/stages/{stageId}/battles/{battleIndex}` accepts only the friendly
+team, a required size-valid player formation for 2v2/3v3, and optional seed.
+It returns the normal `BattleEnvelope<BattleCreateData>` after the backend
+supplies the fixed computer team/formation. The player formation is omitted
+for 1v1. `POST /api/v1/battles/{battleId}/completion` is a
+separate typed response, not a battle envelope: an authoritative friendly
+victory atomically updates progression and returns the first newly granted
+reward(s), or `alreadyCommitted: true` with no new grant on repetition.
+
+The client renders availability and reward feedback only from these supplied
+responses. It must not infer an unlock from battle number, text, a static
+stage definition, or a local completion flag. Static `GET /api/v1/heroes`
+remains the full catalogue so a locked hero can be a fixed stage enemy.
+
 ## Stable identifiers
 
 Do not use display names or array indices as identity.
@@ -206,8 +229,8 @@ cooldown math, HP, or local status interpretation.
 `formations` is non-null for both sides of 2v2 and 3v3 battles and null for
 1v1. Its values always belong to the battle size's approved set. Each
 combatant's `position` is engine-owned. Clients use it for presentation but
-must not derive target legality or damage. For approved Warrior melee actions,
-an unavailable protected rear target is absent from `validTargetIds`; it
+must not derive target legality or damage. For every approved melee action,
+including the Warrior and Paladin classifications, an unavailable protected rear target is absent from `validTargetIds`; it
 becomes selectable only in a later authoritative snapshot after no living
 front defender remains.
 

@@ -28,6 +28,9 @@ combat.
 - **Battle adapter (FastAPI):** validates public requests, uses seeded session
   randomness, maps formation plus ordered slots to hero positions, serializes
   snapshots/legal actions/events, and advances computer turns.
+- **Progression store (SQLite):** owns the one stable local profile's unlocked
+  definitions, per-stage sequential progress, and one-time generic reward
+  grants; it is separate from live battle sessions.
 - **Combat engine (Python):** `Game`, `Hero`, `Skill`, status services, and
   concrete hero classes resolve all live rules.
 - **Battle Screen (Next.js):** renders snapshots, queues supplied events, and
@@ -42,7 +45,8 @@ combat.
 | 2v2/3v3 formation selection input | Team Builder; validated and resolved by Python |
 | Snapshot formation/position data | Python adapter |
 | Figure anchors, scale, stacking, UI effects, accessibility | Next.js presentation registry |
-| Profiles, saves, rewards, progression | Not implemented |
+| Default-profile training unlocks, stage progress, generic reward counts | SQLite progression store / FastAPI |
+| Profiles, active-battle recovery, inventory/equipment, cloud/account saves | Not implemented |
 
 The formation registry must never assign combat positions or decide legal
 targets. Conversely, visual 3v3 depth is formation-, side-, and slot-specific
@@ -60,6 +64,15 @@ Team Builder configuration
   → Battle Screen presentation queue and formation registry
 ```
 
+Structured training uses a separate route: the UI obtains progression and the
+server-owned curriculum, then posts only friendly selection/required friendly
+formation to a stage-battle route. The adapter supplies the fixed computer
+team/formation and attaches stage context to the session. After an ended,
+authoritative friendly victory, a completion route performs the SQLite
+transaction that records the step and any one-time reward before returning the
+updated progression. No stage/profile/reward field is added to
+`BattleCreateConfiguration`.
+
 For 2v2, the only formation IDs are `front-rear` and `side-by-side`; for 3v3,
 they are `one-front-two-rear`, `two-front-one-rear`, and `all-front`. The
 friendly formation is required for either size. A player-controlled enemy
@@ -75,14 +88,24 @@ adapter's seeded selection. 1v1 has no formation fields.
   value through the normal constructor chain.
 - Approved attack-type target/damage rules stay in the engine. The UI consumes
   adapter `validTargetIds` and never infers protection of a rear hero. Mage
-  Comprehensiveness projectile classification follows the same engine-owned
-  path as the existing Warrior classifications.
+  Comprehensiveness, the approved Paladin skills, and the approved Priest
+  skills follow the same dispatcher-to-`Hero.take_damage` path as the existing
+  Warrior classifications; hybrid Penance passes the type only on its opponent
+  damage branch.
 - The 3v3 visual-depth correction is stored in the frontend trio registry so
   scale and stacking follow the approved per-side ordered-slot map without
   altering combat positions.
+- The default local profile is intentionally unauthenticated and shared by
+  clients pointed at the same adapter database. SQLite progression is
+  transaction-safe, but battle sessions remain process-local; multiple
+  profiles, active-battle recovery, cloud sync, and multi-worker session
+  recovery are deferred.
 
 ## Change Log
 
 - 2026-08-15 — Documented the implemented UI-018/UI-019 cross-boundary
   formation architecture and the visual-depth ownership boundary.
+- 2026-08-19 — Added the minimal SQLite-backed default-profile training
+  progression boundary; it deliberately excludes profiles, inventory, and
+  active-battle persistence.
 - 2026-07-26 — Initial authoritative architecture document created.

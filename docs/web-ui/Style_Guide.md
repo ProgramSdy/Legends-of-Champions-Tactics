@@ -48,10 +48,11 @@ _To be documented._
   undistorted 16:9 visual. The map and its overlays share an intrinsic map
   frame; stage coordinates must use percentages of that frame rather than
   viewport pixels.
-- Arena and Warrior's Barrack are enabled locations. Their hover and focus
+- Arena, Warrior's Barrack, and Paladin's Altar are enabled locations. Their hover and focus
   state uses a modest warm gold/orange radial illumination, a soft pulse,
   visible focus outline, and compact frontend-rendered stage-name / `Available`
-  label. Warrior's Barrack geometry covers the left-side red-banner fortress.
+  label. Warrior's Barrack geometry covers the left-side red-banner fortress;
+  Paladin's Altar covers the bright right-middle altar landmark.
   The treatment remains an overlay and must not alter the source map.
 - The crossed-swords cursor is scoped to enabled stage controls and falls back
   to a normal crosshair when a browser cannot load the cursor image. It must not
@@ -202,6 +203,15 @@ _To be documented._
 - Team Builder identity is profession-only: show `Faculty · Specialization`,
   never a roster catalogue or runtime hero name. Faculty controls derive from
   the received roster and Matrix navigation pages only the active result set.
+- Structured Team Builder uses nine progression buttons: nine columns at
+  desktop and three at narrow width. Locked buttons are native-disabled with
+  explicit accessible names; completed, available, and current states do not
+  rely on color alone.
+- Structured 2v2 and 3v3 battles use the same friendly formation radio
+  controls as Arena; their predefined enemy formation remains a readable fixed
+  note. Structured 1v1 hides formation controls. Only backend-returned
+  `newlyGrantedRewards` opens the focus-contained reward
+  notification, which announces the backend message and focuses Continue.
 
 ## Change Log
 
@@ -252,3 +262,5 @@ _To be documented._
 - 2026-08-15 — Added formation-local overhead panel lanes for crowded 2v2 and
   3v3 layouts; panels stay attached to their figure layer while avoiding
   adjacent hero art.
+- 2026-08-19 — UI-020 added the Altar hotspot, responsive locked-step grid,
+  fixed-formation note, and accessible one-time reward notification language.

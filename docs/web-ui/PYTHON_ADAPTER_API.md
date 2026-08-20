@@ -76,6 +76,50 @@ Weapon Master, and Berserker; and Rogue Comprehensiveness. `displayName`
 remains a required non-empty transport field even when a presentation surface
 chooses to show only faculty and specialization.
 
+The catalogue stays static so that a locked definition can still be validated
+and rendered as a fixed training-stage enemy. Player ownership is returned
+separately by `GET /api/v1/progression` and enforced for every friendly team.
+
+### `GET /api/v1/progression`
+
+Returns the stable default local profile, its `unlockedHeroDefinitionIds`, both
+per-stage values (`highestCompletedBattle`, `unlockedBattle`, `completed`), and
+granted reward IDs/counts. The five UI-020 locked definitions are absent from
+the initial unlocked IDs. A missing first-run database is initialized
+deterministically; corrupt, unsupported, unreadable, or incomplete persistence
+returns retryable HTTP 503 `progressionStoreUnavailable` rather than resetting
+earned state.
+
+### `GET /api/v1/stages`
+
+Returns the two authoritative nine-battle curricula, including each fixed
+enemy definition order, battle size, formation, optional reward metadata, and
+server-computed `unlocked`/`completed` flags. The UI may compare this to its
+presentation config, but must not calculate access or rewards itself.
+
+### `POST /api/v1/stages/{stageId}/battles/{battleIndex}`
+
+Creates one accessible structured battle. Its body contains only the player
+team, a player-selected formation when the size is 2v2/3v3, and an optional
+seed. The route owns the exact size, fixed computer enemy definition order,
+and fixed enemy formation; locked player definitions are rejected but locked
+static enemies are allowed. The player formation uses the same size-specific
+choices as Arena and must be omitted for 1v1. A locked step returns HTTP 409;
+an unknown `stageId` or an out-of-range battle index is rejected by the typed
+route with HTTP 422. An in-range locked or unavailable step returns HTTP 409.
+The normal Arena `POST /api/v1/battles` creation contract is
+unchanged, except it also rejects a locked friendly definition with HTTP 409
+`heroLocked`.
+
+### `POST /api/v1/battles/{battleId}/completion`
+
+Commits a structured session only after its authoritative snapshot has ended in
+a friendly victory. One SQLite transaction records the battle receipt, advances
+the stage, and applies its unlock/item-card reward. The response includes
+`alreadyCommitted`, `newlyGrantedRewards`, and refreshed progression. Replays,
+retries, and duplicate callbacks return the committed state without granting
+again. Arena or non-victory sessions return a structured rejection.
+
 ### `POST /api/v1/battles`
 
 Request:
@@ -196,9 +240,11 @@ states are classified by the engine-owned `Hero.turn_directive()` seam rather
 than by adapter-local status rules.
 
 For approved damage skills carrying an `attack_type`, legal actions also enforce
-formation targeting. This currently includes the classified Warrior skills and
-Mage Comprehensiveness's Fireball, Arcane Missiles, and Frost Bolt as
-`ranged_projectile`. Melee excludes rear defenders while any
+formation targeting. This includes the classified Warrior/Mage skills and the
+owner-approved Paladin/Priest skills: Hammer of Anger and Holy Blast
+(`ranged_projectile`); Crusader Strike and Shield of Righteous (`melee`); and
+Hammer of Revenge, Heroric Charge, Holy Smite, Shadow Word Pain, Penance's
+opponent branch, and Holy Word Punishment (`ranged_instant`). Melee excludes rear defenders while any
 front defender lives; forced and computer actions consume this same target
 list. Position damage adjustment remains inside `Hero.take_damage_calculation`
 and is never calculated by the adapter or frontend.

@@ -1,21 +1,47 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BattleScreen } from "./BattleScreen";
-import { fetchHeroRoster, LiveBattleProvider } from "@/lib/battle/liveProvider";
-import type { BattleCreateConfiguration, BattleOutcome, HeroDefinitionSummary } from "@/lib/battle/types";
+import {
+  fetchHeroRoster,
+  fetchPlayerProgression,
+  fetchStructuredStages,
+  LiveBattleProvider,
+} from "@/lib/battle/liveProvider";
+import type {
+  AuthoritativeStructuredStageDefinition,
+  BattleCreateConfiguration,
+  BattleOutcome,
+  HeroDefinitionSummary,
+  PlayerProgressionResponse,
+  StageReward,
+  StructuredBattleCreateConfiguration,
+  VictoryCommitResponse,
+} from "@/lib/battle/types";
 import { BATTLE_BACKGROUND } from "@/lib/battle/battleBackgrounds";
 import { TeamBuilder } from "./TeamBuilder";
 import {
   missingStructuredStageRosterIds,
   resolveStructuredStage,
+  structuredStageMatchesAuthority,
   type StructuredStageDefinition,
 } from "@/components/stages/structured-stage-config";
 
 type BattleExperienceProps = {
   countdownStepMs?: number;
   selectedStageId?: string;
+};
+
+type ResourceState = {
+  roster: HeroDefinitionSummary[];
+  progression: PlayerProgressionResponse;
+  stages: AuthoritativeStructuredStageDefinition[];
+};
+
+type ActiveLaunch = {
+  configuration: BattleCreateConfiguration | StructuredBattleCreateConfiguration;
+  createPath: string;
 };
 
 export function BattleExperience(props: BattleExperienceProps) {
@@ -30,11 +56,51 @@ function StructuredBattleExperience({
   ...props
 }: BattleExperienceProps & { structuredStage: StructuredStageDefinition }) {
   const router = useRouter();
-  return <BattleSession
-    {...props}
-    structuredStage={structuredStage}
-    onStructuredStageComplete={() => router.replace("/stages")}
-  />;
+  return (
+    <BattleSession
+      {...props}
+      structuredStage={structuredStage}
+      onStructuredStageComplete={() => router.replace("/stages")}
+    />
+  );
+}
+
+function RewardNotification({
+  rewards,
+  onContinue,
+}: {
+  rewards: readonly StageReward[];
+  onContinue: () => void;
+}) {
+  const continueRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    continueRef.current?.focus();
+  }, []);
+  return (
+    <div className="completion-backdrop reward-notification-backdrop">
+      <section
+        className="completion-dialog reward-notification"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="reward-notification-title"
+        aria-describedby="reward-notification-message"
+        onKeyDown={(event) => {
+          if (event.key === "Tab") {
+            event.preventDefault();
+            continueRef.current?.focus();
+          }
+        }}
+      >
+        <span className="completion-crest" aria-hidden="true">✦</span>
+        <small>TRAINING REWARD</small>
+        <h2 id="reward-notification-title">Reward granted</h2>
+        <div id="reward-notification-message" aria-live="assertive">
+          {rewards.map((reward) => <p key={reward.rewardId}>{reward.notification}</p>)}
+        </div>
+        <button ref={continueRef} type="button" onClick={onContinue}>CONTINUE</button>
+      </section>
+    </div>
+  );
 }
 
 function BattleSession({
@@ -46,96 +112,246 @@ function BattleSession({
   structuredStage: StructuredStageDefinition | null;
   onStructuredStageComplete?: () => void;
 }) {
-  const [currentBattleIndex, setCurrentBattleIndex] = useState(0);
-  const [configuration, setConfiguration] = useState<BattleCreateConfiguration | null>(null);
+  const [currentBattleIndex, setCurrentBattleIndex] = useState<number | null>(null);
+  const [activeLaunch, setActiveLaunch] = useState<ActiveLaunch | null>(null);
   const [sessionKey, setSessionKey] = useState(0);
-  const [roster, setRoster] = useState<HeroDefinitionSummary[] | null>(null);
-  const [rosterError, setRosterError] = useState<string | null>(null);
-  const [rosterAttempt, setRosterAttempt] = useState(0);
+  const [resources, setResources] = useState<ResourceState | null>(null);
+  const [resourceError, setResourceError] = useState<string | null>(null);
+  const [resourceAttempt, setResourceAttempt] = useState(0);
   const [battleBackground, setBattleBackground] = useState<string | null>(null);
+  const [rewardNotification, setRewardNotification] = useState<StageReward[] | null>(null);
+  const pendingContinueRef = useRef<(() => void) | null>(null);
+  const pendingCommitRef = useRef<VictoryCommitResponse | null>(null);
+
   useEffect(() => {
     let current = true;
-    fetchHeroRoster()
-      .then((heroes) => { if (current) { setRoster(heroes); setRosterError(null); } })
-      .catch((reason: unknown) => { if (current) setRosterError(reason instanceof Error ? reason.message : "Unable to load hero roster."); });
+    const load = async () => {
+      try {
+        const [roster, progression, stagesResponse] = await Promise.all([
+          fetchHeroRoster(),
+          fetchPlayerProgression(),
+          structuredStage ? fetchStructuredStages() : Promise.resolve(null),
+        ]);
+        if (!current) return;
+        setResources({ roster, progression, stages: stagesResponse?.stages ?? [] });
+        if (structuredStage && stagesResponse) {
+          const serverStage = stagesResponse.stages.find(
+            (stage) => stage.stageId === structuredStage.stageId,
+          );
+          if (serverStage) {
+            setCurrentBattleIndex((index) => index ?? serverStage.progress.unlockedBattle - 1);
+          }
+        }
+        setResourceError(null);
+      } catch (reason: unknown) {
+        if (!current) return;
+        setResourceError(
+          reason instanceof Error ? reason.message : "Unable to load player progression.",
+        );
+      }
+    };
+    void load();
     return () => { current = false; };
-  }, [rosterAttempt]);
-  const provider = useMemo(() => configuration ? new LiveBattleProvider(undefined, configuration) : null, [configuration]);
-  const missingStructuredRosterIds = useMemo(
-    () => structuredStage && roster
-      ? missingStructuredStageRosterIds(structuredStage, roster)
-      : [],
-    [roster, structuredStage],
-  );
-  const currentStructuredBattle = structuredStage?.battles[currentBattleIndex] ?? null;
+  }, [resourceAttempt, structuredStage]);
 
-  const retryRoster = () => {
-    setRoster(null);
-    setRosterError(null);
-    setRosterAttempt((attempt) => attempt + 1);
+  const authoritativeStage = structuredStage && resources
+    ? resources.stages.find((stage) => stage.stageId === structuredStage.stageId) ?? null
+    : null;
+
+  const currentStructuredBattle = structuredStage && currentBattleIndex !== null
+    ? structuredStage.battles[currentBattleIndex] ?? null
+    : null;
+
+  const provider = useMemo(() => activeLaunch
+    ? new LiveBattleProvider(undefined, activeLaunch.configuration, activeLaunch.createPath)
+    : null, [activeLaunch]);
+
+  const missingStructuredRosterIds = useMemo(
+    () => structuredStage && resources
+      ? missingStructuredStageRosterIds(structuredStage, resources.roster)
+      : [],
+    [resources, structuredStage],
+  );
+
+  const retryResources = () => {
+    setResources(null);
+    setResourceError(null);
+    setCurrentBattleIndex(null);
+    setResourceAttempt((attempt) => attempt + 1);
   };
 
   const closeLiveBattle = () => {
-    setConfiguration(null);
+    setActiveLaunch(null);
     setBattleBackground(null);
   };
 
-  const completeBattle = (outcome: BattleOutcome) => {
-    closeLiveBattle();
-    if (!structuredStage || !currentStructuredBattle) return;
-    const friendlyVictory = outcome.kind === "victory" && outcome.winningSideId === "friendly";
-    if (!friendlyVictory) return;
-    const nextBattleIndex = currentBattleIndex + 1;
-    if (nextBattleIndex < structuredStage.battles.length) {
-      setCurrentBattleIndex(nextBattleIndex);
+  const continueAfterCommit = (
+    refreshedStage: AuthoritativeStructuredStageDefinition,
+    completedBattleIndex: number,
+  ) => {
+    if (completedBattleIndex === 8 && refreshedStage.progress.completed) {
+      setCurrentBattleIndex(null);
+      onStructuredStageComplete?.();
       return;
     }
-    setCurrentBattleIndex(0);
-    onStructuredStageComplete?.();
+    const nextDisplayOrder = Math.min(
+      completedBattleIndex + 2,
+      refreshedStage.progress.unlockedBattle,
+    );
+    setCurrentBattleIndex(nextDisplayOrder - 1);
+  };
+
+  const completeBattle = async (outcome: BattleOutcome) => {
+    if (!structuredStage || !currentStructuredBattle || !provider || currentBattleIndex === null) {
+      closeLiveBattle();
+      return;
+    }
+    const friendlyVictory = outcome.kind === "victory" && outcome.winningSideId === "friendly";
+    if (!friendlyVictory) {
+      pendingCommitRef.current = null;
+      closeLiveBattle();
+      return;
+    }
+
+    const completedBattleIndex = currentBattleIndex;
+    const commit = pendingCommitRef.current ?? await provider.commitStageVictory();
+    pendingCommitRef.current = commit;
+    const [progression, stagesResponse] = await Promise.all([
+      fetchPlayerProgression(),
+      fetchStructuredStages(),
+    ]);
+    const refreshedStage = stagesResponse.stages.find(
+      (stage) => stage.stageId === structuredStage.stageId,
+    );
+    if (!refreshedStage || !structuredStageMatchesAuthority(structuredStage, refreshedStage)) {
+      throw new Error("The refreshed training stage does not match the approved curriculum.");
+    }
+    setResources((current) => current
+      ? { ...current, progression, stages: stagesResponse.stages }
+      : current);
+    pendingCommitRef.current = null;
+    closeLiveBattle();
+
+    const continueTraining = () => continueAfterCommit(refreshedStage, completedBattleIndex);
+    if (commit.newlyGrantedRewards.length > 0) {
+      pendingContinueRef.current = continueTraining;
+      setRewardNotification(commit.newlyGrantedRewards);
+      return;
+    }
+    continueTraining();
+  };
+
+  const dismissReward = () => {
+    const continueTraining = pendingContinueRef.current;
+    pendingContinueRef.current = null;
+    setRewardNotification(null);
+    continueTraining?.();
   };
 
   const completionLabel = (outcome: BattleOutcome) => {
     if (!structuredStage || !currentStructuredBattle) return "RETURN TO TEAM BUILDER";
-    if (outcome.kind !== "victory" || outcome.winningSideId !== "friendly") return "RETRY BATTLE";
-    const nextBattle = structuredStage.battles[currentBattleIndex + 1];
-    return nextBattle ? `CONTINUE TO BATTLE ${nextBattle.displayOrder}` : "RETURN TO STAGE MAP";
+    if (outcome.kind !== "victory" || outcome.winningSideId !== "friendly") {
+      return "RETRY BATTLE";
+    }
+    return "CONTINUE TRAINING";
   };
 
-  if (!provider && rosterError) return <main className="loading-screen"><section className="connection-state" role="alert"><strong>HERO ROSTER UNAVAILABLE</strong><p>{rosterError}</p><button onClick={retryRoster}>Retry connection</button></section></main>;
-  if (!provider && !roster) return <main className="loading-screen" aria-live="polite"><span className="loading-rune">◇</span>Loading approved heroes…</main>;
+  if (!provider && resourceError) return (
+    <main className="loading-screen">
+      <section className="connection-state" role="alert">
+        <strong>PLAYER PROGRESSION UNAVAILABLE</strong>
+        <p>{resourceError}</p>
+        <button onClick={retryResources}>Retry progression</button>
+      </section>
+    </main>
+  );
+  if (!provider && !resources) return (
+    <main className="loading-screen" aria-live="polite">
+      <span className="loading-rune">◇</span>Loading player progression…
+    </main>
+  );
+  if (!provider && structuredStage && (
+    !authoritativeStage || !structuredStageMatchesAuthority(structuredStage, authoritativeStage)
+  )) return (
+    <main className="loading-screen">
+      <section className="connection-state" role="alert">
+        <strong>STAGE CONFIGURATION UNAVAILABLE</strong>
+        <p>{structuredStage.displayName} does not match the approved server curriculum.</p>
+        <button onClick={retryResources}>Retry training data</button>
+      </section>
+    </main>
+  );
   if (!provider && structuredStage && missingStructuredRosterIds.length > 0) return (
     <main className="loading-screen">
       <section className="connection-state" role="alert">
         <strong>STAGE CONFIGURATION UNAVAILABLE</strong>
         <p>{structuredStage.displayName} cannot start because the approved roster is missing: {missingStructuredRosterIds.join(", ")}.</p>
-        <button onClick={retryRoster}>Retry roster</button>
+        <button onClick={retryResources}>Retry training data</button>
       </section>
     </main>
   );
+
+  const startArenaBattle = (configuration: BattleCreateConfiguration) => {
+    setSessionKey((key) => key + 1);
+    setBattleBackground(BATTLE_BACKGROUND);
+    setActiveLaunch({ configuration, createPath: "/api/v1/battles" });
+  };
+  const startStructuredBattle = (configuration: StructuredBattleCreateConfiguration) => {
+    if (!structuredStage || !authoritativeStage || currentBattleIndex === null) return;
+    const serverBattle = authoritativeStage.battles[currentBattleIndex];
+    if (!serverBattle?.unlocked) return;
+    setSessionKey((key) => key + 1);
+    setBattleBackground(BATTLE_BACKGROUND);
+    setActiveLaunch({
+      configuration,
+      createPath: `/api/v1/stages/${encodeURIComponent(structuredStage.stageId)}/battles/${serverBattle.displayOrder}`,
+    });
+  };
+
   if (!provider) {
-    const startBattle = (next: BattleCreateConfiguration) => {
-      setSessionKey((key) => key + 1);
-      setBattleBackground(BATTLE_BACKGROUND);
-      setConfiguration(next);
-    };
-    return structuredStage && currentStructuredBattle
-      ? <TeamBuilder
-          key={currentStructuredBattle.id}
-          mode="structured"
-          roster={roster!}
-          stage={structuredStage}
-          battle={currentStructuredBattle}
-          onStart={startBattle}
-        />
-      : <TeamBuilder roster={roster!} selectedStageId={selectedStageId} onStart={startBattle} />;
+    const builder = structuredStage && currentStructuredBattle && authoritativeStage
+      ? (
+          <TeamBuilder
+            key={currentStructuredBattle.id}
+            mode="structured"
+            roster={resources!.roster}
+            availableDefinitionIds={resources!.progression.unlockedHeroDefinitionIds}
+            stage={structuredStage}
+            battle={currentStructuredBattle}
+            highestCompletedBattle={authoritativeStage.progress.highestCompletedBattle}
+            highestUnlockedBattle={authoritativeStage.progress.unlockedBattle}
+            onSelectBattle={(index) => {
+              if (authoritativeStage.battles[index]?.unlocked) setCurrentBattleIndex(index);
+            }}
+            onStart={startStructuredBattle}
+          />
+        )
+      : (
+          <TeamBuilder
+            roster={resources!.roster}
+            availableDefinitionIds={resources!.progression.unlockedHeroDefinitionIds}
+            selectedStageId={selectedStageId}
+            onStart={startArenaBattle}
+          />
+        );
+    return (
+      <>
+        {builder}
+        {rewardNotification
+          ? <RewardNotification rewards={rewardNotification} onContinue={dismissReward} />
+          : null}
+      </>
+    );
   }
-  return <BattleScreen
-    key={sessionKey}
-    provider={provider}
-    mode="live"
-    backgroundImage={battleBackground ?? undefined}
-    entryCountdownStepMs={countdownStepMs}
-    completionActionLabel={completionLabel}
-    onBattleComplete={completeBattle}
-  />;
+  return (
+    <BattleScreen
+      key={sessionKey}
+      provider={provider}
+      mode="live"
+      backgroundImage={battleBackground ?? undefined}
+      entryCountdownStepMs={countdownStepMs}
+      completionActionLabel={completionLabel}
+      onBattleComplete={completeBattle}
+    />
+  );
 }

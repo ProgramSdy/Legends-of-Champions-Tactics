@@ -2,6 +2,134 @@
 
 Completed work should be appended in reverse chronological order, with the newest entry first.
 
+## 2026-08-19 — UI-020 Persistent Nine-Battle Training Progression
+
+**Summary:**
+
+Activated Paladin's Altar and replaced the temporary Warrior's Barrack flow
+with the approved backend-authoritative nine-battle curricula. A minimal
+SQLite-backed default profile persists stage access, the five specified hero
+unlocks, and the one generic item-card reward. Structured launch and victory
+completion are additive API routes; fixed enemy teams and formations remain
+server-owned, and reward grants are atomic and idempotent. Arena creation now
+uses the same authoritative ownership gate without changing its request shape.
+
+**Agent Selection and Contributions:**
+
+- `project-manager` — established the persistence, scope, dirty-worktree, and
+  compatibility gates.
+- `game-engine-developer` — implemented curricula, SQLite progression, typed
+  routes, atomic completion, server-fixed launches, and backend regressions.
+- `ui-developer` — activated the Altar map hotspot; implemented authoritative
+  progression/stage fetches, roster gating, structured stage controls, reward
+  feedback, and frontend documentation.
+- `test-automator` — added progression, access, fixed-formation, reward, and
+  retry coverage and validated the integration suites.
+- `reviewer` — independently audited authority, persistence, documentation,
+  and owner-file preservation; final disposition approved.
+
+**Files Changed:**
+
+- `battle_api/progression.py`, `battle_api/models.py`, `battle_api/app.py`,
+  `battle_api/adapter.py`
+- `tests/test_ui020_progression.py` and affected backend request fixtures
+- `web-ui/components/battle/BattleExperience.tsx`,
+  `web-ui/components/battle/TeamBuilder.tsx`, stage/progression client and
+  configuration modules, scoped styles, and
+  `web-ui/tests/ui-020-progression.test.tsx`
+- UI, API, GDD, technical, save-system, and completion documentation listed in
+  this task's scoped diff.
+
+**Validation:**
+
+- Backend progression/API focused suites — 99 passed, with one existing
+  Starlette deprecation warning; the dedicated progression suite passed 9/9.
+- Frontend UI-020 progression suite — 6/6 passed; affected frontend suites —
+  66/66 passed.
+- TypeScript typecheck, ESLint, Python compileall, production build, and
+  task-scoped whitespace checks — passed.
+- Browser smoke checks at desktop and narrow widths confirmed exactly Arena,
+  Warrior's Barrack, and Paladin's Altar as active map locations; each
+  structured Battle 1 presented fixed enemies, locked later steps, and the
+  five-hero initial owned roster without page overflow.
+
+**Unresolved Issues / Recommended Follow-up:**
+
+- Full backend regression retained seven pre-existing Warrior Defence
+  Shield-Lash/Shield-Bash expectation failures; full frontend retained fourteen
+  inherited empty-slot, scale, placement, and duplicate-query test failures.
+  None are introduced by UI-020.
+- The default local profile is intentionally unauthenticated and shared on a
+  local deployment; battle sessions remain process-local. Profiles,
+  authentication, cloud synchronization, and battle resumption remain deferred.
+
+---
+
+## 2026-08-18 — Paladin and Priest Attack-Type Activation
+
+**Summary:**
+
+Activated the owner-supplied attack types for the live Paladin Retribution,
+Protection, and Holy; Priest Comprehensiveness; and Priest Discipline roster
+definitions. The ten supplied classifications now pass through the compatible
+`Skill` dispatcher into the authoritative `Hero.take_damage` formation path,
+with the initiating hero preserved. Paladin Protection's unsupported
+`independent_hammer_of_revenge` callback was removed after explicit owner
+approval; Hammer of Revenge remains `ranged_instant`.
+
+Penance preserves its ally/healing branch while applying `ranged_instant` only
+to its opponent/direct-damage branch. Shadow Word Pain and Holy Word Punishment
+periodic ticks remain status-owned and unclassified. The confirmed projectile
+position multipliers are 100% front-to-front, 80% across front/rear, and 60%
+rear-to-rear.
+
+**Agent Selection and Contributions:**
+
+- `project-manager` — audited the supplied scope, identified the missing
+  Paladin callback and hybrid Penance boundary, and coordinated owner decisions.
+- `game-engine-developer` — propagated the exact supplied values through the
+  callbacks and compatible dispatcher without changing damage formulas.
+- `test-automator` — added exact-scope, target-legality, propagation, modifier,
+  legacy-dispatch, and periodic-tick regressions.
+- `ui-developer` — confirmed that the frontend continues to consume only
+  authoritative `legalActions` and damage events; no client rule/schema change
+  was required.
+- `reviewer` — independently verified the engine boundary, Penance/tick
+  behavior, stable documentation, and final test disposition.
+
+**Files Changed:**
+
+- `heroes/paladin.py`
+- `heroes/priest.py`
+- `skills/skill.py`
+- `tests/test_paladin_priest_attack_types.py`
+- `tests/test_paladin_priest_attack_type_propagation.py`
+- `docs/GDD/Combat_System.md`
+- `docs/GDD/Skill_System.md`
+- `docs/GDD/Game_Design_Document.md`
+- `docs/Technical/Architecture.md`
+- `docs/web-ui/PYTHON_ADAPTER_API.md`
+- `docs/web-ui/BATTLE_DATA_CONTRACT_V1.md`
+- `docs/Codex/Completed.md`
+
+**Validation:**
+
+- `.venv/bin/python -m pytest -q tests/test_paladin_priest_attack_types.py tests/test_paladin_priest_attack_type_propagation.py tests/test_mage_attack_type_propagation.py` — 28 passed.
+- Frontend authoritative-boundary suites — 71 passed; TypeScript typecheck passed.
+- `.venv/bin/python -m compileall -q heroes skills battle_api game` — passed.
+- Task-scoped whitespace check — passed.
+- Independent reviewer disposition — approved.
+
+**Unresolved Issues / Recommended Follow-up:**
+
+- An unrelated legacy test expects Warrior Defence's removed Shield Lash skill;
+  the current definition exposes Thunder Pot. Repair that stale regression in a
+  separate task.
+- Projectile-specific battle animation remains a separate presentation feature;
+  no client attack-type inference was introduced here.
+
+---
+
 ## 2026-08-15 — Mage Comprehensiveness Ranged-Projectile Activation
 
 **Summary:**

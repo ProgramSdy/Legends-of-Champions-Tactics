@@ -22,6 +22,11 @@ ENEMY_TEAM = [
     "hero.priest.comprehensiveness",
     "hero.paladin.protection",
 ]
+HTTP_UNLOCKED_PLAYER_TEAM = [
+    "hero.warrior.weapon_master",
+    "hero.mage.comprehensiveness",
+    "hero.priest.comprehensiveness",
+]
 
 
 @pytest.mark.parametrize(
@@ -155,7 +160,7 @@ def test_seeded_computer_3v3_formation_is_authoritative_and_reproducible():
 def test_http_seeded_computer_3v3_selection_is_reproducible():
     payload = {
         "battleSize": 3,
-        "playerTeam": PLAYER_TEAM,
+        "playerTeam": HTTP_UNLOCKED_PLAYER_TEAM,
         "enemyCompositionMode": "random",
         "enemyControlMode": "computer",
         "playerFormation": "one-front-two-rear",

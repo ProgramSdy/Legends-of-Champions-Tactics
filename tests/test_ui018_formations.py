@@ -23,6 +23,10 @@ ENEMY = [
     "hero.rogue.comprehensiveness",
     "hero.priest.comprehensiveness",
 ]
+HTTP_UNLOCKED_TEAM = [
+    "hero.warrior.weapon_master",
+    "hero.mage.comprehensiveness",
+]
 
 
 def test_http_2v2_requires_typed_formations_and_rejects_them_elsewhere():
@@ -38,7 +42,7 @@ def test_http_2v2_requires_typed_formations_and_rejects_them_elsewhere():
         "/api/v1/battles",
         json={
             "battleSize": 2,
-            "playerTeam": TEAM,
+            "playerTeam": HTTP_UNLOCKED_TEAM,
             "enemyTeam": ENEMY,
             "playerFormation": "front-rear",
             "enemyControlMode": "player",
@@ -75,7 +79,7 @@ def test_http_computer_2v2_can_omit_enemy_formation():
         "/api/v1/battles",
         json={
             "battleSize": 2,
-            "playerTeam": TEAM,
+            "playerTeam": HTTP_UNLOCKED_TEAM,
             "enemyCompositionMode": "random",
             "enemyControlMode": "computer",
             "playerFormation": "side-by-side",
@@ -217,9 +221,9 @@ def test_computer_melee_target_is_reconciled_to_adapter_legality():
         ("melee", "front", "rear", 100),
         ("melee", "rear", "front", 70),
         ("ranged_projectile", "front", "front", 100),
-        ("ranged_projectile", "front", "rear", 87),
-        ("ranged_projectile", "rear", "front", 87),
-        ("ranged_projectile", "rear", "rear", 75),
+        ("ranged_projectile", "front", "rear", 80),
+        ("ranged_projectile", "rear", "front", 80),
+        ("ranged_projectile", "rear", "rear", 60),
         ("ranged_instant", "rear", "rear", 100),
         ("NA", "rear", "rear", 100),
         ("future_type", "rear", "rear", 100),

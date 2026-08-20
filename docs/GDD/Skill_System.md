@@ -54,12 +54,21 @@ engine's single damage-calculation path then applies an authorized
 formation-position modifier once.
 
 This is deliberately limited to the currently classified Warrior Weapon Master,
-Warrior Defence, Warrior Berserker, and Mage Comprehensiveness damage skills.
-Mage Comprehensiveness's Fireball, Arcane Missiles, and Frost Bolt are approved
-`ranged_projectile` skills. `melee`, `ranged_projectile`, and
-`ranged_instant` are not generic UI labels or default values for other skills.
-The classification stays on `Skill`, not in individual damage formulas or the
-frontend.
+Warrior Defence, Warrior Berserker, Mage Comprehensiveness, Paladin
+Retribution, Paladin Protection, Paladin Holy, Priest Comprehensiveness, and
+Priest Discipline skills. The owner-approved Paladin/Priest inventory is:
+
+- Hammer of Anger and Holy Blast — `ranged_projectile`;
+- Crusader Strike and Shield of Righteous — `melee`;
+- Hammer of Revenge, Heroric Charge, Holy Smite, Shadow Word Pain, Penance,
+  and Holy Word Punishment — `ranged_instant`.
+
+For hybrid Penance, only its opponent/direct-damage branch receives the
+classification; its ally/healing branch remains healing-only. Periodic damage
+from classified status skills remains unclassified. `melee`,
+`ranged_projectile`, and `ranged_instant` are not generic UI labels or default
+values for other skills. The classification stays on `Skill`, not in individual
+damage formulas or the frontend.
 
 ## Damage, Healing, Status, and Summon Effects
 

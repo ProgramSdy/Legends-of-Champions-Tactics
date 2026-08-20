@@ -37,22 +37,35 @@ function endedEnvelope(battleId: string) {
   };
 }
 
+const progression = {
+  contractVersion: "1.0",
+  profileId: "profile.local.default",
+  unlockedHeroDefinitionIds: roster.map((hero) => hero.definitionId),
+  stageProgress: [
+    { stageId: "paladins-altar", highestCompletedBattle: 0, unlockedBattle: 1, completed: false },
+    { stageId: "warriors-barrack", highestCompletedBattle: 0, unlockedBattle: 1, completed: false },
+  ],
+  grantedRewards: [],
+};
+
+function response(body: unknown) {
+  return new Response(JSON.stringify(body), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
 describe("fixed battle background", () => {
   it("uses BG03 through rerenders and each new battle", async () => {
     const user = userEvent.setup();
-    const fetchMock = vi.spyOn(globalThis, "fetch")
-      .mockResolvedValueOnce(new Response(JSON.stringify({
-        contractVersion: "1.0",
-        heroes: roster,
-      }), { status: 200, headers: { "Content-Type": "application/json" } }))
-      .mockResolvedValueOnce(new Response(JSON.stringify(endedEnvelope("battle.background.1")), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }))
-      .mockResolvedValueOnce(new Response(JSON.stringify(endedEnvelope("battle.background.2")), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }));
+    let battle = 0;
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const path = String(input);
+      if (path.endsWith("/api/v1/heroes")) return response({ contractVersion: "1.0", heroes: roster });
+      if (path.endsWith("/api/v1/progression")) return response(progression);
+      battle += 1;
+      return response(endedEnvelope(`battle.background.${battle}`));
+    });
 
     render(<BattleExperience countdownStepMs={0} />);
     await user.click(await screen.findByRole("button", { name: "ENTER BATTLE" }));
@@ -78,9 +91,12 @@ describe("fixed battle background", () => {
 
   it("renders 3, 2, 1, and START over the composed live scene", async () => {
     const user = userEvent.setup();
-    const fetchMock = vi.spyOn(globalThis, "fetch")
-      .mockResolvedValueOnce(new Response(JSON.stringify({ contractVersion: "1.0", heroes: roster }), { status: 200, headers: { "Content-Type": "application/json" } }))
-      .mockResolvedValueOnce(new Response(JSON.stringify(endedEnvelope("battle.countdown.1")), { status: 200, headers: { "Content-Type": "application/json" } }));
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const path = String(input);
+      if (path.endsWith("/api/v1/heroes")) return response({ contractVersion: "1.0", heroes: roster });
+      if (path.endsWith("/api/v1/progression")) return response(progression);
+      return response(endedEnvelope("battle.countdown.1"));
+    });
 
     render(<BattleExperience countdownStepMs={20} />);
     await user.click(await screen.findByRole("button", { name: "ENTER BATTLE" }));
@@ -90,7 +106,7 @@ describe("fixed battle background", () => {
     expect(await screen.findByRole("status", { name: "Battle start" })).toHaveTextContent("START");
 
     await screen.findByRole("dialog", { name: "YOUR TEAM VICTORIOUS" });
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
     fetchMock.mockRestore();
   });
 });

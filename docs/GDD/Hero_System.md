@@ -94,8 +94,16 @@ timing.
 
 ## Progression and Upgrades
 
-No levels, XP, permanent attributes, equipment, inventory, unlocks, rarity,
-or persistence are implemented. Battle-local buffs/debuffs are not progression.
+The default local profile persists ownership of the ten approved web
+definitions. Five definitions start locked to player selection: Paladin
+Protection, Retribution, and Holy; Warrior Berserker; and Warrior Defence.
+They remain valid static definitions and can appear as fixed structured-stage
+enemies. The backend unlocks each only through its specified training reward
+and returns the authoritative available definition IDs to the client. Battle
+local buffs/debuffs are not progression.
+
+Levels, XP, permanent attributes, rarity, equipment, inventory behavior,
+multiple profiles, accounts, and cloud sync remain unimplemented.
 
 ## Open Questions
 
@@ -108,6 +116,8 @@ or persistence are implemented. Battle-local buffs/debuffs are not progression.
 
 - 2026-08-15 — Added the three adapter-owned 3v3 position mappings while
   retaining the existing constructor default for legacy paths.
+- 2026-08-19 — Documented the default-profile ownership gate used by the two
+  persisted training curricula.
 - 2026-08-14 — Documented the backward-compatible hero position field and
   authoritative 2v2 constructor mapping.
 - 2026-08-06 — Rebuilt from current hero, generator, summon, and adapter

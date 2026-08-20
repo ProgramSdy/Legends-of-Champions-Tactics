@@ -16,24 +16,30 @@ import type {
   EnemyCompositionMode,
   EnemyControlMode,
   HeroDefinitionSummary,
+  StructuredBattleCreateConfiguration,
   TrioFormationId,
 } from "@/lib/battle/types";
 import { AssetImage } from "./AssetImage";
 
 interface TeamBuilderBaseProps {
   roster: HeroDefinitionSummary[];
-  onStart: (configuration: BattleCreateConfiguration) => void;
+  availableDefinitionIds?: readonly string[];
 }
 
 interface ArenaTeamBuilderProps extends TeamBuilderBaseProps {
   mode?: "arena";
   selectedStageId?: string;
+  onStart: (configuration: BattleCreateConfiguration) => void;
 }
 
 interface StructuredTeamBuilderProps extends TeamBuilderBaseProps {
   mode: "structured";
   stage: StructuredStageDefinition;
   battle: StructuredStageBattleDefinition;
+  highestCompletedBattle?: number;
+  highestUnlockedBattle?: number;
+  onSelectBattle?: (battleIndex: number) => void;
+  onStart: (configuration: StructuredBattleCreateConfiguration) => void;
 }
 
 export type TeamBuilderProps = ArenaTeamBuilderProps | StructuredTeamBuilderProps;
@@ -134,18 +140,23 @@ function FixedEnemyTeamSlot({
 }
 
 export function TeamBuilder(props: TeamBuilderProps) {
-  const { roster, onStart } = props;
+  const { roster } = props;
   const structuredStage = props.mode === "structured" ? props.stage : null;
   const structuredBattle = props.mode === "structured" ? props.battle : null;
+  const highestCompletedBattle = props.mode === "structured"
+    ? (props.highestCompletedBattle ?? 0)
+    : 0;
+  const highestUnlockedBattle = props.mode === "structured"
+    ? (props.highestUnlockedBattle ?? props.battle.displayOrder)
+    : 0;
+  const selectStructuredBattle = props.mode === "structured" ? props.onSelectBattle : undefined;
   const selectedStage = resolveEnabledStage(
     structuredStage?.stageId ?? (props.mode === "structured" ? undefined : props.selectedStageId),
   );
   const builderRoster = useMemo(() => {
-    if (!structuredStage) return roster;
-    return structuredStage.allowedPlayerDefinitionIds
-      .map((definitionId) => roster.find((hero) => hero.definitionId === definitionId))
-      .filter((hero): hero is HeroDefinitionSummary => Boolean(hero));
-  }, [roster, structuredStage]);
+    const availableIds = new Set(props.availableDefinitionIds ?? roster.map((hero) => hero.definitionId));
+    return roster.filter((hero) => availableIds.has(hero.definitionId));
+  }, [props.availableDefinitionIds, roster]);
   const initialBattleSize = structuredBattle?.battleSize ?? 1;
   const [battleSize, setBattleSize] = useState<BattleSize>(initialBattleSize);
   const [playerTeam, setPlayerTeam] = useState<string[]>(Array(initialBattleSize).fill(""));
@@ -177,35 +188,28 @@ export function TeamBuilder(props: TeamBuilderProps) {
   const parsedSeed = seedText === "" ? undefined : Number(seedText);
   const validation = useMemo(() => {
     if (playerTeam.length !== battleSize || playerTeam.some((id) => !id)) return "Fill every player-team slot.";
-    if (structuredStage && playerTeam.some((id) => !structuredStage.allowedPlayerDefinitionIds.includes(id))) {
-      return "Choose every player hero from this stage's approved roster.";
+    if (playerTeam.some((id) => !builderRoster.some((hero) => hero.definitionId === id))) {
+      return "Choose every player hero from your available roster.";
     }
     if (enemyCompositionMode === "specified" && (enemyTeam.length !== battleSize || enemyTeam.some((id) => !id))) {
       return "Fill every specified enemy-team slot.";
     }
     if (seedText !== "" && (!Number.isSafeInteger(parsedSeed) || parsedSeed! < 0)) return "Seed must be a non-negative whole number.";
     return null;
-  }, [battleSize, enemyCompositionMode, enemyTeam, parsedSeed, playerTeam, seedText, structuredStage]);
+  }, [battleSize, builderRoster, enemyCompositionMode, enemyTeam, parsedSeed, playerTeam, seedText]);
 
   const updateSlot = (team: string[], index: number, value: string) =>
     team.map((current, slot) => slot === index ? value : current);
 
   const launch = () => {
     if (validation) return;
-    if (structuredBattle) {
+    if (props.mode === "structured") {
       const structuredConfiguration = {
         playerTeam,
-        enemyCompositionMode: "specified" as const,
-        enemyTeam: [...structuredBattle.enemyDefinitionIds],
-        enemyControlMode: "computer" as const,
+        ...(battleSize === 2 ? { playerFormation: playerDuoFormation } : {}),
+        ...(battleSize === 3 ? { playerFormation: playerTrioFormation } : {}),
       };
-      if (structuredBattle.battleSize === 2) {
-        onStart({ ...structuredConfiguration, battleSize: 2, playerFormation: playerDuoFormation });
-      } else if (structuredBattle.battleSize === 3) {
-        onStart({ ...structuredConfiguration, battleSize: 3, playerFormation: playerTrioFormation });
-      } else {
-        onStart({ ...structuredConfiguration, battleSize: 1 });
-      }
+      props.onStart(structuredConfiguration);
       return;
     }
     const arenaConfiguration = {
@@ -216,21 +220,21 @@ export function TeamBuilder(props: TeamBuilderProps) {
     };
     if (battleSize === 2) {
       if (enemyControlMode === "player") {
-        onStart({ ...arenaConfiguration, battleSize: 2, enemyControlMode, playerFormation: playerDuoFormation, enemyFormation: enemyDuoFormation });
+        props.onStart({ ...arenaConfiguration, battleSize: 2, enemyControlMode, playerFormation: playerDuoFormation, enemyFormation: enemyDuoFormation });
       } else {
-        onStart({ ...arenaConfiguration, battleSize: 2, enemyControlMode, playerFormation: playerDuoFormation });
+        props.onStart({ ...arenaConfiguration, battleSize: 2, enemyControlMode, playerFormation: playerDuoFormation });
       }
       return;
     }
     if (battleSize === 3) {
       if (enemyControlMode === "player") {
-        onStart({ ...arenaConfiguration, battleSize: 3, enemyControlMode, playerFormation: playerTrioFormation, enemyFormation: enemyTrioFormation });
+        props.onStart({ ...arenaConfiguration, battleSize: 3, enemyControlMode, playerFormation: playerTrioFormation, enemyFormation: enemyTrioFormation });
       } else {
-        onStart({ ...arenaConfiguration, battleSize: 3, enemyControlMode, playerFormation: playerTrioFormation });
+        props.onStart({ ...arenaConfiguration, battleSize: 3, enemyControlMode, playerFormation: playerTrioFormation });
       }
       return;
     }
-    onStart({ ...arenaConfiguration, battleSize: 1, enemyControlMode });
+    props.onStart({ ...arenaConfiguration, battleSize: 1, enemyControlMode });
   };
 
   const stagePosition = `${selectedStage.geometry.leftPercent + selectedStage.geometry.widthPercent / 2}% ${selectedStage.geometry.topPercent + selectedStage.geometry.heightPercent / 2}%`;
@@ -290,15 +294,47 @@ export function TeamBuilder(props: TeamBuilderProps) {
       </section>
 
       {structuredBattle && structuredStage ? (
-        <section className="structured-battle-summary" aria-labelledby="structured-battle-heading">
-          <div>
-            <small>STRUCTURED TRAINING</small>
-            <h2 id="structured-battle-heading">Battle {structuredBattle.displayOrder}</h2>
-            <p>Battle {structuredBattle.displayOrder} of {structuredStage.battles.length}</p>
-          </div>
-          <strong>{structuredBattle.battleSize}v{structuredBattle.battleSize}</strong>
-          <span>Fixed format · predefined enemy team</span>
-        </section>
+        <>
+          <section className="structured-battle-summary" aria-labelledby="structured-battle-heading">
+            <div>
+              <small>STRUCTURED TRAINING</small>
+              <h2 id="structured-battle-heading">Battle {structuredBattle.displayOrder}</h2>
+              <p>Battle {structuredBattle.displayOrder} of {structuredStage.battles.length}</p>
+            </div>
+            <strong>{structuredBattle.battleSize}v{structuredBattle.battleSize}</strong>
+            <span>
+              {structuredBattle.enemyFormation
+                ? `Fixed enemy ${structuredBattle.enemyFormation.replaceAll("-", " ")} formation`
+                : "Predefined enemy team"}
+            </span>
+            <p className="structured-reward-context">
+              {structuredBattle.completionReward
+                ? `${highestCompletedBattle >= structuredBattle.displayOrder ? "Earned" : "Victory reward"}: ${structuredBattle.completionReward.notificationMessage}`
+                : "Victory advances training; no reward for this battle."}
+            </p>
+          </section>
+          <nav className="structured-battle-steps" aria-label={`${structuredStage.displayName} battle progression`}>
+            {structuredStage.battles.map((battle, index) => {
+              const locked = battle.displayOrder > highestUnlockedBattle;
+              const completed = battle.displayOrder <= highestCompletedBattle;
+              const current = battle.id === structuredBattle.id;
+              return (
+                <button
+                  key={battle.id}
+                  type="button"
+                  className={`${completed ? "completed" : ""}${current ? " current" : ""}`}
+                  aria-current={current ? "step" : undefined}
+                  aria-label={`Battle ${battle.displayOrder}${locked ? ", locked" : completed ? ", completed" : ", available"}`}
+                  disabled={locked || !selectStructuredBattle}
+                  onClick={() => selectStructuredBattle?.(index)}
+                >
+                  <strong>{battle.displayOrder}</strong>
+                  <small>{locked ? "Locked" : completed ? "Complete" : "Available"}</small>
+                </button>
+              );
+            })}
+          </nav>
+        </>
       ) : <section className="builder-options" aria-labelledby="battle-rules-heading">
         <h2 id="battle-rules-heading">Battle rules</h2>
         <fieldset>
@@ -377,11 +413,19 @@ export function TeamBuilder(props: TeamBuilderProps) {
 
       <section className="team-composer enemy" aria-labelledby="enemy-team-heading">
         <header><div><small>{enemyControlMode === "computer" ? "ENGINE CONTROLLED" : "PLAYER CONTROLLED"}</small><h2 id="enemy-team-heading">Enemy Team</h2></div><strong>{enemyCompositionMode === "random" ? "RANDOM" : `${battleSize} HERO${battleSize > 1 ? "ES" : ""}`}</strong></header>
-        {(battleSize === 2 || battleSize === 3) && enemyControlMode === "player"
+        {structuredBattle ? (
+          <p className="formation-computer-note fixed-formation-note" role="note">
+            <strong>Predefined enemy formation</strong>
+            <span>{structuredBattle.enemyFormation
+              ? `The enemy uses ${structuredBattle.enemyFormation.replaceAll("-", " ")}.`
+              : "This duel uses no formation selection."}</span>
+          </p>
+        ) : null}
+        {!structuredBattle && (battleSize === 2 || battleSize === 3) && enemyControlMode === "player"
           ? battleSize === 2
             ? <FormationSelector side="enemy" choices={DUO_FORMATIONS} value={enemyDuoFormation} onChange={setEnemyDuoFormation} />
             : <FormationSelector side="enemy" choices={TRIO_FORMATIONS} value={enemyTrioFormation} onChange={setEnemyTrioFormation} />
-          : battleSize === 2 || battleSize === 3
+          : !structuredBattle && (battleSize === 2 || battleSize === 3)
             ? <p className="formation-computer-note" role="note"><strong>Computer formation</strong><span>{battleSize === 2
               ? "The computer will choose Front and Rear or Side by Side when this battle is created."
               : "The computer will choose one of three formations when this battle is created: One Front, Two Rear; Two Front, One Rear; or All Front."}</span></p>

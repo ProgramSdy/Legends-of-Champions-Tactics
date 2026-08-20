@@ -99,7 +99,7 @@ title scene and Team Builder. It renders the one owner-supplied map at
 map container. Stage geometry is percentage-based inside that same container,
 not the viewport.
 
-Arena and Warrior's Barrack are currently enabled. Each uses the same
+Arena, Warrior's Barrack, and Paladin's Altar are currently enabled. Each uses the same
 map-bound pointer hover and keyboard-focus treatment, and click, Enter, or Space
 navigation. Arena opens `/game?stage=arena`. Warrior's Barrack opens
 `/game?stage=warriors-barrack` through a percentage-based hotspot over the
@@ -108,6 +108,10 @@ and Priest's Cathedral remain inactive configuration metadata only; they render
 no controls, labels, effects, or state treatment. Local development may add
 `?debugHotspots=1` to outline enabled-stage geometry; normal and production
 presentation leave it off.
+
+UI-020 supersedes the preceding inactive-Altar sentence: Paladin's Altar opens
+`/game?stage=paladins-altar` through the bright right-middle altar hotspot.
+Mage's Tower, Rogue's Forest, and Priest's Cathedral remain inactive.
 
 ### Team Builder
 
@@ -157,32 +161,40 @@ explanation instead of an editable selector and omits `enemyFormation`; Python
 returns its seeded choice through the snapshot formation and combatant
 positions. Formation controls and fields remain absent in 1v1.
 
-Warrior's Barrack uses the same Team Builder in a separate structured-stage
-mode. It is a temporary in-memory training sequence, not a profile, save,
-unlock, reward, or campaign system. The builder exposes only its approved
-four-definition player Matrix (Warrior Weapon Master, Mage Comprehensiveness,
-Priest Comprehensiveness, and Rogue Comprehensiveness), its fixed battle
-format, and an accessible immutable predefined enemy summary. Arena-style
-battle-size, enemy composition, enemy-control, seed, and enemy-team controls
-are absent from structured mode.
+Structured training uses the same Team Builder in a persisted, backend-owned
+mode. Warrior's Barrack and Paladin's Altar each use a nine-battle curriculum,
+fixed enemy teams and formations, and server-authoritative access and rewards.
+The builder exposes only the player heroes unlocked for the default profile,
+its fixed battle format, and an accessible immutable predefined enemy summary.
+Arena-style battle-size, enemy-composition, enemy-control, and enemy-team
+controls are absent from structured mode. A seed remains optional where the
+stage contract permits it.
 
-The current ordered Warrior's Barrack sequence is:
+Structured 2v2 and 3v3 battles expose the same friendly formation selectors as
+Arena, while 1v1 hides them. Predefined enemy teams and formations stay
+immutable and computer-controlled, and their formation is shown as a fixed
+note. The client validates that the server curriculum matches its presentation
+configuration before revealing the builder; a mismatch or missing roster
+definition shows a retryable configuration/roster error rather than a
+substitute hero.
 
-1. Battle 1 — 2v2 against Warrior Defence and Priest Comprehensiveness.
-2. Battle 2 — 1v1 against Warrior Weapon Master.
-3. Battle 3 — 3v3 against Warrior Defence, Warrior Berserker, and Priest
-   Comprehensiveness.
+### UI-020 Persistent Structured Training
 
-Battle 1 uses the same friendly 2v2 formation selector and Battle 3 uses the
-friendly 3v3 selector. Their predefined enemy teams remain immutable and
-computer-controlled, so each enemy formation is chosen authoritatively and
-represented by the size-specific non-editable explanation. Battle 2 shows no
-formation controls.
+Warrior's Barrack and Paladin's Altar each render the approved nine-battle curriculum,
+Battle N of 9, a player-selectable size-valid formation, immutable ordered enemy
+team with fixed formation, reward context,
+and nine accessible completed/available/locked steps. The player Matrix uses
+only `unlockedHeroDefinitionIds` from progression; fixed enemies continue to
+resolve through the full static roster even while player-locked.
 
-The exact fixed-team request continues to use the existing battle-create
-contract. The client validates that every configured definition is supplied by
-the adapter roster before revealing the builder; missing definitions show a
-retryable configuration/roster error rather than a substitute hero.
+Launch uses the one-based stage route and sends only the chosen player team,
+the selected player formation when applicable, and optional seed. A friendly
+victory is committed through the backend completion route, followed by fresh
+progression/stage fetches. A non-victory retries the same step. A newly granted
+reward opens a focus-contained notification with the backend message; Continue
+then opens the next permitted step or Stage Map. Replay with no new grant does
+not reopen the notification. Storage, contract, launch, commit, and refetch
+failures remain visible and retryable.
 
 ### Battle Screen
 
@@ -209,11 +221,12 @@ to avoid duplicate lines without suppressing the typed event itself.
 
 Appears only when the authoritative snapshot phase is `ended`. It announces the
 outcome, initially focuses its action, and contains keyboard Tab focus. Arena
-returns to its Team Builder. In Warrior's Barrack, the typed authoritative
-outcome drives the action: a friendly victory advances Battle 1 → 2 → 3, and
-the third victory returns to `/stages`; enemy victory, draw, and round-limit
-results show **Retry Battle** and return to preparation for that same battle.
-No result is inferred from a log line or visual label.
+returns to its Team Builder. In either structured stage, the typed
+authoritative outcome drives the action: a friendly victory is committed by
+the backend and opens the next permitted battle; the ninth committed victory
+returns to `/stages`. Enemy victory, draw, and round-limit results show
+**Retry Battle** and return to preparation for that same battle. No result is
+inferred from a log line or visual label.
 
 ### Asset Gallery
 
@@ -228,19 +241,17 @@ flow. Its return link navigates directly to `/game`.
 - `/stages` opens the stage-selection map without creating a battle session.
 - `/game` opens Arena Team Builder after the roster loads; `/game?stage=arena`
   identifies Arena configuration mode.
-- `/game?stage=warriors-barrack` starts the temporary Warrior's Barrack
-  sequence at Battle 1 preparation.
-- `START GAME` navigates to `/stages`; Arena, Warrior's Barrack, and the Asset
-  Gallery return link navigate through their documented destinations.
+- `/game?stage=warriors-barrack` and `/game?stage=paladins-altar` open the
+  respective persisted curriculum at its next permitted battle.
+- `START GAME` navigates to `/stages`; Arena, both structured stages, and the
+  Asset Gallery return link navigate through their documented destinations.
 - Team Builder launches only live Python-backed sessions.
 - Mock fixtures remain test/development data and are not the normal user entry
   flow.
-- Battle state is not retained when returning to Team Builder. Warrior's
-  Barrack retains only its current sequence position in client memory while the
-  page remains active; completing Battle 3 clears it by returning to the Stage
-  Map.
-- Browser reload during a battle does not resume the process-local session and
-  may restart or lose the temporary Warrior's Barrack sequence.
+- Battle sessions are process-local and are not resumed after a browser reload.
+  Completed structured battles, access state, unlocked heroes, and rewards
+  persist in the backend default profile; a new launch reloads that state and
+  starts the next permitted battle.
 
 ### Agreed Persistence Design
 
@@ -289,3 +300,6 @@ flow. Its return link navigates directly to `/game`.
 - 2026-08-15 — Added the three size-specific 3v3 formation choices, computer
   explanation, structured Battle 3 selection, typed request handoff, and
   snapshot-formation-driven trio placement.
+- 2026-08-19 — UI-020 documented Paladin's Altar, persistent nine-battle
+  training, authoritative roster gating, locked steps, completion commits,
+  reward feedback, and retryable progression failures.

@@ -48,9 +48,14 @@ target count, and living valid targets. Player clients cannot issue ordinary
 commands during engine-owned automatic, forced, restricted, or ended states.
 
 Formation targeting is currently authoritative only for damage skills with an
-approved `Skill.attack_type`. This includes the classified Warrior skills and
-Mage Comprehensiveness's Fireball, Arcane Missiles, and Frost Bolt
-`ranged_projectile` skills. A melee action cannot target a living rear defender while
+owner-approved `Skill.attack_type`. In addition to the classified Warrior and
+Mage Comprehensiveness skills, this includes Paladin Retribution's Hammer of
+Anger (`ranged_projectile`) and Crusader Strike (`melee`); Paladin Protection's
+Hammer of Revenge and Heroric Charge (`ranged_instant`) and Shield of Righteous
+(`melee`); Paladin Holy's Holy Blast (`ranged_projectile`); Priest
+Comprehensiveness's Holy Smite and Shadow Word Pain (`ranged_instant`); and
+Priest Discipline's Penance and Holy Word Punishment (`ranged_instant`). A
+melee action cannot target a living rear defender while
 any living front defender exists; after the last front defender is defeated,
 the rear target becomes legal. The adapter applies the same legal target set to
 player commands, forced actions, and computer target selection. Missing,
@@ -93,13 +98,15 @@ position adjustment before shields and HP mutation:
 
 - rear-attacker melee deals 70%; front-attacker melee is unchanged;
 - ranged projectile front-to-front is unchanged, front-to-rear and
-  rear-to-front deal 87.5%, and rear-to-rear deals 75%;
+  rear-to-front deal 80%, and rear-to-rear deals 60%;
 - ranged instant is unchanged.
 
 The adjusted value uses `floor` after multiplication and is then clamped to
-zero. These rules apply to the classified Warrior skills and the three approved
-Mage Comprehensiveness `ranged_projectile` skills; no attack type is inferred
-for another faculty or Mage specialization.
+zero. These rules apply to the approved classifications listed above. Attack-type
+position adjustment applies only to the initial direct skill hit. Periodic
+damage from Shadow Word Pain and Holy Word Punishment remains status-owned and
+unclassified. No attack type is inferred for an unlisted skill or
+specialization.
 
 ## Status, Control, Casting, and Cooldowns
 

@@ -38,21 +38,20 @@ the thin Python adapter. Python remains the sole gameplay authority.
   names, enabled state, and map-percentage geometry. Inactive stage definitions
   omit destinations and geometry so they cannot render as controls before
   approval.
-- `components/stages/structured-stage-config.ts` owns reusable frontend-only
-  structured-stage data: approved player definition IDs and ordered fixed
-  battle definitions. It does not model profile state, unlocks, rewards,
-  persistence, or Python gameplay data.
-- `components/stages/StageSelectionScreen.tsx` owns the map-bound Arena and
-  Warrior's Barrack interactions at `/stages`. Their hotspot, label, glow, and
+- `components/stages/structured-stage-config.ts` mirrors the two approved
+  nine-battle curricula for typed rendering and drift detection. The adapter's
+  stage response remains authoritative for access, completion, and rewards.
+- `components/stages/StageSelectionScreen.tsx` owns the map-bound Arena,
+  Warrior's Barrack, and Paladin's Altar interactions at `/stages`. Their hotspot, label, glow, and
   optional debug outline share one intrinsic `1672 / 941` positioning parent.
 - `components/battle/BattleExperience.tsx` owns the Team Builder/battle
-  lifecycle. It loads and preflights the authoritative roster, creates a fresh
-  provider for each existing request configuration, and owns the temporary
-  structured-stage battle index in client memory.
+  lifecycle. It loads static roster and authoritative progression/stage data,
+  creates Arena or stage-scoped providers, commits friendly victories, and
+  refetches authority before continuation.
 - `components/battle/TeamBuilder.tsx` owns local pre-battle selection and
-  validation only. Arena mode retains its complete roster and editable Battle
-  Rules. Structured mode receives data from the stage configuration, filters
-  the adapter roster to its allowed player definitions, and renders fixed
+  validation only. Arena mode retains editable Battle Rules. Arena and
+  structured player matrices use backend-returned unlocked IDs; fixed stage
+  enemies use the full static roster. Structured mode renders fixed
   format/enemy data without editable counterpart controls. It contains no hero
   construction, random composition, combat, AI, or targeting rules. Its
   scrollable grid uses content-sized implicit rows so its team panels, Matrix,
@@ -112,7 +111,7 @@ safely to Arena. This does not alter `BattleCreateConfiguration` or any battle
 request. `/assets` remains a development route and returns directly to `/game`,
 never through the title screen.
 
-`BattleCreateConfiguration` contains `battleSize`, `playerTeam`,
+Arena `BattleCreateConfiguration` contains `battleSize`, `playerTeam`,
 `enemyCompositionMode`, optional `enemyTeam`, `enemyControlMode`, and optional
 `seed`. Its discriminated 2v2 and 3v3 branches require a size-specific
 `playerFormation` and additionally require a same-size `enemyFormation` when
@@ -120,17 +119,22 @@ enemy control is `player`; the 1v1 branch prohibits both formation fields. The
 roster is loaded from `GET /api/v1/heroes`; the client rejects wrong-version or
 malformed roster responses.
 
+UI-020 additionally loads `GET /api/v1/progression` for selectable definition
+IDs and `GET /api/v1/stages` for the two curricula and step access. Structured
+launch posts only the player team, a size-valid player-selected formation for
+2v2/3v3, and optional seed to the one-based stage battle route. Python supplies
+the fixed enemies, computer control, and fixed enemy formation.
+
 Returning from an ended battle discards the provider and keyed battle
 component. This clears the battle ID, cached snapshot/revision, presentation
 generation, timers, log, selections, and modal state. Arena then returns to
 its local builder. In a structured stage, `BattleScreen` forwards the actual
-typed `BattleOutcome` from the authoritative ended snapshot to
-`BattleExperience`: friendly victory advances the in-memory index, while
-enemy victory, draw, and round limit return to the same preparation state.
-The final friendly victory clears the index and routes to `/stages`. Relaunch
-sends the same existing `POST /api/v1/battles` request shape and uses the fixed
-BG03 cosmetic battle background; no API, profile, save, or persistence state
-is introduced.
+typed `BattleOutcome`. Non-victories return to the same preparation state.
+Friendly victory calls the stage session completion endpoint; React advances
+only after the atomic commit and fresh progression/stage fetch succeed. Newly
+granted rewards open a focus-contained, backend-authored notification before
+continuing to the permitted step or Stage Map. Replay never reopens a reward
+when `newlyGrantedRewards` is empty.
 
 After the Team Builder enters a battle, the live `BattleScreen` mounts and
 creates the session while a centered `3 → 2 → 1 → START` overlay keeps the
@@ -220,6 +224,10 @@ CORS configuration or a same-origin proxy. The process-local Python registry
 has no persistence or multi-worker consistency, so this milestone uses one API
 worker.
 
+Default-profile training progression is persisted separately by the backend.
+The browser retains only fetched presentation state; battle sessions still have
+no reload recovery and the API remains a single-worker deployment boundary.
+
 ## Change Log
 
 - 2026-07-29 — Added UI-002 Team Builder, roster discovery, configurable live
@@ -279,3 +287,6 @@ worker.
 - 2026-08-15 — Added registry-owned overhead-panel lanes for crowded duo/trio
   layouts. They are CSS custom properties consumed only by the figure's own
   overhead panel and have no adapter, contract, or gameplay effect.
+- 2026-08-19 — UI-020 activated Paladin's Altar and two server-authoritative
+  nine-battle curricula, gated matrices by persisted unlocks, and added
+  stage-scoped launch/commit, locked-step UI, and reward feedback.

@@ -25,11 +25,11 @@ class Priest_Comprehensiveness(Priest):
 
     def __init__(self, sys_init, name, group, is_player_controlled, position="front"):
             super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major, position=position)
-            self.add_skill(Skill(self, "Holy Smite", self.holy_smite, target_type = "single", skill_type= "damage"))
-            self.add_skill(Skill(self, "Shadow Word Pain", self.shadow_word_pain, target_type = "single", skill_type= "damage"))
+            self.add_skill(Skill(self, "Holy Smite", self.holy_smite, target_type = "single", skill_type= "damage", attack_type = "ranged_instant"))
+            self.add_skill(Skill(self, "Shadow Word Pain", self.shadow_word_pain, target_type = "single", skill_type= "damage",attack_type = "ranged_instant"))
             self.add_skill(Skill(self, "Binding Heal", self.binding_heal, "single", skill_type= "healing"))
 
-    def holy_smite(self, other_hero):
+    def holy_smite(self, other_hero, attack_type="NA"):
         basic_damage = 19
         variation = random.randint(-3, 3)
         actual_damage = basic_damage + variation
@@ -38,9 +38,9 @@ class Priest_Comprehensiveness(Priest):
         damage_dealt = max(damage_dealt, 0)
         # Apply damage to the other hero's HP
         self.game.display_battle_info(f"{self.name} casts Holy Smite at {other_hero.name}.")
-        return other_hero.take_damage(damage_dealt)
+        return other_hero.take_damage(damage_dealt, attack_type, self)
 
-    def shadow_word_pain(self, other_hero):
+    def shadow_word_pain(self, other_hero, attack_type="NA"):
         variation = random.randint(0, 5)
         actual_damage = self.damage + variation
         damage_dealt = round((actual_damage - other_hero.shadow_resistance)*(1/2))
@@ -54,7 +54,7 @@ class Priest_Comprehensiveness(Priest):
             self.game.display_battle_info(f"{self.name} uses Shadow Word Pain on {other_hero.name}. {other_hero.name} feels continuous pain")
         else:
             self.game.display_battle_info(f"{self.name} uses Shadow Word Pain on {other_hero.name}.")
-        return other_hero.take_damage(damage_dealt)
+        return other_hero.take_damage(damage_dealt, attack_type, self)
 
     def binding_heal(self, other_hero):
         variation_1 = random.randint(-3, 3)
@@ -256,11 +256,11 @@ class Priest_Discipline(Priest):
 
     def __init__(self, sys_init, name, group, is_player_controlled=False, position="front"):
             super().__init__(sys_init, name, group, is_player_controlled, major = self.__class__.major, position=position)
-            self.add_skill(Skill(self, "Penance", self.penance, "single", skill_type= "damage_healing"))
+            self.add_skill(Skill(self, "Penance", self.penance, "single", skill_type= "damage_healing", attack_type = "ranged_instant"))
             self.add_skill(Skill(self, "Holy Word Redemption", self.holy_word_redemption, "single", skill_type= "buffs"))
-            self.add_skill(Skill(self, "Holy Word Punishment", self.holy_word_punishment, target_type = "multi", skill_type= "damage", target_qty= 2))
+            self.add_skill(Skill(self, "Holy Word Punishment", self.holy_word_punishment, target_type = "multi", skill_type= "damage", attack_type = "ranged_instant", target_qty= 2))
 
-    def penance(self, other_hero, target_type):
+    def penance(self, other_hero, target_type, attack_type="NA"):
       healing_amount_base = 25
       results = []
       if target_type == "ally": # healing effect
@@ -284,7 +284,9 @@ class Priest_Discipline(Priest):
               break
         if ally_with_buff:
           self.game.display_battle_info(f"{self.name} casts Penance at {other_hero.name}.")
-          self.game.display_battle_info(f"{other_hero.take_damage(damage_dealt)}")
+          self.game.display_battle_info(
+              f"{other_hero.take_damage(damage_dealt, attack_type, self)}"
+          )
           #print("Holy light shines upon ally heroes")
           buff_healing = round(buff.effect * damage_dealt)
           variation = random.randint(-1, 1)
@@ -294,9 +296,9 @@ class Priest_Discipline(Priest):
           return "\n".join(results)
         else:
           self.game.display_battle_info(f"{self.name} casts Penance at {other_hero.name}.")
-          return f"{other_hero.take_damage(damage_dealt)}"
+          return f"{other_hero.take_damage(damage_dealt, attack_type, self)}"
 
-    def holy_word_punishment(self, other_hero):
+    def holy_word_punishment(self, other_hero, attack_type="NA"):
         basic_damage = 9
         variation = random.randint(-2, 2)
         actual_damage = basic_damage + variation
@@ -328,7 +330,7 @@ class Priest_Discipline(Priest):
             else:
               results.append(f"{self.name} uses Holy Word Punishment on {opponent.name}.")
             # Apply initial damage
-            results.append(opponent.take_damage(damage_dealt))
+            results.append(opponent.take_damage(damage_dealt, attack_type, self))
 
             # Check if Holy Word Redemption is on any allies and apply healing to them
             allies_with_buff = [ally for ally in self.allies if any(buff.name == "Holy Word Redemption" and buff.initiator == self for buff in ally.buffs)]

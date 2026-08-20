@@ -132,7 +132,7 @@ interface BattleScreenProps {
   mode?: "live" | "mock";
   backgroundImage?: string;
   entryCountdownStepMs?: number;
-  onBattleComplete?: (outcome: BattleOutcome) => void;
+  onBattleComplete?: (outcome: BattleOutcome) => void | Promise<void>;
   completionActionLabel?: (outcome: BattleOutcome) => string;
   onReturnToBuilder?: () => void;
 }
@@ -147,6 +147,8 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
   const [selectedTargets, setSelectedTargets] = useState<string[]>([]);
   const [autoBattle, setAutoBattle] = useState(false);
   const [fullscreenError, setFullscreenError] = useState<string | null>(null);
+  const [completionPending, setCompletionPending] = useState(false);
+  const [completionError, setCompletionError] = useState<string | null>(null);
   const logListRef = useRef<HTMLOListElement>(null);
   const completionButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -207,9 +209,18 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
     ? completionActionLabel(snapshot.outcome)
     : "RETURN TO TEAM BUILDER";
 
-  const completeBattle = () => {
+  const completeBattle = async () => {
     if (snapshot.outcome && onBattleComplete) {
-      onBattleComplete(snapshot.outcome);
+      setCompletionPending(true);
+      setCompletionError(null);
+      try {
+        await onBattleComplete(snapshot.outcome);
+      } catch (reason: unknown) {
+        setCompletionError(
+          reason instanceof Error ? reason.message : "Unable to save training progress.",
+        );
+        setCompletionPending(false);
+      }
       return;
     }
     onReturnToBuilder?.();
@@ -358,7 +369,10 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
             <small>BATTLE COMPLETE</small>
             <h2 id="battle-result-title">{outcomeLabel}</h2>
             <p>The Python battle engine has declared the final result.</p>
-            <button ref={completionButtonRef} type="button" onClick={completeBattle}>{completionLabel}</button>
+            {completionError ? <p className="completion-error" role="alert">{completionError}</p> : null}
+            <button ref={completionButtonRef} type="button" onClick={() => void completeBattle()} disabled={completionPending}>
+              {completionPending ? "SAVING PROGRESS…" : completionError ? "RETRY SAVE" : completionLabel}
+            </button>
           </section>
         </div>
       )}

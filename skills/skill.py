@@ -48,9 +48,9 @@ class Skill:
     def _call_skill_action(self, *args):
         """Invoke a skill while preserving legacy action signatures.
 
-        Warrior damage actions opt in by declaring ``attack_type``. Other
-        existing actions, including those with extra positional mode values,
-        receive exactly the arguments they received before UI-018.
+        Damage actions opt in by declaring ``attack_type``. Other existing
+        actions, including those with extra positional mode values, receive
+        exactly the arguments they received before UI-018.
         """
         parameters = inspect.signature(self.skill_action).parameters
         if "attack_type" in parameters:
@@ -225,6 +225,9 @@ class Skill:
                 result_message += f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immuned to control effect. \n"
               
               # Special Condition Cool down skills
+              if self.name == "Thunder Pot":
+                self.if_cooldown = True
+                self.cooldown = 3
               if self.name == "Icy Squall":
                 self.if_cooldown = True
                 self.cooldown = 2
@@ -253,8 +256,13 @@ class Skill:
                 target_names = ', '.join([t.name for t in immune_mag])
                 result_message += f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immuned to magical effect. \n"
               if immune_ctrl:
-                target_names = ', '.join([t.name for t in immune_ctrl])
-                result_message += f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immuned to control effect. \n"
+                if self.name == "Heroric Charge" or self.name == "Cumbrous Axe" or self.name == "Thunder Pot":
+                  target_names = ', '.join([t.name for t in immune_ctrl])
+                  result_message += f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immuned to control effect. {target_names} avoids being scoffed."
+                  result_message += f" {self._call_skill_action(immune_ctrl[0])}"
+                else:
+                  target_names = ', '.join([t.name for t in immune_ctrl])
+                  result_message += f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immuned to control effect. \n"
               if result_message:
                 self.initiator.game.display_battle_info(result_message)
               return self._call_skill_action(hits)
@@ -278,7 +286,7 @@ class Skill:
                   result_message = f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immunes to magical effect."
                 if immune_ctrl:
                   #print(f"{RED}Debug Skill: immunity control!{RESET}")
-                  if self.name == "Heroric Charge" or self.name == "Cumbrous Axe" or self.name == "Shield Lash":
+                  if self.name == "Heroric Charge" or self.name == "Cumbrous Axe" or self.name == "Thunder Pot":
                     target_names = ', '.join([t.name for t in immune_ctrl])
                     result_message += f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immuned to control effect. {target_names} avoids being scoffed."
                     result_message += f" {self._call_skill_action(immune_ctrl[0])}"
@@ -292,7 +300,7 @@ class Skill:
                   effect_message = self.independent_effect_action(self)
                   if effect_message:
                     result_message += f" {effect_message}"
-                if self.name == "Shadow Word Insanity" or self.name == "Curse of Fear":
+                if self.name == "Shadow Word Insanity" or self.name == "Curse of Fear" or self.name == "Shield Bash" or self.name == "Heroric Charge" or self.name == "Cumbrous Axe" or self.name == "Thunder Pot":
                   self.if_cooldown = True
                   self.cooldown = 3
                 if self.name == "Pestilence":
@@ -315,11 +323,11 @@ class Skill:
 
           if opponents in self.initiator.allies:
             self.last_target_outcomes[id(opponents)] = "ally"
-            return self.skill_action(opponents, 'ally')
+            return self._call_skill_action(opponents, 'ally')
           else:
             if not self.evasion_check(opponents):
               self.last_target_outcomes[id(opponents)] = "hit"
-              return self.skill_action(opponents, 'opponent')
+              return self._call_skill_action(opponents, 'opponent')
             else:
               self.last_target_outcomes[id(opponents)] = "evaded"
               return f"{self.initiator.name} tries to use {self.name} on {opponents.name}, but {opponents.name} evades the attack."

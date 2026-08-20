@@ -174,3 +174,88 @@ class ErrorResponse(ApiModel):
 
 class HttpErrorResponse(ApiModel):
     detail: ErrorResponse
+
+
+class RetryableErrorResponse(ErrorResponse):
+    retryable: Literal[True] = True
+
+
+class RetryableHttpErrorResponse(ApiModel):
+    detail: RetryableErrorResponse
+
+
+StageId = Literal["paladins-altar", "warriors-barrack"]
+RewardKind = Literal["heroUnlock", "itemCard"]
+
+
+class GrantedReward(ApiModel):
+    reward_id: str = Field(alias="rewardId")
+    count: int = Field(ge=1)
+
+
+class StageProgress(ApiModel):
+    stage_id: StageId = Field(alias="stageId")
+    highest_completed_battle: int = Field(alias="highestCompletedBattle", ge=0, le=9)
+    unlocked_battle: int = Field(alias="unlockedBattle", ge=1, le=9)
+    completed: bool
+
+
+class PlayerProgression(ApiModel):
+    profile_id: Literal["profile.local.default"] = Field(alias="profileId")
+    unlocked_hero_definition_ids: list[HeroDefinitionId] = Field(
+        alias="unlockedHeroDefinitionIds"
+    )
+    stage_progress: list[StageProgress] = Field(alias="stageProgress")
+    granted_rewards: list[GrantedReward] = Field(alias="grantedRewards")
+
+
+class PlayerProgressionResponse(PlayerProgression):
+    contract_version: Literal["1.0"] = Field(default="1.0", alias="contractVersion")
+
+
+class StageReward(ApiModel):
+    reward_id: str = Field(alias="rewardId")
+    kind: RewardKind
+    hero_definition_id: HeroDefinitionId | None = Field(alias="heroDefinitionId")
+    notification: str
+
+
+class StageBattleDefinition(ApiModel):
+    id: str
+    display_order: int = Field(alias="displayOrder", ge=1, le=9)
+    battle_size: Literal[1, 2, 3] = Field(alias="battleSize")
+    formation: FormationId | None
+    enemy_definition_ids: list[HeroDefinitionId] = Field(alias="enemyDefinitionIds")
+    reward: StageReward | None
+    unlocked: bool
+    completed: bool
+
+
+class StructuredStageDefinition(ApiModel):
+    stage_id: StageId = Field(alias="stageId")
+    display_name: str = Field(alias="displayName")
+    progress: StageProgress
+    battles: list[StageBattleDefinition]
+
+
+class StructuredStagesResponse(ApiModel):
+    contract_version: Literal["1.0"] = Field(default="1.0", alias="contractVersion")
+    stages: list[StructuredStageDefinition]
+
+
+class CreateStageBattleRequest(ApiModel):
+    player_team: list[HeroDefinitionId] = Field(
+        alias="playerTeam", min_length=1, max_length=3
+    )
+    player_formation: FormationId | None = Field(
+        default=None, alias="playerFormation"
+    )
+    seed: int | None = None
+
+
+class VictoryCommitResponse(ApiModel):
+    contract_version: Literal["1.0"] = Field(default="1.0", alias="contractVersion")
+    battle_id: str = Field(alias="battleId")
+    already_committed: bool = Field(alias="alreadyCommitted")
+    newly_granted_rewards: list[StageReward] = Field(alias="newlyGrantedRewards")
+    progression: PlayerProgression

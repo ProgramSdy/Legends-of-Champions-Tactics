@@ -116,31 +116,26 @@ describe("UI-019 size-specific Team Builder formation contract", () => {
     }));
   });
 
-  it("adds the friendly selector to structured Barrack Battle 3 while Battle 2 remains formation-free", async () => {
+  it("hides formation selection for structured duels and sends the player's 3v3 choice", async () => {
     const stage = resolveStructuredStage("warriors-barrack")!;
     const battleTwo = render(<TeamBuilder mode="structured" stage={stage} battle={stage.battles[1]} roster={roster} onStart={vi.fn()} />);
     expect(screen.queryByRole("group", { name: /formation/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("note")).not.toBeInTheDocument();
+    expect(screen.getByRole("note")).toHaveTextContent(/duel uses no formation selection/i);
     battleTwo.unmount();
 
     const user = userEvent.setup();
     const onStart = vi.fn();
     render(<TeamBuilder mode="structured" stage={stage} battle={stage.battles[2]} roster={roster} onStart={onStart} />);
-    expect(within(screen.getByRole("group", { name: "Your formation" })).getAllByRole("radio")).toHaveLength(3);
-    expect(screen.getByRole("note")).toHaveTextContent(/one of three formations/i);
-    expect(screen.queryByRole("group", { name: "Enemy formation" })).not.toBeInTheDocument();
-    expect(screen.getByLabelText(/Predefined enemy team/i)).toHaveTextContent(/Warrior.*Defence.*Warrior.*Berserker.*Priest.*Comprehensiveness/i);
-    await user.click(within(screen.getByRole("group", { name: "Your formation" })).getByRole("radio", { name: /All Front/i }));
+    expect(screen.getByRole("group", { name: "Your formation" })).toBeVisible();
+    expect(screen.getByRole("note")).toHaveTextContent(/enemy uses two front one rear/i);
+    expect(screen.getByLabelText(/Predefined enemy team/i)).toHaveTextContent(/Warrior.*Berserker.*Rogue.*Comprehensiveness.*Mage.*Comprehensiveness/i);
     await assignThreePlayers(user);
+    await user.click(screen.getByRole("radio", { name: /All Front/i }));
     await user.click(screen.getByRole("button", { name: "ENTER BATTLE" }));
 
     expect(onStart).toHaveBeenCalledWith({
-      battleSize: 3,
       playerFormation: "all-front",
       playerTeam: ["hero.warrior.weapon_master", "hero.mage.comprehensiveness", "hero.priest.comprehensiveness"],
-      enemyCompositionMode: "specified",
-      enemyTeam: ["hero.warrior.defence", "hero.warrior.berserker", "hero.priest.comprehensiveness"],
-      enemyControlMode: "computer",
     });
   });
 

@@ -6,7 +6,11 @@ import {
   type BattleSnapshot,
   type BattleState,
   type HeroDefinitionSummary,
+  type PlayerProgressionResponse,
   type PresentationScript,
+  type StructuredBattleCreateConfiguration,
+  type StructuredStagesResponse,
+  type VictoryCommitResponse,
 } from "./types";
 
 interface Envelope<T> {
@@ -40,17 +44,88 @@ interface CommandRejected {
   snapshot: BattleSnapshot;
 }
 
-export async function fetchHeroRoster(
-  baseUrl = process.env.NEXT_PUBLIC_BATTLE_API_URL ?? "http://localhost:8001",
-): Promise<HeroDefinitionSummary[]> {
+const DEFAULT_BASE_URL = process.env.NEXT_PUBLIC_BATTLE_API_URL ?? "http://localhost:8001";
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+async function requestAdapterJson(
+  baseUrl: string,
+  path: string,
+  init?: RequestInit,
+): Promise<unknown> {
   let response: Response;
   try {
-    response = await fetch(`${baseUrl}/api/v1/heroes`);
+    response = await fetch(`${baseUrl}${path}`, {
+      ...init,
+      headers: { "Content-Type": "application/json", ...init?.headers },
+    });
   } catch {
-    throw new BattleProviderError("Battle service is disconnected. Start the Python adapter and retry.", "disconnected");
+    throw new BattleProviderError(
+      "Battle service is disconnected. Start the Python adapter and retry.",
+      "disconnected",
+    );
   }
-  if (!response.ok) throw new BattleProviderError(`Battle adapter returned HTTP ${response.status}.`, "adapter");
-  const body = await response.json() as { contractVersion: string; heroes: HeroDefinitionSummary[] };
+  if (!response.ok) {
+    const body = await response.json().catch(() => null) as {
+      detail?: { message?: string };
+    } | null;
+    throw new BattleProviderError(
+      body?.detail?.message ?? `Battle adapter returned HTTP ${response.status}.`,
+      "adapter",
+    );
+  }
+  try {
+    return await response.json();
+  } catch {
+    throw new BattleProviderError("The battle service returned invalid JSON.", "adapter");
+  }
+}
+
+function isStageProgress(value: unknown): boolean {
+  return isRecord(value)
+    && (value.stageId === "paladins-altar" || value.stageId === "warriors-barrack")
+    && Number.isInteger(value.highestCompletedBattle)
+    && Number(value.highestCompletedBattle) >= 0
+    && Number(value.highestCompletedBattle) <= 9
+    && Number.isInteger(value.unlockedBattle)
+    && Number(value.unlockedBattle) >= 1
+    && Number(value.unlockedBattle) <= 9
+    && typeof value.completed === "boolean";
+}
+
+function isStageReward(value: unknown): boolean {
+  return isRecord(value)
+    && typeof value.rewardId === "string"
+    && (value.kind === "heroUnlock" || value.kind === "itemCard")
+    && (value.heroDefinitionId === null || typeof value.heroDefinitionId === "string")
+    && typeof value.notification === "string";
+}
+
+function isProgression(value: unknown, withVersion: boolean): boolean {
+  return isRecord(value)
+    && (!withVersion || value.contractVersion === "1.0")
+    && value.profileId === "profile.local.default"
+    && Array.isArray(value.unlockedHeroDefinitionIds)
+    && value.unlockedHeroDefinitionIds.every((id) => typeof id === "string")
+    && Array.isArray(value.stageProgress)
+    && value.stageProgress.length === 2
+    && value.stageProgress.every(isStageProgress)
+    && Array.isArray(value.grantedRewards)
+    && value.grantedRewards.every((reward) => isRecord(reward)
+      && typeof reward.rewardId === "string"
+      && Number.isInteger(reward.count)
+      && Number(reward.count) >= 1);
+}
+
+export async function fetchHeroRoster(
+  baseUrl = DEFAULT_BASE_URL,
+): Promise<HeroDefinitionSummary[]> {
+  const body = await requestAdapterJson(baseUrl, "/api/v1/heroes") as {
+    contractVersion?: unknown;
+    heroes?: unknown;
+  };
   const validHeroes = Array.isArray(body.heroes) && body.heroes.length === 10 && body.heroes.every((hero) =>
     hero !== null
     && typeof hero === "object"
@@ -62,7 +137,55 @@ export async function fetchHeroRoster(
   if (body.contractVersion !== "1.0" || !validHeroes) {
     throw new BattleProviderError("The battle service returned an unsupported hero roster.", "adapter");
   }
-  return body.heroes;
+  return body.heroes as HeroDefinitionSummary[];
+}
+
+export async function fetchPlayerProgression(
+  baseUrl = DEFAULT_BASE_URL,
+): Promise<PlayerProgressionResponse> {
+  const body = await requestAdapterJson(baseUrl, "/api/v1/progression");
+  if (!isProgression(body, true)) {
+    throw new BattleProviderError(
+      "The battle service returned unsupported player progression.",
+      "adapter",
+    );
+  }
+  return body as PlayerProgressionResponse;
+}
+
+export async function fetchStructuredStages(
+  baseUrl = DEFAULT_BASE_URL,
+): Promise<StructuredStagesResponse> {
+  const body = await requestAdapterJson(baseUrl, "/api/v1/stages");
+  const valid = isRecord(body)
+    && body.contractVersion === "1.0"
+    && Array.isArray(body.stages)
+    && body.stages.length === 2
+    && body.stages.every((stage) => isRecord(stage)
+      && (stage.stageId === "paladins-altar" || stage.stageId === "warriors-barrack")
+      && typeof stage.displayName === "string"
+      && isStageProgress(stage.progress)
+      && Array.isArray(stage.battles)
+      && stage.battles.length === 9
+      && stage.battles.every((battle) => isRecord(battle)
+        && typeof battle.id === "string"
+        && Number.isInteger(battle.displayOrder)
+        && Number(battle.displayOrder) >= 1
+        && Number(battle.displayOrder) <= 9
+        && (battle.battleSize === 1 || battle.battleSize === 2 || battle.battleSize === 3)
+        && (battle.formation === null || typeof battle.formation === "string")
+        && Array.isArray(battle.enemyDefinitionIds)
+        && battle.enemyDefinitionIds.every((id) => typeof id === "string")
+        && (battle.reward === null || isStageReward(battle.reward))
+        && typeof battle.unlocked === "boolean"
+        && typeof battle.completed === "boolean"));
+  if (!valid) {
+    throw new BattleProviderError(
+      "The battle service returned unsupported structured-stage data.",
+      "adapter",
+    );
+  }
+  return body as unknown as StructuredStagesResponse;
 }
 
 export class LiveBattleProvider implements BattleProvider {
@@ -70,31 +193,19 @@ export class LiveBattleProvider implements BattleProvider {
   private state: BattleState | null = null;
 
   constructor(
-    private readonly baseUrl = process.env.NEXT_PUBLIC_BATTLE_API_URL ?? "http://localhost:8001",
-    private readonly configuration: BattleCreateConfiguration = {
+    private readonly baseUrl = DEFAULT_BASE_URL,
+    private readonly configuration: BattleCreateConfiguration | StructuredBattleCreateConfiguration = {
       battleSize: 1,
       playerTeam: ["hero.warrior.weapon_master"],
       enemyCompositionMode: "specified",
       enemyTeam: ["hero.rogue.comprehensiveness"],
       enemyControlMode: "player",
     },
+    private readonly createPath = "/api/v1/battles",
   ) {}
 
   private async request<T>(path: string, init?: RequestInit): Promise<Envelope<T>> {
-    let response: Response;
-    try {
-      response = await fetch(`${this.baseUrl}${path}`, {
-        ...init,
-        headers: { "Content-Type": "application/json", ...init?.headers },
-      });
-    } catch {
-      throw new BattleProviderError("Battle service is disconnected. Start the Python adapter and retry.", "disconnected");
-    }
-    if (!response.ok) {
-      const body = await response.json().catch(() => null) as { detail?: { message?: string } } | null;
-      throw new BattleProviderError(body?.detail?.message ?? `Battle adapter returned HTTP ${response.status}.`, "adapter");
-    }
-    const envelope = await response.json() as Envelope<T>;
+    const envelope = await requestAdapterJson(this.baseUrl, path, init) as Envelope<T>;
     if (envelope.contractVersion !== "1.0") {
       throw new BattleProviderError(`Unsupported battle contract ${envelope.contractVersion}.`, "adapter");
     }
@@ -103,7 +214,7 @@ export class LiveBattleProvider implements BattleProvider {
 
   async getState(): Promise<BattleState> {
     if (this.state) return structuredClone(this.state);
-    const envelope = await this.request<CreateData>("/api/v1/battles", {
+    const envelope = await this.request<CreateData>(this.createPath, {
       method: "POST",
       body: JSON.stringify(this.configuration),
     });
@@ -117,6 +228,31 @@ export class LiveBattleProvider implements BattleProvider {
         : {}),
     };
     return structuredClone(this.state);
+  }
+
+  async commitStageVictory(): Promise<VictoryCommitResponse> {
+    if (!this.battleId) {
+      throw new BattleProviderError("The live battle session has not initialized.", "adapter");
+    }
+    const body = await requestAdapterJson(
+      this.baseUrl,
+      `/api/v1/battles/${encodeURIComponent(this.battleId)}/completion`,
+      { method: "POST" },
+    );
+    const valid = isRecord(body)
+      && body.contractVersion === "1.0"
+      && body.battleId === this.battleId
+      && typeof body.alreadyCommitted === "boolean"
+      && Array.isArray(body.newlyGrantedRewards)
+      && body.newlyGrantedRewards.every(isStageReward)
+      && isProgression(body.progression, false);
+    if (!valid) {
+      throw new BattleProviderError(
+        "The battle service returned an unsupported completion result.",
+        "adapter",
+      );
+    }
+    return body as unknown as VictoryCommitResponse;
   }
 
   async submitCommand(command: BattleCommand): Promise<PresentationScript> {

@@ -54,7 +54,18 @@ export const STAGE_DEFINITIONS: readonly StageDefinition[] = [
   },
   { id: "mages-tower", displayName: "Mage's Tower", enabled: false },
   { id: "rogues-forest", displayName: "Rogue's Forest", enabled: false },
-  { id: "paladins-altar", displayName: "Paladin's Altar", enabled: false },
+  {
+    id: "paladins-altar",
+    displayName: "Paladin's Altar",
+    enabled: true,
+    destination: "/game",
+    geometry: {
+      leftPercent: 81.2,
+      topPercent: 34.8,
+      widthPercent: 13.8,
+      heightPercent: 22.7,
+    },
+  },
   { id: "priests-cathedral", displayName: "Priest's Cathedral", enabled: false },
 ] as const;
 

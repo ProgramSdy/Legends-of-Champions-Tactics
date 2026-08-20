@@ -339,14 +339,14 @@ def test_roster_endpoint_exposes_only_the_ten_approved_heroes():
     }
 
 
-def test_api_accepts_new_heroes_in_specified_player_and_enemy_teams():
+def test_api_accepts_unlocked_players_and_locked_static_enemy_definitions():
     response = client.post(
         "/api/v1/battles",
         json={
             "battleSize": 2,
             "playerTeam": [
-                "hero.warrior.berserker",
-                "hero.paladin.holy",
+                "hero.warrior.weapon_master",
+                "hero.mage.comprehensiveness",
             ],
             "enemyCompositionMode": "specified",
             "enemyTeam": [
@@ -366,7 +366,7 @@ def test_api_accepts_new_heroes_in_specified_player_and_enemy_teams():
     assert [
         snapshot["combatants"][combatant_id]["definitionId"]
         for combatant_id in sides[0]["combatantIds"]
-    ] == ["hero.warrior.berserker", "hero.paladin.holy"]
+    ] == ["hero.warrior.weapon_master", "hero.mage.comprehensiveness"]
     assert [
         snapshot["combatants"][combatant_id]["definitionId"]
         for combatant_id in sides[1]["combatantIds"]
