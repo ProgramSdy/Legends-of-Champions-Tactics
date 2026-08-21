@@ -28,9 +28,9 @@ combat.
 - **Battle adapter (FastAPI):** validates public requests, uses seeded session
   randomness, maps formation plus ordered slots to hero positions, serializes
   snapshots/legal actions/events, and advances computer turns.
-- **Progression store (SQLite):** owns the one stable local profile's unlocked
-  definitions, per-stage sequential progress, and one-time generic reward
-  grants; it is separate from live battle sessions.
+- **Progression store (SQLite):** owns exactly five local slots, their active
+  selection, stable occupied-profile identities/metadata, per-profile unlocks,
+  stage progress, and one-time rewards; it is separate from live sessions.
 - **Combat engine (Python):** `Game`, `Hero`, `Skill`, status services, and
   concrete hero classes resolve all live rules.
 - **Battle Screen (Next.js):** renders snapshots, queues supplied events, and
@@ -45,8 +45,8 @@ combat.
 | 2v2/3v3 formation selection input | Team Builder; validated and resolved by Python |
 | Snapshot formation/position data | Python adapter |
 | Figure anchors, scale, stacking, UI effects, accessibility | Next.js presentation registry |
-| Default-profile training unlocks, stage progress, generic reward counts | SQLite progression store / FastAPI |
-| Profiles, active-battle recovery, inventory/equipment, cloud/account saves | Not implemented |
+| Five-slot selection, training unlocks, stage progress, generic reward counts | SQLite progression store / FastAPI |
+| Profile naming/deletion, active-battle recovery, inventory/equipment, cloud/account saves | Not implemented |
 
 The formation registry must never assign combat positions or decide legal
 targets. Conversely, visual 3v3 depth is formation-, side-, and slot-specific
@@ -67,10 +67,11 @@ Team Builder configuration
 Structured training uses a separate route: the UI obtains progression and the
 server-owned curriculum, then posts only friendly selection/required friendly
 formation to a stage-battle route. The adapter supplies the fixed computer
-team/formation and attaches stage context to the session. After an ended,
-authoritative friendly victory, a completion route performs the SQLite
-transaction that records the step and any one-time reward before returning the
-updated progression. No stage/profile/reward field is added to
+team/formation and attaches stage plus launch-profile context to the session.
+After an ended, authoritative friendly victory, a completion route performs the
+active-profile SQLite transaction that records the step and any one-time reward
+before returning updated progression. A slot switch invalidates completion of
+the old session. No slot/stage/profile/reward field is added to
 `BattleCreateConfiguration`.
 
 For 2v2, the only formation IDs are `front-rear` and `side-by-side`; for 3v3,
@@ -95,10 +96,12 @@ adapter's seeded selection. 1v1 has no formation fields.
 - The 3v3 visual-depth correction is stored in the frontend trio registry so
   scale and stacking follow the approved per-side ordered-slot map without
   altering combat positions.
-- The default local profile is intentionally unauthenticated and shared by
-  clients pointed at the same adapter database. SQLite progression is
-  transaction-safe, but battle sessions remain process-local; multiple
-  profiles, active-battle recovery, cloud sync, and multi-worker session
+- The five local slots are intentionally unauthenticated and shared by clients
+  pointed at the same adapter database. The backend active-slot reference is
+  authoritative; browser state, URLs, and local storage are not. Schema-v1
+  default progress migrates once into active slot 1. SQLite changes are
+  transaction-safe, but battle sessions remain process-local; profile
+  management, active-battle recovery, cloud sync, and multi-worker session
   recovery are deferred.
 
 ## Change Log
@@ -108,4 +111,6 @@ adapter's seeded selection. 1v1 has no formation fields.
 - 2026-08-19 — Added the minimal SQLite-backed default-profile training
   progression boundary; it deliberately excludes profiles, inventory, and
   active-battle persistence.
+- 2026-08-20 — Added the schema-v2 five-slot boundary, active-slot authority,
+  safe legacy migration, and launch-profile guard for victory commits.
 - 2026-07-26 — Initial authoritative architecture document created.

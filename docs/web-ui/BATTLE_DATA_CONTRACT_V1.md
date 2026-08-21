@@ -67,12 +67,15 @@ events. When false or omitted, `snapshot` is immediately usable and the
 ordinary initial-event path is retained. These additive fields do not create a
 new contract version.
 
-## Default-profile training progression
+## Active-slot training progression
 
 Progression is a separate additive v1 transport concern, never a field of
-`BattleCreateConfiguration` or a battle snapshot. `GET /api/v1/progression`
-returns the stable default profile's unlocked definition IDs, per-stage
-progress, and granted reward counts. `GET /api/v1/stages` returns the
+`BattleCreateConfiguration` or a battle snapshot. Exactly five local save
+slots are exposed through `GET /api/v1/save-slots`; typed create, load, and
+confirmed-overwrite actions return the selected summary plus authoritative
+progression. `GET /api/v1/progression` returns only the backend-selected active
+profile's unlocked definition IDs, per-stage progress, and reward counts.
+`GET /api/v1/stages` returns the
 authoritative two nine-battle curricula with fixed enemy IDs/formations and
 server-computed access flags.
 
@@ -84,11 +87,15 @@ for 1v1. `POST /api/v1/battles/{battleId}/completion` is a
 separate typed response, not a battle envelope: an authoritative friendly
 victory atomically updates progression and returns the first newly granted
 reward(s), or `alreadyCommitted: true` with no new grant on repetition.
+The session retains its launch profile ID, so switching slots before completion
+causes a typed conflict rather than writing into the newly active profile.
 
 The client renders availability and reward feedback only from these supplied
 responses. It must not infer an unlock from battle number, text, a static
 stage definition, or a local completion flag. Static `GET /api/v1/heroes`
 remains the full catalogue so a locked hero can be a fixed stage enemy.
+The client never supplies a profile ID, unlock, stage value, or reward to any
+slot action; browser state and URLs are not save-selection authority.
 
 ## Stable identifiers
 

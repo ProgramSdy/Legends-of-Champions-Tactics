@@ -94,16 +94,19 @@ timing.
 
 ## Progression and Upgrades
 
-The default local profile persists ownership of the ten approved web
-definitions. Five definitions start locked to player selection: Paladin
-Protection, Retribution, and Holy; Warrior Berserker; and Warrior Defence.
-They remain valid static definitions and can appear as fixed structured-stage
-enemies. The backend unlocks each only through its specified training reward
-and returns the authoritative available definition IDs to the client. Battle
-local buffs/debuffs are not progression.
+Each of the five local save slots persists its own ownership of the approved
+web definitions. A new slot owns exactly Warrior Weapon Master, Mage
+Comprehensiveness, Priest Comprehensiveness, and Rogue Comprehensiveness.
+Paladin Protection, Retribution, and Holy; Warrior Berserker and Defence; and
+Priest Discipline start locked to player selection. Locked definitions remain
+valid static definitions and can appear as fixed structured-stage enemies. The
+backend unlocks the five Paladin/Warrior rewards through their specified
+training battles. Priest Discipline deliberately remains locked until a future
+owner-designed Priest-stage reward is implemented; no current reward unlocks
+her. Battle-local buffs/debuffs are not progression.
 
 Levels, XP, permanent attributes, rarity, equipment, inventory behavior,
-multiple profiles, accounts, and cloud sync remain unimplemented.
+profile naming/settings/deletion, accounts, and cloud sync remain unimplemented.
 
 ## Open Questions
 
@@ -118,6 +121,8 @@ multiple profiles, accounts, and cloud sync remain unimplemented.
   retaining the existing constructor default for legacy paths.
 - 2026-08-19 — Documented the default-profile ownership gate used by the two
   persisted training curricula.
+- 2026-08-20 — Replaced default-profile ownership with five isolated local save
+  slots and recorded the exact four-hero new-game roster.
 - 2026-08-14 — Documented the backward-compatible hero position field and
   authoritative 2v2 constructor mapping.
 - 2026-08-06 — Rebuilt from current hero, generator, summon, and adapter

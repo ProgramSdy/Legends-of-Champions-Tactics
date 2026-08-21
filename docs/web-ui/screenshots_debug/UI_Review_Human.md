@@ -468,3 +468,23 @@ Battle 9: 3v3, Formation: Side by Side, Heroes: Warrior_Weapon_Master, Warrior_D
 After finish battle 9, Warrior_Defence is unlocked and can be chosen by player. Pop up a windlow tell player that "Warrior_Defence is unlocked"
 
 
+# Date
+
+2026-08-20
+
+### Screenshot name
+
+N/A
+
+### Task List
+
+1_ Game Start Page: after player click START GAME button, it pops up two button, onw is "NEW GAME" and another one is "LOAD GAME". If Player click "NEW GAME", it will popup a window ask player to select a available SLOT, there are totally five SLOT available in saving system. If all five slots are occupied, then player need to select a slot to over-ryde the existing data, shall pop up warning message similar to most of the game design. If Player click "LOAD GAME", then the same popup window shows up and player can select an existing saving data from one of the 5 slot. If there is no exsiting save data, the "LOAD GAME" button shall be greyed out.
+
+2_ For any new game initilized, player's available hero roster is restricted to:
+
+- Warrior Weapon Master
+- Mage Comprehensiveness
+- Priest Comprehensiveness
+- Rogue Comprehensiveness
+
+3_ Current stage picutre at the right top of team builder page for both Warrior's Barrack and Paladin's Altar are wrong, They shall show the exact building of Warrior's Barrack and Paladin's Altar. Find the correct building from stage map and present them properly.

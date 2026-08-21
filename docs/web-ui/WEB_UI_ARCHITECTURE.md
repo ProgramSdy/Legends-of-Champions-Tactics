@@ -8,8 +8,8 @@ the thin Python adapter. Python remains the sole gameplay authority.
 - `lib/battle/types.ts` mirrors the v1 serializable battle contract and the
   additive UI-002 creation configuration.
 - `lib/battle/liveProvider.ts` is the only HTTP-aware frontend module. It owns
-  roster and envelope validation, configurable session creation, command
-  transport, and normalized rejection/network errors.
+  save-slot, progression, roster, and envelope validation, configurable session
+  creation, command transport, and normalized rejection/network errors.
 - `lib/battle/fixture.ts` owns stateful scripted fixtures; they are presentation
   outcomes, not TypeScript battle rules.
 - `lib/battle/formations.ts` is the single duel/duo/trio coordinate registry.
@@ -30,14 +30,14 @@ the thin Python adapter. Python remains the sole gameplay authority.
   metadata.
 - `lib/battle/battleBackgrounds.ts` owns the fixed BG03 battle-scene background
   constant used by presentation only.
-- `components/startup/StartupScreen.tsx` owns the non-interactive cinematic
-  title presentation at `/`. It uses the supplied direct public startup and
-  logo assets and a semantic link to `/stages`; it contains no battle state,
-  roster loading, or adapter logic.
+- `components/startup/StartupScreen.tsx` owns the cinematic title presentation
+  and accessible save-slot dialogs at `/`. START fetches five summaries; New,
+  Load, and confirmed Overwrite call only `liveProvider` slot actions and route
+  after success. React never authors starter progression or active identity.
 - `components/stages/stage-config.ts` owns presentation-only stage IDs, display
-  names, enabled state, and map-percentage geometry. Inactive stage definitions
-  omit destinations and geometry so they cannot render as controls before
-  approval.
+  names, enabled state, map-percentage hotspot geometry, and separately tuned
+  Team Builder preview-focus metadata. Inactive stage definitions omit these
+  values so they cannot render as controls before approval.
 - `components/stages/structured-stage-config.ts` mirrors the two approved
   nine-battle curricula for typed rendering and drift detection. The adapter's
   stage response remains authoritative for access, completion, and rewards.
@@ -47,7 +47,9 @@ the thin Python adapter. Python remains the sole gameplay authority.
 - `components/battle/BattleExperience.tsx` owns the Team Builder/battle
   lifecycle. It loads static roster and authoritative progression/stage data,
   creates Arena or stage-scoped providers, commits friendly victories, and
-  refetches authority before continuation.
+  refetches authority before continuation. The active profile ID keys the local
+  Team Builder subtree so a slot change cannot retain another slot's selection
+  state or provider lifecycle.
 - `components/battle/TeamBuilder.tsx` owns local pre-battle selection and
   validation only. Arena mode retains editable Battle Rules. Arena and
   structured player matrices use backend-returned unlocked IDs; fixed stage
@@ -104,8 +106,9 @@ identity, or animation decisions.
 ## Session Lifecycle
 
 The application first opens the cinematic title scene at `/`. Activating its
-keyboard-accessible `START GAME` link opens `/stages`; enabled map controls
-navigate to `/game?stage=<stageId>`. `GamePage` resolves the enabled stage and
+keyboard-accessible `START GAME` button opens the five-slot dialog. Only a
+successful create, load, or confirmed overwrite opens `/stages`; enabled map
+controls navigate to `/game?stage=<stageId>`. `GamePage` resolves the enabled stage and
 passes its ID to `BattleExperience`; direct or invalid `/game` visits fall back
 safely to Arena. This does not alter `BattleCreateConfiguration` or any battle
 request. `/assets` remains a development route and returns directly to `/game`,
@@ -224,9 +227,10 @@ CORS configuration or a same-origin proxy. The process-local Python registry
 has no persistence or multi-worker consistency, so this milestone uses one API
 worker.
 
-Default-profile training progression is persisted separately by the backend.
-The browser retains only fetched presentation state; battle sessions still have
-no reload recovery and the API remains a single-worker deployment boundary.
+Five-slot training progression and active-slot choice are persisted separately
+by the backend. The browser retains only fetched presentation state; battle
+sessions still have no reload recovery and the API remains a single-worker
+deployment boundary.
 
 ## Change Log
 
@@ -290,3 +294,6 @@ no reload recovery and the API remains a single-worker deployment boundary.
 - 2026-08-19 — UI-020 activated Paladin's Altar and two server-authoritative
   nine-battle curricula, gated matrices by persisted unlocks, and added
   stage-scoped launch/commit, locked-step UI, and reward feedback.
+- 2026-08-20 — UI-021 added typed five-slot startup actions,
+  active-profile-keyed Team Builder state, and stage-specific Current Stage
+  preview-focus metadata.

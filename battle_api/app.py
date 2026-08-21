@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
 import os
 from pathlib import Path
 from typing import Annotated
@@ -12,12 +13,16 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .adapter import CONTRACT_VERSION, BattleRegistry
 from .models import (
+    ConfirmSaveSlotOverwriteRequest,
     CreateBattleRequest,
     CreateStageBattleRequest,
+    EmptySaveSlotRequest,
     HeroRosterResponse,
     HttpErrorResponse,
     PlayerProgressionResponse,
     RetryableHttpErrorResponse,
+    SaveSlotActionResponse,
+    SaveSlotListResponse,
     StageId,
     StructuredStagesResponse,
     UseSkillCommand,
@@ -26,6 +31,7 @@ from .models import (
 from .progression import (
     ProgressionStore,
     ProgressionStoreError,
+    SaveSlotAccessError,
     StageAccessError,
     stages_response,
 )
@@ -88,11 +94,34 @@ def _access_error(exc: StageAccessError) -> HTTPException:
     )
 
 
+def _save_slot_error(exc: SaveSlotAccessError) -> HTTPException:
+    status = 422 if exc.code == "invalidSaveSlot" else 409
+    return HTTPException(
+        status_code=status,
+        detail={"code": exc.code, "message": exc.message},
+    )
+
+
 async def _read_progression(store: ProgressionStore) -> dict:
     try:
         return await asyncio.to_thread(store.read_progression)
     except ProgressionStoreError as exc:
         raise _store_unavailable(exc) from exc
+    except SaveSlotAccessError as exc:
+        raise _save_slot_error(exc) from exc
+
+
+async def _run_slot_action(
+    store: ProgressionStore,
+    action: Callable[..., dict],
+    *args: object,
+) -> dict:
+    try:
+        return await asyncio.to_thread(action, *args)
+    except ProgressionStoreError as exc:
+        raise _store_unavailable(exc) from exc
+    except SaveSlotAccessError as exc:
+        raise _save_slot_error(exc) from exc
 
 
 @app.get("/api/v1/health")
@@ -109,9 +138,87 @@ async def list_heroes() -> dict:
 
 
 @app.get(
+    "/api/v1/save-slots",
+    response_model=SaveSlotListResponse,
+    responses={503: {"model": RetryableHttpErrorResponse}},
+)
+async def list_save_slots(
+    store: Annotated[ProgressionStore, Depends(get_progression_store)],
+) -> dict:
+    result = await _run_slot_action(store, store.list_save_slots)
+    return {"contractVersion": CONTRACT_VERSION, **result}
+
+
+@app.post(
+    "/api/v1/save-slots/{slot_id}/create",
+    response_model=SaveSlotActionResponse,
+    responses={
+        409: {"model": HttpErrorResponse},
+        422: {"model": HttpErrorResponse},
+        503: {"model": RetryableHttpErrorResponse},
+    },
+)
+async def create_save_slot(
+    slot_id: int,
+    store: Annotated[ProgressionStore, Depends(get_progression_store)],
+    request: EmptySaveSlotRequest | None = None,
+) -> dict:
+    del request
+    result = await _run_slot_action(store, store.create_save_slot, slot_id)
+    return {"contractVersion": CONTRACT_VERSION, **result}
+
+
+@app.post(
+    "/api/v1/save-slots/{slot_id}/load",
+    response_model=SaveSlotActionResponse,
+    responses={
+        409: {"model": HttpErrorResponse},
+        422: {"model": HttpErrorResponse},
+        503: {"model": RetryableHttpErrorResponse},
+    },
+)
+async def load_save_slot(
+    slot_id: int,
+    store: Annotated[ProgressionStore, Depends(get_progression_store)],
+    request: EmptySaveSlotRequest | None = None,
+) -> dict:
+    del request
+    result = await _run_slot_action(store, store.load_save_slot, slot_id)
+    return {"contractVersion": CONTRACT_VERSION, **result}
+
+
+@app.post(
+    "/api/v1/save-slots/{slot_id}/overwrite",
+    response_model=SaveSlotActionResponse,
+    responses={
+        409: {"model": HttpErrorResponse},
+        422: {"model": HttpErrorResponse},
+        503: {"model": RetryableHttpErrorResponse},
+    },
+)
+async def overwrite_save_slot(
+    slot_id: int,
+    request: ConfirmSaveSlotOverwriteRequest,
+    store: Annotated[ProgressionStore, Depends(get_progression_store)],
+) -> dict:
+    if request.confirm_overwrite is not True:
+        raise _save_slot_error(
+            SaveSlotAccessError(
+                "overwriteConfirmationRequired",
+                f"Confirmed overwrite is required for save slot {slot_id}.",
+            )
+        )
+    result = await _run_slot_action(store, store.overwrite_save_slot, slot_id)
+    return {"contractVersion": CONTRACT_VERSION, **result}
+
+
+@app.get(
     "/api/v1/progression",
     response_model=PlayerProgressionResponse,
-    responses={503: {"model": RetryableHttpErrorResponse}},
+    responses={
+        409: {"model": HttpErrorResponse},
+        503: {"model": RetryableHttpErrorResponse},
+    },
 )
 async def get_progression(
     store: Annotated[ProgressionStore, Depends(get_progression_store)],
@@ -125,7 +232,10 @@ async def get_progression(
 @app.get(
     "/api/v1/stages",
     response_model=StructuredStagesResponse,
-    responses={503: {"model": RetryableHttpErrorResponse}},
+    responses={
+        409: {"model": HttpErrorResponse},
+        503: {"model": RetryableHttpErrorResponse},
+    },
 )
 async def list_stages(
     store: Annotated[ProgressionStore, Depends(get_progression_store)],
@@ -146,13 +256,16 @@ async def create_battle(
     store: Annotated[ProgressionStore, Depends(get_progression_store)],
 ) -> dict:
     try:
+        profile_id = await asyncio.to_thread(store.active_profile_id)
         await asyncio.to_thread(
-            store.assert_player_team_unlocked, list(request.player_team)
+            store.assert_player_team_unlocked, list(request.player_team), profile_id
         )
     except ProgressionStoreError as exc:
         raise _store_unavailable(exc) from exc
     except StageAccessError as exc:
         raise _access_error(exc) from exc
+    except SaveSlotAccessError as exc:
+        raise _save_slot_error(exc) from exc
     _, envelope = await asyncio.to_thread(
         registry.create,
         seed=request.seed,
@@ -183,16 +296,19 @@ async def create_stage_battle(
     store: Annotated[ProgressionStore, Depends(get_progression_store)],
 ) -> dict:
     try:
+        profile_id = await asyncio.to_thread(store.active_profile_id)
         battle = await asyncio.to_thread(
-            store.assert_stage_battle_access, stage_id, battle_index
+            store.assert_stage_battle_access, stage_id, battle_index, profile_id
         )
         await asyncio.to_thread(
-            store.assert_player_team_unlocked, list(request.player_team)
+            store.assert_player_team_unlocked, list(request.player_team), profile_id
         )
     except ProgressionStoreError as exc:
         raise _store_unavailable(exc) from exc
     except StageAccessError as exc:
         raise _access_error(exc) from exc
+    except SaveSlotAccessError as exc:
+        raise _save_slot_error(exc) from exc
 
     if len(request.player_team) != battle.battle_size:
         raise HTTPException(
@@ -229,6 +345,7 @@ async def create_stage_battle(
         fixed_computer_formation=True,
         stage_id=stage_id,
         stage_battle_index=battle_index,
+        progression_profile_id=profile_id,
     )
     return envelope
 
@@ -321,6 +438,7 @@ async def commit_battle_completion(
                 battle_id=battle_id,
                 stage_id=session.stage_id,
                 battle_index=session.stage_battle_index,
+                expected_profile_id=session.progression_profile_id,
             )
 
     try:
@@ -329,6 +447,8 @@ async def commit_battle_completion(
         raise _store_unavailable(exc) from exc
     except StageAccessError as exc:
         raise _access_error(exc) from exc
+    except SaveSlotAccessError as exc:
+        raise _save_slot_error(exc) from exc
     return {
         "contractVersion": CONTRACT_VERSION,
         "battleId": battle_id,

@@ -17,9 +17,10 @@ afterEach(() => {
 });
 
 describe("UI-012 stage-selection flow", () => {
-  it("routes startup into stages while preserving the existing game destination", () => {
+  it("opens save selection from startup before the Stage Map route", () => {
     render(<StartupPage />);
-    expect(screen.getByRole("link", { name: /start game/i })).toHaveAttribute("href", "/stages");
+    expect(screen.getByRole("button", { name: /start game/i })).toBeVisible();
+    expect(screen.queryByRole("link", { name: /start game/i })).not.toBeInTheDocument();
   });
 
   it("uses the supplied map exactly once and keeps map-percent geometry on its parent", async () => {

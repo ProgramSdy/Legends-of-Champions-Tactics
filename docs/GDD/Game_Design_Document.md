@@ -29,10 +29,12 @@ outcomes.
 
 The Stage Map also offers two backend-authoritative structured training stages:
 Paladin's Altar and Warrior's Barrack. Each has nine fixed battles with an
-ordered predefined computer enemy team and a fixed formation. The player can
-choose only heroes currently unlocked for the stable local profile. Friendly
-victory is the only progression trigger; defeat, draw, and round limit retry
-the same battle. A completed step unlocks only the next step in its own stage.
+ordered predefined computer enemy team and fixed enemy formation. In 2v2 and
+3v3, the player chooses a size-valid friendly formation; 1v1 has no formation
+selection. The player can choose only heroes currently unlocked for the stable
+local profile. Friendly victory is the only progression trigger; defeat, draw,
+and round limit retry the same battle. A completed step unlocks only the next
+step in its own stage.
 
 ## Supported Playable Scope
 
@@ -121,16 +123,22 @@ for reproducible session randomness. Direct legacy/simulation execution has no
 equivalent recorded replay contract.
 
 Paladin's Altar and Warrior's Barrack use the existing 1v1, 2v2, and 3v3
-combat formats with predefined computer enemy teams and fixed formations. They
-do not add combat rules or a campaign system. Their completion only changes the
-minimal persisted training progression described below.
+combat formats with predefined computer enemy teams and fixed enemy formations.
+Their 2v2 and 3v3 friendly formations remain player-selected; 1v1 has none.
+They do not add combat rules or a campaign system. Their completion only
+changes the minimal persisted training progression described below.
 
 ## Progression and Meta-Game
 
-UI-020 implements the smallest local progression slice for the stable default
-profile. Initially unavailable player definitions are Paladin Protection,
-Paladin Retribution, Paladin Holy, Warrior Berserker, and Warrior Defence.
-They unlock only from the named third, sixth, or ninth training battle reward.
+UI-021 stores local progression in exactly five backend-owned save slots. A
+new slot starts with exactly Warrior Weapon Master, Mage Comprehensiveness,
+Priest Comprehensiveness, and Rogue Comprehensiveness. Paladin Protection,
+Paladin Retribution, Paladin Holy, Warrior Berserker, Warrior Defence, and
+Priest Discipline start unavailable to player selection. The implemented
+training rewards unlock only the named Paladin and Warrior definitions; Priest
+Discipline deliberately remains locked until a future owner-designed Priest
+stage supplies her reward. Fixed structured enemies remain independent of
+player ownership.
 Warrior's Barrack Battle 6 grants the single persistent generic reward ID
 `reward.item-card.basic`; it has no art, combat effect, inventory, equipment,
 economy, or item name. The backend persists each first friendly-victory reward
@@ -158,6 +166,8 @@ battle recovery remain unimplemented.
   size-specific pre-battle selection and Python-owned Warrior position rules.
 - 2026-08-19 — Replaced the temporary Warrior's Barrack sequence with the two
   persisted nine-battle training stages and their limited unlock/item rewards.
+- 2026-08-20 — Added five isolated local save slots and the exact four-hero
+  new-game roster without changing the training curricula.
 - 2026-08-06 — Rebuilt from the current engine, adapter, and web/API baseline;
   unapproved product decisions are explicitly recorded as open.
 - 2026-08-10 — Recorded the then-temporary Warrior's Barrack structured

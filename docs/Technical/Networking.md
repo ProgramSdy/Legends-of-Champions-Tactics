@@ -19,6 +19,12 @@ Requests can include an optional seed for reproducible composition and
 computer-formation selection within that session. A refresh, process restart,
 or multi-worker deployment does not provide recovery or shared session state.
 
+Save selection uses request/response HTTP endpoints but is not an account
+system. `GET /api/v1/save-slots` lists exactly five local summaries; create,
+load, and confirmed-overwrite requests mutate the backend-owned active slot.
+That selection is shared by clients of one adapter/database and is never
+authoritative in a URL, browser cache, or local storage.
+
 ## Protocols and Interfaces
 
 The public contract is HTTP JSON, currently `contractVersion: "1.0"`.
@@ -55,8 +61,10 @@ ordered slot; `front`/`rear` remains the networked engine position.
 The client distinguishes disconnected, adapter, rejected, and stale-command
 failures and provides retry at the appropriate boundary. Creation validation
 rejects missing/invalid/wrong-size formation values rather than coercing them.
-There is no implemented resume, reconnect, handoff, save, or recovery path;
-the Player Data and Save System remains future work.
+Persistent progression reloads through an occupied slot, but there is no
+implemented live-battle resume, reconnect, handoff, backup, or recovery path.
+If the active slot changes after a structured battle launches, completion is
+rejected rather than committed to another profile.
 
 ## Security Considerations
 
@@ -71,4 +79,6 @@ requirements, not completed features.
 
 - 2026-08-15 — Documented the current versioned battle-session transport and
   its UI-018/UI-019 formation fields, authority, and limitations.
+- 2026-08-20 — Added the local five-slot HTTP boundary and clarified that it is
+  shared adapter state, not authentication, cloud save, or session recovery.
 - 2026-07-26 — Initial document created.

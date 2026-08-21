@@ -10,7 +10,12 @@ important UI states.
 ```text
 Load application
   -> Startup Title Scene (/)
-     -> START GAME (/stages)
+     -> START GAME
+        -> NEW GAME / LOAD GAME dialog
+           -> NEW GAME -> choose one of five slots
+              -> empty slot: create and activate -> Stage Selection
+              -> occupied slot: confirm overwrite -> replace and activate -> Stage Selection
+           -> LOAD GAME -> choose occupied slot -> activate -> Stage Selection
         -> Stage Selection
            -> Arena (/game)
               -> Load approved roster from GET /api/v1/heroes
@@ -31,63 +36,36 @@ provider, battle ID, authoritative snapshot cache, presentation queue, timers,
 event log, selections, and completion-dialog state. A later launch creates a
 new provider and API session.
 
-## Agreed Startup and Profile Flow (Not Yet Implemented)
+## Implemented Five-Slot Startup Flow
 
-The following flow is agreed product design for the future persistent
-player-data/save system. It supersedes the current direct `START GAME` → Stage
-Map entry only when the corresponding backend-authoritative profile and save
-implementation is explicitly authorised. Persistence details live in
+The startup client lists exactly five backend-owned local save slots. It does
+not navigate to Stage Map until a create, load, or confirmed-overwrite action
+returns the selected active slot and its authoritative progression. Details live in
 [Player Data and Save System](../Technical/Player_Data_and_Save_System.md).
 
 ```text
 Start Page
   -> [ START ]
-     -> hide/remove START
-     -> [ NEW GAME ] [ CONTINUE GAME ]
+     -> [ NEW GAME ] [ LOAD GAME ]
 
 NEW GAME
-  -> create player profile with a stable profile ID
-  -> assign default initial roster/progression
-  -> persist player record
-  -> make profile active
-  -> Stage Map
+  -> list Slots 1-5
+  -> empty slot: create exact starter progression -> select active -> Stage Map
+  -> occupied slot: exact-slot overwrite warning
+     -> Cancel: no write -> slot selector
+     -> Confirm: replace only that slot -> select active -> Stage Map
 
-CONTINUE GAME
-  -> list saved player profiles
-  -> select profile
-     -> no unfinished battle: load profile -> Stage Map
-     -> unfinished battle: show saved-battle summary
-        -> [ RESUME BATTLE ] -> load authoritative saved state -> Battle page
-        -> [ ABANDON BATTLE ] -> confirmation
-           -> Cancel: retain battle summary
-           -> Confirm: end/remove unfinished battle -> Stage Map
+LOAD GAME
+  -> list Slots 1-5 with empty slots disabled
+  -> occupied slot: select active without reset -> Stage Map
 ```
 
-Initial display names may use a simple sequence such as `Player 1`, `Player 2`,
-and `Player 3`, but a stable internal profile ID—not the display name—identifies
-the profile. New Game assigns the initial roster/progression through the
-backend; the client does not author persistent state.
-
-Continue Game lists all saved local profiles. If none exist, it must be disabled
-or show a clear **No saved games** state; exact visual presentation is an
-implementation decision. When an unfinished battle exists, the summary should
-identify useful context such as stage/training name and round (for example,
-`Warrior's Barrack`, `Defensive Training`, `Round 4`).
-
-Abandon Battle must ask for confirmation before destroying the unfinished
-battle, for example:
-
-```text
-Abandon the current battle?
-Your progress in this battle will be lost.
-
-[ CANCEL ] [ ABANDON BATTLE ]
-```
-
-Confirmed abandonment removes/ends only the active unfinished battle. It does
-not award that battle's completion or unlock rewards and does not remove
-previously earned permanent player progress. Future PvP disconnect/reconnect/
-forfeit flow is out of scope.
+LOAD GAME is disabled with a readable **No saved games** explanation when all
+five slots are empty. The dialog supports Escape/Cancel, keyboard-only slot
+selection, contained/restored focus, loading status, and retryable errors. The
+client submits only the slot action; it never submits starter heroes, stage
+progress, or rewards. Profile naming/deletion and unfinished-battle recovery
+remain deferred.
 
 ## Screen Inventory
 
@@ -164,7 +142,7 @@ positions. Formation controls and fields remain absent in 1v1.
 Structured training uses the same Team Builder in a persisted, backend-owned
 mode. Warrior's Barrack and Paladin's Altar each use a nine-battle curriculum,
 fixed enemy teams and formations, and server-authoritative access and rewards.
-The builder exposes only the player heroes unlocked for the default profile,
+The builder exposes only the player heroes unlocked for the active save slot,
 its fixed battle format, and an accessible immutable predefined enemy summary.
 Arena-style battle-size, enemy-composition, enemy-control, and enemy-team
 controls are absent from structured mode. A seed remains optional where the
@@ -237,38 +215,38 @@ flow. Its return link navigates directly to `/game`.
 
 ### Current Implementation
 
-- `/` opens the non-interactive cinematic startup title scene.
+- `/` opens the cinematic title scene. START GAME opens the five-slot New Game /
+  Load Game dialog without navigating.
 - `/stages` opens the stage-selection map without creating a battle session.
 - `/game` opens Arena Team Builder after the roster loads; `/game?stage=arena`
   identifies Arena configuration mode.
 - `/game?stage=warriors-barrack` and `/game?stage=paladins-altar` open the
   respective persisted curriculum at its next permitted battle.
-- `START GAME` navigates to `/stages`; Arena, both structured stages, and the
-  Asset Gallery return link navigate through their documented destinations.
+- A successful create, load, or confirmed overwrite navigates to `/stages`.
+  Arena, both structured stages, and the Asset Gallery return link navigate
+  through their documented destinations.
 - Team Builder launches only live Python-backed sessions.
 - Mock fixtures remain test/development data and are not the normal user entry
   flow.
 - Battle sessions are process-local and are not resumed after a browser reload.
   Completed structured battles, access state, unlocked heroes, and rewards
-  persist in the backend default profile; a new launch reloads that state and
+  persist in the backend active save slot; a new launch reloads that state and
   starts the next permitted battle.
 
-### Agreed Persistence Design
+### Deferred Persistence Design
 
-- The future Start action opens New Game / Continue Game choices rather than
-  entering Stage Map immediately.
-- New Game creates, persists, and activates a profile before Stage Map.
-- Continue Game loads a selected profile, then opens Stage Map or offers Resume
-  Battle / Abandon Battle for its unfinished PvE/training battle.
-- Resume returns directly to the saved Battle page from backend-authoritative
-  state. Abandonment requires confirmation and returns to Stage Map after the
-  backend ends/removes only that unfinished battle.
+- Active-battle checkpoint, Resume Battle, and Abandon Battle are not part of
+  the implemented five-slot flow.
+- Profile names, rename/delete controls, accounts, cloud sync, and online
+  identity remain deferred.
 
 ## Error, Empty, and Loading States
 
 - Roster loading: `Loading approved heroes…`
 - Roster/API failure: `HERO ROSTER UNAVAILABLE` with Retry.
 - Battle creation failure: existing battle-service error boundary with Retry.
+- Save-slot listing/action failure: visible startup-dialog error with retry or
+  the original slot action still available; no navigation or local fallback.
 - Invalid Team Builder configuration: precise inline validation and disabled
   launch.
 - Ended Arena battle: modal outcome and Return to Team Builder.
@@ -303,3 +281,5 @@ flow. Its return link navigates directly to `/game`.
 - 2026-08-19 — UI-020 documented Paladin's Altar, persistent nine-battle
   training, authoritative roster gating, locked steps, completion commits,
   reward feedback, and retryable progression failures.
+- 2026-08-20 — UI-021 replaced direct startup navigation with the accessible
+  five-slot New/Load/confirmed-overwrite flow and active-slot refresh boundary.

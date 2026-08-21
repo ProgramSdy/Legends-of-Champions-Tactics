@@ -3,26 +3,29 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 import sqlite3
 import threading
 from typing import Any, Literal
 from urllib.parse import quote
+import uuid
 
 
 DEFAULT_PROFILE_ID = "profile.local.default"
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
+SAVE_SLOT_IDS = (1, 2, 3, 4, 5)
 ITEM_CARD_REWARD_ID = "reward.item-card.basic"
 StageId = Literal["paladins-altar", "warriors-barrack"]
 
 INITIAL_UNLOCKED_HERO_IDS: tuple[str, ...] = (
     "hero.priest.comprehensiveness",
-    "hero.priest.discipline",
     "hero.mage.comprehensiveness",
     "hero.warrior.weapon_master",
     "hero.rogue.comprehensiveness",
 )
 ALL_HERO_IDS = frozenset(INITIAL_UNLOCKED_HERO_IDS) | {
+    "hero.priest.discipline",
     "hero.paladin.protection",
     "hero.paladin.retribution",
     "hero.paladin.holy",
@@ -158,8 +161,17 @@ class StageAccessError(ValueError):
         self.message = message
 
 
+class SaveSlotAccessError(ValueError):
+    """A requested save-slot operation conflicts with authoritative state."""
+
+    def __init__(self, code: str, message: str):
+        super().__init__(message)
+        self.code = code
+        self.message = message
+
+
 class ProgressionStore:
-    """Small transaction-scoped SQLite store for one stable local profile."""
+    """Transaction-scoped SQLite store for five local save slots."""
 
     def __init__(self, database_path: Path) -> None:
         self.database_path = database_path
@@ -191,7 +203,7 @@ class ProgressionStore:
                         self._create_schema(connection)
                     finally:
                         connection.close()
-                self._validate_store()
+                self._upgrade_and_validate_store()
                 self._initialized = True
             except ProgressionStoreError:
                 raise
@@ -209,8 +221,18 @@ class ProgressionStore:
                     key TEXT PRIMARY KEY,
                     value TEXT NOT NULL
                 );
-                CREATE TABLE profiles (
-                    profile_id TEXT PRIMARY KEY
+                CREATE TABLE profiles (profile_id TEXT PRIMARY KEY);
+                CREATE TABLE save_slots (
+                    slot_id INTEGER PRIMARY KEY CHECK (slot_id BETWEEN 1 AND 5),
+                    profile_id TEXT UNIQUE REFERENCES profiles(profile_id),
+                    created_at TEXT,
+                    last_played_at TEXT,
+                    CHECK ((profile_id IS NULL) = (created_at IS NULL)),
+                    CHECK ((profile_id IS NULL) = (last_played_at IS NULL))
+                );
+                CREATE TABLE active_slot (
+                    singleton_id INTEGER PRIMARY KEY CHECK (singleton_id = 1),
+                    slot_id INTEGER REFERENCES save_slots(slot_id)
                 );
                 CREATE TABLE unlocked_heroes (
                     profile_id TEXT NOT NULL REFERENCES profiles(profile_id),
@@ -244,25 +266,19 @@ class ProgressionStore:
                 "INSERT INTO metadata(key, value) VALUES ('schema_version', ?)",
                 (str(SCHEMA_VERSION),),
             )
+            connection.executemany(
+                "INSERT INTO save_slots(slot_id) VALUES (?)",
+                ((slot_id,) for slot_id in SAVE_SLOT_IDS),
+            )
             connection.execute(
-                "INSERT INTO profiles(profile_id) VALUES (?)", (DEFAULT_PROFILE_ID,)
-            )
-            connection.executemany(
-                "INSERT INTO unlocked_heroes(profile_id, definition_id) VALUES (?, ?)",
-                ((DEFAULT_PROFILE_ID, hero_id) for hero_id in INITIAL_UNLOCKED_HERO_IDS),
-            )
-            connection.executemany(
-                """INSERT INTO stage_progress(
-                       profile_id, stage_id, highest_completed_battle, completed
-                   ) VALUES (?, ?, 0, 0)""",
-                ((DEFAULT_PROFILE_ID, stage_id) for stage_id in STAGE_BATTLES),
+                "INSERT INTO active_slot(singleton_id, slot_id) VALUES (1, NULL)"
             )
             connection.commit()
         except Exception:
             connection.rollback()
             raise
 
-    def _validate_store(self) -> None:
+    def _upgrade_and_validate_store(self) -> None:
         connection = self._connect_existing()
         try:
             integrity = connection.execute("PRAGMA quick_check").fetchone()[0]
@@ -273,19 +289,113 @@ class ProgressionStore:
             row = connection.execute(
                 "SELECT value FROM metadata WHERE key = 'schema_version'"
             ).fetchone()
-            if row is None or row["value"] != str(SCHEMA_VERSION):
+            if row is None:
                 raise ProgressionStoreError(
                     "Persistent progression has an unsupported schema. Retry later."
                 )
+            if row["value"] == "1":
+                self._migrate_v1(connection)
+            elif row["value"] != str(SCHEMA_VERSION):
+                raise ProgressionStoreError(
+                    "Persistent progression has an unsupported schema. Retry later."
+                )
+            self._validate_v2(connection)
+        finally:
+            connection.close()
+
+    def _migrate_v1(self, connection: sqlite3.Connection) -> None:
+        """Atomically place the UI-020 default profile into slot 1 exactly once."""
+        try:
+            connection.execute("BEGIN IMMEDIATE")
             profile = connection.execute(
                 "SELECT 1 FROM profiles WHERE profile_id = ?", (DEFAULT_PROFILE_ID,)
             ).fetchone()
             if profile is None:
                 raise ProgressionStoreError(
-                    "The default local profile is missing. Retry later."
+                    "The legacy default profile cannot be preserved. Retry later."
                 )
-        finally:
-            connection.close()
+            connection.execute(
+                """CREATE TABLE save_slots (
+                    slot_id INTEGER PRIMARY KEY CHECK (slot_id BETWEEN 1 AND 5),
+                    profile_id TEXT UNIQUE REFERENCES profiles(profile_id),
+                    created_at TEXT,
+                    last_played_at TEXT,
+                    CHECK ((profile_id IS NULL) = (created_at IS NULL)),
+                    CHECK ((profile_id IS NULL) = (last_played_at IS NULL))
+                )"""
+            )
+            connection.execute(
+                """CREATE TABLE active_slot (
+                    singleton_id INTEGER PRIMARY KEY CHECK (singleton_id = 1),
+                    slot_id INTEGER REFERENCES save_slots(slot_id)
+                )"""
+            )
+            connection.executemany(
+                "INSERT INTO save_slots(slot_id) VALUES (?)",
+                ((slot_id,) for slot_id in SAVE_SLOT_IDS),
+            )
+            migrated_at = self._timestamp()
+            connection.execute(
+                """UPDATE save_slots SET profile_id = ?, created_at = ?,
+                       last_played_at = ? WHERE slot_id = 1""",
+                (DEFAULT_PROFILE_ID, migrated_at, migrated_at),
+            )
+            connection.execute(
+                "INSERT INTO active_slot(singleton_id, slot_id) VALUES (1, 1)"
+            )
+            # Validate the legacy payload before the schema marker commits so
+            # an incomplete/corrupt UI-020 profile leaves schema v1 untouched.
+            self._read_progression(connection, DEFAULT_PROFILE_ID)
+            connection.execute(
+                "UPDATE metadata SET value = ? WHERE key = 'schema_version'",
+                (str(SCHEMA_VERSION),),
+            )
+            connection.commit()
+        except ProgressionStoreError:
+            connection.rollback()
+            raise
+        except sqlite3.Error as exc:
+            connection.rollback()
+            raise ProgressionStoreError(
+                "Legacy progression migration could not preserve the profile. Retry later."
+            ) from exc
+
+    def _validate_v2(self, connection: sqlite3.Connection) -> None:
+        slots = connection.execute(
+            "SELECT slot_id, profile_id FROM save_slots ORDER BY slot_id"
+        ).fetchall()
+        if [row["slot_id"] for row in slots] != list(SAVE_SLOT_IDS):
+            raise ProgressionStoreError(
+                "The save-slot catalogue is incomplete or corrupt. Retry later."
+            )
+        active_rows = connection.execute(
+            "SELECT slot_id FROM active_slot WHERE singleton_id = 1"
+        ).fetchall()
+        if len(active_rows) != 1:
+            raise ProgressionStoreError(
+                "The active save-slot state is corrupt. Retry later."
+            )
+        active_slot_id = active_rows[0]["slot_id"]
+        occupied = {row["slot_id"]: row["profile_id"] for row in slots}
+        if active_slot_id is not None and occupied.get(active_slot_id) is None:
+            raise ProgressionStoreError(
+                "The active save slot is empty or corrupt. Retry later."
+            )
+        assigned_profiles = {value for value in occupied.values() if value is not None}
+        stored_profiles = {
+            row["profile_id"]
+            for row in connection.execute("SELECT profile_id FROM profiles")
+        }
+        if assigned_profiles != stored_profiles:
+            raise ProgressionStoreError(
+                "Stored profiles are not assigned to exactly one save slot. Retry later."
+            )
+        for profile_id in assigned_profiles:
+            self._read_progression(connection, profile_id)
+
+    @staticmethod
+    def _timestamp() -> str:
+        return datetime.now(UTC).isoformat(timespec="milliseconds").replace("+00:00", "Z")
 
     def _connection(self) -> sqlite3.Connection:
         self.ensure_initialized()
@@ -296,12 +406,213 @@ class ProgressionStore:
                 "Persistent progression is unavailable or missing. Retry later."
             ) from exc
 
+    @staticmethod
+    def _validate_slot_id(slot_id: int) -> None:
+        if slot_id not in SAVE_SLOT_IDS:
+            raise SaveSlotAccessError(
+                "invalidSaveSlot", "slotId must be an integer from 1 through 5."
+            )
+
+    def _active_profile_id(self, connection: sqlite3.Connection) -> str:
+        row = connection.execute(
+            """SELECT s.profile_id FROM active_slot a
+               LEFT JOIN save_slots s ON s.slot_id = a.slot_id
+               WHERE a.singleton_id = 1"""
+        ).fetchone()
+        if row is None or row["profile_id"] is None:
+            raise SaveSlotAccessError(
+                "noActiveSaveSlot",
+                "Create or load a save slot before accessing progression.",
+            )
+        return row["profile_id"]
+
+    def active_profile_id(self) -> str:
+        connection = self._connection()
+        try:
+            return self._active_profile_id(connection)
+        except sqlite3.Error as exc:
+            raise ProgressionStoreError(
+                "Persistent progression could not be read. Retry later."
+            ) from exc
+        finally:
+            connection.close()
+
+    def list_save_slots(self) -> dict[str, Any]:
+        connection = self._connection()
+        try:
+            active = connection.execute(
+                "SELECT slot_id FROM active_slot WHERE singleton_id = 1"
+            ).fetchone()
+            active_slot_id = active["slot_id"] if active else None
+            rows = connection.execute(
+                """SELECT slot_id, profile_id, created_at, last_played_at
+                   FROM save_slots ORDER BY slot_id"""
+            ).fetchall()
+            return {
+                "activeSlotId": active_slot_id,
+                "slots": [self._slot_summary(row, active_slot_id) for row in rows],
+            }
+        except sqlite3.Error as exc:
+            raise ProgressionStoreError(
+                "Save slots could not be read. Retry later."
+            ) from exc
+        finally:
+            connection.close()
+
+    @staticmethod
+    def _slot_summary(row: sqlite3.Row, active_slot_id: int | None) -> dict[str, Any]:
+        return {
+            "slotId": row["slot_id"],
+            "occupied": row["profile_id"] is not None,
+            "profileId": row["profile_id"],
+            "createdAt": row["created_at"],
+            "lastPlayedAt": row["last_played_at"],
+            "active": row["slot_id"] == active_slot_id,
+        }
+
+    def create_save_slot(self, slot_id: int) -> dict[str, Any]:
+        return self._initialize_slot(slot_id, overwrite=False)
+
+    def overwrite_save_slot(self, slot_id: int) -> dict[str, Any]:
+        return self._initialize_slot(slot_id, overwrite=True)
+
+    def _initialize_slot(self, slot_id: int, *, overwrite: bool) -> dict[str, Any]:
+        self._validate_slot_id(slot_id)
+        connection = self._connection()
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                "SELECT profile_id FROM save_slots WHERE slot_id = ?", (slot_id,)
+            ).fetchone()
+            if row is None:
+                raise ProgressionStoreError(
+                    "The save-slot catalogue is incomplete. Retry later."
+                )
+            old_profile_id = row["profile_id"]
+            if old_profile_id is not None and not overwrite:
+                raise SaveSlotAccessError(
+                    "slotOccupied",
+                    f"Save slot {slot_id} is occupied; confirmed overwrite is required.",
+                )
+            if old_profile_id is None and overwrite:
+                raise SaveSlotAccessError(
+                    "loadEmptySlot", f"Save slot {slot_id} is empty."
+                )
+            if old_profile_id is not None:
+                for table in (
+                    "battle_completions",
+                    "granted_rewards",
+                    "stage_progress",
+                    "unlocked_heroes",
+                ):
+                    connection.execute(
+                        f"DELETE FROM {table} WHERE profile_id = ?", (old_profile_id,)
+                    )
+                connection.execute(
+                    "UPDATE save_slots SET profile_id = NULL, created_at = NULL, "
+                    "last_played_at = NULL WHERE slot_id = ?",
+                    (slot_id,),
+                )
+                connection.execute(
+                    "DELETE FROM profiles WHERE profile_id = ?", (old_profile_id,)
+                )
+            profile_id = f"profile.local.slot.{slot_id}.{uuid.uuid4().hex}"
+            now = self._timestamp()
+            connection.execute(
+                "INSERT INTO profiles(profile_id) VALUES (?)", (profile_id,)
+            )
+            connection.executemany(
+                "INSERT INTO unlocked_heroes(profile_id, definition_id) VALUES (?, ?)",
+                ((profile_id, hero_id) for hero_id in INITIAL_UNLOCKED_HERO_IDS),
+            )
+            connection.executemany(
+                """INSERT INTO stage_progress(
+                       profile_id, stage_id, highest_completed_battle, completed
+                   ) VALUES (?, ?, 0, 0)""",
+                ((profile_id, stage_id) for stage_id in STAGE_BATTLES),
+            )
+            connection.execute(
+                """UPDATE save_slots SET profile_id = ?, created_at = ?,
+                       last_played_at = ? WHERE slot_id = ?""",
+                (profile_id, now, now, slot_id),
+            )
+            connection.execute(
+                "UPDATE active_slot SET slot_id = ? WHERE singleton_id = 1", (slot_id,)
+            )
+            progression = self._read_progression(connection, profile_id)
+            slot = connection.execute(
+                """SELECT slot_id, profile_id, created_at, last_played_at
+                   FROM save_slots WHERE slot_id = ?""",
+                (slot_id,),
+            ).fetchone()
+            connection.commit()
+            return {
+                "activeSlotId": slot_id,
+                "slot": self._slot_summary(slot, slot_id),
+                "progression": progression,
+            }
+        except (ProgressionStoreError, SaveSlotAccessError):
+            connection.rollback()
+            raise
+        except sqlite3.Error as exc:
+            connection.rollback()
+            raise ProgressionStoreError(
+                "The save slot could not be initialized. Retry later."
+            ) from exc
+        finally:
+            connection.close()
+
+    def load_save_slot(self, slot_id: int) -> dict[str, Any]:
+        self._validate_slot_id(slot_id)
+        connection = self._connection()
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                """SELECT slot_id, profile_id, created_at, last_played_at
+                   FROM save_slots WHERE slot_id = ?""",
+                (slot_id,),
+            ).fetchone()
+            if row is None or row["profile_id"] is None:
+                raise SaveSlotAccessError(
+                    "loadEmptySlot", f"Save slot {slot_id} is empty."
+                )
+            now = self._timestamp()
+            connection.execute(
+                "UPDATE save_slots SET last_played_at = ? WHERE slot_id = ?",
+                (now, slot_id),
+            )
+            connection.execute(
+                "UPDATE active_slot SET slot_id = ? WHERE singleton_id = 1", (slot_id,)
+            )
+            progression = self._read_progression(connection, row["profile_id"])
+            updated = connection.execute(
+                """SELECT slot_id, profile_id, created_at, last_played_at
+                   FROM save_slots WHERE slot_id = ?""",
+                (slot_id,),
+            ).fetchone()
+            connection.commit()
+            return {
+                "activeSlotId": slot_id,
+                "slot": self._slot_summary(updated, slot_id),
+                "progression": progression,
+            }
+        except (ProgressionStoreError, SaveSlotAccessError):
+            connection.rollback()
+            raise
+        except sqlite3.Error as exc:
+            connection.rollback()
+            raise ProgressionStoreError(
+                "The save slot could not be loaded. Retry later."
+            ) from exc
+        finally:
+            connection.close()
+
     def read_progression(self) -> dict[str, Any]:
         connection: sqlite3.Connection | None = None
         try:
             connection = self._connection()
-            return self._read_progression(connection)
-        except ProgressionStoreError:
+            return self._read_progression(connection, self._active_profile_id(connection))
+        except (ProgressionStoreError, SaveSlotAccessError):
             raise
         except sqlite3.Error as exc:
             raise ProgressionStoreError(
@@ -311,19 +622,21 @@ class ProgressionStore:
             if connection is not None:
                 connection.close()
 
-    def _read_progression(self, connection: sqlite3.Connection) -> dict[str, Any]:
+    def _read_progression(
+        self, connection: sqlite3.Connection, profile_id: str
+    ) -> dict[str, Any]:
         unlocked = [
             row["definition_id"]
             for row in connection.execute(
                 """SELECT definition_id FROM unlocked_heroes
                    WHERE profile_id = ? ORDER BY definition_id""",
-                (DEFAULT_PROFILE_ID,),
+                (profile_id,),
             )
         ]
         progress_rows = connection.execute(
             """SELECT stage_id, highest_completed_battle, completed
                FROM stage_progress WHERE profile_id = ? ORDER BY stage_id""",
-            (DEFAULT_PROFILE_ID,),
+            (profile_id,),
         ).fetchall()
         if {row["stage_id"] for row in progress_rows} != set(STAGE_BATTLES):
             raise ProgressionStoreError(
@@ -345,7 +658,7 @@ class ProgressionStore:
             for row in connection.execute(
                 """SELECT reward_id, count FROM granted_rewards
                    WHERE profile_id = ? ORDER BY reward_id""",
-                (DEFAULT_PROFILE_ID,),
+                (profile_id,),
             )
         ]
         if any(reward["count"] != 1 for reward in rewards):
@@ -353,7 +666,7 @@ class ProgressionStore:
                 "The stored reward progression is corrupt. Retry later."
             )
         return {
-            "profileId": DEFAULT_PROFILE_ID,
+            "profileId": profile_id,
             "unlockedHeroDefinitionIds": unlocked,
             "stageProgress": [
                 self._progress_row(row["stage_id"], row["highest_completed_battle"])
@@ -371,8 +684,18 @@ class ProgressionStore:
             "completed": highest_completed == 9,
         }
 
-    def assert_player_team_unlocked(self, definition_ids: list[str]) -> None:
+    def assert_player_team_unlocked(
+        self, definition_ids: list[str], expected_profile_id: str | None = None
+    ) -> None:
         progression = self.read_progression()
+        if (
+            expected_profile_id is not None
+            and progression["profileId"] != expected_profile_id
+        ):
+            raise SaveSlotAccessError(
+                "activeSaveSlotChanged",
+                "The active save slot changed; start the battle again.",
+            )
         unlocked = set(progression["unlockedHeroDefinitionIds"])
         locked = sorted(set(definition_ids) - unlocked)
         if locked:
@@ -381,15 +704,26 @@ class ProgressionStore:
                 f"The player profile has not unlocked: {', '.join(locked)}.",
             )
 
-    def assert_stage_battle_access(self, stage_id: str, battle_index: int) -> StageBattle:
+    def assert_stage_battle_access(
+        self,
+        stage_id: str,
+        battle_index: int,
+        expected_profile_id: str | None = None,
+    ) -> StageBattle:
         battle = stage_battle(stage_id, battle_index)
         connection: sqlite3.Connection | None = None
         try:
             connection = self._connection()
+            profile_id = self._active_profile_id(connection)
+            if expected_profile_id is not None and profile_id != expected_profile_id:
+                raise SaveSlotAccessError(
+                    "activeSaveSlotChanged",
+                    "The active save slot changed; start the battle again.",
+                )
             row = connection.execute(
                 """SELECT highest_completed_battle FROM stage_progress
                    WHERE profile_id = ? AND stage_id = ?""",
-                (DEFAULT_PROFILE_ID, stage_id),
+                (profile_id, stage_id),
             ).fetchone()
             if row is None:
                 raise ProgressionStoreError(
@@ -401,7 +735,7 @@ class ProgressionStore:
                     "Complete the preceding battle before starting this battle.",
                 )
             return battle
-        except (ProgressionStoreError, StageAccessError):
+        except (ProgressionStoreError, SaveSlotAccessError, StageAccessError):
             raise
         except sqlite3.Error as exc:
             raise ProgressionStoreError(
@@ -412,19 +746,30 @@ class ProgressionStore:
                 connection.close()
 
     def commit_victory(
-        self, *, battle_id: str, stage_id: str, battle_index: int
+        self,
+        *,
+        battle_id: str,
+        stage_id: str,
+        battle_index: int,
+        expected_profile_id: str | None = None,
     ) -> dict[str, Any]:
         battle = stage_battle(stage_id, battle_index)
         connection = self._connection()
         try:
             connection.execute("BEGIN IMMEDIATE")
+            profile_id = self._active_profile_id(connection)
+            if expected_profile_id is not None and profile_id != expected_profile_id:
+                raise SaveSlotAccessError(
+                    "activeSaveSlotChanged",
+                    "The active save slot changed; start the battle again.",
+                )
             duplicate = connection.execute(
                 """SELECT 1 FROM battle_completions
                    WHERE profile_id = ? AND battle_id = ?""",
-                (DEFAULT_PROFILE_ID, battle_id),
+                (profile_id, battle_id),
             ).fetchone()
             if duplicate is not None:
-                progression = self._read_progression(connection)
+                progression = self._read_progression(connection, profile_id)
                 connection.commit()
                 return {
                     "alreadyCommitted": True,
@@ -435,7 +780,7 @@ class ProgressionStore:
             row = connection.execute(
                 """SELECT highest_completed_battle FROM stage_progress
                    WHERE profile_id = ? AND stage_id = ?""",
-                (DEFAULT_PROFILE_ID, stage_id),
+                (profile_id, stage_id),
             ).fetchone()
             if row is None:
                 raise ProgressionStoreError(
@@ -452,13 +797,13 @@ class ProgressionStore:
                 """INSERT INTO battle_completions(
                        profile_id, battle_id, stage_id, battle_index
                    ) VALUES (?, ?, ?, ?)""",
-                (DEFAULT_PROFILE_ID, battle_id, stage_id, battle_index),
+                (profile_id, battle_id, stage_id, battle_index),
             )
             if battle_index == highest + 1:
                 connection.execute(
                     """UPDATE stage_progress SET highest_completed_battle = ?,
                            completed = ? WHERE profile_id = ? AND stage_id = ?""",
-                    (battle_index, int(battle_index == 9), DEFAULT_PROFILE_ID, stage_id),
+                    (battle_index, int(battle_index == 9), profile_id, stage_id),
                 )
 
             newly_granted: list[dict[str, Any]] = []
@@ -467,7 +812,7 @@ class ProgressionStore:
                 cursor = connection.execute(
                     """INSERT OR IGNORE INTO granted_rewards(profile_id, reward_id, count)
                        VALUES (?, ?, 1)""",
-                    (DEFAULT_PROFILE_ID, reward.reward_id),
+                    (profile_id, reward.reward_id),
                 )
                 if cursor.rowcount == 1:
                     if reward.hero_definition_id is not None:
@@ -475,18 +820,18 @@ class ProgressionStore:
                             """INSERT OR IGNORE INTO unlocked_heroes(
                                    profile_id, definition_id
                                ) VALUES (?, ?)""",
-                            (DEFAULT_PROFILE_ID, reward.hero_definition_id),
+                            (profile_id, reward.hero_definition_id),
                         )
                     newly_granted.append(reward_dict(reward))
 
-            progression = self._read_progression(connection)
+            progression = self._read_progression(connection, profile_id)
             connection.commit()
             return {
                 "alreadyCommitted": False,
                 "newlyGrantedRewards": newly_granted,
                 "progression": progression,
             }
-        except (ProgressionStoreError, StageAccessError):
+        except (ProgressionStoreError, SaveSlotAccessError, StageAccessError):
             connection.rollback()
             raise
         except sqlite3.Error as exc:

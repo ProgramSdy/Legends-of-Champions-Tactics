@@ -2,6 +2,54 @@
 
 Completed work should be appended in reverse chronological order, with the newest entry first.
 
+## 2026-08-20 — UI-021 Five-Slot Save Selection and Stage Preview Focus
+
+**Summary:**
+
+Replaced direct startup entry with an accessible New Game / Load Game workflow
+for exactly five backend-owned local save slots. New slots receive the exact
+four-hero starter roster; the selected slot authoritatively owns progression,
+training access, rewards, and friendly roster availability. Existing UI-020
+default progression migrates atomically and idempotently into Slot 1. The
+Barrack and Altar Team Builder previews now use their own map-focus metadata
+instead of a shared generic crop.
+
+**Agent Selection and Contributions:**
+
+- `project-manager` — coordinated migration/entry-flow gates and preserved
+  owner-owned review input.
+- `game-engine-developer` — implemented the five-slot SQLite schema,
+  migration, active-slot APIs, isolation, and launch-bound completion guard.
+- `ui-developer` — implemented the accessible startup slot dialogs, active
+  slot refresh/remount behavior, responsive preview crops, and UI docs.
+- `test-automator` — added save-slot, migration, startup accessibility, and
+  preview regression coverage.
+- `reviewer` — independently approved active-slot authority, the newer
+  player-selected structured friendly formations, documentation, and owner-file
+  preservation.
+
+**Validation:**
+
+- Backend slot/progression/API suites — 40 passed, with one existing Starlette
+  deprecation warning.
+- Focused frontend UI-021/UI-020/UI-018/UI-019 suites — 64 passed.
+- TypeScript typecheck, ESLint, production build, Python compilation, and
+  task-scoped whitespace checks — passed.
+- Browser checks confirmed START GAME opens the save-slot dialog without a
+  direct Stage Map link, and Barrack/Altar use distinct desktop and narrow
+  preview focus positions.
+
+**Unresolved Issues / Deferred Scope:**
+
+- Priest Discipline deliberately remains locked in fresh slots. Her unlock is
+  deferred until an owner-designed Priest-stage reward exists; no reward was
+  invented for this task.
+- Active battle sessions remain process-local and are not recoverable after a
+  restart. Accounts, profile names, deletion, cloud sync, and battle recovery
+  remain out of scope.
+
+---
+
 ## 2026-08-19 — UI-020 Persistent Nine-Battle Training Progression
 
 **Summary:**

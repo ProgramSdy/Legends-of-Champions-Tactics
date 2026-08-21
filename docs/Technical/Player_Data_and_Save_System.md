@@ -4,12 +4,12 @@
 
 Authoritative technical design for persistent player data, local storage,
 save/load behaviour, active-battle recovery, and abandonment in **Legends of
-Champions Tactics**. UI-020 implements only the narrow default-profile training
-progression portion described below; the broader design remains deferred.
+Champions Tactics**. UI-021 implements exactly five local save slots around the
+UI-020 training progression; the broader design remains deferred.
 
 The battle/session registry remains process-local and non-persistent. SQLite
-persists only the default profile's unlocks, stage progress, and generic reward
-counts; it does not checkpoint or recover live battles.
+persists each occupied slot's stable profile identity, timestamps, unlocks,
+stage progress, and generic reward counts; it does not checkpoint live battles.
 
 ## Authority and Scope
 
@@ -20,11 +20,14 @@ counts; it does not checkpoint or recover live battles.
 - The preferred initial local persistence direction is SQLite. The data model
   must allow a future migration to online accounts, server storage, and PvP
   without redefining player-progression concepts.
-- The implemented store uses SQLite schema version 1 and a stable
-  `profile.local.default` identity. It creates a new missing database only on
-  first initialization. A corrupt, unreadable, incompatible, or incomplete
-  existing store produces a retryable backend error; it is never silently reset.
-- Multiple profiles, profile names, authentication, cloud sync, PvP, active
+- The implemented store uses SQLite schema version 2 and stable slots 1–5. The
+  backend alone owns the active slot. Fresh databases start with five empty
+  slots and no active profile.
+- Schema-v1 `profile.local.default` data migrates transactionally into slot 1,
+  retaining its profile ID and exact earned state. The schema marker changes in
+  the same `BEGIN IMMEDIATE` transaction, so restart cannot duplicate it. An
+  impossible/failed migration is retryable and never resets the legacy record.
+- Profile names/settings/deletion, authentication, cloud sync, PvP, active
   battle checkpoints, and migration between account systems remain deferred.
 
 ## Data Domains
@@ -79,16 +82,18 @@ as proof that a profile owns/unlocked it.
 
 ## Initial Persistence Model
 
-The implemented local store contains a schema-version marker, the default
-profile, unlocked hero definition IDs, per-stage highest completed battle and
-completion state, granted reward counts, and a completion receipt keyed by
-battle session ID. `BEGIN IMMEDIATE` makes the receipt, stage update, unlock,
-and item-card grant one transaction. Repeating a completion callback returns
-the persisted state and does not grant again.
+The implemented local store contains a schema marker, five slot rows, one
+backend-owned active-slot reference, occupied-slot profile identities and
+creation/last-played timestamps, unlocked definitions, stage state, rewards,
+and completion receipts scoped by profile and battle session. `BEGIN IMMEDIATE`
+makes each slot initialization/overwrite, active selection, or victory
+receipt/progress/reward change atomic.
 
-It intentionally does not implement multiple profiles, preferences, inventory,
-active-battle checkpoints, resume, or abandonment. Those future data domains
-remain separate from static definitions and battle sessions.
+New slots start with exactly Warrior Weapon Master, Mage Comprehensiveness,
+Priest Comprehensiveness, and Rogue Comprehensiveness, zero stage progress, and
+no rewards. Confirmed overwrite replaces only the named occupied slot with a
+new stable profile identity and fresh state in one transaction. Cancelling or
+withholding confirmation makes no write.
 
 ## Save and Checkpoint Behaviour
 
@@ -101,9 +106,11 @@ backend has committed the corresponding persistent change.
 
 ### Active PvE and Training Battles (Deferred)
 
-UI-020 does not save active battles. At battle start, the backend creates an
+UI-021 does not save active battles. At battle start, the backend creates an
 in-memory battle session only; a refresh/restart cannot resume it and grants no
-progress until a completion transaction succeeds.
+progress until a completion transaction succeeds. Structured sessions retain
+the active profile identity from launch; completion after a slot switch is
+rejected instead of leaking a result into the new active slot.
 
 
 ### Battle Completion
@@ -114,10 +121,14 @@ generic item-card reward, and returns the updated profile in one transaction.
 The receipt makes reload/retry/replay calls idempotent. It does not save or
 finalize an active-battle checkpoint because active-battle recovery is deferred.
 
-## Load and Recovery Behaviour (Deferred)
+## Load and Recovery Behaviour
 
-Loading the default profile restores its unlocks, training stage progress, and
-generic reward count. Active unfinished-battle recovery is not implemented.
+Listing always returns five summaries. Loading an occupied slot atomically
+selects it, updates last-played metadata, and returns its progression. Empty or
+out-of-range loads are rejected. With no active selection, progression,
+roster-gated battle creation, structured stages, and completion return a typed
+conflict rather than selecting a fallback. Active unfinished-battle recovery,
+automatic backup/repair, and cloud recovery remain unimplemented.
 
 ## Abandonment (Deferred)
 
@@ -152,10 +163,7 @@ out of scope and requires a separate design.
 
 ## Open Design Questions
 
-- Exact default starting heroes, starting stage/training progress, and unlock
-  rewards.
 - Exact player preference fields and profile rename/delete behaviour.
-- Whether local profiles have a configurable maximum.
 - Active-battle retention, database backup/export, corruption recovery, and
   detailed migration policy.
 - The future online-account, cloud-sync, and PvP persistence model.
@@ -175,3 +183,6 @@ out of scope and requires a separate design.
 - 2026-08-19 — Implemented the limited default-profile SQLite progression
   store for UI-020 training rewards; profiles, inventory, and battle recovery
   remain deferred.
+- 2026-08-20 — Upgraded to schema version 2 with five isolated slots,
+  backend-owned active selection, safe UI-020 migration, and confirmed
+  transactional overwrite.

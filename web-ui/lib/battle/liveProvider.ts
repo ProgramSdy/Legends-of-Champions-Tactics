@@ -8,6 +8,10 @@ import {
   type HeroDefinitionSummary,
   type PlayerProgressionResponse,
   type PresentationScript,
+  type SaveSlotActionResponse,
+  type SaveSlotId,
+  type SaveSlotSummary,
+  type SaveSlotsResponse,
   type StructuredBattleCreateConfiguration,
   type StructuredStagesResponse,
   type VictoryCommitResponse,
@@ -106,7 +110,8 @@ function isStageReward(value: unknown): boolean {
 function isProgression(value: unknown, withVersion: boolean): boolean {
   return isRecord(value)
     && (!withVersion || value.contractVersion === "1.0")
-    && value.profileId === "profile.local.default"
+    && typeof value.profileId === "string"
+    && value.profileId.length > 0
     && Array.isArray(value.unlockedHeroDefinitionIds)
     && value.unlockedHeroDefinitionIds.every((id) => typeof id === "string")
     && Array.isArray(value.stageProgress)
@@ -117,6 +122,72 @@ function isProgression(value: unknown, withVersion: boolean): boolean {
       && typeof reward.rewardId === "string"
       && Number.isInteger(reward.count)
       && Number(reward.count) >= 1);
+}
+
+const SAVE_SLOT_IDS = [1, 2, 3, 4, 5] as const;
+
+function isSaveSlotId(value: unknown): value is SaveSlotId {
+  return SAVE_SLOT_IDS.includes(value as SaveSlotId);
+}
+
+function isNullableString(value: unknown): value is string | null {
+  return value === null || typeof value === "string";
+}
+
+function isSaveSlotSummary(value: unknown): value is SaveSlotSummary {
+  if (!isRecord(value)
+    || !isSaveSlotId(value.slotId)
+    || typeof value.occupied !== "boolean"
+    || !isNullableString(value.profileId)
+    || !isNullableString(value.createdAt)
+    || !isNullableString(value.lastPlayedAt)
+    || typeof value.active !== "boolean") {
+    return false;
+  }
+  return value.occupied
+    ? Boolean(value.profileId && value.createdAt && value.lastPlayedAt)
+    : value.profileId === null
+      && value.createdAt === null
+      && value.lastPlayedAt === null
+      && value.active === false;
+}
+
+function isSaveSlotsResponse(value: unknown): value is SaveSlotsResponse {
+  if (!isRecord(value)
+    || value.contractVersion !== "1.0"
+    || !(value.activeSlotId === null || isSaveSlotId(value.activeSlotId))
+    || !Array.isArray(value.slots)
+    || value.slots.length !== SAVE_SLOT_IDS.length
+    || !value.slots.every(isSaveSlotSummary)) {
+    return false;
+  }
+  const slotIds = value.slots.map((slot) => slot.slotId);
+  if (!SAVE_SLOT_IDS.every((slotId, index) => slotIds[index] === slotId)) return false;
+  const activeSlots = value.slots.filter((slot) => slot.active);
+  return value.activeSlotId === null
+    ? activeSlots.length === 0
+    : activeSlots.length === 1 && activeSlots[0].slotId === value.activeSlotId;
+}
+
+function isSaveSlotActionResponse(
+  value: unknown,
+  expectedSlotId: SaveSlotId,
+): value is SaveSlotActionResponse {
+  return isRecord(value)
+    && value.contractVersion === "1.0"
+    && value.activeSlotId === expectedSlotId
+    && isSaveSlotSummary(value.slot)
+    && value.slot.slotId === expectedSlotId
+    && value.slot.occupied
+    && value.slot.active
+    && isProgression(value.progression, false)
+    && value.slot.profileId === (value.progression as Record<string, unknown>).profileId;
+}
+
+function assertSaveSlotId(slotId: number): asserts slotId is SaveSlotId {
+  if (!isSaveSlotId(slotId)) {
+    throw new BattleProviderError("Save slot must be between 1 and 5.", "adapter");
+  }
 }
 
 export async function fetchHeroRoster(
@@ -151,6 +222,65 @@ export async function fetchPlayerProgression(
     );
   }
   return body as PlayerProgressionResponse;
+}
+
+export async function fetchSaveSlots(
+  baseUrl = DEFAULT_BASE_URL,
+): Promise<SaveSlotsResponse> {
+  const body = await requestAdapterJson(baseUrl, "/api/v1/save-slots");
+  if (!isSaveSlotsResponse(body)) {
+    throw new BattleProviderError(
+      "The battle service returned unsupported save-slot data.",
+      "adapter",
+    );
+  }
+  return body;
+}
+
+async function runSaveSlotAction(
+  slotId: SaveSlotId,
+  action: "create" | "load" | "overwrite",
+  baseUrl: string,
+): Promise<SaveSlotActionResponse> {
+  assertSaveSlotId(slotId);
+  const body = await requestAdapterJson(
+    baseUrl,
+    `/api/v1/save-slots/${slotId}/${action}`,
+    {
+      method: "POST",
+      ...(action === "overwrite"
+        ? { body: JSON.stringify({ confirmOverwrite: true }) }
+        : {}),
+    },
+  );
+  if (!isSaveSlotActionResponse(body, slotId)) {
+    throw new BattleProviderError(
+      "The battle service returned an unsupported save-slot result.",
+      "adapter",
+    );
+  }
+  return body;
+}
+
+export function createSaveSlot(
+  slotId: SaveSlotId,
+  baseUrl = DEFAULT_BASE_URL,
+): Promise<SaveSlotActionResponse> {
+  return runSaveSlotAction(slotId, "create", baseUrl);
+}
+
+export function loadSaveSlot(
+  slotId: SaveSlotId,
+  baseUrl = DEFAULT_BASE_URL,
+): Promise<SaveSlotActionResponse> {
+  return runSaveSlotAction(slotId, "load", baseUrl);
+}
+
+export function overwriteSaveSlot(
+  slotId: SaveSlotId,
+  baseUrl = DEFAULT_BASE_URL,
+): Promise<SaveSlotActionResponse> {
+  return runSaveSlotAction(slotId, "overwrite", baseUrl);
 }
 
 export async function fetchStructuredStages(

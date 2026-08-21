@@ -19,6 +19,7 @@ from battle_api.progression import (
 @pytest.fixture()
 def progression_client(tmp_path: Path):
     store = ProgressionStore(tmp_path / "progression.sqlite3")
+    store.create_save_slot(1)
     app.dependency_overrides[get_progression_store] = lambda: store
     with TestClient(app) as client:
         yield client, store
@@ -43,7 +44,7 @@ def _force_friendly_victory(battle_id):
     session.game.game_state = "game_over"
 
 
-def test_default_profile_initialization_is_typed_persistent_and_locks_five_heroes(
+def test_active_slot_initialization_is_typed_persistent_and_uses_exact_fresh_roster(
     progression_client,
 ):
     client, store = progression_client
@@ -53,7 +54,7 @@ def test_default_profile_initialization_is_typed_persistent_and_locks_five_heroe
     assert response.status_code == 200
     body = response.json()
     assert body["contractVersion"] == "1.0"
-    assert body["profileId"] == "profile.local.default"
+    assert body["profileId"].startswith("profile.local.slot.1.")
     assert body["unlockedHeroDefinitionIds"] == sorted(INITIAL_UNLOCKED_HERO_IDS)
     assert body["grantedRewards"] == []
     assert body["stageProgress"] == [
@@ -262,6 +263,7 @@ def test_only_authoritative_friendly_victory_commits_and_replay_is_idempotent(
 def test_exact_rewards_are_granted_once_and_survive_restart(tmp_path: Path):
     database = tmp_path / "progression.sqlite3"
     store = ProgressionStore(database)
+    store.create_save_slot(1)
 
     newly_granted = []
     for stage_id in ("paladins-altar", "warriors-barrack"):
@@ -300,6 +302,7 @@ def test_exact_rewards_are_granted_once_and_survive_restart(tmp_path: Path):
 def test_reward_failure_rolls_back_progress_completion_and_unlock(tmp_path: Path):
     database = tmp_path / "progression.sqlite3"
     store = ProgressionStore(database)
+    store.create_save_slot(1)
     store.commit_victory(
         battle_id="battle.rollback.1", stage_id="paladins-altar", battle_index=1
     )
@@ -338,7 +341,7 @@ def test_corrupt_and_disappeared_store_return_retryable_503(tmp_path: Path):
 
     missing_path = tmp_path / "missing.sqlite3"
     missing_store = ProgressionStore(missing_path)
-    missing_store.read_progression()
+    missing_store.list_save_slots()
     missing_path.unlink()
     app.dependency_overrides[get_progression_store] = lambda: missing_store
     with TestClient(app) as client:

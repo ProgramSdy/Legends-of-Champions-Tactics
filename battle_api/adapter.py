@@ -236,6 +236,7 @@ class BattleSession:
     enemy_formation: FormationId | None = None
     stage_id: str | None = None
     stage_battle_index: int | None = None
+    progression_profile_id: str | None = None
     revision: int = 0
     event_sequence: int = 0
     presentation_log_cursor: int = 0
@@ -271,6 +272,7 @@ class BattleAdapter:
         fixed_computer_formation: bool = False,
         stage_id: str | None = None,
         stage_battle_index: int | None = None,
+        progression_profile_id: str | None = None,
     ) -> tuple[BattleSession, dict[str, Any]]:
         if player_team is None:
             player_team = ["hero.warrior.weapon_master"]
@@ -359,6 +361,7 @@ class BattleAdapter:
                     enemy_formation=enemy_formation,
                     stage_id=stage_id,
                     stage_battle_index=stage_battle_index,
+                    progression_profile_id=progression_profile_id,
                 )
                 for side, heroes in (
                     ("friendly", player_heroes),
@@ -1665,6 +1668,7 @@ class BattleRegistry:
         fixed_computer_formation: bool = False,
         stage_id: str | None = None,
         stage_battle_index: int | None = None,
+        progression_profile_id: str | None = None,
     ) -> tuple[BattleSession, dict[str, Any]]:
         session, envelope = self.adapter.create_battle(
             seed=seed,
@@ -1678,6 +1682,7 @@ class BattleRegistry:
             fixed_computer_formation=fixed_computer_formation,
             stage_id=stage_id,
             stage_battle_index=stage_battle_index,
+            progression_profile_id=progression_profile_id,
         )
         with self._lock:
             self._sessions[session.battle_id] = session

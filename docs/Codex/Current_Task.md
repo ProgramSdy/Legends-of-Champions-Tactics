@@ -8,331 +8,279 @@ Complete
 
 ## Task ID
 
-UI-020
+UI-021
 
 ## Title
 
-Add Paladin's Altar and Persistent Nine-Battle Training Progression
+Add Five-Slot Save Selection and Correct Structured-Stage Previews
 
 ## Objective
 
-Activate Paladin's Altar on the Stage Map, replace Warrior's Barrack with its
-owner-approved nine-battle sequence, and introduce the smallest
-backend-authoritative persisted progression slice needed to unlock the five
-specified heroes and grant the one stated item card reward.
+Replace the startup page's direct Stage Map entry with a five-slot New Game /
+Load Game flow, make the selected slot the authoritative owner of UI-020
+progression, and correct the Team Builder preview crops for Warrior's Barrack
+and Paladin's Altar so each shows its actual map building.
 
-## Background and Authoritative Interpretation
+## Background
 
-The owner review dated 2026-08-19 defines two structured training stages:
-Paladin's Altar and Warrior's Barrack. Each has nine fixed battles. The listed
-heroes are the fixed **predefined enemy team**, in ordered slots; the player
-continues to choose a permitted friendly team from their currently unlocked
-roster. This follows the existing structured-stage Team Builder model.
+UI-020 introduced a minimal SQLite-backed **default** profile that persists
+unlocked heroes, structured-stage progress, and the generic item-card reward.
+The current startup `START GAME` link goes directly to `/stages`; no profile or
+slot selector exists. This task expands that completed persistence boundary to
+exactly five local save slots. It does not authorize online accounts, cloud
+sync, active-battle recovery, or a broad profile-management system.
 
-The existing live roster currently exposes all ten definitions and UI-017's
-Warrior's Barrack is a temporary three-battle frontend session. That does not
-meet the new unlock requirement: unlocks must remain available after page
-reload/restart and must not be invented by React. This task therefore authorizes
-the first minimal backend-owned persisted progression implementation. It must
-remain compatible with the design principles in
-`docs/Technical/Player_Data_and_Save_System.md` without prematurely implementing
-full profiles, active-battle recovery, inventory/equipment, rewards economy,
-or cloud/account functionality.
+The project owner defines every newly initialized game to begin with exactly
+these available player heroes:
 
-Use these existing stable IDs; review spelling is normalized only where it is
-an obvious typo:
+- `hero.warrior.weapon_master` — Warrior Weapon Master
+- `hero.mage.comprehensiveness` — Mage Comprehensiveness
+- `hero.priest.comprehensiveness` — Priest Comprehensiveness
+- `hero.rogue.comprehensiveness` — Rogue Comprehensiveness
 
-- `Warrior_Baserker` → `hero.warrior.berserker`
-- `Priest_Descipline` → `hero.priest.discipline`
-- 3v3 “Side by Side” → existing `all-front` (all three positions are `front`)
-- 3v3 “Front 2 and Rear 1” → existing `two-front-one-rear`
+All other approved roster definitions begin locked in a newly created slot and
+are available only through the implemented training rewards. Fixed structured
+stage enemies remain independent of player ownership.
 
-The required initially locked player definitions are:
+To preserve existing UI-020 progress, migrate the existing default-profile
+record into the first empty save slot on first schema upgrade. The migration
+must be atomic/idempotent, must not create a duplicate copy on restart, and
+must surface a non-silent recovery error if it cannot preserve the record.
 
-- `hero.paladin.protection`
-- `hero.paladin.retribution`
-- `hero.paladin.holy`
-- `hero.warrior.berserker`
-- `hero.warrior.defence`
-
-The remaining approved live definitions are initially selectable. Locked
-definitions remain valid static content and fixed stage enemies, but must not
-be selectable in Arena/structured player matrices until their authoritative
-unlock is returned.
-
-## Stage Definitions
-
-### Paladin's Altar
-
-1. Activate `paladins-altar` using the existing Valley of Champions artwork.
-   Add a percentage-based hotspot over the right-middle altar landmark, using
-   the same accessible visual treatment and debug-hotspot method as Warrior's
-   Barrack; do not change map art or create a new stage image.
-2. Its battles are:
-
-| # | Format / formation | Fixed ordered enemy definitions | Friendly-victory reward |
-|---:|---|---|---|
-| 1 | 2v2 / `front-rear` | Paladin Protection, Mage Comprehensiveness | none |
-| 2 | 1v1 | Paladin Protection | none |
-| 3 | 3v3 / `two-front-one-rear` | Paladin Protection, Warrior Defence, Mage Comprehensiveness | unlock Paladin Protection |
-| 4 | 2v2 / `side-by-side` | Paladin Retribution, Warrior Weapon Master | none |
-| 5 | 1v1 | Paladin Retribution | none |
-| 6 | 3v3 / `two-front-one-rear` | Paladin Protection, Paladin Retribution, Priest Discipline | unlock Paladin Retribution |
-| 7 | 2v2 / `side-by-side` | Paladin Holy, Rogue Comprehensiveness | none |
-| 8 | 1v1 | Paladin Holy | none |
-| 9 | 3v3 / `all-front` | Paladin Retribution, Paladin Protection, Paladin Holy | unlock Paladin Holy |
-
-### Warrior's Barrack
-
-Replace its current three battles with this nine-battle sequence:
-
-| # | Format / formation | Fixed ordered enemy definitions | Friendly-victory reward |
-|---:|---|---|---|
-| 1 | 2v2 / `front-rear` | Warrior Berserker, Priest Comprehensiveness | none |
-| 2 | 1v1 | Warrior Berserker | none |
-| 3 | 3v3 / `two-front-one-rear` | Warrior Berserker, Rogue Comprehensiveness, Mage Comprehensiveness | unlock Warrior Berserker |
-| 4 | 2v2 / `side-by-side` | Warrior Berserker, Warrior Weapon Master | none |
-| 5 | 1v1 | Warrior Weapon Master | none |
-| 6 | 3v3 / `two-front-one-rear` | Warrior Weapon Master, Paladin Retribution, Priest Discipline | grant one item card |
-| 7 | 2v2 / `front-rear` | Warrior Defence, Priest Discipline | none |
-| 8 | 1v1 | Warrior Defence | none |
-| 9 | 3v3 / `all-front` | Warrior Weapon Master, Warrior Defence, Warrior Berserker | unlock Warrior Defence |
+The existing Team Builder currently uses `valley_of_champions.png` with one
+generic scale/crop determined from stage geometry. That crop does not cleanly
+show either selected building. Stage-map hotspot geometry and preview crop
+focus are separate concerns: keep the current interactive hotspot locations;
+add explicit stage-preview focus data and tune it against the existing map art.
 
 ## Requirements
 
-### 1. Structured-stage data and flow
+### 1. Startup flow
 
-1. Evolve the existing reusable structured-stage data model rather than adding
-   stage-specific component conditionals. It must express fixed battle size,
-   fixed enemy IDs, fixed formation for both sides, ordered sequence, and an
-   optional completion reward.
-2. Structured battles must not expose editable battle size, enemy composition,
-   enemy control, randomisation, or formation controls. Launch the exact fixed
-   size/team/formations with computer enemy control through the existing typed
-   battle-create contract.
-3. Progress only on the authoritative friendly-victory outcome. Defeat, draw,
-   and round limit retry the same battle; they award no reward and do not alter
-   later battle access.
-4. A completed battle unlocks only the next battle in that stage. Completing
-   Battle 9 records the stage complete and returns to Stage Map. The player may
-   revisit completed battles, but cannot skip locked sequence steps or duplicate
-   a reward.
-5. The stage builder shows stage name, Battle N of 9, fixed format/formation,
-   fixed enemy summary, current unlock/reward context, and clear locked-step
-   state. Maintain fallback artwork, keyboard operation, focus, responsive
-   layout, and existing formation presentation.
+1. Activating `START GAME` opens an accessible modal/panel with two choices:
+   **NEW GAME** and **LOAD GAME**. It must not navigate to Stage Map until a
+   valid save-slot action finishes.
+2. **NEW GAME** opens a five-slot selector. Empty slots are available for a
+   fresh game. Occupied slots are visibly identified as occupied and may only
+   be selected after a clear overwrite confirmation that names the exact slot
+   and states that its saved progression will be permanently replaced.
+3. **LOAD GAME** opens the same five-slot selector filtered/enabled only for
+   occupied slots. When no saved slot exists, LOAD GAME is disabled with a
+   readable explanation; it must not open a dead-end dialog.
+4. A successful New Game creates/initializes the selected slot with the exact
+   four-hero starting roster and zero stage/reward progress, selects it as the
+   active slot, then routes to `/stages`.
+5. A successful Load Game selects the existing slot as active, loads its
+   authoritative progression, then routes to `/stages`. It must not reset,
+   reinitialize, or grant starter state to that slot.
+6. Support Escape/Cancel, focus trapping/restoration, clear loading/error
+   feedback, keyboard-only selection, and responsive layout. Confirming an
+   overwrite is destructive; cancelling it must make no write.
 
-### 2. Persisted progression and roster gating
+### 2. Five-slot persistence model
 
-1. Implement a small backend-owned local persistence boundary (SQLite or the
-   existing project-approved backend persistence abstraction) with an explicit
-   stable default local player/profile identity. Do not store progression in
-   localStorage as the authority.
-2. Persist and return, at minimum:
-   - unlocked hero definition IDs;
-   - per-stage highest completed/unlocked battle index and completed state; and
-   - granted item-card reward identities/counts.
-3. Define one stable generic item-card reward ID for Warrior's Barrack Battle 6
-   (for example `reward.item-card.basic`) with no combat effect, inventory
-   screen, equipment behavior, card artwork, or invented item name. Persist it
-   once and show its earned state. This task authorizes only the required
-   “You have granted an item card” notification.
-4. Expose typed progression/roster availability through the adapter API. The
-   frontend fetches and renders it; it must never compute an unlock from the
-   visible battle number or dialog text.
-5. Apply player ownership filtering consistently to Arena and structured-stage
-   friendly selection matrices. Fixed stage enemies bypass player ownership
-   filtering but remain validated against the static roster.
-6. Make reward application idempotent and atomic with the authoritative battle
-   completion/progression update. A reload, repeated completion callback, retry,
-   or revisiting a completed battle must not grant duplicate heroes/cards or
-   advance extra steps.
-7. Seed/initialize the default progression deterministically with the five
-   stated heroes locked and every other approved live definition available.
-   Clearly handle missing/corrupt progression storage with a retryable,
-   non-silent error; do not silently reset earned progress.
+1. Extend the UI-020 backend persistence schema/store from one default profile
+   to exactly five stable local slots (`1`–`5`). A slot stores occupied state,
+   stable profile identity, creation/last-played metadata suitable for the
+   selector, progression, unlocked heroes, stage state, and rewards.
+2. The backend owns the active-slot selection. The client may request New,
+   Load, or confirmed Overwrite, then renders the returned active profile and
+   progression. Do not treat URL query parameters, localStorage, or React state
+   as the authoritative selected save.
+3. All existing UI-020 progression APIs and structured-stage victory commits
+   must operate on the active slot only. Switching slots must never leak stage
+   progress, heroes, rewards, cached UI state, or live provider/session state
+   between slots.
+4. Define typed APIs/contracts for listing five slot summaries, creating a new
+   slot, loading/selecting an occupied slot, and overwriting a specific occupied
+   slot. Reject slot IDs outside 1–5, loading empty slots, creating into an
+   occupied slot without explicit confirmed overwrite, and client-supplied
+   progression/reward data.
+5. Schema initialization/migration must preserve UI-020 default-profile data
+   exactly once. Backend failures, lock/contention, corrupt/missing database,
+   and impossible migration state must produce a retryable typed error; never
+   silently reset, select another slot, or overwrite existing data.
+6. Do not introduce profile names, delete-slot controls, profile settings,
+   account/login, multiplayer identity, cloud sync, active battle checkpoints,
+   or any storage beyond five local game slots.
 
-### 3. Reward feedback and availability
+### 3. Roster and progression compatibility
 
-1. After a first successful reward commit, show an accessible modal/notification
-   before continuing:
-   - `Paladin_Protection is unlocked`
-   - `Paladin_Retribution is unlocked`
-   - `Paladin_Holy is unlocked`
-   - `Warrior_Baserker is unlocked`
-   - `Warrior_Defence is unlocked`
-   - `You have granted an item card`
-2. Use player-facing display text with the project’s normal typography; retain
-   the owner-provided messages above in the notification body. The stable
-   definition/reward IDs—not those strings—are authoritative.
-3. Once dismissed, continue to the next permitted stage step or Stage Map as
-   appropriate. A previously earned reward may be shown as already earned but
-   must not re-open a misleading new-reward modal on replay.
-4. Newly unlocked heroes must become selectable immediately after the refreshed
-   authoritative progression state is received, and remain selectable after a
-   full reload/restart.
+1. A new slot has exactly the four starting heroes above. It has no unlocked
+   Paladin Protection/Retribution/Holy, Warrior Berserker/Defence, or item-card
+   reward until earned through existing UI-020 stage victory commits.
+2. Existing migrated/default progress must retain its actual earned hero IDs,
+   stage indices/completion, and item-card count; do not retroactively reset it
+   to starter state.
+3. Team Builder Arena and structured friendly matrices use the active slot's
+   authoritative roster availability. Predefined structured enemies may still
+   use locked static definitions.
+4. Stage Map and Team Builder must refresh active-slot progression after New,
+   Load, overwrite, reward commits, and a page reload. Existing UI-020 reward
+   idempotency and formation/battle contracts remain unchanged.
 
-### 4. Stage Map and compatibility
+### 4. Correct Current Stage previews
 
-1. Arena, Warrior's Barrack, and Paladin's Altar are the only enabled map
-   locations. Mage's Tower, Rogue's Forest, and Priest's Cathedral remain
-   inactive and visually untouched.
-2. Preserve UI-018/UI-019 2v2/3v3 formation contracts, target legality,
-   attack-type behavior, snapshot positions, and formation presentation.
-3. Preserve existing live battle API contracts except for narrowly typed,
-   additive player-progression endpoints/data genuinely required by this task.
-   Do not put profile/stage/reward data into `BattleCreateConfiguration`.
+1. Add presentation-only preview focus metadata to the canonical enabled-stage
+   definition, separate from clickable hotspot geometry.
+2. In Team Builder for **Warrior's Barrack**, crop the existing Valley of
+   Champions art to clearly show the actual left-side red-banner Barrack
+   building. For **Paladin's Altar**, crop it to clearly show the actual
+   right-middle altar building. Keep Arena's existing useful preview intact.
+3. Use CSS/object-position, transform origin, or an equivalent responsive crop
+   approach. Do not create, edit, stretch, or replace stage-map artwork, and do
+   not reuse a generic map-centre crop.
+4. At desktop and narrow widths, preserve the building as the visual focal
+   point while keeping the Current Stage label legible, avoiding empty space,
+   distortion, overflow, or hiding the building under the text gradient.
 
 ## Out of Scope
 
-- Multiple-profile UI, profile naming/deletion, login, cloud sync, online/PvP,
-  active-battle checkpoint/resume/abandonment, replay, or account migration.
-- Item-card content, art, inventory, equipping, effects, economy, currencies,
-  or additional rewards/unlocks.
-- New hero definitions, hero skill/attack-type changes, balance changes,
-  formation changes, stage-map artwork, or unrelated Team Builder redesign.
-- Activating Mage's Tower, Rogue's Forest, or Priest's Cathedral.
+- More/fewer than five save slots, profile names, rename/delete UI, accounts,
+  login, cloud synchronization, online/PvP, or multi-device save merging.
+- Active-battle save/resume/abandonment, automatic checkpoints, replay, or
+  changes to battle-session persistence.
+- New rewards, item behavior/art/inventory/equipment, new heroes, skill or
+  attack-type changes, balance, stage curriculum changes, or map artwork.
+- Changes to current Stage Map hotspot geometry except a focused correction if
+  browser evidence proves an existing hotspot itself is wrong.
 - Editing the owner-controlled `UI_Review_Human.md`.
 
 ## Relevant Files
 
-### Frontend
+### Startup, routing, and UI
 
-- `web-ui/components/stages/stage-config.ts`
+- `web-ui/app/page.tsx`
+- `web-ui/components/startup/StartupScreen.tsx`
 - `web-ui/components/stages/StageSelectionScreen.tsx`
-- `web-ui/components/stages/structured-stage-config.ts`
+- `web-ui/components/stages/stage-config.ts`
 - `web-ui/components/battle/BattleExperience.tsx`
 - `web-ui/components/battle/TeamBuilder.tsx`
 - `web-ui/lib/battle/liveProvider.ts` and `web-ui/lib/battle/types.ts`
 - `web-ui/app/globals.css`
 
-### Backend and persistence
+### Backend/persistence
 
+- `battle_api/progression.py`
 - `battle_api/app.py`, `battle_api/models.py`, and `battle_api/adapter.py`
-- a narrowly scoped new backend progression/store module and its database file
-  handling/migration boundary
-- existing static roster/hero definitions and relevant battle completion path
+- current UI-020 progression schema/database migration and tests
 
 ### Tests and documentation
 
-- `tests/test_battle_api.py`, `tests/test_battle_adapter.py`, and focused new
-  progression/stage tests
-- `web-ui/tests/ui-012-stage-selection.test.tsx`,
-  `web-ui/tests/ui-017-stage-and-structured-config.test.tsx`, and focused new
-  Team Builder/BattleExperience/Stage Map suites
+- `tests/test_ui020_progression.py`, `tests/test_battle_api.py`, and focused
+  new save-slot/migration tests
+- `web-ui/tests/ui-020-progression.test.tsx`, startup/Stage Map/Team Builder
+  suites, and focused new save-slot/preview tests
 - `docs/GDD/Game_Design_Document.md`, `docs/GDD/Hero_System.md`,
   `docs/Technical/Player_Data_and_Save_System.md`, `docs/Technical/Architecture.md`,
-  `docs/web-ui/PYTHON_ADAPTER_API.md`, `docs/web-ui/BATTLE_DATA_CONTRACT_V1.md`,
-  `docs/web-ui/Screen_Flow.md`, `docs/web-ui/WEB_UI_ARCHITECTURE.md`, and
-  `docs/web-ui/Style_Guide.md`
+  `docs/Technical/Networking.md`, `docs/web-ui/PYTHON_ADAPTER_API.md`,
+  `docs/web-ui/BATTLE_DATA_CONTRACT_V1.md`, `docs/web-ui/Screen_Flow.md`,
+  `docs/web-ui/WEB_UI_ARCHITECTURE.md`, and `docs/web-ui/Style_Guide.md`
 
 ## Acceptance Criteria
 
-1. Paladin's Altar is an enabled, accessible right-middle altar hotspot with
-   the same approved map treatment as Warrior's Barrack; only Arena and these
-   two stages are enabled.
-2. Both stages present exactly the nine specified fixed battles, exact ordered
-   enemy teams, fixed formations, and Battle N of 9 progression.
-3. Friendly victory is the only progression/reward trigger; non-victories
-   retry the same battle, and locked steps cannot be entered or skipped.
-4. The five named heroes start unavailable to player selection, unlock only at
-   their specified Battle 3/6/9 rewards, immediately become selectable after
-   the committed reward, and remain so after reload/restart.
-5. Warrior's Barrack Battle 6 grants one persistent generic item card exactly
-   once, displays the required notification, and grants no unrequested power
-   or item behavior.
-6. Stage enemies use every specified definition/formations even when that hero
-   is still locked to the player; no missing roster ID is silently substituted.
-7. Existing Arena configuration, all approved battle sizes/formations,
-   API/engine combat rules, status/attack-type behavior, fallback assets, and
-   current battle presentation remain functional.
-8. The backend is the source of truth for progression/unlocks/rewards. Browser
-   reload/restart cannot lose or duplicate a committed reward, and corrupt or
-   unavailable data surfaces a clear retryable failure.
+1. START GAME presents New Game and Load Game; Load Game is disabled only when
+   all five slots are empty.
+2. New Game creates a selected empty slot with exactly the four stated heroes,
+   starts zero training/reward progress, selects that slot, and enters Stage
+   Map. Overwriting an occupied slot requires exact-slot confirmation and
+   resets only that slot after confirmation.
+3. Load Game lists/selects only occupied slots and restores the selected slot's
+   own authoritative stage progress, unlocked heroes, and reward state.
+4. Exactly five local slots exist. Slot isolation holds across backend API,
+   restart/reload, arena roster availability, stage progression/rewards, and
+   frontend cache/provider state.
+5. Existing UI-020 default progress migrates exactly once into an available
+   slot with no loss or duplication; failure is clear and retryable.
+6. Warrior's Barrack and Paladin's Altar Current Stage previews each visibly
+   show their correct building from the existing Stage Map at representative
+   desktop/narrow viewports. Arena and Stage Map hotspots remain functional.
+7. UI-018/UI-019 formations, UI-020 nine-battle curricula/rewards, existing
+   API/battle contracts, accessibility, and fallback presentation regressions
+   are absent.
 
 ## Validation Required
 
 ### Automated
 
-1. Backend tests for database/schema initialization; default locked roster;
-   typed progression fetch; stage/battle access; exact reward mapping;
-   atomic/idempotent completion; restart persistence; duplicate/retry/replay
-   defense; corrupt/missing-store errors; and static-stage enemy bypass.
-2. Adapter/API tests for exact nine battle definitions/formation payloads,
-   additive progression endpoint schemas, input validation, and no modification
-   of existing live-battle request/snapshot contracts.
-3. Frontend tests for Stage Map activation/inactive regression; structured
-   Battle 1–9 labels/locked state/fixed composition/formation; friendly-matrix
-   ownership gating; reward modal semantics; immediate refresh; retry paths;
-   Browser reload persistence seam; responsive/focus/fallback behavior; and
-   Arena/UI-018/UI-019 regressions.
+1. Backend tests: five-slot schema/init/listing; valid/invalid slot IDs;
+   new/load/confirmed-overwrite flows; empty-load rejection; cancellation/no
+   write; selected-slot isolation; restart persistence; exact starter roster;
+   legacy default migration/idempotency/rollback; UI-020 reward integration;
+   database failure/lock/corruption behavior.
+2. API/contract tests: typed slot summaries/actions/errors; no client-created
+   progression payload; active-slot progression endpoints; existing battle and
+   victory APIs unchanged.
+3. Frontend tests: startup modality/focus/Escape/disabled Load; empty/occupied
+   slots; overwrite warning/cancel/confirm; route only after success; immediate
+   active-slot roster/progression refresh; reload/switch isolation; stage
+   preview focus data and responsive crop hooks; no regressions to current
+   startup Stage Map/Team Builder flow.
 4. Run focused and full backend pytest, affected/full frontend suites,
-   TypeScript typecheck, lint, production build, Python compilation, and
-   task-scoped `git diff --check`. Record actual commands/results and separate
-   inherited failures.
+   typecheck, lint, production build, Python compilation, and task-scoped
+   `git diff --check`. Record exact commands/results and separate baselines.
 
 ### Manual browser validation
 
-1. Open `/stages` at desktop and narrow widths: verify only Arena, Warrior's
-   Barrack, and Paladin's Altar are active, and tune/verify the altar hotspot
-   against the actual map landmark without distortion.
-2. Start from a clean deterministic default store; verify five heroes are
-   absent/locked in player selection but can appear as fixed stage enemies.
-3. Complete every third/sixth/ninth reward boundary in both stages using
-   deterministic test assistance. Verify exact notification text, next-stage
-   state, immediate selectable hero change, one-time item card, reload/restart
-   persistence, and no duplicate on replay.
-4. Exercise defeat, draw, round limit, browser refresh, stage exit/re-entry,
-   and an unavailable/corrupt storage simulation. Confirm no false advancement
-   or reward and a clear recovery/error path.
-5. Smoke test Arena and at least one 1v1/2v2/3v3 battle in each stage,
-   including fixed formations and target/effect presentation. Record console,
-   runtime, and network errors.
+1. With a clean database, confirm Load Game is disabled; create games in all
+   five slots, verify their independent starter state, then confirm New Game
+   overwriting requires/can cancel the warning and affects only the chosen slot.
+2. Earn distinct progress/rewards in at least two slots, restart browser and
+   adapter, load each slot, and verify no data crosses between them. Confirm
+   current UI-020 migrated data is retained in one slot during upgrade testing.
+3. At desktop and narrow widths, inspect startup dialogs, keyboard focus,
+   error/retry behavior, and the Barrack/Altar Current Stage previews. Verify
+   the actual landmark building is clear, unstretched, and not obscured by the
+   label overlay.
+4. Smoke test Arena and structured 1v1/2v2/3v3 launch/progression after slot
+   creation/loading; record console, network, and runtime errors.
 
 ## Documentation/Handoff Requirements
 
-- Update GDD stage/training, hero-unlock, and reward scope; document only the
-  implemented generic item-card behavior and no invented item mechanics.
-- Update `Player_Data_and_Save_System.md` and `Architecture.md` to distinguish
-  this implemented minimal default-profile progression store from deferred
-  profiles/recovery/cloud functionality.
-- Update API/data contract, Screen Flow, web UI architecture, and style guide
-  for progression endpoints/data, roster ownership gating, stage access,
-  reward feedback, and the altar hotspot.
-- Append UI-020 completion evidence to `docs/Codex/Completed.md`: files,
-  role work, persistence/idempotency evidence, exact test/browser results,
-  reviewer disposition, migration/storage risks, and deferred save features.
+- Update GDD and Hero System for the four-hero new-game roster and the
+  implemented five-slot local save boundary.
+- Update Player Data/Save System, Architecture, and Networking with the exact
+  UI-020 migration, five-slot scope, selected-slot authority, destructive
+  overwrite guarantees, and explicitly deferred profile/recovery/cloud work.
+- Update API/data-contract, Screen Flow, web UI architecture, and Style Guide
+  for the startup save selection, slot endpoints/errors, roster refresh, and
+  stage-specific preview-crop ownership.
+- Append UI-021 completion evidence to `docs/Codex/Completed.md`: exact files,
+  migration and slot-isolation results, validation commands, reviewer decision,
+  known database/migration risks, and deferred scope.
 
 ## Agent Assignments
 
 ### Complexity and risk
 
-**Very high-risk cross-boundary progression feature.** It combines Stage Map
-navigation, structured battles, formation payloads, roster availability,
-backend persistence, atomic reward logic, and user-visible unlock feedback.
-The main risks are temporary unlocks, duplicate rewards, corrupt/reset data,
-frontend-authoritative progression, bypassed locked steps, mutable fixed teams,
-or regression to live combat/formation behavior.
+**Very high-risk persistence and entry-flow feature.** It changes the first
+player interaction, replaces the sole progression identity with five isolated
+records, includes destructive overwrite, and must migrate real existing data
+without touching live battle rules. Main risks: data loss/duplicate migration,
+slot leakage, accidental overwrite, UI-only active profile, stale progression
+after switch, broken startup accessibility, and incorrect artwork crops.
 
 ### Participating agents
 
-- `project-manager` — coordinate stage, persistence, UI, API, migration, and
-  validation work; enforce the owner-approved scope and resolve data boundaries.
-- `game-engine-developer` — own progression storage/API, atomic/idempotent
-  reward/progression updates, battle outcome authority, roster availability,
-  migrations/errors, backend tests, and technical/GDD documentation.
-- `ui-developer` — own Stage Map activation, reusable nine-battle config,
-  locked/unlocked matrix presentation, reward dialog, progression fetch/refresh,
-  accessibility/responsive behavior, and frontend tests; never derive rewards.
-- `test-automator` — own clean-store/restart/idempotency/error, battle-sequence,
-  request/formation, unlock/reward, UI, and regression validation evidence.
-- `reviewer` — independently review persistence ownership, migration/error
-  safety, atomicity/idempotency, stage data accuracy, UI accessibility, API
-  compatibility, deferred-scope protection, and documentation/test quality.
+- `project-manager` — coordinate migration, persistence, startup/UI, preview,
+  validation, and documentation; enforce five-slot/no-scope-expansion limits.
+- `game-engine-developer` — own SQLite/schema migration, active-slot authority,
+  typed APIs/errors, transaction/idempotency/isolation, backend tests, and
+  technical/GDD documentation.
+- `ui-developer` — own startup panels/dialogs, active-slot refresh/routing,
+  accessible destructive confirmation, stage-preview focus/cropping, styling,
+  and frontend tests; never author progression locally.
+- `test-automator` — own clean/migrated/occupied database, overwrite/cancel,
+  restart/isolation/error, UI-020 regression, crop, keyboard, and build/test
+  evidence.
+- `reviewer` — independently review data preservation, destructive-action
+  safety, active-slot ownership, API compatibility, accessible flow, crop
+  fidelity, test sufficiency, and deferred-scope protection.
 
 ## Completion Notes
 
-Do not mark UI-020 complete until all selected roles report, both complete
-nine-battle curricula are evidenced, the five hero unlocks and one item-card
-grant survive restart without duplication, locked-roster and fixed-enemy
-behaviour are validated, and Arena/UI-018/UI-019 regressions are documented.
+Do not mark UI-021 complete until all selected roles report; clean and migrated
+databases have proven five-slot isolation and non-duplicating migration;
+overwrite cancellation/confirmation is demonstrated; exact four-hero new-game
+rosters are evidenced; and both structured-stage previews visibly show their
+correct buildings without regressions to UI-018, UI-019, or UI-020.

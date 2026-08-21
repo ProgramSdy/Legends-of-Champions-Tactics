@@ -32,7 +32,7 @@ _To be documented._
   artwork.
 - The supplied logo retains its aspect ratio in the upper centre. The
   `START GAME` control is centered below the logo in clear artwork space and
-  routes to `/stages`.
+  opens the local save dialog; it never routes before a save action succeeds.
 - The control uses dark forged-metal/gunmetal material, a restrained
   antique-gold border, subtle blue-violet accent, dimensional bevel, pale text,
   and clear hover, pressed, and focus-visible states. It is not a flat
@@ -41,6 +41,14 @@ _To be documented._
   hover transition. It honours reduced-motion preferences. Decorative startup
   artwork is hidden from screen readers; the logo has descriptive alternative
   text and the start control remains keyboard accessible.
+- The save flow uses one modal surface for New Game/Load Game and the five-slot
+  selectors. Empty/occupied/active states use text in addition to colour. Load
+  is disabled with an explanation when no occupied slot exists. The destructive
+  warning names the exact slot and pairs a neutral keep action with a distinct
+  red overwrite action.
+- Modal focus begins on the first useful action, remains trapped, returns to
+  START on close, and supports Escape. At narrow widths, choice cards and all
+  five slot cards stack into one scrollable column without horizontal overflow.
 
 ### Stage Selection
 
@@ -190,8 +198,11 @@ _To be documented._
   player or specified-enemy slot has a visible side-appropriate selected state;
   Hero Selection Matrix cards visibly indicate the hero assigned to that slot.
 - Current Stage previews use the supplied Stage Map image in a clipped,
-  `object-fit: cover` frame. Crop focus derives from canonical stage geometry;
-  source artwork must never be stretched or replaced.
+  `object-fit: cover` frame. Preview focus/scale/offset comes from explicit
+  enabled-stage metadata separate from hotspot geometry; source artwork must
+  never be stretched or replaced. Arena retains its centre crop, Warrior's
+  Barrack focuses the left red-banner building, and Paladin's Altar focuses the
+  right-middle altar at both desktop and narrow widths.
 - Player slots and matrix cards use a fixed, bounded media frame with the
   shared asset fallback chain. A missing portrait must remain readable and
   never expose a browser broken-image icon.
@@ -264,3 +275,6 @@ _To be documented._
   adjacent hero art.
 - 2026-08-19 — UI-020 added the Altar hotspot, responsive locked-step grid,
   fixed-formation note, and accessible one-time reward notification language.
+- 2026-08-20 — UI-021 added the accessible five-slot startup dialog/overwrite
+  treatment and separate responsive preview-focus metadata for Arena, Barrack,
+  and Altar.

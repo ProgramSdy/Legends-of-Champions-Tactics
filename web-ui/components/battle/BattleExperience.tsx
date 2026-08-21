@@ -312,7 +312,7 @@ function BattleSession({
     const builder = structuredStage && currentStructuredBattle && authoritativeStage
       ? (
           <TeamBuilder
-            key={currentStructuredBattle.id}
+            key={`${resources!.progression.profileId}.${currentStructuredBattle.id}`}
             mode="structured"
             roster={resources!.roster}
             availableDefinitionIds={resources!.progression.unlockedHeroDefinitionIds}
@@ -328,6 +328,7 @@ function BattleSession({
         )
       : (
           <TeamBuilder
+            key={`arena.${resources!.progression.profileId}`}
             roster={resources!.roster}
             availableDefinitionIds={resources!.progression.unlockedHeroDefinitionIds}
             selectedStageId={selectedStageId}

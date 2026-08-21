@@ -76,7 +76,7 @@ export interface GrantedReward {
 }
 
 export interface PlayerProgression {
-  profileId: "profile.local.default";
+  profileId: string;
   unlockedHeroDefinitionIds: string[];
   stageProgress: StageProgress[];
   grantedRewards: GrantedReward[];
@@ -121,6 +121,30 @@ export interface VictoryCommitResponse {
   battleId: string;
   alreadyCommitted: boolean;
   newlyGrantedRewards: StageReward[];
+  progression: PlayerProgression;
+}
+
+export type SaveSlotId = 1 | 2 | 3 | 4 | 5;
+
+export interface SaveSlotSummary {
+  slotId: SaveSlotId;
+  occupied: boolean;
+  profileId: string | null;
+  createdAt: string | null;
+  lastPlayedAt: string | null;
+  active: boolean;
+}
+
+export interface SaveSlotsResponse {
+  contractVersion: "1.0";
+  activeSlotId: SaveSlotId | null;
+  slots: SaveSlotSummary[];
+}
+
+export interface SaveSlotActionResponse {
+  contractVersion: "1.0";
+  activeSlotId: SaveSlotId;
+  slot: SaveSlotSummary;
   progression: PlayerProgression;
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { resolveEnabledStage } from "@/components/stages/stage-config";
@@ -43,6 +43,12 @@ interface StructuredTeamBuilderProps extends TeamBuilderBaseProps {
 }
 
 export type TeamBuilderProps = ArenaTeamBuilderProps | StructuredTeamBuilderProps;
+
+type StagePreviewStyle = CSSProperties & {
+  "--stage-preview-scale": number;
+  "--stage-preview-offset-x": string;
+  "--stage-preview-offset-y": string;
+};
 
 const FIXED_SLOT_INDICES = [0, 1, 2] as const;
 const MATRIX_PAGE_SIZE = 6;
@@ -237,7 +243,12 @@ export function TeamBuilder(props: TeamBuilderProps) {
     props.onStart({ ...arenaConfiguration, battleSize: 1, enemyControlMode });
   };
 
-  const stagePosition = `${selectedStage.geometry.leftPercent + selectedStage.geometry.widthPercent / 2}% ${selectedStage.geometry.topPercent + selectedStage.geometry.heightPercent / 2}%`;
+  const stagePosition = `${selectedStage.previewFocus.xPercent}% ${selectedStage.previewFocus.yPercent}%`;
+  const stagePreviewStyle: StagePreviewStyle = {
+    "--stage-preview-scale": selectedStage.previewFocus.scale,
+    "--stage-preview-offset-x": `${selectedStage.previewFocus.offsetXPercent}%`,
+    "--stage-preview-offset-y": `${selectedStage.previewFocus.offsetYPercent}%`,
+  };
   const activeHeroId = activeTeamSide === "player"
     ? playerTeam[activePlayerSlot] ?? ""
     : enemyTeam[activeEnemySlot] ?? "";
@@ -287,7 +298,7 @@ export function TeamBuilder(props: TeamBuilderProps) {
             aria-hidden="true"
             fill
             sizes="(max-width: 1100px) 100vw, 48vw"
-            style={{ objectPosition: stagePosition }}
+            style={{ objectPosition: stagePosition, ...stagePreviewStyle }}
             unoptimized
           />
         </div>

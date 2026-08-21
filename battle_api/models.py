@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -41,6 +42,10 @@ THREE_HERO_FORMATION_IDS: tuple[ThreeHeroFormationId, ...] = (
 
 class ApiModel(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
+
+
+class StrictApiModel(ApiModel):
+    model_config = ConfigDict(populate_by_name=True, extra="forbid")
 
 
 class HeroDefinition(ApiModel):
@@ -201,7 +206,7 @@ class StageProgress(ApiModel):
 
 
 class PlayerProgression(ApiModel):
-    profile_id: Literal["profile.local.default"] = Field(alias="profileId")
+    profile_id: str = Field(alias="profileId", min_length=1)
     unlocked_hero_definition_ids: list[HeroDefinitionId] = Field(
         alias="unlockedHeroDefinitionIds"
     )
@@ -258,4 +263,37 @@ class VictoryCommitResponse(ApiModel):
     battle_id: str = Field(alias="battleId")
     already_committed: bool = Field(alias="alreadyCommitted")
     newly_granted_rewards: list[StageReward] = Field(alias="newlyGrantedRewards")
+    progression: PlayerProgression
+
+
+SaveSlotId = Literal[1, 2, 3, 4, 5]
+
+
+class EmptySaveSlotRequest(StrictApiModel):
+    """Explicitly forbids client-authored progression in create/load actions."""
+
+
+class ConfirmSaveSlotOverwriteRequest(StrictApiModel):
+    confirm_overwrite: bool = Field(alias="confirmOverwrite")
+
+
+class SaveSlotSummary(ApiModel):
+    slot_id: SaveSlotId = Field(alias="slotId")
+    occupied: bool
+    profile_id: str | None = Field(alias="profileId")
+    created_at: datetime | None = Field(alias="createdAt")
+    last_played_at: datetime | None = Field(alias="lastPlayedAt")
+    active: bool
+
+
+class SaveSlotListResponse(ApiModel):
+    contract_version: Literal["1.0"] = Field(default="1.0", alias="contractVersion")
+    active_slot_id: SaveSlotId | None = Field(alias="activeSlotId")
+    slots: list[SaveSlotSummary] = Field(min_length=5, max_length=5)
+
+
+class SaveSlotActionResponse(ApiModel):
+    contract_version: Literal["1.0"] = Field(default="1.0", alias="contractVersion")
+    active_slot_id: SaveSlotId = Field(alias="activeSlotId")
+    slot: SaveSlotSummary
     progression: PlayerProgression

@@ -77,18 +77,43 @@ remains a required non-empty transport field even when a presentation surface
 chooses to show only faculty and specialization.
 
 The catalogue stays static so that a locked definition can still be validated
-and rendered as a fixed training-stage enemy. Player ownership is returned
+and rendered as a fixed training-stage enemy. Active-slot ownership is returned
 separately by `GET /api/v1/progression` and enforced for every friendly team.
+
+### Five-slot save APIs
+
+`GET /api/v1/save-slots` returns `contractVersion`, nullable `activeSlotId`,
+and exactly five ordered summaries. Each summary contains `slotId`, `occupied`,
+nullable opaque `profileId`, nullable ISO-8601 `createdAt`/`lastPlayedAt`, and
+`active`. Empty slots have null profile/timestamps and cannot be active.
+
+- `POST /api/v1/save-slots/{slotId}/create` accepts no progression fields,
+  initializes an empty slot with the exact four-hero starter state, and selects it.
+- `POST /api/v1/save-slots/{slotId}/load` selects an occupied slot without
+  resetting it and updates its last-played timestamp.
+- `POST /api/v1/save-slots/{slotId}/overwrite` requires
+  `{ "confirmOverwrite": true }`; it atomically replaces only that occupied
+  slot with a new profile identity and fresh starter state.
+
+All actions return `contractVersion`, `activeSlotId`, the selected `slot`, and
+authoritative `progression`. Invalid IDs return 422 `invalidSaveSlot`;
+occupied create, empty load, missing overwrite confirmation, missing active
+selection, and a slot switch during a live structured battle return typed 409
+errors. Store and migration failures return retryable 503
+`progressionStoreUnavailable`. Clients must not send unlock, stage, reward, or
+profile data.
 
 ### `GET /api/v1/progression`
 
-Returns the stable default local profile, its `unlockedHeroDefinitionIds`, both
-per-stage values (`highestCompletedBattle`, `unlockedBattle`, `completed`), and
-granted reward IDs/counts. The five UI-020 locked definitions are absent from
-the initial unlocked IDs. A missing first-run database is initialized
-deterministically; corrupt, unsupported, unreadable, or incomplete persistence
-returns retryable HTTP 503 `progressionStoreUnavailable` rather than resetting
-earned state.
+Returns the active slot's opaque stable `profileId`,
+`unlockedHeroDefinitionIds`, per-stage values (`highestCompletedBattle`,
+`unlockedBattle`, `completed`), and granted reward IDs/counts. Fresh slots own
+exactly Warrior Weapon Master, Mage Comprehensiveness, Priest
+Comprehensiveness, and Rogue Comprehensiveness. With no active slot it returns
+409 `noActiveSaveSlot`. A schema-v1 default profile migrates once into active
+slot 1 without changing its ID or earned state; corrupt, unsupported,
+unreadable, incomplete, or failed migration state returns retryable 503 rather
+than resetting or selecting another slot.
 
 ### `GET /api/v1/stages`
 
@@ -118,7 +143,9 @@ a friendly victory. One SQLite transaction records the battle receipt, advances
 the stage, and applies its unlock/item-card reward. The response includes
 `alreadyCommitted`, `newlyGrantedRewards`, and refreshed progression. Replays,
 retries, and duplicate callbacks return the committed state without granting
-again. Arena or non-victory sessions return a structured rejection.
+again. Completion is bound to the profile active when the structured session
+launched; a later slot switch returns 409 `activeSaveSlotChanged`. Arena or
+non-victory sessions return a structured rejection.
 
 ### `POST /api/v1/battles`
 
