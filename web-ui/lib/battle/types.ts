@@ -1,6 +1,7 @@
 export type SideId = "friendly" | "enemy";
 export type EffectHint = "magic" | "healing" | "melee" | "status" | "summon";
 export type StatusPresentation = "buff" | "debuff" | "neutral";
+export type HealingPresentation = "cast" | "status";
 export type BattleSize = 1 | 2 | 3;
 export type EnemyCompositionMode = "random" | "specified";
 export type EnemyControlMode = "computer" | "player";
@@ -249,6 +250,7 @@ export interface BattleEventBase {
   combatant?: CombatantState;
   movement?: "lunge" | "return" | "offset";
   effectHint?: EffectHint;
+  healingPresentation?: HealingPresentation;
   statusPresentation?: StatusPresentation;
   reasonId?: string | null;
   channel?: "battleInfo" | "statusUpdate";

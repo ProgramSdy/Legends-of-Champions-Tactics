@@ -6,7 +6,7 @@ import { BattleScreen } from "@/components/battle/BattleScreen";
 import { TeamBuilder } from "@/components/battle/TeamBuilder";
 import { resolveStructuredStage } from "@/components/stages/structured-stage-config";
 import { createFormatFixture, MockBattleProvider } from "@/lib/battle/fixture";
-import { duoFormationRegistry, formationFor, formationRegistry, trioFormationFor, trioFormationRegistry } from "@/lib/battle/formations";
+import { formationFor, formationRegistry, trioFormationFor, trioFormationRegistry } from "@/lib/battle/formations";
 import { LiveBattleProvider } from "@/lib/battle/liveProvider";
 import type { BattleCreateConfiguration, CombatantPosition, HeroDefinitionSummary, TrioFormationId } from "@/lib/battle/types";
 
@@ -164,6 +164,27 @@ describe("UI-019 size-specific Team Builder formation contract", () => {
 });
 
 describe("UI-019 authoritative trio presentation", () => {
+  it.each(["front-rear", "side-by-side"] as const)("keeps every 2v2 %s overhead centred on its own figure", async (formation) => {
+    const snapshot = createFormatFixture(2);
+    for (const side of ["friendly", "enemy"] as const) {
+      const ids = snapshot.sides.find((candidate) => candidate.id === side)!.combatantIds;
+      ids.forEach((id, slot) => {
+        snapshot.combatants[id].position = formation === "side-by-side" || slot === 0 ? "front" : "rear";
+      });
+    }
+
+    render(<BattleScreen provider={new MockBattleProvider(snapshot)} />);
+    await screen.findByRole("region", { name: "Battlefield" });
+
+    for (const side of ["friendly", "enemy"] as const) {
+      const ids = snapshot.sides.find((candidate) => candidate.id === side)!.combatantIds;
+      ids.forEach((id) => {
+        const layer = document.querySelector(`[data-combatant-id='${id}']`)?.closest<HTMLElement>(".formation-slot");
+        expect(layer?.style.getPropertyValue("--overhead-offset-x")).toBe("");
+      });
+    }
+  });
+
   it.each(Object.keys(trioPositions) as TrioFormationId[])("maps %s by snapshot formation, ordered slot, and supplied position", (formation) => {
     const snapshot = createFormatFixture(3);
     snapshot.formations = { friendly: formation, enemy: formation };
@@ -195,22 +216,11 @@ describe("UI-019 authoritative trio presentation", () => {
     expect(middle.depth).toBeGreaterThan(furthest.depth!);
   });
 
-  it("assigns documented safe overhead lanes to every crowded formation", () => {
-    expect(duoFormationRegistry["side-by-side"].friendly.map(({ panelOffsetX = 0 }) => panelOffsetX)).toEqual([0, -105]);
-    expect(duoFormationRegistry["side-by-side"].enemy.map(({ panelOffsetX = 0 }) => panelOffsetX)).toEqual([0, 105]);
-    expect(trioFormationRegistry["one-front-two-rear"].friendly.map(({ panelOffsetX = 0 }) => panelOffsetX)).toEqual([0, -105, -105]);
-    expect(trioFormationRegistry["one-front-two-rear"].enemy.map(({ panelOffsetX = 0 }) => panelOffsetX)).toEqual([0, 105, 105]);
-    expect(trioFormationRegistry["two-front-one-rear"].friendly.map(({ panelOffsetX = 0 }) => panelOffsetX)).toEqual([0, 105, -105]);
-    expect(trioFormationRegistry["two-front-one-rear"].enemy.map(({ panelOffsetX = 0 }) => panelOffsetX)).toEqual([-105, 0, 105]);
-    expect(trioFormationRegistry["all-front"].friendly.map(({ panelOffsetX = 0 }) => panelOffsetX)).toEqual([0, 105, -105]);
-    expect(trioFormationRegistry["all-front"].enemy.map(({ panelOffsetX = 0 }) => panelOffsetX)).toEqual([105, -105, 0]);
-  });
-
   it.each([
     ["one-front-two-rear", "friendly"], ["one-front-two-rear", "enemy"],
     ["two-front-one-rear", "friendly"], ["two-front-one-rear", "enemy"],
     ["all-front", "friendly"], ["all-front", "enemy"],
-  ] as const)("keeps each %s %s overhead inside its own positioned figure layer", async (formation, side) => {
+  ] as const)("keeps each %s %s overhead directly centred above its own positioned figure", async (formation, side) => {
     const snapshot = createFormatFixture(3);
     snapshot.formations = { friendly: formation, enemy: formation };
     applyFormationPositions(snapshot, "friendly", formation);
@@ -219,11 +229,9 @@ describe("UI-019 authoritative trio presentation", () => {
     await screen.findByRole("region", { name: "Battlefield" });
 
     const ids = snapshot.sides.find((candidate) => candidate.id === side)!.combatantIds;
-    ids.forEach((id, slot) => {
+    ids.forEach((id) => {
       const layer = document.querySelector(`[data-combatant-id='${id}']`)?.closest<HTMLElement>(".formation-slot");
-      expect(layer?.querySelector(".overhead")).toBeInTheDocument();
-      expect(layer?.style.getPropertyValue("--overhead-offset-x"))
-        .toBe(`${trioFormationRegistry[formation][side][slot].panelOffsetX ?? 0}px`);
+      expect(layer?.style.getPropertyValue("--overhead-offset-x")).toBe("");
     });
   });
 
@@ -241,7 +249,6 @@ describe("UI-019 authoritative trio presentation", () => {
         const placement = formationFor(snapshot, side, hero.slot, hero.position);
         const slot = document.querySelector(`[data-combatant-id='${id}']`)?.closest<HTMLElement>(".formation-slot");
         expect(slot).toHaveStyle({ zIndex: String(placement.depth) });
-        expect(slot?.querySelector(".overhead")).toBeInTheDocument();
       }
     }
   });
@@ -293,13 +300,13 @@ describe("UI-019 authoritative trio presentation", () => {
     expect(screen.getByRole("button", { name: "Andonidas" })).toBeDisabled();
   });
 
-  it("keeps duel and duo presentation registries unchanged", () => {
+  it("resolves duel and owner-approved duo presentation registries", () => {
     const duel = createFormatFixture(1);
     const duo = createFormatFixture(2);
     expect(formationFor(duel, "friendly", 0, "front")).toEqual(formationRegistry.duel.friendly[0]);
     expect(formationFor(duel, "enemy", 0, "front")).toEqual(formationRegistry.duel.enemy[0]);
-    expect(formationFor(duo, "friendly", 0, "front")).toEqual({ slot: "front", x: 42, y: 68, scale: 1.02 });
-    expect(formationFor(duo, "enemy", 1, "rear")).toEqual({ slot: "rear", x: 78, y: 68, scale: .94 });
+    expect(formationFor(duo, "friendly", 0, "front")).toEqual({ slot: "front", x: 42, y: 68, scale: 1.04 });
+    expect(formationFor(duo, "enemy", 1, "rear")).toEqual({ slot: "rear", x: 78, y: 68, scale: 1.04 });
   });
 
   it("uses a responsive three-column selector without rendering reference markers", () => {

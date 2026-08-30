@@ -4,12 +4,20 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { BattleProviderError, type BattleEvent, type BattleProvider, type BattleSnapshot, type PresentationScript, type ProviderErrorKind } from "./types";
 
 const BASE_DELAY = 620;
+const HP_HUD_LEAD_MS = 300;
+const HP_METER_TRANSITION_MS = 450;
+const HP_HUD_TRAIL_MS = 300;
+const PRIEST_HEAL_CASTER_CUE_MS = 500;
 const isVisibleLogEvent = (event: BattleEvent) => event.visibleInLog !== false;
+const isHpHudEvent = (event: BattleEvent) => event.type === "damageApplied"
+  || event.type === "healingApplied";
 
 export function usePresentationQueue(provider: BattleProvider) {
   const [visibleSnapshot, setVisibleSnapshot] = useState<BattleSnapshot | null>(null);
   const [revision, setRevision] = useState(0);
   const [activeEvent, setActiveEvent] = useState<BattleEvent | null>(null);
+  const [activeHpEvent, setActiveHpEvent] = useState<BattleEvent | null>(null);
+  const [activeHealingCasterEvent, setActiveHealingCasterEvent] = useState<BattleEvent | null>(null);
   const [log, setLog] = useState<BattleEvent[]>([]);
   const [speed, setSpeed] = useState(1);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -54,6 +62,7 @@ export function usePresentationQueue(provider: BattleProvider) {
         setLog([...(state.events ?? [])].sort((a, b) => a.sequence - b.sequence).filter(isVisibleLogEvent));
       }
       setActiveEvent(null);
+      setActiveHpEvent(null);
       setIsPlaying(false);
       setCanSkip(false);
       setError(null);
@@ -163,12 +172,34 @@ export function usePresentationQueue(provider: BattleProvider) {
         if (isVisibleLogEvent(event)) {
           pendingLogEvents.current = pendingLogEvents.current.slice(1);
         }
+        const showsHpHud = isHpHudEvent(event) && Boolean(event.targetId);
+        const showsHealingCasterCue = event.type === "healingApplied"
+          && event.healingPresentation === "cast"
+          && Boolean(event.sourceId)
+          && visibleSnapshot?.combatants[event.sourceId!]?.faculty === "Priest";
+        if (showsHealingCasterCue) {
+          setActiveHealingCasterEvent(event);
+          await new Promise((resolve) => window.setTimeout(resolve, PRIEST_HEAL_CASTER_CUE_MS - HP_HUD_LEAD_MS));
+          if (generation.current !== token) return;
+          if (showsHpHud) setActiveHpEvent(event);
+          await new Promise((resolve) => window.setTimeout(resolve, HP_HUD_LEAD_MS));
+          if (generation.current !== token) return;
+          setActiveHealingCasterEvent(null);
+        } else if (showsHpHud) {
+          setActiveHpEvent(event);
+          await new Promise((resolve) => window.setTimeout(resolve, HP_HUD_LEAD_MS));
+          if (generation.current !== token) return;
+        }
         setActiveEvent(event);
         applyEvent(event);
         if (isVisibleLogEvent(event)) {
           setLog((items) => [...items, event]);
         }
-        if (event.type !== "battleLog") {
+        if (showsHpHud) {
+          await new Promise((resolve) => window.setTimeout(resolve, HP_METER_TRANSITION_MS + HP_HUD_TRAIL_MS));
+          if (generation.current !== token) return;
+          setActiveHpEvent(null);
+        } else if (event.type !== "battleLog") {
           await new Promise((resolve) => window.setTimeout(resolve, BASE_DELAY / speed));
         }
       }
@@ -191,12 +222,14 @@ export function usePresentationQueue(provider: BattleProvider) {
       if (generation.current === token) {
         busy.current = false;
         setActiveEvent(null);
+        setActiveHpEvent(null);
+        setActiveHealingCasterEvent(null);
         setIsPlaying(false);
         if (opening) setIsOpening(false);
         setCanSkip(false);
       }
     }
-  }, [applyEvent, speed]);
+  }, [applyEvent, speed, visibleSnapshot]);
 
   const present = useCallback(
     (request: () => Promise<PresentationScript>) => runPresentation(request, false),
@@ -224,6 +257,8 @@ export function usePresentationQueue(provider: BattleProvider) {
     }
     pendingLogEvents.current = [];
     setActiveEvent(null);
+    setActiveHpEvent(null);
+    setActiveHealingCasterEvent(null);
     setIsPlaying(false);
     setIsOpening(false);
     setHasPendingOpening(false);
@@ -236,5 +271,5 @@ export function usePresentationQueue(provider: BattleProvider) {
     setLoadAttempt((attempt) => attempt + 1);
   }, []);
 
-  return { snapshot: visibleSnapshot, revision, activeEvent, log, setLog, speed, setSpeed, isPlaying, isOpening, hasPendingOpening, canSkip, error, errorKind, present, playOpening, skip, retry };
+  return { snapshot: visibleSnapshot, revision, activeEvent, activeHpEvent, activeHealingCasterEvent, log, setLog, speed, setSpeed, isPlaying, isOpening, hasPendingOpening, canSkip, error, errorKind, present, playOpening, skip, retry };
 }

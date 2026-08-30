@@ -13,13 +13,17 @@ the thin Python adapter. Python remains the sole gameplay authority.
 - `lib/battle/fixture.ts` owns stateful scripted fixtures; they are presentation
   outcomes, not TypeScript battle rules.
 - `lib/battle/formations.ts` is the single duel/duo/trio coordinate registry.
-  Format is derived from authoritative team size. The 2v2 presentation retains
-  its supplied-position mapping; 3v3 selects a size-specific coordinate set
+  Format is derived from authoritative team size. The owner-approved 2v2
+  presentation uses `1.04` for both Front and Rear figures and `0.94` for the
+  upper/far plus `1.04` for the lower/near Side by Side figure on each side.
+  These are presentation-only formation multipliers applied in addition to the
+  per-definition hero figure scale. 3v3 selects a size-specific coordinate set
   from each side's snapshot `formations` value. Both use the supplied ordered
   combatant `slot` and `position`; the registry never assigns or infers a
-  gameplay position. It may also provide visual-only depth, scale, and
-  overhead-panel-lane values for crowded layouts; these values travel with the
-  same figure layer as its HP/status panel, effects, and target control.
+  gameplay position. It may also provide visual-only depth and scale values.
+  Each transient HP HUD stays in the same figure layer as its effects and target
+  control, centred directly above the measured and scaled hero artwork; the
+  formation registry does not offset panels into separate horizontal lanes.
 - `lib/battle/usePresentationQueue.ts` orders semantic events, applies supplied
   post-event values (including additive status stack counts), and reconciles to
   the final snapshot. Typed semantic
@@ -160,8 +164,8 @@ art under `/game-images/` loads from its direct static URL rather than the
 framework image optimizer, while genuine load failures retain the normal
 fallback chain. Requested final figure artwork keeps its source orientation on
 the friendly side and is horizontally mirrored on the enemy side. Mirroring is
-limited to the image pixels; formation movement, target controls, overhead
-health/status UI, labels, portraits, and thumbnails are unchanged.
+limited to the image pixels; formation movement, target controls, overhead HP
+HUD, labels, portraits, and thumbnails are unchanged.
 
 Current final figure registrations cover Paladin Protection, Retribution, and
 Holy; Priest Comprehensiveness and Discipline; Warrior Defence, Weapon Master,
@@ -183,17 +187,16 @@ the shared `AssetImage` requested/class/initials fallback chain in a bounded
 media frame. The battle-completion dialog moves and contains focus on its
 Return action. Effects honor reduced motion and never determine outcomes.
 
-`StatusIcon` is the shared status renderer for both battlefield overhead
-HP/status panels and Team Information cards. It displays a supplied valid stack
-count in a compact lower-right badge, retaining the exact count in its tooltip
-and accessible name. The presentation queue uses an explicit event count when
+`StatusIcon` is the shared status renderer for Team Information cards. It
+displays a supplied valid stack count in a compact lower-right badge, retaining
+the exact count in its tooltip and accessible name. The presentation queue uses an explicit event count when
 provided, preserves an existing count for legacy events that omit it, and lets
 the final Python snapshot win after playback.
 
 Battle figures use one contained, bottom-aligned, 172px-wide footprint for
 direct final artwork and the fallback renderer. A loaded final image reports
 its intrinsic dimensions to the figure and establishes its own frame height;
-missing or failed images retain a 202px fallback frame. The HP/status panel
+missing or failed images retain a 202px fallback frame. The transient HP HUD
 uses that frame and the formation scale to preserve a 12px visual clearance.
 Each figure owns its centered aura and transient target-bound effects. Healing appears green; an additive adapter
 `statusPresentation` value authoritatively selects blue buff or red debuff
@@ -297,3 +300,11 @@ deployment boundary.
 - 2026-08-20 — UI-021 added typed five-slot startup actions,
   active-profile-keyed Team Builder state, and stage-specific Current Stage
   preview-focus metadata.
+- 2026-08-28 — Recorded the owner-approved 2v2 formation visual-scale values;
+  they remain frontend-only multipliers and do not affect battle authority.
+- 2026-08-29 — Removed formation-local overhead-panel offsets. Battlefield
+  HP/status panels now share one measured-height, scale-aware centred anchor
+  directly above their own hero in duel, duo, and trio layouts.
+- 2026-08-29 — Replaced the permanent battlefield HP/status panel with a
+  target-bound, event-only HP HUD. Only authoritative damage/healing event
+  types trigger it; React does not infer it from status or HP deltas.

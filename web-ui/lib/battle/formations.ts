@@ -10,29 +10,27 @@ export interface FormationPosition {
   scale: number;
   /** Visual depth only: higher values render nearer figures above lower ones. */
   depth?: number;
-  /** Horizontal panel lane in pixels; keeps an overhead clear of neighbouring art. */
-  panelOffsetX?: number;
 }
 
 export const duoFormationRegistry: Record<DuoFormationId, Record<SideId, FormationPosition[]>> = {
   "front-rear": {
     friendly: [
-      { slot: "front", x: 42, y: 68, scale: 1.02 },
-      { slot: "rear", x: 22, y: 68, scale: .94 },
+      { slot: "front", x: 42, y: 68, scale: 1.04 },
+      { slot: "rear", x: 22, y: 68, scale: 1.04 },
     ],
     enemy: [
       { slot: "front", x: 59, y: 68, scale: 1.04 },
-      { slot: "rear", x: 78, y: 68, scale: .94 },
+      { slot: "rear", x: 78, y: 68, scale: 1.04 },
     ],
   },
   "side-by-side": {
     friendly: [
       { slot: "front", x: 33, y: 54, scale: .94 },
-      { slot: "front", x: 33, y: 85, scale: 1.02, panelOffsetX: -105 },
+      { slot: "front", x: 33, y: 85, scale: 1.04 },
     ],
     enemy: [
       { slot: "front", x: 68, y: 54, scale: .94 },
-      { slot: "front", x: 68, y: 85, scale: 1.04, panelOffsetX: 105 },
+      { slot: "front", x: 68, y: 85, scale: 1.04 },
     ],
   },
 };
@@ -41,36 +39,36 @@ export const trioFormationRegistry: Record<TrioFormationId, Record<SideId, Forma
   "one-front-two-rear": {
     friendly: [
       { slot: "front", x: 42, y: 68, scale: .94, depth: 4 },
-      { slot: "rear", x: 28, y: 80, scale: 1.04, depth: 5, panelOffsetX: -105 },
-      { slot: "rear", x: 28, y: 53, scale: .8, depth: 3, panelOffsetX: -105 },
+      { slot: "rear", x: 28, y: 80, scale: 1.04, depth: 5 },
+      { slot: "rear", x: 28, y: 53, scale: .8, depth: 3 },
     ],
     enemy: [
       { slot: "front", x: 59, y: 68, scale: .94, depth: 4 },
-      { slot: "rear", x: 73, y: 53, scale: .8, depth: 3, panelOffsetX: 105 },
-      { slot: "rear", x: 73, y: 80, scale: 1.04, depth: 5, panelOffsetX: 105 },
+      { slot: "rear", x: 73, y: 53, scale: .8, depth: 3 },
+      { slot: "rear", x: 73, y: 80, scale: 1.04, depth: 5 },
     ],
   },
   "two-front-one-rear": {
     friendly: [
       { slot: "front", x: 42, y: 54, scale: .8, depth: 3 },
-      { slot: "front", x: 42, y: 81, scale: 1.04, depth: 5, panelOffsetX: 105 },
-      { slot: "rear", x: 23, y: 67, scale: .94, depth: 4, panelOffsetX: -105 },
+      { slot: "front", x: 42, y: 81, scale: 1.04, depth: 5 },
+      { slot: "rear", x: 23, y: 67, scale: .94, depth: 4 },
     ],
     enemy: [
-      { slot: "front", x: 59, y: 81, scale: 1.04, depth: 5, panelOffsetX: -105 },
+      { slot: "front", x: 59, y: 81, scale: 1.04, depth: 5 },
       { slot: "front", x: 59, y: 54, scale: .8, depth: 3 },
-      { slot: "rear", x: 78, y: 67, scale: .94, depth: 4, panelOffsetX: 105 },
+      { slot: "rear", x: 78, y: 67, scale: .94, depth: 4 },
     ],
   },
   "all-front": {
     friendly: [
       { slot: "front", x: 39.5, y: 52, scale: .8, depth: 3 },
-      { slot: "front", x: 39.5, y: 71, scale: .94, depth: 4, panelOffsetX: 105 },
-      { slot: "front", x: 39.5, y: 90, scale: 1.04, depth: 5, panelOffsetX: -105 },
+      { slot: "front", x: 39.5, y: 71, scale: .94, depth: 4 },
+      { slot: "front", x: 39.5, y: 90, scale: 1.04, depth: 5 },
     ],
     enemy: [
-      { slot: "front", x: 60.5, y: 90, scale: 1.04, depth: 5, panelOffsetX: 105 },
-      { slot: "front", x: 60.5, y: 71, scale: .94, depth: 4, panelOffsetX: -105 },
+      { slot: "front", x: 60.5, y: 90, scale: 1.04, depth: 5 },
+      { slot: "front", x: 60.5, y: 71, scale: .94, depth: 4 },
       { slot: "front", x: 60.5, y: 52, scale: .8, depth: 3 },
     ],
   },

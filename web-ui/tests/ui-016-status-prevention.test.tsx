@@ -35,16 +35,16 @@ describe("UI-016 status presentation", () => {
 
     for (const [id, name, kind] of newStatuses) {
       const icons = document.querySelectorAll<HTMLElement>(`[data-status-id='${id}']`);
-      expect(icons).toHaveLength(2);
-      expect([...icons].every((icon) => icon.getAttribute("aria-label")?.includes(name))).toBe(true);
-      expect([...icons].every((icon) => icon.getAttribute("aria-label")?.includes("2 rounds remaining"))).toBe(true);
-      expect([...icons].every((icon) => !icon.getAttribute("aria-label")?.includes("Unknown status"))).toBe(true);
-      expect([...icons].every((icon) => icon.classList.contains(kind === "debuff" ? "harmful" : "helpful"))).toBe(true);
+      expect(icons).toHaveLength(1);
+      expect(icons[0].getAttribute("aria-label")).toContain(name);
+      expect(icons[0].getAttribute("aria-label")).toContain("2 rounds remaining");
+      expect(icons[0].getAttribute("aria-label")).not.toContain("Unknown status");
+      expect(icons[0].classList.contains(kind === "debuff" ? "harmful" : "helpful")).toBe(true);
     }
 
     expect(document.querySelectorAll(".team-panel.friendly [data-status-id]")).toHaveLength(3);
     expect(document.querySelectorAll(".team-panel.enemy [data-status-id]")).toHaveLength(2);
-    expect(document.querySelectorAll(".battlefield-statuses [data-status-id]")).toHaveLength(5);
+    expect(document.querySelectorAll(".battlefield-statuses [data-status-id]")).toHaveLength(0);
   });
 
   it.each(newStatuses)("anchors %s application using the supplied %s presentation contract", async (statusId, _name, presentation) => {

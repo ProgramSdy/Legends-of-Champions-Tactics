@@ -722,6 +722,7 @@ class BattleAdapter:
                 message=f"{actor.name} used {skill.name}.",
             )
         ]
+        enemy_targets = [target for target in targets if target in actor.opponents]
         if skill.skill_type == "damage":
             events.append(
                 self._event(
@@ -735,6 +736,23 @@ class BattleAdapter:
                     message=f"{actor.name} moved to attack.",
                 )
             )
+        elif skill.skill_type == "damage_healing":
+            # Hybrid skills resolve by the selected target's side.  Preserve the
+            # normal attack cue for every opponent branch without asking the UI
+            # to infer an outcome from a skill name or a mutable HP snapshot.
+            for target in enemy_targets:
+                events.append(
+                    self._event(
+                        session,
+                        "characterMoved",
+                        sourceId=self._combatant_id(session, actor),
+                        targetId=self._combatant_id(session, target),
+                        skillId=command["skillId"],
+                        movement="lunge",
+                        effectHint="melee",
+                        message=f"{actor.name} moved to attack.",
+                    )
+                )
         # The legacy Skill boundary uses the literal sentinel ``["none"]`` for
         # targetless buffs; preserve that engine convention at this seam.
         if skill.target_qty == 0:
@@ -1165,6 +1183,11 @@ class BattleAdapter:
     def _mutation_events(self, session, actor, skill, targets, before, after):
         events = []
         actor_id = self._combatant_id(session, actor)
+        direct_healing_target_ids = {
+            self._combatant_id(session, target)
+            for target in targets
+            if target in actor.allies
+        }
         full_hp_healing_targets = (
             {
                 self._combatant_id(session, target): target
@@ -1172,7 +1195,7 @@ class BattleAdapter:
                 if before[self._combatant_id(session, target)]["hp"]
                 >= before[self._combatant_id(session, target)]["maximum"]
             }
-            if skill.skill_type == "healing"
+            if skill.skill_type in {"healing", "damage_healing"}
             else set()
         )
         for target in targets:
@@ -1230,6 +1253,9 @@ class BattleAdapter:
         for combatant_id, old in before.items():
             new = after[combatant_id]
             if new["hp"] > old["hp"]:
+                healing_presentation = (
+                    "cast" if combatant_id in direct_healing_target_ids else "status"
+                )
                 events.append(
                     self._event(
                         session,
@@ -1240,12 +1266,19 @@ class BattleAdapter:
                         amount=new["hp"] - old["hp"],
                         hpAfter={"current": new["hp"], "maximum": new["maximum"]},
                         effectHint="healing",
+                        healingPresentation=healing_presentation,
                         message=f"{combatant_id} recovered {new['hp'] - old['hp']} HP.",
                     )
                 )
             elif (
                 combatant_id in full_hp_healing_targets
                 and new["hp"] == old["hp"]
+                and (
+                    skill.skill_type == "healing"
+                    or skill.last_target_outcomes.get(
+                        id(full_hp_healing_targets[combatant_id])
+                    ) == "ally"
+                )
             ):
                 events.append(
                     self._event(
@@ -1257,6 +1290,7 @@ class BattleAdapter:
                         amount=0,
                         hpAfter={"current": new["hp"], "maximum": new["maximum"]},
                         effectHint="healing",
+                        healingPresentation="cast",
                         message=f"{full_hp_healing_targets[combatant_id].name} was already at full HP.",
                     )
                 )
@@ -1348,14 +1382,19 @@ class BattleAdapter:
                     )
                 )
             elif new["hp"] > old["hp"]:
+                priest_source_id = self._priest_healing_status_source_id(
+                    session, new["statuses"], old["statuses"]
+                )
                 events.append(
                     self._event(
                         session,
                         "healingApplied",
+                        sourceId=priest_source_id,
                         targetId=combatant_id,
                         amount=new["hp"] - old["hp"],
                         hpAfter={"current": new["hp"], "maximum": new["maximum"]},
                         effectHint="healing",
+                        healingPresentation="status",
                         message=f"{combatant_id} recovered {new['hp'] - old['hp']} HP.",
                     )
                 )
@@ -1423,6 +1462,26 @@ class BattleAdapter:
                     )
                 )
         return events
+
+    def _priest_healing_status_source_id(self, session, *status_sets):
+        """Return a Priest author for a status-driven healing delta, if known.
+
+        Round-start mutations do not have an acting hero.  Status snapshots do
+        retain the authoritative source combatant ID, so preserve that source
+        for Priest-authored healing and let the UI select the Priest treatment
+        without parsing battle-log prose or guessing from a green effect.
+        """
+        priest_ids = {
+            self._combatant_id(session, hero)
+            for hero in session.game.player_heroes + session.game.opponent_heroes
+            if hero.faculty == "Priest"
+        }
+        for statuses in status_sets:
+            for status in statuses.values():
+                source_id = status.get("sourceCombatantId")
+                if source_id in priest_ids:
+                    return source_id
+        return None
 
     def _serialize_combatant(self, session: BattleSession, hero) -> dict[str, Any]:
         combatant_id = self._combatant_id(session, hero)

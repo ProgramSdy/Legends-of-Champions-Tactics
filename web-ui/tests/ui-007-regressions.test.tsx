@@ -26,12 +26,7 @@ describe("UI-007 battlefield geometry contracts", () => {
       expect(footprint).toBeInTheDocument();
       expect(footprint?.querySelector(".figure-aura")).toBeInTheDocument();
       expect(figure.querySelector(".figure-art")).toBeInTheDocument();
-      // Overhead remains a child of the same figure so health/status cues do
-      // not drift into a format-wide overlay as formations change.
-      expect(figure.querySelector(".overhead")).toBeInTheDocument();
       expect(figure.querySelector(".figure-name")).not.toBeInTheDocument();
-      const heroName = figure.querySelector(".battle-target-control")?.getAttribute("aria-label")?.split(",")[0];
-      expect(figure.querySelector(".overhead")).toHaveTextContent(heroName ?? "");
     });
   });
 
@@ -51,9 +46,10 @@ describe("UI-007 battlefield geometry contracts", () => {
     // Overhead is positioned from the measured frame, footprint baseline, and
     // the required 12px clearance in scaled formation coordinates.
     expect(overhead).toMatch(/(?:^|;)bottom:calc\(\(var\(--figure-frame-height\)\+17px\)\*var\(--figure-scale\)\+12px\)(?:;|$)/);
-    expect(overhead).toMatch(/(?:^|;)left:59px(?:;|$)/);
+    expect(overhead).toMatch(/(?:^|;)left:50%(?:;|$)/);
+    expect(overhead).toMatch(/(?:^|;)transform:translateX\(-50%\)(?:;|$)/);
     const duelOverhead = css.match(/\.format-duel\.overhead\{([^}]*)\}/)?.[1] ?? "";
-    expect(duelOverhead).toMatch(/(?:^|;)transform:scale\(1\.5\)(?:;|$)/);
+    expect(duelOverhead).toMatch(/(?:^|;)transform:translateX\(-50%\)scale\(1\.5\)(?:;|$)/);
     expect(duelOverhead).toMatch(/(?:^|;)transform-origin:centerbottom(?:;|$)/);
   });
 
@@ -85,7 +81,6 @@ describe("UI-007 battlefield geometry contracts", () => {
     // The image is bottom anchored in the shared footprint; only its frame
     // height changes when intrinsic dimensions become available.
     expect(figure.querySelector(".figure-footprint")).toBeInTheDocument();
-    expect(figure.querySelector(".overhead")).toBeInTheDocument();
   });
 
   it("retains the fallback frame metric after a missing figure errors", async () => {

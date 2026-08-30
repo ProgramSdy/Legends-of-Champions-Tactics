@@ -70,16 +70,22 @@ _To be documented._
 - Development-only hotspot debug may expose enabled-stage boundaries for
   geometry tuning. It is off by default and unavailable in production.
 
-### Battlefield Health Panels
+### Battlefield HP HUD
 
-- Battlefield health/status panels sit above their associated hero figure.
-- In 1v1, the entire overhead health/status box is 1.5× its shared logical
-  size, anchored from its bottom edge. 2v2 and 3v3 retain the shared size.
+- The battlefield HP HUD is transient: only an authoritative `damageApplied`
+  or `healingApplied` event for that hero shows it. It also appears for
+  zero-damage and full-HP healing events; status-only and damage-prevented
+  events do not show it.
+- The HUD appears 300ms before the HP mutation, remains through the meter
+  transition, and remains a further 300ms before disappearing. In 1v1, the
+  entire overhead HP box is 1.5× its shared logical size, anchored from its
+  bottom edge. 2v2 and 3v3 retain the shared size.
 - Its vertical clearance is calculated from the hero's measured frame height
-  and formation scale, so each health/status box remains 12px above the visible
+  and formation scale, so each HP box remains 12px above the visible
   figure frame.
-- The runtime hero name is part of the health/status box, above the HP meter;
-  it is truncated rather than allowed to overlap the figure or other UI.
+- The runtime hero name is left-aligned beside the HP meter in 10px text and
+  is truncated rather than allowed to overlap the figure or other UI. The HUD
+  contains no status-icon row; status icons remain in Team Information cards.
 - Format-specific spacing must not move the hero figure, formation anchor, or
   target-control hit area.
 
@@ -93,6 +99,12 @@ _To be documented._
   slots; Side by Side is friendly `(33,54)` / `(33,85)` and enemy `(68,54)` /
   `(68,85)`. These correspond to the owner reference's pink 1/2 and 3/4 plus
   green 1/2 and 4/3 locations; numbered reference markers never render.
+- **Owner-approved 2v2 visual-scale decision (2026-08-28):** Front and Rear
+  uses `1.04` for every friendly and enemy figure. Side by Side keeps the
+  upper/far figure at `0.94` and uses `1.04` for the lower/near figure on both
+  sides. These presentation multipliers are applied to each hero's separate
+  per-definition figure scale; they do not change combat positions, targeting,
+  damage, or the underlying artwork registry.
 - Approved 3v3 ordered anchors are: One Front, Two Rear friendly `(42,68)` /
   `(28,80)` / `(28,53)` and enemy `(59,68)` / `(73,53)` / `(73,80)`; Two
   Front, One Rear friendly `(42,54)` / `(42,81)` / `(23,67)` and enemy
@@ -105,12 +117,12 @@ _To be documented._
   nearest/middle/furthest depth order is explicitly keyed by formation, side,
   and ordered slot. It must not be inferred solely from front/rear: nearest is
   larger and renders above middle, which renders above furthest. The figure's
-  HP/status panel, aura, effects, and target hit area share that figure layer.
-- Crowded Side by Side and trio anchors may declare a formation-local horizontal
-  HP/status-panel lane. The panel remains inside its own figure layer and keeps
-  its scale-aware vertical clearance; the lane prevents a nearer/lower panel
-  from obscuring adjacent figure art. This is presentation-only and must not
-  alter combat positions, targetability, effects, or figure depth.
+  transient HP HUD, aura, effects, and target hit area share that figure layer.
+- Every battlefield HP HUD is horizontally centred directly above its
+  own hero artwork in duel, duo, and trio layouts. It remains inside the hero's
+  figure layer and uses the measured artwork height, combined hero/formation
+  scale, and 12px vertical clearance. Formations must not offset panels into
+  separate horizontal lanes.
 - Duel figures use scale 1.5. The two duel teams retain matching y and scale
   values so their presentation remains symmetric.
 - Format scaling must preserve clear separation between figures, overhead
@@ -278,3 +290,12 @@ _To be documented._
 - 2026-08-20 — UI-021 added the accessible five-slot startup dialog/overwrite
   treatment and separate responsive preview-focus metadata for Arena, Barrack,
   and Altar.
+- 2026-08-28 — Recorded the owner-approved 2v2 formation visual-scale tuning:
+  equal `1.04` Front and Rear figures, and `0.94` upper/far plus `1.04`
+  lower/near Side by Side figures.
+- 2026-08-29 — Replaced crowded-formation panel lanes with a shared rule that
+  centres every battlefield HP/status panel directly above its own hero while
+  preserving measured-height, scale-aware 12px vertical clearance.
+- 2026-08-29 — Replaced permanent battlefield health/status panels with the
+  event-only HP HUD: 300ms lead/trailing windows, a left-aligned 10px name,
+  and no battlefield status-icon row.
