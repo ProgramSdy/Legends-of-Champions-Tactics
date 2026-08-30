@@ -99,7 +99,7 @@ function BattlefieldFigure({ hero, active, event, hpEvent, healingCasterEvent, e
       className={`battle-figure slot-${hero.slot} ${hero.sideId} ${active ? "acting" : ""} ${effect ? `fx-${effect}` : ""} ${targetEffect === "priest-healing" ? "priest-healing-target" : ""} ${movementClass} ${evadeClass} ${selectable ? "selectable" : ""} ${selected ? "targeted" : ""}`}
       data-combatant-id={hero.id}
       data-figure-footprint="shared"
-      style={{ "--figure-frame-height": `${figureFrameHeight}px`, "--figure-scale": figureScale } as CSSProperties}
+      style={{ "--figure-frame-width": `${FIGURE_FRAME_WIDTH}px`, "--figure-frame-height": `${figureFrameHeight}px`, "--figure-scale": figureScale } as CSSProperties}
     >
       {hpEvent?.targetId === hero.id && <div className="overhead event-hud" role="status" aria-live="polite">
         <div className="overhead-health">
