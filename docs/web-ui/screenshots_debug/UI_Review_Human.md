@@ -488,3 +488,109 @@ N/A
 - Rogue Comprehensiveness
 
 3_ Current stage picutre at the right top of team builder page for both Warrior's Barrack and Paladin's Altar are wrong, They shall show the exact building of Warrior's Barrack and Paladin's Altar. Find the correct building from stage map and present them properly.
+
+# Date
+
+2026-08-31
+
+### Screenshot name
+
+N/A
+
+### Task List
+
+1_ Add a half transparent Spanner icon on the upper right coner of Stage Map Page. Click it will take us to the Engineering Test and Debugging Page.
+
+2_ Add a proper icon on the upper left coner of Stage Map Page. Click it will take us to Game Start page.
+
+3_ Add a Engineering Test and Debugging Page. This page can be drafted by directly copy Arena Page and with below modifications.
+ 3_1_ Both Player team and enemy team shall have the full access to all registerd hero roster.
+ 3_2_ No data saving requested in this page, so this page shall be seperated from any connection or relation towards a player's data. 
+
+ 4_ Redesign Arena
+ # Arena Mode Redesign (MVP)
+
+Redesign the Arena mode to make it feel more like a roguelike progression (inspired by Slay the Spire), while preserving the core turn-based tactical gameplay of Legends of Champions.
+
+## Overall Structure
+
+- One Arena Run consists of 12 battles.
+- Each battle is an independent node.
+- Battle type is randomly selected:
+  - 1v1
+  - 2v2
+  - 3v3
+- The player should know the upcoming battle type before entering the battle.
+
+## Hero Squad Build
+
+Add a extra page for Hero Squad Build at the beginning of an Arena Run:
+
+- The player selects a fixed Hero Squad from all available heroes.
+- Available heroes depend on the unlocked heroes from game progress. 
+- Current MVP:
+  - Arena not activated until player has 6 heroes.
+  - Player selects 6 heroes to build a squad.
+- This Hero Squad remains locked for the entire Arena Run.
+- The player cannot switch heroes outside this squad during the run.
+
+## Team Selection
+
+Can draft by using the current Team Builder Page with necessary modifications.
+
+Before every battle:
+
+- The player chooses the required heroes from the Hero Squad.
+- Examples:
+  - 1v1 → choose 1 hero
+  - 2v2 → choose 2 heroes
+  - 3v3 → choose 3 heroes
+
+This creates meaningful strategic decisions based on the enemy composition and battle size.
+
+## Save/Load data system
+
+Arena shall be intergrated into current game save/load data system. 
+
+## Battle Design and enemy team
+- 12 Battle type is randomly selected with respected to below distribution.
+  - 1v1 (20% posibility)
+  - 2v2 (50% posibility)
+  - 3v3 (30% posibility)
+- Enemy Team rules:
+  - Enemy team randomly build, repeated heroes is allowed. 
+  - Team formation is randomly picked.
+  - For 2v2 formation:
+    - Side by Side, all random hero
+    - Front and rear, Front hero randomly pick from Warrior and Paladin. Rear hero randomly pick from Mage, Rogue and Priest.
+  - For 3v3 formation:
+    - Side by Side, all random hero
+    - Front 2 Rear 1 and Front 1 Rear 2, Front hero randomly pick from Warrior and Paladin. Rear hero randomly pick from Mage, Rogue and Priest.
+
+
+## Design Goals
+
+Arena is NOT a tutorial.
+
+The purpose of Arena is to:
+
+- Test the player's understanding of all hero classes.
+- Encourage team-building and strategic planning.
+- Increase replayability through different Hero Pool combinations.
+- Create different runs without changing the core combat system.
+
+Keep the implementation simple (MVP), but design the architecture so future features (battle rewards, relics, branching paths, etc.) can be added easily.
+
+Future Expansion (Not required for MVP)
+
+Design the Arena system so the following features can be added later without major refactoring:
+
+- Battle rewards
+- Branching paths
+- Elite battles
+- Boss battles
+- Hero injuries / persistence
+- Healing nodes
+- Shops
+- Arena achievements
+- Difficulty modifiers
