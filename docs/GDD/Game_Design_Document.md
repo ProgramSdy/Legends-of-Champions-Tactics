@@ -2,7 +2,7 @@
 
 ## Status and Authority
 
-This document records the implemented gameplay baseline as of 2026-08-15. It
+This document records the implemented gameplay baseline as of 2026-08-31. It
 does not approve unimplemented progression, economy, campaign, or online
 features. When current engine behavior and a future owner decision differ, the
 owner decision takes priority and this document must be updated deliberately.
@@ -17,11 +17,12 @@ outcomes.
 
 ## Current Player Loop
 
-1. Open the startup title scene and enter the Team Builder.
-2. Choose a 1v1, 2v2, or 3v3 battle, player heroes, enemy composition mode,
-   enemy control mode, and optionally a seed. In 2v2 and 3v3, choose an
-   approved friendly formation; a player-controlled enemy also chooses its
-   formation, while Python chooses the computer enemy's formation.
+1. Open the startup title scene, select an active save slot, and enter the
+   Stage Map.
+2. Start or resume that slot's Arena Run. A new run locks an ordered six-hero
+   squad selected from that slot's owned heroes, then reveals its next
+   server-authored 1v1, 2v2, or 3v3 node and computer enemy. In 2v2 and 3v3,
+   choose an approved friendly formation.
 3. Create a battle; Python constructs the combatants and begins round flow.
 4. On a player-controlled turn, choose a legal skill and its legal targets.
 5. Observe authoritative events, update strategy around status/cooldown/turn
@@ -35,6 +36,10 @@ selection. The player can choose only heroes currently unlocked for the stable
 local profile. Friendly victory is the only progression trigger; defeat, draw,
 and round limit retry the same battle. A completed step unlocks only the next
 step in its own stage.
+
+Engineering Test & Debugging is a separate full-roster, no-save-data route. It
+retains free-form battle size, enemy, control, formation, and seed tools for
+testing, but is not player Arena progress and cannot alter a save slot.
 
 ## Supported Playable Scope
 
@@ -146,6 +151,17 @@ atomically with the stage update and exposes availability to the UI. XP, levels,
 attributes, inventory/equipment, campaign, accounts, cloud sync, and active
 battle recovery remain unimplemented.
 
+Arena Run is the implemented limited meta-game extension. Each occupied save
+slot can retain one active or completed twelve-node run. Starting one requires
+six distinct owned definitions and atomically locks the ordered squad plus a
+persisted schedule. Node sizes are sampled server-side at 20% 1v1, 50% 2v2,
+and 30% 3v3. Enemy composition, formation, and seed are server-authored and
+stable on retry/reload; repeated enemy definitions are allowed. Only the next
+unresolved node may launch, and only its authoritative friendly victory
+advances it once. A completed run remains visible until the player explicitly
+starts a New Arena Run. Arena grants no rewards, relics, injuries, shops,
+branches, elites, bosses, or difficulty changes.
+
 ## Open Product Decisions
 
 - Canonical release roster and expansion policy.
@@ -168,6 +184,9 @@ battle recovery remain unimplemented.
   persisted nine-battle training stages and their limited unlock/item rewards.
 - 2026-08-20 — Added five isolated local save slots and the exact four-hero
   new-game roster without changing the training curricula.
+- 2026-08-31 — Replaced player-facing free-form Arena with the per-save-slot,
+  server-authored twelve-node Arena Run; added save-independent Engineering
+  Test & Debugging as the retained free-form environment.
 - 2026-08-06 — Rebuilt from the current engine, adapter, and web/API baseline;
   unapproved product decisions are explicitly recorded as open.
 - 2026-08-10 — Recorded the then-temporary Warrior's Barrack structured

@@ -4,12 +4,13 @@
 
 Authoritative technical design for persistent player data, local storage,
 save/load behaviour, active-battle recovery, and abandonment in **Legends of
-Champions Tactics**. UI-021 implements exactly five local save slots around the
-UI-020 training progression; the broader design remains deferred.
+Champions Tactics**. UI-023 implements exactly five local save slots around
+training progression and the limited Arena Run; the broader design remains deferred.
 
 The battle/session registry remains process-local and non-persistent. SQLite
 persists each occupied slot's stable profile identity, timestamps, unlocks,
-stage progress, and generic reward counts; it does not checkpoint live battles.
+stage progress, generic reward counts, and Arena Run data; it does not
+checkpoint live battles.
 
 ## Authority and Scope
 
@@ -20,7 +21,7 @@ stage progress, and generic reward counts; it does not checkpoint live battles.
 - The preferred initial local persistence direction is SQLite. The data model
   must allow a future migration to online accounts, server storage, and PvP
   without redefining player-progression concepts.
-- The implemented store uses SQLite schema version 2 and stable slots 1–5. The
+- The implemented store uses SQLite schema version 3 and stable slots 1–5. The
   backend alone owns the active slot. Fresh databases start with five empty
   slots and no active profile.
 - Schema-v1 `profile.local.default` data migrates transactionally into slot 1,
@@ -85,7 +86,9 @@ as proof that a profile owns/unlocked it.
 The implemented local store contains a schema marker, five slot rows, one
 backend-owned active-slot reference, occupied-slot profile identities and
 creation/last-played timestamps, unlocked definitions, stage state, rewards,
-and completion receipts scoped by profile and battle session. `BEGIN IMMEDIATE`
+and completion receipts scoped by profile and battle session. Arena Run adds an
+optional profile-scoped immutable squad, twelve persisted nodes, and node
+completion receipts. `BEGIN IMMEDIATE`
 makes each slot initialization/overwrite, active selection, or victory
 receipt/progress/reward change atomic.
 
@@ -94,6 +97,17 @@ Priest Comprehensiveness, and Rogue Comprehensiveness, zero stage progress, and
 no rewards. Confirmed overwrite replaces only the named occupied slot with a
 new stable profile identity and fresh state in one transaction. Cancelling or
 withholding confirmation makes no write.
+
+Arena Run creation validates exactly six distinct owned definition IDs and
+atomically stores the ordered squad plus twelve server-seeded nodes. Only the
+current node may launch; only its authoritative friendly victory can add a
+receipt and advance the run. Duplicate completion returns existing state
+without advancing twice. Loss, draw, and round limit leave the node retryable.
+An explicitly confirmed abandon atomically deletes that active profile's run
+and its twelve-node records; it does not alter its unlocks, training progress,
+or other save slots. A new run remains an intentional six-hero squad action.
+Live battles remain process-local, so reload creates a fresh session from the
+persisted node data.
 
 ## Save and Checkpoint Behaviour
 
@@ -186,3 +200,5 @@ out of scope and requires a separate design.
 - 2026-08-20 — Upgraded to schema version 2 with five isolated slots,
   backend-owned active selection, safe UI-020 migration, and confirmed
   transactional overwrite.
+- 2026-08-31 — Upgraded to schema version 3 with per-profile Arena Run
+  schedule/squad/node persistence and idempotent node advancement.

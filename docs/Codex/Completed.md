@@ -2,6 +2,98 @@
 
 Completed work should be appended in reverse chronological order, with the newest entry first.
 
+## 2026-08-31 — UI-023 Arena Run, Debug Mode, and Stage Map Navigation
+
+**Summary:**
+
+Added upper-corner Stage Map routes for Game Start and Engineering Test &
+Debugging. `/debug` provides the retained free-form full-roster battle builder
+through a dedicated no-save-data API boundary. Player Arena is now a
+profile-owned persistent twelve-node run: eligible players lock an ordered
+six-hero owned squad, see backend-authored upcoming node/enemy data, launch
+only the current node, and advance exactly once on authoritative friendly
+victory.
+
+SQLite schema v3 stores the per-profile run, immutable squad, seeded 20%/50%/30%
+node schedule, enemy configuration, and completion receipts. Normal Arena and
+training ownership checks remain intact; debug does not read or write player
+data. All Arena enemy seeds/progress/enemy teams stay server-owned.
+
+**Files Changed:**
+
+- `battle_api/adapter.py`, `battle_api/app.py`, `battle_api/models.py`, and
+  `battle_api/progression.py`
+- `tests/test_ui023_arena.py` and `tests/test_ui021_save_slots.py`
+- `web-ui/app/debug/page.tsx`, `web-ui/components/battle/ArenaRunExperience.tsx`,
+  `web-ui/components/battle/DebugBattleExperience.tsx`, and affected routes,
+  providers, types, Team Builder, Stage Map, styles, and frontend tests
+- GDD, technical, UI-contract, flow, architecture, Style Guide, and completion
+  documentation
+
+**Validation:**
+
+- Focused backend Arena/save-slot tests — 22 passed locally; the complete
+  backend UI-023 focus reported 51 passed. Python compilation passed.
+- Focused frontend Arena/debug/Stage Map tests — 15 passed locally; typecheck
+  passed. UI worker additionally reported lint and production build passed.
+- Browser smoke test confirmed `/debug` presents Engineering Test & Debugging
+  with Battle Rules and `/stages` exposes both Game Start and Engineering Test
+  & Debugging controls.
+- Reviewer approved the persistence, authority, debug-isolation, migration,
+  and completed-run (`currentNodeIndex: null`) boundaries with no blocker.
+- Full backend suite reported 230 passed with 7 inherited unrelated engine
+  failures; full frontend suite reported 263/280 passed with 17 inherited
+  stale owner-decision/timing expectations. No UI-023 focused failure occurred.
+
+**Known Limitation / Deferred Scope:**
+
+- A concurrent save-slot switch after an Arena battle launches safely rejects
+  completion as stale; active battle recovery remains intentionally absent.
+- Rewards, relics, healing/injury, shops, branches, elites/bosses, difficulty,
+  accounts/cloud, and active-battle persistence remain out of scope.
+
+---
+
+## 2026-08-30 — Battlefield Target Hit-Area Routing Fix
+
+**Summary:**
+
+Corrected 3v3 target picking when a near and far figure share the same visual
+cluster. The full `250 × 416px` transparent figure wrapper had continued to
+receive pointer input, so a higher-depth near figure could block a legally
+selectable far figure even outside the actual target-control rectangle. The
+wrapper is now pointer-transparent; only the bounded hero target button accepts
+pointer input. Crosshair and gold selection glow use that same button boundary.
+
+The approved formation depth stack is unchanged. Where two real target-control
+rectangles overlap, the higher-depth/near figure continues to receive the
+pointer. Python remains authoritative for `validTargetIds`, combat positions,
+and all targeting legality.
+
+**Files Changed:**
+
+- `web-ui/app/globals.css`
+- `web-ui/components/battle/BattleScreen.tsx`
+- `docs/web-ui/WEB_UI_ARCHITECTURE.md`
+- `docs/web-ui/Style_Guide.md`
+- `docs/Codex/Completed.md`
+
+**Validation:**
+
+- Owner manually confirmed that far 3v3 targets are selectable after the
+  change.
+- Focused `web-ui/tests/ui-019-formations.test.tsx` — 28 passed.
+- The temporary visible hit-area diagnostic was removed before completion; the
+  control is transparent in normal play.
+
+**Unresolved Issues / Deliberate Boundary:**
+
+- True overlap between two bounded target controls still resolves to the
+  higher visual-depth figure, by owner-approved decision. This task does not
+  alter formation coordinates, scale, depth, engine rules, or target legality.
+
+---
+
 ## 2026-08-20 — UI-021 Five-Slot Save Selection and Stage Preview Focus
 
 **Summary:**

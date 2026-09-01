@@ -13,8 +13,13 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .adapter import CONTRACT_VERSION, BattleRegistry
 from .models import (
+    ArenaStateResponse,
+    ArenaVictoryCommitResponse,
     ConfirmSaveSlotOverwriteRequest,
+    CreateArenaBattleRequest,
+    CreateArenaRunRequest,
     CreateBattleRequest,
+    CreateDebugBattleRequest,
     CreateStageBattleRequest,
     EmptySaveSlotRequest,
     HeroRosterResponse,
@@ -29,6 +34,7 @@ from .models import (
     VictoryCommitResponse,
 )
 from .progression import (
+    ArenaAccessError,
     ProgressionStore,
     ProgressionStoreError,
     SaveSlotAccessError,
@@ -96,6 +102,14 @@ def _access_error(exc: StageAccessError) -> HTTPException:
 
 def _save_slot_error(exc: SaveSlotAccessError) -> HTTPException:
     status = 422 if exc.code == "invalidSaveSlot" else 409
+    return HTTPException(
+        status_code=status,
+        detail={"code": exc.code, "message": exc.message},
+    )
+
+
+def _arena_error(exc: ArenaAccessError) -> HTTPException:
+    status = 404 if exc.code in {"arenaRunNotFound", "arenaNodeNotFound"} else 409
     return HTTPException(
         status_code=status,
         detail={"code": exc.code, "message": exc.message},
@@ -226,6 +240,198 @@ async def get_progression(
     return {
         "contractVersion": CONTRACT_VERSION,
         **await _read_progression(store),
+    }
+
+
+@app.post(
+    "/api/v1/debug/battles",
+    responses={422: {"model": HttpErrorResponse}},
+)
+async def create_debug_battle(request: CreateDebugBattleRequest) -> dict:
+    """Create a process-local full-roster battle without player-data access."""
+    _, envelope = await asyncio.to_thread(
+        registry.create,
+        seed=request.seed,
+        battle_size=request.battle_size,
+        player_team=list(request.player_team),
+        enemy_composition_mode=request.enemy_composition_mode,
+        enemy_team=list(request.enemy_team) if request.enemy_team else None,
+        enemy_control_mode=request.enemy_control_mode,
+        player_formation=request.player_formation,
+        enemy_formation=request.enemy_formation,
+    )
+    return envelope
+
+
+@app.get(
+    "/api/v1/arena",
+    response_model=ArenaStateResponse,
+    responses={
+        409: {"model": HttpErrorResponse},
+        503: {"model": RetryableHttpErrorResponse},
+    },
+)
+async def get_arena_state(
+    store: Annotated[ProgressionStore, Depends(get_progression_store)],
+) -> dict:
+    try:
+        state = await asyncio.to_thread(store.read_arena_state)
+    except ProgressionStoreError as exc:
+        raise _store_unavailable(exc) from exc
+    except SaveSlotAccessError as exc:
+        raise _save_slot_error(exc) from exc
+    return {"contractVersion": CONTRACT_VERSION, **state}
+
+
+@app.post(
+    "/api/v1/arena/runs",
+    response_model=ArenaStateResponse,
+    responses={
+        409: {"model": HttpErrorResponse},
+        503: {"model": RetryableHttpErrorResponse},
+    },
+)
+async def create_arena_run(
+    request: CreateArenaRunRequest,
+    store: Annotated[ProgressionStore, Depends(get_progression_store)],
+) -> dict:
+    try:
+        state = await asyncio.to_thread(
+            store.create_arena_run, list(request.squad_definition_ids)
+        )
+    except ProgressionStoreError as exc:
+        raise _store_unavailable(exc) from exc
+    except SaveSlotAccessError as exc:
+        raise _save_slot_error(exc) from exc
+    except ArenaAccessError as exc:
+        raise _arena_error(exc) from exc
+    return {"contractVersion": CONTRACT_VERSION, **state}
+
+
+@app.post(
+    "/api/v1/arena/runs/{run_id}/abandon",
+    response_model=ArenaStateResponse,
+    responses={409: {"model": HttpErrorResponse}, 503: {"model": RetryableHttpErrorResponse}},
+)
+async def abandon_arena_run(
+    run_id: str,
+    store: Annotated[ProgressionStore, Depends(get_progression_store)],
+) -> dict:
+    try:
+        state = await asyncio.to_thread(store.abandon_arena_run, run_id=run_id)
+    except ProgressionStoreError as exc:
+        raise _store_unavailable(exc) from exc
+    except SaveSlotAccessError as exc:
+        raise _save_slot_error(exc) from exc
+    except ArenaAccessError as exc:
+        raise _arena_error(exc) from exc
+    return {"contractVersion": CONTRACT_VERSION, **state}
+
+
+@app.post(
+    "/api/v1/arena/runs/{run_id}/nodes/{node_index}/battles",
+    responses={
+        404: {"model": HttpErrorResponse},
+        409: {"model": HttpErrorResponse},
+        422: {"model": HttpErrorResponse},
+        503: {"model": RetryableHttpErrorResponse},
+    },
+)
+async def create_arena_battle(
+    run_id: str,
+    node_index: Annotated[int, ApiPath(ge=1, le=12)],
+    request: CreateArenaBattleRequest,
+    store: Annotated[ProgressionStore, Depends(get_progression_store)],
+) -> dict:
+    try:
+        node = await asyncio.to_thread(
+            store.arena_node_for_launch,
+            run_id=run_id,
+            node_index=node_index,
+            player_team=list(request.player_team),
+            player_formation=request.player_formation,
+        )
+    except ProgressionStoreError as exc:
+        raise _store_unavailable(exc) from exc
+    except SaveSlotAccessError as exc:
+        raise _save_slot_error(exc) from exc
+    except ArenaAccessError as exc:
+        raise _arena_error(exc) from exc
+    _, envelope = await asyncio.to_thread(
+        registry.create,
+        seed=node["battleSeed"],
+        battle_size=node["battleSize"],
+        player_team=list(request.player_team),
+        enemy_composition_mode="specified",
+        enemy_team=list(node["enemyDefinitionIds"]),
+        enemy_control_mode="computer",
+        player_formation=request.player_formation,
+        enemy_formation=node["enemyFormation"],
+        fixed_computer_formation=True,
+        progression_profile_id=node["profileId"],
+        arena_run_id=run_id,
+        arena_node_index=node_index,
+    )
+    return envelope
+
+
+@app.post(
+    "/api/v1/arena/battles/{battle_id}/completion",
+    response_model=ArenaVictoryCommitResponse,
+    responses={
+        404: {"model": HttpErrorResponse},
+        409: {"model": HttpErrorResponse},
+        503: {"model": RetryableHttpErrorResponse},
+    },
+)
+async def commit_arena_battle_completion(
+    battle_id: str,
+    store: Annotated[ProgressionStore, Depends(get_progression_store)],
+) -> dict:
+    session = registry.get(battle_id)
+    if session is None:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "battleNotFound", "message": "Battle was not found."},
+        )
+    if (
+        session.arena_run_id is None
+        or session.arena_node_index is None
+        or session.progression_profile_id is None
+    ):
+        raise _arena_error(ArenaAccessError(
+            "battleNotArenaScoped", "This battle does not belong to an Arena Run."
+        ))
+
+    def commit_if_won() -> dict:
+        with session.lock:
+            snapshot = registry.adapter.snapshot(session)
+            if snapshot["phase"] != "ended" or snapshot.get("outcome") != {
+                "kind": "victory", "winningSideId": "friendly"
+            }:
+                raise ArenaAccessError(
+                    "friendlyVictoryRequired",
+                    "Only an authoritative friendly victory can advance Arena.",
+                )
+            return store.commit_arena_victory(
+                run_id=session.arena_run_id,
+                node_index=session.arena_node_index,
+                battle_id=battle_id,
+                expected_profile_id=session.progression_profile_id,
+            )
+
+    try:
+        result = await asyncio.to_thread(commit_if_won)
+    except ProgressionStoreError as exc:
+        raise _store_unavailable(exc) from exc
+    except SaveSlotAccessError as exc:
+        raise _save_slot_error(exc) from exc
+    except ArenaAccessError as exc:
+        raise _arena_error(exc) from exc
+    return {
+        "contractVersion": CONTRACT_VERSION,
+        "battleId": battle_id,
+        **result,
     }
 
 

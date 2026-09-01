@@ -46,8 +46,15 @@ the thin Python adapter. Python remains the sole gameplay authority.
   nine-battle curricula for typed rendering and drift detection. The adapter's
   stage response remains authoritative for access, completion, and rewards.
 - `components/stages/StageSelectionScreen.tsx` owns the map-bound Arena,
-  Warrior's Barrack, and Paladin's Altar interactions at `/stages`. Their hotspot, label, glow, and
-  optional debug outline share one intrinsic `1672 / 941` positioning parent.
+  Warrior's Barrack, and Paladin's Altar interactions at `/stages`, plus the
+  title and Engineering Test & Debugging route controls. Hotspots, labels,
+  glows, and optional debug outlines share one intrinsic `1672 / 941`
+  positioning parent without route controls changing hotspot geometry.
+- `components/battle/DebugBattleExperience.tsx` owns `/debug`: it fetches only
+  the static roster and creates sessions through the dedicated debug route.
+  `components/battle/ArenaRunExperience.tsx` owns active-slot Arena Run state,
+  squad/node UI, and the dedicated launch/completion routes; it never authors
+  enemy configuration, node progress, or run randomness locally.
 - `components/battle/BattleExperience.tsx` owns the Team Builder/battle
   lifecycle. It loads static roster and authoritative progression/stage data,
   creates Arena or stage-scoped providers, commits friendly victories, and
@@ -92,7 +99,11 @@ they are not derived solely from combat `front`/`rear`. The frontend registry
 controls only visual scale/stacking and keeps attached UI in the same layer.
 Target controls continue to use only the adapter's `legalActions.validTargetIds`;
 React does not recreate melee front/rear legality or position-based damage
-rules.
+rules. Each figure's large visual wrapper is deliberately non-interactive;
+only its bounded target button receives pointer and keyboard input. This keeps
+the approved 3v3 visual-depth stack from blocking a valid far figure through a
+near figure's transparent layout box. Where two actual target-button rectangles
+overlap, the established higher visual-depth figure receives the pointer.
 
 During playback, explicit turn events identify the transient acting hero,
 restriction reason, status application/removal, and supplied post-values while
@@ -308,3 +319,6 @@ deployment boundary.
 - 2026-08-29 — Replaced the permanent battlefield HP/status panel with a
   target-bound, event-only HP HUD. Only authoritative damage/healing event
   types trigger it; React does not infer it from status or HP deltas.
+- 2026-08-30 — Confined battlefield pointer input to each bounded target
+  control. Large transparent figure wrappers no longer block far 3v3 targets;
+  target legality and genuine overlap depth behavior remain unchanged.

@@ -91,6 +91,33 @@ UI-020 supersedes the preceding inactive-Altar sentence: Paladin's Altar opens
 `/game?stage=paladins-altar` through the bright right-middle altar hotspot.
 Mage's Tower, Rogue's Forest, and Priest's Cathedral remain inactive.
 
+The upper-left title control returns to `/`; the upper-right Engineering Test
+& Debugging control opens `/debug`. Both are independent of map-hotspot
+geometry. `/debug` is a save-independent free-form battle builder using the
+full registered roster and returns to Stage Map.
+
+### Arena Run
+
+Arena now opens the active-slot-owned Arena Run hub, not the player-facing
+free-form builder. With fewer than six unlocked heroes it displays the exact
+current/required count. Eligible players choose exactly six distinct unlocked
+heroes to create an immutable squad and persisted twelve-node run. The hub
+shows all server-authored node previews; only the next unresolved node can
+open its squad-limited Team Builder. The player selects the node-size team and
+friendly formation where applicable; the server supplies its computer enemy.
+Friendly victory commits one node and advances once, while other outcomes
+retry. After node twelve, an intentional New Arena Run action is required.
+The node Team Builder is the sole page presentation, using the same shared
+layout as Warrior's Barrack and Paladin's Altar. Its twelve-node progress strip
+occupies the Builder's normal full-width progression row rather than wrapping a
+second page around it. The node fixes battle size and the computer enemy, so it
+does not show editable Battle Rules; the player selects only their locked-squad
+team and, for 2v2/3v3, the friendly formation. Its bottom-left **GIVE UP
+CURRENT RUN** control requires a
+YES/NO confirmation. YES deletes only the active slot's current run and returns
+to Stage Map, where the player can build a new six-hero Arena squad; NO leaves
+the run untouched.
+
 ### Team Builder
 
 The playable application entry point is `/game`. Direct or invalid stage-query
@@ -218,8 +245,9 @@ flow. Its return link navigates directly to `/game`.
 - `/` opens the cinematic title scene. START GAME opens the five-slot New Game /
   Load Game dialog without navigating.
 - `/stages` opens the stage-selection map without creating a battle session.
-- `/game` opens Arena Team Builder after the roster loads; `/game?stage=arena`
-  identifies Arena configuration mode.
+- `/game` and `/game?stage=arena` open the active-slot Arena Run hub.
+- `/debug` opens the full-roster Engineering Test & Debugging builder without
+  a progression/save-slot request or write.
 - `/game?stage=warriors-barrack` and `/game?stage=paladins-altar` open the
   respective persisted curriculum at its next permitted battle.
 - A successful create, load, or confirmed overwrite navigates to `/stages`.
@@ -249,7 +277,8 @@ flow. Its return link navigates directly to `/game`.
   the original slot action still available; no navigation or local fallback.
 - Invalid Team Builder configuration: precise inline validation and disabled
   launch.
-- Ended Arena battle: modal outcome and Return to Team Builder.
+- Ended Arena Run battle: friendly victory commits/returns to its node hub;
+  all other outcomes return to retry that same node.
 - Ended Warrior's Barrack battle: modal continuation, Stage Map return, or
   Retry Battle according to the supplied authoritative outcome.
 

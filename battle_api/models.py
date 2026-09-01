@@ -163,6 +163,12 @@ class CreateBattleRequest(ApiModel):
         return self
 
 
+class CreateDebugBattleRequest(CreateBattleRequest):
+    """Free-form battle creation that forbids hidden progression fields."""
+
+    model_config = ConfigDict(populate_by_name=True, extra="forbid")
+
+
 class UseSkillCommand(ApiModel):
     type: Literal["useSkill"] = "useSkill"
     command_id: str = Field(alias="commandId", min_length=1, max_length=128)
@@ -297,3 +303,70 @@ class SaveSlotActionResponse(ApiModel):
     active_slot_id: SaveSlotId = Field(alias="activeSlotId")
     slot: SaveSlotSummary
     progression: PlayerProgression
+
+
+class ArenaEligibility(ApiModel):
+    eligible: bool
+    unlocked_hero_count: int = Field(alias="unlockedHeroCount", ge=0)
+    required_hero_count: Literal[6] = Field(
+        default=6, alias="requiredHeroCount"
+    )
+
+
+class ArenaNode(ApiModel):
+    node_index: int = Field(alias="nodeIndex", ge=1, le=12)
+    battle_size: Literal[1, 2, 3] = Field(alias="battleSize")
+    enemy_formation: FormationId | None = Field(alias="enemyFormation")
+    enemy_definition_ids: list[HeroDefinitionId] = Field(
+        alias="enemyDefinitionIds", min_length=1, max_length=3
+    )
+    completed: bool
+
+
+class ArenaRun(ApiModel):
+    run_id: str = Field(alias="runId", min_length=1)
+    status: Literal["active", "completed"]
+    squad_definition_ids: list[HeroDefinitionId] = Field(
+        alias="squadDefinitionIds", min_length=6, max_length=6
+    )
+    current_node_index: int | None = Field(
+        alias="currentNodeIndex", default=None, ge=1, le=12
+    )
+    created_at: datetime = Field(alias="createdAt")
+    completed_at: datetime | None = Field(alias="completedAt")
+    nodes: list[ArenaNode] = Field(min_length=12, max_length=12)
+
+
+class ArenaStateResponse(ApiModel):
+    contract_version: Literal["1.0"] = Field(default="1.0", alias="contractVersion")
+    profile_id: str = Field(alias="profileId", min_length=1)
+    eligibility: ArenaEligibility
+    run: ArenaRun | None
+
+
+class CreateArenaRunRequest(StrictApiModel):
+    squad_definition_ids: list[HeroDefinitionId] = Field(
+        alias="squadDefinitionIds", min_length=6, max_length=6
+    )
+
+    @model_validator(mode="after")
+    def validate_distinct_squad(self) -> "CreateArenaRunRequest":
+        if len(set(self.squad_definition_ids)) != 6:
+            raise ValueError("squadDefinitionIds must contain 6 distinct heroes")
+        return self
+
+
+class CreateArenaBattleRequest(StrictApiModel):
+    player_team: list[HeroDefinitionId] = Field(
+        alias="playerTeam", min_length=1, max_length=3
+    )
+    player_formation: FormationId | None = Field(
+        default=None, alias="playerFormation"
+    )
+
+
+class ArenaVictoryCommitResponse(ApiModel):
+    contract_version: Literal["1.0"] = Field(default="1.0", alias="contractVersion")
+    battle_id: str = Field(alias="battleId", min_length=1)
+    already_committed: bool = Field(alias="alreadyCommitted")
+    arena: ArenaStateResponse

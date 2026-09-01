@@ -32,6 +32,11 @@ interface ArenaTeamBuilderProps extends TeamBuilderBaseProps {
   onStart: (configuration: BattleCreateConfiguration) => void;
 }
 
+interface DebugTeamBuilderProps extends TeamBuilderBaseProps {
+  mode: "debug";
+  onStart: (configuration: BattleCreateConfiguration) => void;
+}
+
 interface StructuredTeamBuilderProps extends TeamBuilderBaseProps {
   mode: "structured";
   stage: StructuredStageDefinition;
@@ -42,7 +47,26 @@ interface StructuredTeamBuilderProps extends TeamBuilderBaseProps {
   onStart: (configuration: StructuredBattleCreateConfiguration) => void;
 }
 
-export type TeamBuilderProps = ArenaTeamBuilderProps | StructuredTeamBuilderProps;
+interface ArenaRunTeamBuilderProps extends TeamBuilderBaseProps {
+  mode: "arena-run";
+  node: {
+    nodeIndex: number;
+    battleSize: BattleSize;
+    enemyFormation: BattleFormationId | null;
+    enemyDefinitionIds: string[];
+  };
+  squadDefinitionIds: readonly string[];
+  arenaProgress: ReadonlyArray<{
+    nodeIndex: number;
+    battleSize: BattleSize;
+    completed: boolean;
+    current: boolean;
+  }>;
+  onStart: (configuration: StructuredBattleCreateConfiguration) => void;
+  onGiveUpCurrentRun: () => void;
+}
+
+export type TeamBuilderProps = ArenaTeamBuilderProps | DebugTeamBuilderProps | StructuredTeamBuilderProps | ArenaRunTeamBuilderProps;
 
 type StagePreviewStyle = CSSProperties & {
   "--stage-preview-scale": number;
@@ -148,7 +172,15 @@ function FixedEnemyTeamSlot({
 export function TeamBuilder(props: TeamBuilderProps) {
   const { roster } = props;
   const structuredStage = props.mode === "structured" ? props.stage : null;
-  const structuredBattle = props.mode === "structured" ? props.battle : null;
+  const structuredBattle = props.mode === "structured" ? props.battle : props.mode === "arena-run" ? {
+    id: `arena-node-${props.node.nodeIndex}`,
+    displayOrder: props.node.nodeIndex,
+    battleSize: props.node.battleSize,
+    enemyDefinitionIds: props.node.enemyDefinitionIds,
+    enemyFormation: props.node.enemyFormation,
+    playerFormation: null,
+    completionReward: null,
+  } as StructuredStageBattleDefinition : null;
   const highestCompletedBattle = props.mode === "structured"
     ? (props.highestCompletedBattle ?? 0)
     : 0;
@@ -157,7 +189,7 @@ export function TeamBuilder(props: TeamBuilderProps) {
     : 0;
   const selectStructuredBattle = props.mode === "structured" ? props.onSelectBattle : undefined;
   const selectedStage = resolveEnabledStage(
-    structuredStage?.stageId ?? (props.mode === "structured" ? undefined : props.selectedStageId),
+    structuredStage?.stageId ?? (props.mode === "arena" ? props.selectedStageId : undefined),
   );
   const builderRoster = useMemo(() => {
     const availableIds = new Set(props.availableDefinitionIds ?? roster.map((hero) => hero.definitionId));
@@ -209,7 +241,7 @@ export function TeamBuilder(props: TeamBuilderProps) {
 
   const launch = () => {
     if (validation) return;
-    if (props.mode === "structured") {
+    if (props.mode === "structured" || props.mode === "arena-run") {
       const structuredConfiguration = {
         playerTeam,
         ...(battleSize === 2 ? { playerFormation: playerDuoFormation } : {}),
@@ -276,17 +308,23 @@ export function TeamBuilder(props: TeamBuilderProps) {
   return (
     <main className="team-builder" tabIndex={0} aria-label="Team Builder scroll area">
       <Link className="builder-back" href="/stages">← <span>BACK TO STAGE MAP</span></Link>
-
       <header className="builder-title">
         <span className="builder-crest" aria-hidden="true">L</span>
-        <div><p>LEGENDS OF CHAMPIONS TACTICS</p><h1>Team Builder</h1></div>
+        <div>
+          <p>{props.mode === "debug" ? "SAVE-INDEPENDENT FULL ROSTER" : props.mode === "arena-run" ? "LOCKED ARENA SQUAD" : "LEGENDS OF CHAMPIONS TACTICS"}</p>
+          <h1>{props.mode === "debug" ? "Engineering Test & Debugging" : "Team Builder"}</h1>
+        </div>
       </header>
 
       <section className="current-stage" aria-labelledby="current-stage-heading">
         <div className="current-stage-copy">
-          <small>CURRENT STAGE</small>
-          <h2 id="current-stage-heading">{selectedStage.displayName}</h2>
-          <span>{structuredBattle
+          <small>{props.mode === "debug" ? "TEST ENVIRONMENT" : props.mode === "arena-run" ? "CURRENT ARENA NODE" : "CURRENT STAGE"}</small>
+          <h2 id="current-stage-heading">{props.mode === "debug" ? "Free-form Battle Lab" : props.mode === "arena-run" ? `Battle ${structuredBattle?.displayOrder} · ${structuredBattle?.battleSize}v${structuredBattle?.battleSize}` : selectedStage.displayName}</h2>
+          <span>{props.mode === "debug"
+            ? "No save data, progression, or rewards"
+            : props.mode === "arena-run"
+            ? "Choose from your locked six-hero squad"
+            : structuredBattle
             ? `Battle ${structuredBattle.displayOrder} of ${structuredStage?.battles.length}`
             : "Valley of Champions"}</span>
         </div>
@@ -303,6 +341,23 @@ export function TeamBuilder(props: TeamBuilderProps) {
           />
         </div>
       </section>
+
+      {props.mode === "arena-run" ? (
+        <nav className="arena-run-steps" aria-label="Arena Run battle progression">
+          {props.arenaProgress.map((node) => (
+            <span
+              key={node.nodeIndex}
+              className={`${node.completed ? "completed" : ""}${node.current ? " current" : ""}`}
+              aria-current={node.current ? "step" : undefined}
+              data-node-index={node.nodeIndex}
+            >
+              <small>NODE {node.nodeIndex}</small>
+              <strong>{node.battleSize}v{node.battleSize}</strong>
+              <em>{node.completed ? "Victory" : node.current ? "Current" : "Locked"}</em>
+            </span>
+          ))}
+        </nav>
+      ) : null}
 
       {structuredBattle && structuredStage ? (
         <>
@@ -346,7 +401,7 @@ export function TeamBuilder(props: TeamBuilderProps) {
             })}
           </nav>
         </>
-      ) : <section className="builder-options" aria-labelledby="battle-rules-heading">
+      ) : props.mode === "arena-run" ? null : <section className="builder-options" aria-labelledby="battle-rules-heading">
         <h2 id="battle-rules-heading">Battle rules</h2>
         <fieldset>
           <legend>Battle size</legend>
@@ -518,6 +573,9 @@ export function TeamBuilder(props: TeamBuilderProps) {
         <div className="hero-matrix-grid">
           {visibleMatrixHeroes.map((hero) => {
             const assigned = hero.definitionId === activeHeroId;
+            const reservedByAnotherArenaSlot = props.mode === "arena-run"
+              && activeTeamSide === "player"
+              && playerTeam.some((definitionId, index) => definitionId === hero.definitionId && index !== activePlayerSlot);
             return (
               <button
                 key={hero.definitionId}
@@ -526,6 +584,7 @@ export function TeamBuilder(props: TeamBuilderProps) {
                 data-hero-id={hero.definitionId}
                 aria-label={`Assign ${professionLabel(hero)} to ${activeTeamSide === "player" ? "your" : "enemy"} Hero ${(activeTeamSide === "player" ? activePlayerSlot : activeEnemySlot) + 1}`}
                 aria-pressed={assigned}
+                disabled={reservedByAnotherArenaSlot}
                 onClick={() => activeTeamSide === "player"
                   ? setPlayerTeam((team) => updateSlot(team, activePlayerSlot, hero.definitionId))
                   : setEnemyTeam((team) => updateSlot(team, activeEnemySlot, hero.definitionId))}
@@ -543,6 +602,7 @@ export function TeamBuilder(props: TeamBuilderProps) {
       </section>
 
       <footer className="builder-footer">
+        {props.mode === "arena-run" ? <button type="button" className="arena-give-up" onClick={props.onGiveUpCurrentRun}>GIVE UP CURRENT RUN</button> : null}
         <p className={validation ? "validation-error" : ""} aria-live="polite">{validation ?? `${battleSize}v${battleSize} configuration ready.`}</p>
         <button type="button" onClick={launch} disabled={Boolean(validation)}>ENTER BATTLE</button>
       </footer>

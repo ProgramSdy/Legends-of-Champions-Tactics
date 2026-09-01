@@ -1,5 +1,9 @@
 import {
   BattleProviderError,
+  type ArenaRunCompletionResponse,
+  type ArenaRun,
+  type ArenaRunNode,
+  type ArenaStateResponse,
   type BattleCreateConfiguration,
   type BattleCommand,
   type BattleProvider,
@@ -188,6 +192,115 @@ function assertSaveSlotId(slotId: number): asserts slotId is SaveSlotId {
   if (!isSaveSlotId(slotId)) {
     throw new BattleProviderError("Save slot must be between 1 and 5.", "adapter");
   }
+}
+
+function isBattleSize(value: unknown): value is 1 | 2 | 3 {
+  return value === 1 || value === 2 || value === 3;
+}
+
+function isArenaFormation(value: unknown): boolean {
+  return value === null
+    || value === "front-rear"
+    || value === "side-by-side"
+    || value === "one-front-two-rear"
+    || value === "two-front-one-rear"
+    || value === "all-front";
+}
+
+function isArenaNode(value: unknown): value is ArenaRunNode {
+  if (!isRecord(value)
+    || !Number.isInteger(value.nodeIndex)
+    || Number(value.nodeIndex) < 1
+    || Number(value.nodeIndex) > 12
+    || !isBattleSize(value.battleSize)
+    || !isArenaFormation(value.enemyFormation)
+    || !Array.isArray(value.enemyDefinitionIds)
+    || value.enemyDefinitionIds.length !== value.battleSize
+    || !value.enemyDefinitionIds.every((id) => typeof id === "string" && id.length > 0)
+    || typeof value.completed !== "boolean") {
+    return false;
+  }
+  return value.battleSize === 1
+    ? value.enemyFormation === null
+    : value.battleSize === 2
+      ? value.enemyFormation === "front-rear" || value.enemyFormation === "side-by-side"
+      : value.enemyFormation === "one-front-two-rear"
+        || value.enemyFormation === "two-front-one-rear"
+        || value.enemyFormation === "all-front";
+}
+
+function isArenaRun(value: unknown): value is ArenaRun {
+  return isRecord(value)
+    && typeof value.runId === "string"
+    && value.runId.length > 0
+    && (value.status === "active" || value.status === "completed")
+    && Array.isArray(value.squadDefinitionIds)
+    && value.squadDefinitionIds.length === 6
+    && new Set(value.squadDefinitionIds).size === 6
+    && value.squadDefinitionIds.every((id) => typeof id === "string" && id.length > 0)
+    && (value.currentNodeIndex === null
+      || (Number.isInteger(value.currentNodeIndex)
+        && Number(value.currentNodeIndex) >= 1
+        && Number(value.currentNodeIndex) <= 12))
+    && typeof value.createdAt === "string"
+    && (value.completedAt === null || typeof value.completedAt === "string")
+    && Array.isArray(value.nodes)
+    && value.nodes.length === 12
+    && value.nodes.every(isArenaNode)
+    && value.nodes.every((node, index) => node.nodeIndex === index + 1)
+    && (value.status === "active"
+      ? value.currentNodeIndex !== null && value.completedAt === null
+      : value.currentNodeIndex === null && value.completedAt !== null);
+}
+
+function isArenaState(value: unknown): value is ArenaStateResponse {
+  return isRecord(value)
+    && value.contractVersion === "1.0"
+    && typeof value.profileId === "string"
+    && value.profileId.length > 0
+    && isRecord(value.eligibility)
+    && typeof value.eligibility.eligible === "boolean"
+    && Number.isInteger(value.eligibility.unlockedHeroCount)
+    && Number(value.eligibility.unlockedHeroCount) >= 0
+    && value.eligibility.requiredHeroCount === 6
+    && (value.run === null || isArenaRun(value.run));
+}
+
+export async function fetchArenaState(
+  baseUrl = DEFAULT_BASE_URL,
+): Promise<ArenaStateResponse> {
+  const body = await requestAdapterJson(baseUrl, "/api/v1/arena");
+  if (!isArenaState(body)) {
+    throw new BattleProviderError("The battle service returned unsupported Arena Run data.", "adapter");
+  }
+  return body;
+}
+
+export async function createArenaRun(
+  squadDefinitionIds: readonly string[],
+  baseUrl = DEFAULT_BASE_URL,
+): Promise<ArenaStateResponse> {
+  const body = await requestAdapterJson(baseUrl, "/api/v1/arena/runs", {
+    method: "POST",
+    body: JSON.stringify({ squadDefinitionIds }),
+  });
+  if (!isArenaState(body)) {
+    throw new BattleProviderError("The battle service returned an unsupported Arena Run.", "adapter");
+  }
+  return body;
+}
+
+export async function abandonArenaRun(
+  runId: string,
+  baseUrl = DEFAULT_BASE_URL,
+): Promise<ArenaStateResponse> {
+  const body = await requestAdapterJson(baseUrl, `/api/v1/arena/runs/${encodeURIComponent(runId)}/abandon`, {
+    method: "POST",
+  });
+  if (!isArenaState(body)) {
+    throw new BattleProviderError("The battle service returned an unsupported Arena Run.", "adapter");
+  }
+  return body;
 }
 
 export async function fetchHeroRoster(
@@ -383,6 +496,29 @@ export class LiveBattleProvider implements BattleProvider {
       );
     }
     return body as unknown as VictoryCommitResponse;
+  }
+
+  async commitArenaVictory(): Promise<ArenaRunCompletionResponse> {
+    if (!this.battleId) {
+      throw new BattleProviderError("The live Arena battle session has not initialized.", "adapter");
+    }
+    const body = await requestAdapterJson(
+      this.baseUrl,
+      `/api/v1/arena/battles/${encodeURIComponent(this.battleId)}/completion`,
+      { method: "POST" },
+    );
+    const valid = isRecord(body)
+      && body.contractVersion === "1.0"
+      && body.battleId === this.battleId
+      && typeof body.alreadyCommitted === "boolean"
+      && isArenaState(body.arena);
+    if (!valid) {
+      throw new BattleProviderError(
+        "The battle service returned an unsupported Arena completion result.",
+        "adapter",
+      );
+    }
+    return body as unknown as ArenaRunCompletionResponse;
   }
 
   async submitCommand(command: BattleCommand): Promise<PresentationScript> {

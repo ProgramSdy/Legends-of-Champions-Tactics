@@ -45,7 +45,7 @@ combat.
 | 2v2/3v3 formation selection input | Team Builder; validated and resolved by Python |
 | Snapshot formation/position data | Python adapter |
 | Figure anchors, scale, stacking, UI effects, accessibility | Next.js presentation registry |
-| Five-slot selection, training unlocks, stage progress, generic reward counts | SQLite progression store / FastAPI |
+| Five-slot selection, training unlocks, stage progress, generic reward counts, Arena Run state | SQLite progression store / FastAPI |
 | Profile naming/deletion, active-battle recovery, inventory/equipment, cloud/account saves | Not implemented |
 
 The formation registry must never assign combat positions or decide legal
@@ -73,6 +73,16 @@ active-profile SQLite transaction that records the step and any one-time reward
 before returning updated progression. A slot switch invalidates completion of
 the old session. No slot/stage/profile/reward field is added to
 `BattleCreateConfiguration`.
+
+Arena Run uses separate state, create, node-launch, and completion routes. The
+client supplies only an initial six-definition owned squad, then the current
+node's squad-limited friendly team and size-valid friendly formation. The store
+owns the twelve-node schedule, enemy roster/formation, seeds, current node,
+and completion receipts. Its profile-scoped abandon route removes only the
+matching active run after the UI's explicit confirmation, so a new squad is
+never created implicitly. `/api/v1/debug/battles` is a separate non-persistent
+boundary for free-form testing and never uses the progression store; it is not
+a flag on normal player battle creation.
 
 For 2v2, the only formation IDs are `front-rear` and `side-by-side`; for 3v3,
 they are `one-front-two-rear`, `two-front-one-rear`, and `all-front`. The
@@ -113,4 +123,6 @@ adapter's seeded selection. 1v1 has no formation fields.
   active-battle persistence.
 - 2026-08-20 — Added the schema-v2 five-slot boundary, active-slot authority,
   safe legacy migration, and launch-profile guard for victory commits.
+- 2026-08-31 — Added schema-v3 profile-scoped Arena Runs and a separate
+  no-save-data debug creation boundary.
 - 2026-07-26 — Initial authoritative architecture document created.

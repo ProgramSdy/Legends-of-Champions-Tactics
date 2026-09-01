@@ -25,6 +25,16 @@ load, and confirmed-overwrite requests mutate the backend-owned active slot.
 That selection is shared by clients of one adapter/database and is never
 authoritative in a URL, browser cache, or local storage.
 
+Arena Run uses dedicated profile-bound endpoints. The browser may read run
+state, submit the initial six-member squad, launch only the current node with
+its friendly team/formation, and commit an ended friendly victory. It never
+submits node seeds, enemy teams, progression, or completion outcomes. The
+browser may also abandon a run only by posting its server-issued run ID to the
+profile-scoped abandon endpoint after explicit player confirmation; the server
+deletes the active profile's matching run and returns the new Arena state.
+separate `/api/v1/debug/battles` route accepts free-form development battles
+without reading or mutating save/progression data.
+
 ## Protocols and Interfaces
 
 The public contract is HTTP JSON, currently `contractVersion: "1.0"`.
@@ -65,6 +75,7 @@ Persistent progression reloads through an occupied slot, but there is no
 implemented live-battle resume, reconnect, handoff, backup, or recovery path.
 If the active slot changes after a structured battle launches, completion is
 rejected rather than committed to another profile.
+The same launch-profile guard applies to Arena completion.
 
 ## Security Considerations
 
@@ -81,4 +92,6 @@ requirements, not completed features.
   its UI-018/UI-019 formation fields, authority, and limitations.
 - 2026-08-20 — Added the local five-slot HTTP boundary and clarified that it is
   shared adapter state, not authentication, cloud save, or session recovery.
+- 2026-08-31 — Added typed Arena Run and isolated debug-battle routes; neither
+  weakens ordinary roster ownership validation.
 - 2026-07-26 — Initial document created.

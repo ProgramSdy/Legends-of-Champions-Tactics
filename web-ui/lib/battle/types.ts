@@ -149,6 +149,46 @@ export interface SaveSlotActionResponse {
   progression: PlayerProgression;
 }
 
+export type ArenaRunStatus = "active" | "completed";
+
+export interface ArenaEligibility {
+  eligible: boolean;
+  unlockedHeroCount: number;
+  requiredHeroCount: 6;
+}
+
+export interface ArenaRunNode {
+  nodeIndex: number;
+  battleSize: BattleSize;
+  enemyFormation: BattleFormationId | null;
+  enemyDefinitionIds: string[];
+  completed: boolean;
+}
+
+export interface ArenaRun {
+  runId: string;
+  status: ArenaRunStatus;
+  squadDefinitionIds: string[];
+  currentNodeIndex: number | null;
+  createdAt: string;
+  completedAt: string | null;
+  nodes: ArenaRunNode[];
+}
+
+export interface ArenaStateResponse {
+  contractVersion: "1.0";
+  profileId: string;
+  eligibility: ArenaEligibility;
+  run: ArenaRun | null;
+}
+
+export interface ArenaRunCompletionResponse {
+  contractVersion: "1.0";
+  battleId: string;
+  alreadyCommitted: boolean;
+  arena: ArenaStateResponse;
+}
+
 export interface StatusState {
   id: string;
   instanceId: string;

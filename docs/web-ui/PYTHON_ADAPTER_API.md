@@ -147,6 +147,15 @@ again. Completion is bound to the profile active when the structured session
 launched; a later slot switch returns 409 `activeSaveSlotChanged`. Arena or
 non-victory sessions return a structured rejection.
 
+### `POST /api/v1/arena/runs/{runId}/abandon`
+
+Requires no client-supplied profile, squad, node, or outcome data. The adapter
+looks up the active save slot, deletes only that slot's matching Arena Run, and
+returns the ordinary Arena-state envelope with `run: null`. An unknown,
+completed-for-another-slot, or non-matching run ID returns the structured
+`arenaRunNotFound` error. The UI exposes this endpoint only after the player
+chooses YES in the Give Up Current Run confirmation.
+
 ### `POST /api/v1/battles`
 
 Request:

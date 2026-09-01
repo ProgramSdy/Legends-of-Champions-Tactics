@@ -240,7 +240,7 @@ def test_legacy_default_migrates_once_without_data_loss(tmp_path: Path):
         assert connection.execute("SELECT COUNT(*) FROM profiles").fetchone()[0] == 1
         assert connection.execute(
             "SELECT value FROM metadata WHERE key = 'schema_version'"
-        ).fetchone()[0] == "2"
+        ).fetchone()[0] == "3"
 
 
 def test_impossible_legacy_migration_fails_without_reset(tmp_path: Path):

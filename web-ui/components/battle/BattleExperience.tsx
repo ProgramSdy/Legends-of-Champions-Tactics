@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BattleScreen } from "./BattleScreen";
+import { ArenaRunExperience } from "./ArenaRunExperience";
 import {
   fetchHeroRoster,
   fetchPlayerProgression,
@@ -46,6 +47,9 @@ type ActiveLaunch = {
 
 export function BattleExperience(props: BattleExperienceProps) {
   const structuredStage = resolveStructuredStage(props.selectedStageId);
+  if (props.selectedStageId === "arena") {
+    return <ArenaRunExperience countdownStepMs={props.countdownStepMs} />;
+  }
   return structuredStage
     ? <StructuredBattleExperience {...props} structuredStage={structuredStage} />
     : <BattleSession {...props} structuredStage={null} />;

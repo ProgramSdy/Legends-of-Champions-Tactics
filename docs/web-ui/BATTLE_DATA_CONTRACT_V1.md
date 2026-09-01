@@ -97,6 +97,27 @@ remains the full catalogue so a locked hero can be a fixed stage enemy.
 The client never supplies a profile ID, unlock, stage value, or reward to any
 slot action; browser state and URLs are not save-selection authority.
 
+## Arena Run and debug boundaries
+
+`GET /api/v1/arena` returns the active profile's eligibility plus its optional
+active/completed Arena Run. A run exposes the immutable six-definition squad
+and twelve ordered nodes, each with its index, battle size, server-authored
+enemy formation/team, and completion state. Server-only node seeds are never
+returned. `POST /api/v1/arena/runs` accepts only exactly six distinct owned
+`squadDefinitionIds`. `POST /api/v1/arena/runs/{runId}/nodes/{nodeIndex}/battles`
+accepts only the current node's friendly team and size-valid friendly formation.
+`POST /api/v1/arena/battles/{battleId}/completion` commits only an
+authoritative friendly victory and is idempotent.
+`POST /api/v1/arena/runs/{runId}/abandon` deletes only the active profile's
+matching Arena Run (including its nodes through the persistence relationship)
+and returns the refreshed Arena state. It does not create a replacement run;
+the client must obtain an explicit player confirmation before calling it.
+
+`POST /api/v1/debug/battles` deliberately uses the ordinary creation payload
+but is a separate no-save-data boundary: it bypasses player-roster ownership
+only for Engineering Test & Debugging, while retaining adapter battle
+validation and never reading or writing progression.
+
 ## Stable identifiers
 
 Do not use display names or array indices as identity.

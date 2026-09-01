@@ -2,6 +2,7 @@
 
 import { useState, type CSSProperties, type KeyboardEvent } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   STAGE_DEFINITIONS,
@@ -59,6 +60,20 @@ export function StageSelectionScreen({ debugHotspots = false }: StageSelectionSc
         className={`stage-map-frame${debugHotspots ? " debug-hotspots" : ""}`}
         data-coordinate-system="map-percent"
       >
+        <nav className="stage-map-navigation" aria-label="Stage Map navigation">
+          <Link className="stage-map-route title-route" href="/" aria-label="Return to Game Start">
+            <span aria-hidden="true">⌂</span>
+            <strong>Game Start</strong>
+          </Link>
+          <Link
+            className="stage-map-route debug-route"
+            href="/debug"
+            aria-label="Open Engineering Test and Debugging"
+          >
+            <strong>Engineering Test &amp; Debugging</strong>
+            <span aria-hidden="true">⚒</span>
+          </Link>
+        </nav>
         <Image
           className="stage-map-image"
           src={STAGE_MAP}

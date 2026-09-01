@@ -69,6 +69,10 @@ _To be documented._
   lock, desaturation, glow, cursor, or completion/progression treatment.
 - Development-only hotspot debug may expose enabled-stage boundaries for
   geometry tuning. It is off by default and unavailable in production.
+- Stage Map navigation controls sit above map art without changing hotspot
+  geometry: a restrained home/title icon at upper left and a semi-transparent
+  spanner icon for Engineering Test & Debugging at upper right. Both retain
+  visible focus and dark-fantasy forged-metal styling.
 
 ### Battlefield HP HUD
 
@@ -181,9 +185,13 @@ _To be documented._
   figures are red. An acting figure retains its side color and adds the normal
   pulse animation; purple is not an active-aura color.
 - While a selected skill still requires targets, every valid battlefield target
-  uses a crosshair cursor, regardless of side. The cursor returns to normal
+  uses a crosshair cursor, regardless of side. The cursor and gold selection
+  glow apply only while its bounded target control is hovered or focused—not
+  the larger transparent figure layout wrapper. The cursor returns to normal
   once the required maximum target count is selected; multi-target skills keep
-  the crosshair until all targets are selected.
+  the crosshair until all targets are selected. In a genuine overlap of two
+  target controls, the approved higher visual-depth figure receives pointer
+  input.
 - Desktop Team Builder and Battle Asset Registry scrolling uses a finite,
   focusable region with a stable right-side scrollbar gutter when overflowing.
 - Battle entry is a non-interactive overlay on the composed battlefield. The
@@ -299,3 +307,6 @@ _To be documented._
 - 2026-08-29 — Replaced permanent battlefield health/status panels with the
   event-only HP HUD: 300ms lead/trailing windows, a left-aligned 10px name,
   and no battlefield status-icon row.
+- 2026-08-30 — Made figure layout wrappers pointer-transparent and retained
+  pointer interaction only on the bounded target control, so far 3v3 figures
+  remain selectable outside genuine target-control overlaps.
