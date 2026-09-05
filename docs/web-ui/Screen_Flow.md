@@ -74,21 +74,22 @@ remain deferred.
 `/stages` is the presentation-only Valley of Champions selector between the
 title scene and Team Builder. It renders the one owner-supplied map at
 `/game-images/Stage_Map/valley_of_champions.png` in an intrinsic `1672 / 941`
-map container. Stage geometry is percentage-based inside that same container,
-not the viewport.
+map canvas. Stage geometry is percentage-based inside that canvas, not the
+viewport, so controls remain aligned when full-screen presentation crops map
+edges.
 
 Arena, Warrior's Barrack, and Paladin's Altar are currently enabled. Each uses the same
 map-bound pointer hover and keyboard-focus treatment, and click, Enter, or Space
 navigation. Arena opens `/game?stage=arena`. Warrior's Barrack opens
 `/game?stage=warriors-barrack` through a percentage-based hotspot over the
-left-side red-banner fortress. Mage's Tower, Rogue's Forest, Paladin's Altar,
+upper-left red-banner fortress. Mage's Tower, Rogue's Forest, Paladin's Altar,
 and Priest's Cathedral remain inactive configuration metadata only; they render
 no controls, labels, effects, or state treatment. Local development may add
 `?debugHotspots=1` to outline enabled-stage geometry; normal and production
 presentation leave it off.
 
 UI-020 supersedes the preceding inactive-Altar sentence: Paladin's Altar opens
-`/game?stage=paladins-altar` through the bright right-middle altar hotspot.
+`/game?stage=paladins-altar` through the bright upper-right altar hotspot.
 Mage's Tower, Rogue's Forest, and Priest's Cathedral remain inactive.
 
 The upper-left title control returns to `/`; the upper-right Engineering Test

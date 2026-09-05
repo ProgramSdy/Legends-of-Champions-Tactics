@@ -189,7 +189,7 @@ export function TeamBuilder(props: TeamBuilderProps) {
     : 0;
   const selectStructuredBattle = props.mode === "structured" ? props.onSelectBattle : undefined;
   const selectedStage = resolveEnabledStage(
-    structuredStage?.stageId ?? (props.mode === "arena" ? props.selectedStageId : undefined),
+    structuredStage?.stageId ?? (props.mode === undefined || props.mode === "arena" ? props.selectedStageId : undefined),
   );
   const builderRoster = useMemo(() => {
     const availableIds = new Set(props.availableDefinitionIds ?? roster.map((hero) => hero.definitionId));

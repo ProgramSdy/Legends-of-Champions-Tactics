@@ -159,8 +159,10 @@ persisted schedule. Every run contains a server-seeded shuffle of exactly two
 server-authored and
 stable on retry/reload; repeated enemy definitions are allowed. Only the next
 unresolved node may launch, and only its authoritative friendly victory
-advances it once. A completed run remains visible until the player explicitly
-starts a New Arena Run. Arena grants no rewards, relics, injuries, shops,
+advances it once. After acknowledging the completion message, the player
+returns to the Stage Map. Re-entering Arena opens the intentional six-hero
+squad builder for a replacement run; the completed run is retained until that
+new squad is confirmed. Arena grants no rewards, relics, injuries, shops,
 branches, elites, bosses, or difficulty changes.
 
 ## Open Product Decisions

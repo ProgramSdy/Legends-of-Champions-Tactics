@@ -53,14 +53,14 @@ _To be documented._
 ### Stage Selection
 
 - `/stages` presents the owner-supplied Valley of Champions map as a dominant,
-  undistorted 16:9 visual. The map and its overlays share an intrinsic map
-  frame; stage coordinates must use percentages of that frame rather than
-  viewport pixels.
+  undistorted 16:9 visual. The full-viewport frame clips a centred intrinsic
+  map canvas; stage coordinates use percentages of that canvas rather than
+  viewport pixels, so hover regions remain aligned when edge scenery crops.
 - Arena, Warrior's Barrack, and Paladin's Altar are enabled locations. Their hover and focus
   state uses a modest warm gold/orange radial illumination, a soft pulse,
   visible focus outline, and compact frontend-rendered stage-name / `Available`
-  label. Warrior's Barrack geometry covers the left-side red-banner fortress;
-  Paladin's Altar covers the bright right-middle altar landmark.
+  label. Warrior's Barrack geometry covers the upper-left red-banner fortress;
+  Paladin's Altar covers the bright upper-right altar landmark.
   The treatment remains an overlay and must not alter the source map.
 - The crossed-swords cursor is scoped to enabled stage controls and falls back
   to a normal crosshair when a browser cannot load the cursor image. It must not

@@ -199,7 +199,7 @@ describe("UI-021 stage-preview focus boundary", () => {
     const barrack = enabled.find((stage) => stage.id === "warriors-barrack")!;
     const altar = enabled.find((stage) => stage.id === "paladins-altar")!;
     expect(barrack.geometry).toEqual({ leftPercent: 11.5, topPercent: 13.2, widthPercent: 22.6, heightPercent: 21.8 });
-    expect(altar.geometry).toEqual({ leftPercent: 81.2, topPercent: 34.8, widthPercent: 13.8, heightPercent: 22.7 });
+    expect(altar.geometry).toEqual({ leftPercent: 70.5, topPercent: 8.5, widthPercent: 20, heightPercent: 24 });
     expect(barrack.previewFocus).not.toEqual(arena.previewFocus);
     expect(altar.previewFocus).not.toEqual(arena.previewFocus);
     expect(barrack.previewFocus).not.toEqual(altar.previewFocus);
@@ -208,10 +208,10 @@ describe("UI-021 stage-preview focus boundary", () => {
   it.each([
     ["arena", "50% 51.5%", "0%"],
     ["warriors-barrack", "22.8% 23.5%", "72%"],
-    ["paladins-altar", "87.2% 43.2%", "-46%"],
+    ["paladins-altar", "80.5% 20.5%", "-42%"],
   ])("passes the %s preview focus into responsive crop hooks", (stageId, objectPosition, offsetX) => {
-    render(<TeamBuilder roster={roster} selectedStageId={stageId} onStart={vi.fn()} />);
-    const image = document.querySelector<HTMLElement>(".current-stage-map")!;
+    const { container } = render(<TeamBuilder roster={roster} selectedStageId={stageId} onStart={vi.fn()} />);
+    const image = container.querySelector<HTMLElement>(".current-stage-map")!;
     expect(image).toHaveStyle({ objectPosition });
     expect(image.style.getPropertyValue("--stage-preview-scale")).toBe("1.85");
     expect(image.style.getPropertyValue("--stage-preview-offset-x")).toBe(offsetX);

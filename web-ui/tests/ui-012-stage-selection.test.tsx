@@ -5,6 +5,7 @@ import StartupPage from "@/app/page";
 import StagesPage from "@/app/stages/page";
 import { StageSelectionScreen } from "@/components/stages/StageSelectionScreen";
 import { STAGE_DEFINITIONS } from "@/components/stages/stage-config";
+import { readFileSync } from "node:fs";
 
 const push = vi.fn();
 
@@ -28,7 +29,14 @@ describe("UI-012 stage-selection flow", () => {
     const map = document.querySelector(".stage-map-image");
     expect(map).toHaveAttribute("src", "/game-images/Stage_Map/valley_of_champions.png");
     expect(document.querySelectorAll(".stage-map-image")).toHaveLength(1);
-    expect(document.querySelector(".stage-map-frame")).toHaveAttribute("data-coordinate-system", "map-percent");
+    expect(document.querySelector(".stage-map-canvas")).toHaveAttribute("data-coordinate-system", "map-percent");
+  });
+
+  it("fills the Stage Map viewport with proportion-preserving cover art", () => {
+    const css = readFileSync("app/globals.css", "utf8");
+    expect(css).toMatch(/\.stage-map-frame\s*\{[^}]*width:\s*100vw[^}]*height:\s*100svh/);
+    expect(css).toMatch(/\.stage-map-canvas\s*\{[^}]*width:\s*max\(100vw,\s*177\.6833svh\)[^}]*aspect-ratio:\s*1672\s*\/\s*941/);
+    expect(css).toMatch(/\.stage-map-image\s*\{[^}]*object-fit:\s*cover/);
   });
 
   it("defines the extensible six-location roster with only the three approved locations enabled", () => {

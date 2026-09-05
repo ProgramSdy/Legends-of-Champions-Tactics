@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from "@testing-library/react";
+import { readFileSync } from "node:fs";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ArenaRunExperience } from "@/components/battle/ArenaRunExperience";
@@ -171,6 +172,24 @@ describe("UI-023 Arena Run frontend authority", () => {
     expect(screen.queryByLabelText(/seed/i)).not.toBeInTheDocument();
   });
 
+  it("uses a square frame for each Arena squad portrait", async () => {
+    installArenaFetch(arenaState());
+    render(<ArenaRunExperience />);
+    await screen.findAllByRole("button", { name: /add to arena squad/i });
+
+    expect(document.querySelectorAll(".arena-squad-portrait")).toHaveLength(6);
+    const css = readFileSync("app/globals.css", "utf8");
+    expect(css).toContain(".arena-squad-grid>button{grid-template-rows:auto auto auto}");
+    expect(css).toContain(".arena-squad-portrait{width:100%;aspect-ratio:1}");
+  });
+
+  it("keeps the Arena Run hub vertically scrollable like the Team Builder", () => {
+    const css = readFileSync("app/globals.css", "utf8");
+    expect(css).toContain(".arena-run-hub{height:100dvh;min-height:0;");
+    expect(css).toContain("overflow-y:auto;scrollbar-gutter:stable;overscroll-behavior-y:contain");
+    expect(css).toContain(".arena-run-hub::-webkit-scrollbar{width:12px}");
+  });
+
   it("launches only the current node and advances from the authoritative completion response", async () => {
     const initial = activeRun();
     const advanced = structuredClone(initial);
@@ -218,6 +237,43 @@ describe("UI-023 Arena Run frontend authority", () => {
     expect(calls.filter((call) => call.path.endsWith("/completion"))).toHaveLength(1);
   });
 
+  it("acknowledges the twelfth victory with OK and returns to the Stage Map", async () => {
+    const initial = activeRun();
+    const completed = structuredClone(initial);
+    completed.status = "completed";
+    completed.currentNodeIndex = null;
+    completed.completedAt = "2026-08-31T01:00:00Z";
+    completed.nodes.forEach((node) => { node.completed = true; });
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const path = String(input);
+      if (path.endsWith("/api/v1/arena") && !init?.method) return json(arenaState({ run: initial }));
+      if (path.endsWith("/api/v1/heroes")) return json({ contractVersion: "1.0", heroes: roster });
+      if (path.endsWith("/api/v1/progression")) return json(progression());
+      if (path.endsWith("/api/v1/arena/runs/arena.run.1/nodes/1/battles")) {
+        const snapshot = createFormatFixture(2);
+        snapshot.phase = "ended";
+        snapshot.outcome = { kind: "victory", winningSideId: "friendly" };
+        return json({ contractVersion: "1.0", battleId: "arena.battle.12", revision: 1, data: { events: [], snapshot } });
+      }
+      if (path.endsWith("/api/v1/arena/battles/arena.battle.12/completion")) {
+        return json({ contractVersion: "1.0", battleId: "arena.battle.12", alreadyCommitted: false, arena: arenaState({ run: completed }) });
+      }
+      throw new Error(`Unexpected request ${path}`);
+    });
+
+    render(<ArenaRunExperience countdownStepMs={0} />);
+    const user = userEvent.setup();
+    await screen.findByRole("heading", { name: "Your Team" });
+    await user.click(screen.getAllByRole("button", { name: /Assign .* to your Hero 1/i })[0]);
+    await user.click(screen.getByRole("button", { name: "Select your Hero 2" }));
+    await user.click(screen.getAllByRole("button", { name: /Assign .* to your Hero 2/i })[1]);
+    await user.click(screen.getByRole("button", { name: "ENTER BATTLE" }));
+    await user.click(await screen.findByRole("button", { name: "CONTINUE ARENA RUN" }));
+    expect(await screen.findByRole("heading", { name: "Twelve victories secured" })).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "OK" }));
+    expect(routerReplace).toHaveBeenCalledWith("/stages");
+  });
+
   it("only abandons an Arena Run after YES, then returns to the Stage Map", async () => {
     const calls: string[] = [];
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
@@ -245,7 +301,7 @@ describe("UI-023 Arena Run frontend authority", () => {
     expect(routerReplace).toHaveBeenCalledWith("/stages");
   });
 
-  it("accepts the completed-run null current node and requires an intentional new-run action", async () => {
+  it("opens the six-hero squad builder when the player re-enters Arena after a completed run", async () => {
     const completed = activeRun();
     completed.status = "completed";
     completed.currentNodeIndex = null;
@@ -254,8 +310,9 @@ describe("UI-023 Arena Run frontend authority", () => {
     installArenaFetch(arenaState({ run: completed }));
 
     render(<ArenaRunExperience />);
-    expect(await screen.findByRole("heading", { name: "Twelve victories secured" })).toBeVisible();
-    expect(screen.getByRole("button", { name: "NEW ARENA RUN" })).toBeEnabled();
+    expect(await screen.findByRole("heading", { name: "Build your six-hero squad" })).toBeVisible();
+    expect(screen.getAllByRole("button", { name: /add to arena squad/i })).toHaveLength(6);
+    expect(screen.queryByRole("heading", { name: "Twelve victories secured" })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /Battle \d+ ·/ })).not.toBeInTheDocument();
   });
 });

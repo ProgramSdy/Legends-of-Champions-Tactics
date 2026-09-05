@@ -107,7 +107,7 @@ export function ArenaRunExperience({ countdownStepMs = 1000 }: { countdownStepMs
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
   const [busy, setBusy] = useState(false);
-  const [newRunRequested, setNewRunRequested] = useState(false);
+  const [completionAcknowledgementOpen, setCompletionAcknowledgementOpen] = useState(false);
   const [activeBattle, setActiveBattle] = useState<ActiveArenaBattle | null>(null);
   const [sessionKey, setSessionKey] = useState(0);
   const [giveUpConfirmationOpen, setGiveUpConfirmationOpen] = useState(false);
@@ -159,7 +159,6 @@ export function ArenaRunExperience({ countdownStepMs = 1000 }: { countdownStepMs
     try {
       const nextArena = await createArenaRun(squadDefinitionIds);
       setResources((current) => current ? { ...current, arena: nextArena } : current);
-      setNewRunRequested(false);
     } catch (reason: unknown) {
       setError(reason instanceof Error ? reason.message : "Unable to create Arena Run.");
     } finally {
@@ -186,6 +185,7 @@ export function ArenaRunExperience({ countdownStepMs = 1000 }: { countdownStepMs
       return;
     }
     const completion = await provider.commitArenaVictory();
+    setCompletionAcknowledgementOpen(completion.arena.run?.status === "completed");
     setResources((current) => current ? { ...current, arena: completion.arena } : current);
     setActiveBattle(null);
   };
@@ -221,8 +221,9 @@ export function ArenaRunExperience({ countdownStepMs = 1000 }: { countdownStepMs
     />
   );
 
-  const showSquadBuilder = (!run && arena.eligibility.eligible)
-    || (run?.status === "completed" && newRunRequested);
+  const showCompletionAcknowledgement = run?.status === "completed" && completionAcknowledgementOpen;
+  const showSquadBuilder = arena.eligibility.eligible
+    && (!run || (run.status === "completed" && !showCompletionAcknowledgement));
 
   if (run?.status === "active" && currentNode) return (
     <>
@@ -273,14 +274,14 @@ export function ArenaRunExperience({ countdownStepMs = 1000 }: { countdownStepMs
           <strong>{arena.eligibility.unlockedHeroCount} / {arena.eligibility.requiredHeroCount}</strong>
           <p>Continue structured training to unlock enough distinct registered heroes for a fixed Arena squad.</p>
         </section>
-      ) : showSquadBuilder ? (
-        <ArenaSquadBuilder roster={unlockedRoster} busy={busy} onConfirm={startRun} />
-      ) : run?.status === "completed" ? (
+      ) : showCompletionAcknowledgement ? (
             <section className="arena-completed" aria-labelledby="arena-completed-heading">
               <small>RUN COMPLETE</small><h2 id="arena-completed-heading">Twelve victories secured</h2>
-              <p>This completed run remains recorded in the active save slot.</p>
-              <button type="button" onClick={() => setNewRunRequested(true)}>NEW ARENA RUN</button>
+              <p>Your completed run is safely recorded in the active save slot.</p>
+              <button type="button" onClick={() => router.replace("/stages")}>OK</button>
             </section>
+      ) : showSquadBuilder ? (
+        <ArenaSquadBuilder roster={unlockedRoster} busy={busy} onConfirm={startRun} />
       ) : <section className="arena-inline-error" role="alert">The active run has no matching current node.</section>}
     </div>
   );
