@@ -42,12 +42,12 @@ function createCommandId(): string {
   return `cmd.${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
-function TeamPanel({ side, heroes, activeId }: { side: "friendly" | "enemy"; heroes: Array<CombatantState | null>; activeId: string | null }) {
+function TeamPanel({ side, heroes, activeId, highlightedTargetIds }: { side: "friendly" | "enemy"; heroes: Array<CombatantState | null>; activeId: string | null; highlightedTargetIds: readonly string[] }) {
   return (
     <aside className={`team-panel ${side}`} aria-label={`${side === "friendly" ? "Your" : "Enemy"} team`}>
       <header><span>{side === "friendly" ? "◈" : "◆"}</span>{side === "friendly" ? "YOUR TEAM" : "ENEMY TEAM"}<small>{heroes.filter(Boolean).length}/3</small></header>
       <div className="team-cards">
-        {heroes.map((hero, index) => hero ? <HeroCard key={hero.id} hero={hero} active={hero.id === activeId} /> : <div className="empty-slot" key={`empty-${index}`}><span>◇</span><small>OPEN SLOT</small></div>)}
+        {heroes.map((hero, index) => hero ? <HeroCard key={hero.id} hero={hero} active={hero.id === activeId} targetHighlighted={highlightedTargetIds.includes(hero.id)} /> : <div className="empty-slot" key={`empty-${index}`}><span>◇</span><small>OPEN SLOT</small></div>)}
       </div>
       <div className="team-bonus"><strong>TEAM BOND</strong><span>{side === "friendly" ? "☽ +5% Vitality" : "✦ +5% Spell Power"}</span><span>{side === "friendly" ? "✧ +3% Resolve" : "◆ +5% Ward"}</span></div>
     </aside>
@@ -74,11 +74,11 @@ function targetEffectFor(event: BattleEvent | null, combatantId: string, isPries
   return null;
 }
 
-function BattlefieldFigure({ hero, active, event, hpEvent, healingCasterEvent, eventSourceSide, eventSourceIsPriest, selectable, targetSelectionPending, selected, onSelect, formationScale }: {
+function BattlefieldFigure({ hero, active, event, hpEvent, healingCasterEvent, eventSourceSide, eventSourceIsPriest, selectable, targetSelectionPending, selected, onSelect, onTargetHover, formationScale }: {
   hero: CombatantState; active: boolean; event: BattleEvent | null; eventSourceSide: SideId | null;
   hpEvent: BattleEvent | null;
   healingCasterEvent: BattleEvent | null; eventSourceIsPriest: boolean;
-  selectable: boolean; targetSelectionPending: boolean; selected: boolean; onSelect: () => void; formationScale: number;
+  selectable: boolean; targetSelectionPending: boolean; selected: boolean; onSelect: () => void; onTargetHover: (combatantId: string | null) => void; formationScale: number;
 }) {
   const [figureFrameHeight, setFigureFrameHeight] = useState(FALLBACK_FIGURE_FRAME_HEIGHT);
   const eventTarget = event?.targetId === hero.id;
@@ -108,6 +108,10 @@ function BattlefieldFigure({ hero, active, event, hpEvent, healingCasterEvent, e
         </div>
       </div>}
       <button className={`battle-target-control ${targetSelectionPending ? "target-selection-pending" : ""}`} type="button" disabled={!selectable} onClick={onSelect}
+        onMouseEnter={() => { if (selectable) onTargetHover(hero.id); }}
+        onMouseLeave={() => onTargetHover(null)}
+        onFocus={() => { if (selectable) onTargetHover(hero.id); }}
+        onBlur={() => onTargetHover(null)}
         onKeyDown={(event) => {
           if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
@@ -140,20 +144,23 @@ interface BattleScreenProps {
   onBattleComplete?: (outcome: BattleOutcome) => void | Promise<void>;
   completionActionLabel?: (outcome: BattleOutcome) => string;
   onReturnToBuilder?: () => void;
+  onResign?: () => void;
 }
 
 type EntryCountdown = 3 | 2 | 1 | "start" | null;
 
-export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundImage, entryCountdownStepMs, onBattleComplete, completionActionLabel, onReturnToBuilder }: BattleScreenProps) {
+export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundImage, entryCountdownStepMs, onBattleComplete, completionActionLabel, onReturnToBuilder, onResign }: BattleScreenProps) {
   const mountedBackground = backgroundImage ?? BATTLE_BACKGROUND;
   const { snapshot, revision, activeEvent, activeHpEvent, activeHealingCasterEvent, log, setLog, speed, setSpeed, isPlaying, isOpening, hasPendingOpening, canSkip, error, errorKind, present, playOpening, skip, retry } = usePresentationQueue(provider);
   const [entryCountdown, setEntryCountdown] = useState<EntryCountdown>(entryCountdownStepMs === undefined ? null : 3);
   const [selectedSkill, setSelectedSkill] = useState<string | null>(null);
   const [selectedTargets, setSelectedTargets] = useState<string[]>([]);
+  const [hoveredTargetId, setHoveredTargetId] = useState<string | null>(null);
   const [autoBattle, setAutoBattle] = useState(false);
   const [fullscreenError, setFullscreenError] = useState<string | null>(null);
   const [completionPending, setCompletionPending] = useState(false);
   const [completionError, setCompletionError] = useState<string | null>(null);
+  const [resignConfirmationOpen, setResignConfirmationOpen] = useState(false);
   const logListRef = useRef<HTMLOListElement>(null);
   const completionButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -192,6 +199,7 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
     ? snapshot?.legalActions.find((action) => action.skillId === selectedSkill)
     : undefined;
   const targetSelectionPending = Boolean(legal && selectedTargets.length < legal.maximumTargets);
+  const highlightedTargetIds = [...selectedTargets, ...(legal && hoveredTargetId ? [hoveredTargetId] : [])];
   const sideHeroes = (side: "friendly" | "enemy") => {
     const definition = snapshot?.sides.find((item) => item.id === side);
     const items = definition?.combatantIds.map((id) => combatants[id]) ?? [];
@@ -284,7 +292,7 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
       </header>
 
       <section className="battle-layout">
-        <TeamPanel side="friendly" heroes={sideHeroes("friendly")} activeId={snapshot.activeCombatantId} />
+        <TeamPanel side="friendly" heroes={sideHeroes("friendly")} activeId={snapshot.activeCombatantId} highlightedTargetIds={highlightedTargetIds} />
         <section
           className={`battlefield ${activeEvent ? "event-active" : ""}`}
           aria-label="Battlefield"
@@ -303,12 +311,12 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
               targetSelectionPending={acceptsCommands && Boolean(legal?.validTargetIds.includes(hero.id)) && !isPlaying && targetSelectionPending}
               selected={selectedTargets.includes(hero.id)}
               formationScale={position.scale}
-              onSelect={() => toggleTarget(hero.id)} />
+              onSelect={() => toggleTarget(hero.id)} onTargetHover={setHoveredTargetId} />
             </div>;
           })}
           <div className="battlefield-caption"><span>THE FALLEN CITADEL</span><small>{getBattleFormat(snapshot).toUpperCase()} FORMATION</small></div>
         </section>
-        <TeamPanel side="enemy" heroes={sideHeroes("enemy")} activeId={snapshot.activeCombatantId} />
+        <TeamPanel side="enemy" heroes={sideHeroes("enemy")} activeId={snapshot.activeCombatantId} highlightedTargetIds={highlightedTargetIds} />
       </section>
 
       <section className="command-deck">
@@ -349,6 +357,7 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
         </div>}
         <label className="toggle">AUTO BATTLE <input type="checkbox" checked={autoBattle} disabled={entryLocked || isPlaying} onChange={(event) => setAutoBattle(event.target.checked)} /><span /></label>
         {!active ? <button className="end-turn" disabled>BATTLE ENDED</button> : isPlaying ? <button className="end-turn" onClick={skip} disabled={!canSkip || isOpening}>{isOpening ? "OPENING BATTLE…" : canSkip ? "SKIP EFFECT" : "RESOLVING…"}</button> : !acceptsCommands ? <button className="end-turn" disabled>{entryLocked ? "BATTLE OPENING" : "AUTOMATIC TURN"}</button> : <button className="end-turn" onClick={triggerSkill} disabled={!selectedSkill || !legal || selectedTargets.length < legal.minimumTargets || selectedTargets.length > legal.maximumTargets}>{selectedSkill ? "CAST SKILL" : "SELECT SKILL"}</button>}
+        {onResign ? <button type="button" className="resign-battle" onClick={() => setResignConfirmationOpen(true)}>RESIGN</button> : null}
       </footer>
       {(error || fullscreenError) && <div className={`ui-error ${errorKind ?? ""}`} role="alert"><strong>{errorKind === "stale" ? "STATE RECONCILED" : errorKind === "rejected" ? "COMMAND REJECTED" : "BATTLE NOTICE"}</strong><span>{error ?? fullscreenError}</span></div>}
       {entryCountdown !== null && (
@@ -385,6 +394,19 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
           </section>
         </div>
       )}
+      {resignConfirmationOpen && onResign ? (
+        <div className="battle-resign-backdrop" role="presentation">
+          <section className="battle-resign-dialog" role="dialog" aria-modal="true" aria-labelledby="battle-resign-heading">
+            <small>RESIGN BATTLE</small>
+            <h2 id="battle-resign-heading">Give up this battle?</h2>
+            <p>You will return to the Team Builder. This battle will not count as a victory.</p>
+            <div>
+              <button type="button" onClick={onResign}>YES</button>
+              <button type="button" onClick={() => setResignConfirmationOpen(false)}>NO</button>
+            </div>
+          </section>
+        </div>
+      ) : null}
       {mode === "mock" && <p className="fixture-note">FIXTURE PREVIEW · Outcomes are scripted; Python remains gameplay authority.</p>}
     </main>
   );

@@ -965,9 +965,10 @@ class ProgressionStore:
     @staticmethod
     def _generate_arena_nodes(schedule_seed: int) -> list[dict[str, Any]]:
         generator = random.Random(schedule_seed)
+        battle_sizes = [1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3]
+        generator.shuffle(battle_sizes)
         nodes: list[dict[str, Any]] = []
-        for node_index in range(1, ARENA_NODE_COUNT + 1):
-            size = generator.choices((1, 2, 3), weights=(20, 50, 30), k=1)[0]
+        for node_index, size in enumerate(battle_sizes, start=1):
             if size == 1:
                 formation = None
                 pools = (tuple(sorted(ALL_HERO_IDS)),)

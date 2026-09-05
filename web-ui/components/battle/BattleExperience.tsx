@@ -357,6 +357,7 @@ function BattleSession({
       entryCountdownStepMs={countdownStepMs}
       completionActionLabel={completionLabel}
       onBattleComplete={completeBattle}
+      onResign={closeLiveBattle}
     />
   );
 }

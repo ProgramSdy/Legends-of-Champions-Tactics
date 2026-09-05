@@ -14,8 +14,9 @@ six-hero owned squad, see backend-authored upcoming node/enemy data, launch
 only the current node, and advance exactly once on authoritative friendly
 victory.
 
-SQLite schema v3 stores the per-profile run, immutable squad, seeded 20%/50%/30%
-node schedule, enemy configuration, and completion receipts. Normal Arena and
+SQLite schema v3 stores the per-profile run, immutable squad, server-seeded
+shuffled 2/6/4 battle-size pool (two 1v1, six 2v2, four 3v3), enemy
+configuration, and completion receipts. Normal Arena and
 training ownership checks remain intact; debug does not read or write player
 data. All Arena enemy seeds/progress/enemy teams stay server-owned.
 

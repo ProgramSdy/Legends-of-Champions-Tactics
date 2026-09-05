@@ -154,8 +154,9 @@ battle recovery remain unimplemented.
 Arena Run is the implemented limited meta-game extension. Each occupied save
 slot can retain one active or completed twelve-node run. Starting one requires
 six distinct owned definitions and atomically locks the ordered squad plus a
-persisted schedule. Node sizes are sampled server-side at 20% 1v1, 50% 2v2,
-and 30% 3v3. Enemy composition, formation, and seed are server-authored and
+persisted schedule. Every run contains a server-seeded shuffle of exactly two
+1v1, six 2v2, and four 3v3 nodes. Enemy composition, formation, and seed are
+server-authored and
 stable on retry/reload; repeated enemy definitions are allowed. Only the next
 unresolved node may launch, and only its authoritative friendly victory
 advances it once. A completed run remains visible until the player explicitly

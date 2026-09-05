@@ -140,16 +140,20 @@ def test_abandon_current_run_deletes_only_the_active_profiles_run(arena_client):
     assert missing.json()["detail"]["code"] == "arenaRunNotFound"
 
 
-def test_per_node_size_generator_tracks_requested_probability_distribution():
-    totals = {1: 0, 2: 0, 3: 0}
-    for seed in range(500):
-        for node in ProgressionStore._generate_arena_nodes(seed):
-            totals[node["battleSize"]] += 1
+def test_arena_size_pool_is_fixed_shuffled_and_seeded():
+    first = ProgressionStore._generate_arena_nodes(91)
+    repeated = ProgressionStore._generate_arena_nodes(91)
+    sequences = {
+        tuple(node["battleSize"] for node in ProgressionStore._generate_arena_nodes(seed))
+        for seed in range(20)
+    }
 
-    total = sum(totals.values())
-    assert totals[1] / total == pytest.approx(0.20, abs=0.025)
-    assert totals[2] / total == pytest.approx(0.50, abs=0.025)
-    assert totals[3] / total == pytest.approx(0.30, abs=0.025)
+    assert len(first) == ARENA_NODE_COUNT
+    assert [node["battleSize"] for node in first].count(1) == 2
+    assert [node["battleSize"] for node in first].count(2) == 6
+    assert [node["battleSize"] for node in first].count(3) == 4
+    assert first == repeated
+    assert len(sequences) > 1
     assert any(
         len(node["enemyDefinitionIds"]) != len(set(node["enemyDefinitionIds"]))
         for seed in range(100)

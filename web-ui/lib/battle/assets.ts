@@ -1,4 +1,4 @@
-export type AssetKind = "portrait" | "figure" | "thumbnail" | "class" | "skill" | "status" | "effect";
+export type AssetKind = "portrait" | "sidebarPortrait" | "figure" | "thumbnail" | "class" | "skill" | "status" | "effect";
 
 export interface AssetRequest {
   kind: AssetKind;
@@ -29,17 +29,17 @@ const heroClasses: Record<string, string> = {
   "enemy.andonidas": "Mage",
 };
 
-export const heroPresentation: Record<string, { className: string; tone: string; assets: Partial<Record<"portrait" | "figure" | "thumbnail" | "class", string>>; placeholder: boolean; animation?: { idle: string; active: string; defeated: string } }> = {
-  "hero.paladin.protection": { className: "Paladin", tone: "amber", assets: { figure: "/game-images/heroes/Paladin-Protection/figures/Paladin_Protection.png" }, placeholder: false },
-  "hero.paladin.retribution": { className: "Paladin", tone: "amber", assets: { figure: "/game-images/heroes/Paladin-Retribution/figures/Paladin_Retribution.png" }, placeholder: false },
-  "hero.paladin.holy": { className: "Paladin", tone: "amber", assets: { figure: "/game-images/heroes/Paladin-Holy/figures/Paladin_Holy.png" }, placeholder: false },
-  "hero.priest.comprehensiveness": { className: "Priest", tone: "blue", assets: { figure: "/game-images/heroes/Priest-Comprehensiveness/figures/Priest_Comprehensiveness.png" }, placeholder: false },
-  "hero.priest.discipline": { className: "Priest", tone: "blue", assets: { figure: "/game-images/heroes/Priest-Discipline/figures/Priest_Discipline.png" }, placeholder: false },
-  "hero.mage.comprehensiveness": { className: "Mage", tone: "blue", assets: { figure: "/game-images/heroes/Mage-Comprehensiveness/figures/Mage_Comprehensiveness.png" }, placeholder: false },
-  "hero.warrior.defence": { className: "Warrior", tone: "amber", assets: { portrait: "/game-images/heroes/Warrior-Defence/portraits/Avatar_Warrior_Defence.png", figure: "/game-images/heroes/Warrior-Defence/figures/Warrior_Defence.png" }, placeholder: false },
-  "hero.warrior.weapon_master": { className: "Warrior", tone: "amber", assets: { class: classAssets.Warrior, portrait: "/game-images/heroes/Warrior-Weapon-Master/portraits/Avatar_Warrior_Weapon_Master.png", figure: "/game-images/heroes/Warrior-Weapon-Master/figures/Warrior_Weapon_Master.png" }, placeholder: false, animation: { idle: "idle", active: "weapon-ready", defeated: "defeated" } },
-  "hero.warrior.berserker": { className: "Warrior", tone: "red", assets: { figure: "/game-images/heroes/Warrior-Berserker/figures/Warrior_Berserker.png" }, placeholder: false },
-  "hero.rogue.comprehensiveness": { className: "Rogue", tone: "violet", assets: { figure: "/game-images/heroes/Rogue-Comprehensiveness/figures/Rogue_Comprehensiveness.png" }, placeholder: false, animation: { idle: "idle", active: "shadow-ready", defeated: "defeated" } },
+export const heroPresentation: Record<string, { className: string; tone: string; assets: Partial<Record<"portrait" | "sidebarPortrait" | "figure" | "thumbnail" | "class", string>>; placeholder: boolean; animation?: { idle: string; active: string; defeated: string } }> = {
+  "hero.paladin.protection": { className: "Paladin", tone: "amber", assets: { portrait: "/game-images/heroes/Paladin-Protection/portraits/Avatar_Paladin_Protection.png", sidebarPortrait: "/game-images/heroes/Paladin-Protection/portraits_sidebar/Avatar_Paladin_Protection_Sidebar.png", figure: "/game-images/heroes/Paladin-Protection/figures/Paladin_Protection.png" }, placeholder: false },
+  "hero.paladin.retribution": { className: "Paladin", tone: "amber", assets: { portrait: "/game-images/heroes/Paladin-Retribution/portraits/Avatar_Paladin_Retribution.png", sidebarPortrait: "/game-images/heroes/Paladin-Retribution/portraits_sidebar/Avatar_Paladin_Retribution_Sidebar.png", figure: "/game-images/heroes/Paladin-Retribution/figures/Paladin_Retribution.png" }, placeholder: false },
+  "hero.paladin.holy": { className: "Paladin", tone: "amber", assets: { portrait: "/game-images/heroes/Paladin-Holy/portraits/Avatar_Paladin_Holy.png", sidebarPortrait: "/game-images/heroes/Paladin-Holy/portraits_sidebar/Avatar_Paladin_Holy_Sidebar.png", figure: "/game-images/heroes/Paladin-Holy/figures/Paladin_Holy.png" }, placeholder: false },
+  "hero.priest.comprehensiveness": { className: "Priest", tone: "blue", assets: { portrait: "/game-images/heroes/Priest-Comprehensiveness/portraits/Avatar_Priest_Comprehensiveness.png", sidebarPortrait: "/game-images/heroes/Priest-Comprehensiveness/portraits_sidebar/Avatar_Priest_Comprehensiveness_Sidebar.png", figure: "/game-images/heroes/Priest-Comprehensiveness/figures/Priest_Comprehensiveness.png" }, placeholder: false },
+  "hero.priest.discipline": { className: "Priest", tone: "blue", assets: { portrait: "/game-images/heroes/Priest-Discipline/portraits/Avatar_Priest_Discipline.png", sidebarPortrait: "/game-images/heroes/Priest-Discipline/portraits_sidebar/Avatar_Priest_Discipline_Sidebar.png", figure: "/game-images/heroes/Priest-Discipline/figures/Priest_Discipline.png" }, placeholder: false },
+  "hero.mage.comprehensiveness": { className: "Mage", tone: "blue", assets: { portrait: "/game-images/heroes/Mage-Comprehensiveness/portraits/Avatar_Mage_Comprehensiveness.png", sidebarPortrait: "/game-images/heroes/Mage-Comprehensiveness/portraits_sidebar/Mage_Comprehensiveness_Sidebar.png", figure: "/game-images/heroes/Mage-Comprehensiveness/figures/Mage_Comprehensiveness.png" }, placeholder: false },
+  "hero.warrior.defence": { className: "Warrior", tone: "amber", assets: { portrait: "/game-images/heroes/Warrior-Defence/portraits/Avatar_Warrior_Defence.png", sidebarPortrait: "/game-images/heroes/Warrior-Defence/portraits_sidebar/Warrior_Defence_Avatar_Sidebar.png", figure: "/game-images/heroes/Warrior-Defence/figures/Warrior_Defence.png" }, placeholder: false },
+  "hero.warrior.weapon_master": { className: "Warrior", tone: "amber", assets: { class: classAssets.Warrior, portrait: "/game-images/heroes/Warrior-Weapon-Master/portraits/Avatar_Warrior_Weapon_Master.png", sidebarPortrait: "/game-images/heroes/Warrior-Weapon-Master/portraits_sidebar/Avatar_Warrior_Weapon_Master_Sidebar.png", figure: "/game-images/heroes/Warrior-Weapon-Master/figures/Warrior_Weapon_Master.png" }, placeholder: false, animation: { idle: "idle", active: "weapon-ready", defeated: "defeated" } },
+  "hero.warrior.berserker": { className: "Warrior", tone: "red", assets: { portrait: "/game-images/heroes/Warrior-Berserker/portraits/Avatar_Warrior_Berserker.png", sidebarPortrait: "/game-images/heroes/Warrior-Berserker/portraits_sidebar/Avatar_Warrior_Berserker_Sidebar.png", figure: "/game-images/heroes/Warrior-Berserker/figures/Warrior_Berserker.png" }, placeholder: false },
+  "hero.rogue.comprehensiveness": { className: "Rogue", tone: "violet", assets: { portrait: "/game-images/heroes/Rogue-Comprehensiveness/portraits/Avatar_Rogue_Comprehensiveness.png", sidebarPortrait: "/game-images/heroes/Rogue-Comprehensiveness/portraits_sidebar/Avatar_Rogue_Comprehensiveness_Sidebar.png", figure: "/game-images/heroes/Rogue-Comprehensiveness/figures/Rogue_Comprehensiveness.png" }, placeholder: false, animation: { idle: "idle", active: "shadow-ready", defeated: "defeated" } },
 };
 
 // Battlefield-only visual tuning. Keep a definition at 1.0 to preserve its
@@ -143,7 +143,9 @@ export function resolveAsset(request: AssetRequest): ResolvedAsset {
   }
   if (request.kind === "effect") return { ...base, src: null, resolvedPath: null, fallback: "generic", label: `${request.name} CSS effect placeholder` };
   const hero = heroPresentation[request.key];
-  const requested = hero?.assets[request.kind as "portrait" | "figure" | "thumbnail" | "class"];
+  const requested = request.kind === "sidebarPortrait"
+    ? hero?.assets.sidebarPortrait ?? hero?.assets.portrait
+    : hero?.assets[request.kind as "portrait" | "figure" | "thumbnail" | "class"];
   if (requested) return { ...base, src: requested, resolvedPath: requested, fallback: "requested", label: `${request.name} ${request.kind}`, status: hero.placeholder ? "placeholder" : "final" };
   const className = request.className ?? hero?.className ?? heroClasses[request.key];
   const classAsset = className ? classAssets[className] : null;

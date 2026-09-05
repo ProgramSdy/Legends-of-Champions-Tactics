@@ -81,6 +81,7 @@ export function DebugBattleExperience({ countdownStepMs = 1000 }: { countdownSte
       entryCountdownStepMs={countdownStepMs}
       completionActionLabel={() => "RETURN TO DEBUG BUILDER"}
       onBattleComplete={closeDebugBattle}
+      onResign={closeDebugBattle}
     />
   );
 }

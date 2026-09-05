@@ -36,6 +36,24 @@ describe("battle screen integration", () => {
     expect(screen.queryByText("Choose a demo or select a skill.")).not.toBeInTheDocument();
   });
 
+  it("places RESIGN at the end of battle controls and requires confirmation", async () => {
+    const resign = vi.fn();
+    render(<BattleScreen provider={new MockBattleProvider()} onResign={resign} />);
+    const user = userEvent.setup();
+    const button = await screen.findByRole("button", { name: "RESIGN" });
+
+    expect(button.parentElement).toHaveClass("battle-controls");
+    expect(button).toHaveClass("resign-battle");
+    await user.click(button);
+    expect(screen.getByRole("dialog", { name: "Give up this battle?" })).toBeVisible();
+    expect(resign).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "NO" }));
+    expect(screen.queryByRole("dialog", { name: "Give up this battle?" })).not.toBeInTheDocument();
+    await user.click(button);
+    await user.click(screen.getByRole("button", { name: "YES" }));
+    expect(resign).toHaveBeenCalledOnce();
+  });
+
   it("selects a skill using keyboard interaction and exposes valid targets", async () => {
     const user = userEvent.setup();
     await renderBattle();
@@ -45,6 +63,19 @@ describe("battle screen integration", () => {
     expect(skill).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: "Sashein, selectable target" })).toHaveClass("target-selection-pending");
     expect(screen.getByRole("button", { name: "CAST SKILL" })).toBeDisabled();
+  });
+
+  it("gives the matching sidebar hero a gold frame while its legal figure is hovered", async () => {
+    await renderBattle();
+    fireEvent.click(screen.getByRole("button", { name: /Life Drain/i }));
+    const target = screen.getByRole("button", { name: "Sashein, selectable target" });
+    const card = screen.getByRole("article", { name: /Sashein/i });
+
+    fireEvent.mouseEnter(target);
+    expect(card).toHaveClass("target-highlighted");
+
+    fireEvent.mouseLeave(target);
+    expect(card).not.toHaveClass("target-highlighted");
   });
 
   it("uses a crosshair only while required targets remain, including across both teams", async () => {

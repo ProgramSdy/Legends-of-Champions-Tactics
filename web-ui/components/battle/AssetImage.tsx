@@ -21,7 +21,7 @@ export function AssetImage(props: AssetImageProps) {
   // Hero artwork is already shipped as high-resolution local files.  A native
   // image preserves the source's natural pixel dimensions on high-DPI screens
   // instead of giving the browser Next's fixed 160px responsive-image hint.
-  if (request.kind === "portrait" && src.startsWith("/game-images/")) {
+  if ((request.kind === "portrait" || request.kind === "sidebarPortrait") && src.startsWith("/game-images/")) {
     // eslint-disable-next-line @next/next/no-img-element -- local game art intentionally bypasses Next's fixed-size image contract.
     return <img className={`${props.className ?? ""} fallback-${asset.fallback}`} src={src} alt="" aria-label={asset.label} width={160} height={160} decoding="async"
       onLoad={(event) => props.onImageDimensions?.({ naturalWidth: event.currentTarget.naturalWidth, naturalHeight: event.currentTarget.naturalHeight })}

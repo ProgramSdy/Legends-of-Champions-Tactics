@@ -351,8 +351,7 @@ export function TeamBuilder(props: TeamBuilderProps) {
               aria-current={node.current ? "step" : undefined}
               data-node-index={node.nodeIndex}
             >
-              <small>NODE {node.nodeIndex}</small>
-              <strong>{node.battleSize}v{node.battleSize}</strong>
+              <strong>{node.nodeIndex}</strong>
               <em>{node.completed ? "Victory" : node.current ? "Current" : "Locked"}</em>
             </span>
           ))}

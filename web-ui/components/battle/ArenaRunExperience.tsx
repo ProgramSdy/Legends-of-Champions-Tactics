@@ -217,6 +217,7 @@ export function ArenaRunExperience({ countdownStepMs = 1000 }: { countdownStepMs
         ? "CONTINUE ARENA RUN"
         : "RETRY CURRENT NODE"}
       onBattleComplete={finishBattle}
+      onResign={() => setActiveBattle(null)}
     />
   );
 

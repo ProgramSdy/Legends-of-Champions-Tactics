@@ -300,7 +300,35 @@ describe("format and fallback invariants", () => {
       status: "final",
     });
     expect(resolveAsset({
-      kind: "portrait", key: "hero.rogue.comprehensiveness", name: "Nighthawk", className: "Rogue",
+      kind: "sidebarPortrait", key: "hero.warrior.weapon_master", name: "Ragnar", className: "Warrior",
+    })).toMatchObject({
+      src: "/game-images/heroes/Warrior-Weapon-Master/portraits_sidebar/Avatar_Warrior_Weapon_Master_Sidebar.png",
+      fallback: "requested",
+      status: "final",
+    });
+    expect(resolveAsset({
+      kind: "sidebarPortrait", key: "hero.warrior.defence", name: "Wrathe", className: "Warrior",
+    })).toMatchObject({
+      src: "/game-images/heroes/Warrior-Defence/portraits_sidebar/Warrior_Defence_Avatar_Sidebar.png",
+      fallback: "requested",
+      status: "final",
+    });
+    expect(resolveAsset({
+      kind: "portrait", key: "hero.unknown", name: "Unknown Hero",
     })).toMatchObject({ fallback: "initials", src: null, status: "placeholder" });
+  });
+
+  it.each([
+    ["hero.paladin.protection", "Paladin", "/game-images/heroes/Paladin-Protection/portraits/Avatar_Paladin_Protection.png", "/game-images/heroes/Paladin-Protection/portraits_sidebar/Avatar_Paladin_Protection_Sidebar.png"],
+    ["hero.paladin.retribution", "Paladin", "/game-images/heroes/Paladin-Retribution/portraits/Avatar_Paladin_Retribution.png", "/game-images/heroes/Paladin-Retribution/portraits_sidebar/Avatar_Paladin_Retribution_Sidebar.png"],
+    ["hero.paladin.holy", "Paladin", "/game-images/heroes/Paladin-Holy/portraits/Avatar_Paladin_Holy.png", "/game-images/heroes/Paladin-Holy/portraits_sidebar/Avatar_Paladin_Holy_Sidebar.png"],
+    ["hero.priest.comprehensiveness", "Priest", "/game-images/heroes/Priest-Comprehensiveness/portraits/Avatar_Priest_Comprehensiveness.png", "/game-images/heroes/Priest-Comprehensiveness/portraits_sidebar/Avatar_Priest_Comprehensiveness_Sidebar.png"],
+    ["hero.priest.discipline", "Priest", "/game-images/heroes/Priest-Discipline/portraits/Avatar_Priest_Discipline.png", "/game-images/heroes/Priest-Discipline/portraits_sidebar/Avatar_Priest_Discipline_Sidebar.png"],
+    ["hero.mage.comprehensiveness", "Mage", "/game-images/heroes/Mage-Comprehensiveness/portraits/Avatar_Mage_Comprehensiveness.png", "/game-images/heroes/Mage-Comprehensiveness/portraits_sidebar/Mage_Comprehensiveness_Sidebar.png"],
+    ["hero.warrior.berserker", "Warrior", "/game-images/heroes/Warrior-Berserker/portraits/Avatar_Warrior_Berserker.png", "/game-images/heroes/Warrior-Berserker/portraits_sidebar/Avatar_Warrior_Berserker_Sidebar.png"],
+    ["hero.rogue.comprehensiveness", "Rogue", "/game-images/heroes/Rogue-Comprehensiveness/portraits/Avatar_Rogue_Comprehensiveness.png", "/game-images/heroes/Rogue-Comprehensiveness/portraits_sidebar/Avatar_Rogue_Comprehensiveness_Sidebar.png"],
+  ] as const)("registers final standard and sidebar portraits for %s", (id, className, portrait, sidebarPortrait) => {
+    expect(resolveAsset({ kind: "portrait", key: id, name: "Hero", className })).toMatchObject({ src: portrait, fallback: "requested", status: "final" });
+    expect(resolveAsset({ kind: "sidebarPortrait", key: id, name: "Hero", className })).toMatchObject({ src: sidebarPortrait, fallback: "requested", status: "final" });
   });
 });

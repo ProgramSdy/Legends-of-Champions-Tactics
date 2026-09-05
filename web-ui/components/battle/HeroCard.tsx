@@ -13,13 +13,13 @@ export function Meter({ value, maximum, kind, label }: { value: number; maximum:
   );
 }
 
-export function HeroCard({ hero, active = false }: { hero: CombatantState; active?: boolean }) {
+export function HeroCard({ hero, active = false, targetHighlighted = false }: { hero: CombatantState; active?: boolean; targetHighlighted?: boolean }) {
   const profession = hero.isSummon
     ? `${hero.specialization} · Summon`
     : `${hero.faculty} · ${hero.specialization}`;
   return (
-    <article className={`hero-card ${hero.sideId} ${active ? "active" : ""} ${hero.alive ? "" : "defeated"}`} aria-label={`${hero.displayName}, ${profession}${active ? ", active hero" : ""}`}>
-      <AssetImage request={{ kind: "portrait", key: hero.definitionId, name: hero.displayName, className: hero.faculty }} className="portrait" />
+    <article className={`hero-card ${hero.sideId} ${active ? "active" : ""} ${targetHighlighted ? "target-highlighted" : ""} ${hero.alive ? "" : "defeated"}`} aria-label={`${hero.displayName}, ${profession}${active ? ", active hero" : ""}`}>
+      <AssetImage request={{ kind: "sidebarPortrait", key: hero.definitionId, name: hero.displayName, className: hero.faculty }} className="portrait" />
       <div className="hero-data">
         <div className="hero-title"><div><h3>{hero.displayName}</h3><p>{profession}</p></div><AssetImage request={{ kind: "class", key: hero.faculty, name: hero.faculty }} className="class-icon" /></div>
         <Meter value={hero.hp.current} maximum={hero.hp.maximum} kind="hp" label="Health" />
