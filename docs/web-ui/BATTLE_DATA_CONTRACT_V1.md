@@ -113,6 +113,13 @@ matching Arena Run (including its nodes through the persistence relationship)
 and returns the refreshed Arena state. It does not create a replacement run;
 the client must obtain an explicit player confirmation before calling it.
 
+When node twelve commits, the returned Arena state carries the completed run
+with no current node. The browser presents a one-time completion acknowledgement
+and returns to Stage Map on **OK**. A later `GET /api/v1/arena` may still return
+that completed run; the browser then opens six-hero squad selection for the
+next intentional `POST /api/v1/arena/runs` request. The server replaces the
+completed run only when that new squad creation is accepted.
+
 `POST /api/v1/debug/battles` deliberately uses the ordinary creation payload
 but is a separate no-save-data boundary: it bypasses player-roster ownership
 only for Engineering Test & Debugging, while retaining adapter battle

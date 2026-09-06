@@ -106,6 +106,11 @@ without advancing twice. Loss, draw, and round limit leave the node retryable.
 An explicitly confirmed abandon atomically deletes that active profile's run
 and its twelve-node records; it does not alter its unlocks, training progress,
 or other save slots. A new run remains an intentional six-hero squad action.
+After an acknowledged twelfth victory, the browser returns to Stage Map. On a
+later Arena visit, the persisted completed run opens the replacement squad
+builder; the completed record is not removed until the replacement six-hero
+squad is confirmed and accepted. This presentation flow does not change the
+store's atomic run-replacement semantics.
 Live battles remain process-local, so reload creates a fresh session from the
 persisted node data.
 

@@ -45,11 +45,11 @@ describe("UI-007 battlefield geometry contracts", () => {
     expect(aura).toMatch(/(?:^|;)left:50%(?:;|$)/);
     // Overhead is positioned from the measured frame, footprint baseline, and
     // the required 12px clearance in scaled formation coordinates.
-    expect(overhead).toMatch(/(?:^|;)bottom:calc\(\(var\(--figure-frame-height\)\+17px\)\*var\(--figure-scale\)\+12px\)(?:;|$)/);
+    expect(overhead).toMatch(/(?:^|;)bottom:calc\(\(var\(--figure-frame-height\)\+17px\)\*var\(--figure-scale\)\*var\(--browser-size-rate\)\+12px\)(?:;|$)/);
     expect(overhead).toMatch(/(?:^|;)left:50%(?:;|$)/);
     expect(overhead).toMatch(/(?:^|;)transform:translateX\(-50%\)(?:;|$)/);
     const duelOverhead = css.match(/\.format-duel\.overhead\{([^}]*)\}/)?.[1] ?? "";
-    expect(duelOverhead).toMatch(/(?:^|;)transform:translateX\(-50%\)scale\(1\.5\)(?:;|$)/);
+    expect(duelOverhead).toMatch(/(?:^|;)transform:translateX\(-50%\)scale\(calc\(1\.5\*var\(--browser-size-rate\)\)\)(?:;|$)/);
     expect(duelOverhead).toMatch(/(?:^|;)transform-origin:centerbottom(?:;|$)/);
   });
 
@@ -97,9 +97,9 @@ describe("UI-007 battlefield geometry contracts", () => {
   it("keeps overhead clearance dynamic while preserving footing and enemy mirroring", () => {
     const css = readFileSync("app/globals.css", "utf8").replace(/\s+/g, "");
     const overhead = css.match(/\.overhead\{([^}]*)\}/)?.[1] ?? "";
-    expect(overhead).toMatch(/(?:^|;)bottom:calc\(\(var\(--figure-frame-height\)\+17px\)\*var\(--figure-scale\)\+12px\)(?:;|$)/);
+    expect(overhead).toMatch(/(?:^|;)bottom:calc\(\(var\(--figure-frame-height\)\+17px\)\*var\(--figure-scale\)\*var\(--browser-size-rate\)\+12px\)(?:;|$)/);
     const targetControl = css.match(/\.battle-target-control\{([^}]*)\}/)?.[1] ?? "";
-    expect(targetControl).toMatch(/(?:^|;)height:calc\(var\(--figure-frame-height\)\+48px\)(?:;|$)/);
+    expect(targetControl).toMatch(/(?:^|;)height:calc\(var\(--figure-frame-height\)-5px\)(?:;|$)/);
     const footprint = css.match(/\.figure-footprint\{([^}]*)\}/)?.[1] ?? "";
     expect(footprint).toMatch(/(?:^|;)bottom:17px(?:;|$)/);
     expect(css).toMatch(/\.battle-figure\.enemyimg\.figure-art\.fallback-requested\{[^}]*transform:scaleX\(-1\)/);
@@ -159,7 +159,7 @@ describe("UI-007 target-bound battle effects", () => {
     expect(document.querySelector(".effect-layer")).toBeNull();
   });
 
-  it("plays the healing target effect without misleading +0 text at full HP", async () => {
+  it("plays the healing target effect and shows +0 at full HP", async () => {
     const provider = new MockBattleProvider();
     const snapshot = (await provider.getState()).snapshot;
     const target = snapshot.combatants["friendly.arthas"];
@@ -180,7 +180,7 @@ describe("UI-007 target-bound battle effects", () => {
     fireEvent.click(screen.getByRole("button", { name: "Full HP healing" }));
 
     await waitFor(() => expect(document.querySelector("[data-combatant-id='friendly.arthas'] .target-effect.effect-healing")).toBeInTheDocument());
-    expect(screen.queryByText("+0")).not.toBeInTheDocument();
+    expect(screen.getByText("+0")).toBeInTheDocument();
   });
 
   it("anchors a harmful status as a red debuff effect to the enemy target", async () => {

@@ -2,6 +2,65 @@
 
 Completed work should be appended in reverse chronological order, with the newest entry first.
 
+## 2026-09-05 — UI-024 Battle Scene responsive presentation foundation
+
+**Summary:**
+
+Completed the required pre-code boundary report before implementation. The live
+Battle Scene now has one central width/height/orientation configuration boundary
+with Monitor, Laptop Large, Laptop Medium, Pad, Pad Mini, landscape Phone, and
+a contained portrait rotate-device state. It introduces the single browser-owned
+actor factor: `heroFigureScaleRate × formationScaleRate × browserSizeRate`.
+
+The Battle viewport's conceptual responsibilities are documented and marked at
+their existing ownership boundaries: arena background, combat actors, combat
+VFX, world-anchored UI, and separate screen HUD. The scene remains
+non-scrolling. Existing compact layout rules are expressed through shared HUD
+size variables, rather than a broad battle-canvas minimum width.
+
+**Explicitly Unchanged:**
+
+- Python/API authority, game data, legal targeting, target hit-area semantics,
+  combat positions, damage, events, and outcomes.
+- Owner-owned hero figure registry values, formation coordinate percentages,
+  formation scales, ordered slots, depth, enemy mirroring, and battle assets.
+- Non-battle routes and the owner-controlled UI review document.
+- At reference 1920×1080: browser size rate is exactly `1`, grid geometry,
+  actor scales, and formation anchors retain the recorded baseline result.
+
+**Files Changed:**
+
+- `web-ui/lib/battle/presentationConfig.ts`
+- `web-ui/components/battle/BattleScreen.tsx`
+- `web-ui/app/globals.css`
+- focused battle presentation/scale/regression tests
+- `docs/web-ui/WEB_UI_ARCHITECTURE.md`, `docs/web-ui/Style_Guide.md`, and
+  `docs/Technical/Architecture.md`
+
+**Validation:**
+
+- Mandatory pre-code report recorded the file boundary, current scale and
+  position paths, breakpoints, risks, and 1920×1080 plan before code edits.
+- Focused battle suites — 95 passed; TypeScript typecheck, ESLint, production
+  build, and `git diff --check` passed.
+- Manual Ego Lite reference check at 1920×1080 recorded identical shell
+  1920×1080, battle-layout 1918×721, and battlefield 1238×717 geometry before
+  and after. The deterministic 3v3 post-check reported Monitor / rate `1`, six
+  figures, and the existing anchor/scaling values.
+- Full frontend run reported 290/306 passing. Sixteen failures were inherited
+  stale expectations or timing/asset-suite issues outside UI-024, including
+  owner-adjusted Stage Map geometry and prior Team Builder/healing behavior.
+
+**Known Limitation / Deferred Scope:**
+
+- The six named display modes establish configuration and controlled density
+  variables only; final per-mode HUD redesign is intentionally deferred.
+- Ego Lite screenshot capture timed out twice despite successful viewport and
+  DOM geometry capture. The deterministic reference geometry is retained in
+  automated assertions and manual measurements.
+
+---
+
 ## 2026-08-31 — UI-023 Arena Run, Debug Mode, and Stage Map Navigation
 
 **Summary:**

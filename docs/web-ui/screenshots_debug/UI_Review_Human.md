@@ -594,3 +594,354 @@ Design the Arena system so the following features can be added later without maj
 - Shops
 - Arena achievements
 - Difficulty modifiers
+
+# Date
+
+2026-09-05
+
+### Screenshot name
+
+N/A
+
+### Task List
+
+We are now improving ONLY the responsive architecture of the BATTLE SCENE.
+
+IMPORTANT BOUNDARY:
+Before making any code changes, first inspect the current battle-scene implementation and clearly define:
+1. Which files/components/styles are in scope.
+2. Which existing systems are NOT in scope.
+3. Which current parameters/logic must be preserved exactly.
+4. What you plan to change.
+5. What you will deliberately not change.
+
+Do not change unrelated UI, gameplay logic, hero data, formation logic, skill logic, backend/Python combat logic, Team Builder, Squad Builder, Arena Hub, startup/save screen, assets, art, text, battle rules, or other screens.
+
+The current battle presentation has been fine-tuned and works well at a 1920×1080 reference setup. Treat the current 1920×1080 presentation as the visual baseline/reference. Do not redesign or retune that baseline unless strictly necessary to implement the responsive framework.
+
+GOAL
+
+Refactor the battle scene into a clear responsive presentation architecture that can later support these six viewport configurations:
+
+1. Monitor
+2. Laptop Large
+3. Laptop Medium
+4. Pad
+5. Pad Mini
+6. Phone Landscape only
+
+Do NOT try to redesign all six layouts in this task unless required. The immediate priority is establishing the correct architecture and preserving the current 1920×1080 result.
+
+--------------------------------------------------
+A. BATTLE PRESENTATION LAYERS
+--------------------------------------------------
+
+Please structure/reason about the battle scene as five conceptual presentation layers:
+
+Layer 1 — Arena / World Background
+- Arena/background/environment only.
+- Responsible for battlefield background scaling/cropping.
+
+Layer 2 — Combat Actors
+- Heroes.
+- Future summons/pets/temporary combat actors.
+- Actor placement belongs to the battlefield coordinate system.
+
+Layer 3 — Combat VFX
+- Projectiles.
+- Spell effects.
+- Hit effects.
+- Ground effects.
+- Other world-space combat effects.
+- Do not mix VFX positioning logic into HUD layout logic.
+
+Layer 4 — World-Anchored UI
+- Hero-related UI that follows a battlefield actor.
+- Examples: target indicators, HP/status indicators if/when displayed above heroes, casting indicators, floating damage/healing numbers, selection markers.
+- This layer follows world/battlefield positions but may later use minimum readable screen sizes.
+
+Layer 5 — Screen UI / HUD
+This includes the existing battle HUD such as:
+- top battle header;
+- round/turn UI;
+- left player hero/team bars;
+- right enemy hero/team bars;
+- active hero panel;
+- bottom skill slots/cards;
+- battle log;
+- speed controls;
+- auto battle;
+- select skill;
+- resign;
+- other battle-screen HUD controls.
+
+The HUD is screen-space responsive UI and should remain conceptually separate from the battlefield/world coordinate system.
+
+Do not create unnecessary complexity if the current DOM does not require five physical root elements. The important requirement is a clear responsibility boundary between these systems.
+
+--------------------------------------------------
+B. PRESERVE EXISTING HERO SCALE LOGIC
+--------------------------------------------------
+
+This is very important.
+
+Each hero already has a unique hero scaling rate.
+
+There is also existing formation scaling logic. Formation scale differs depending on things such as:
+- front/rear positioning;
+- side-by-side positioning;
+- 2v2 formation;
+- 3v3 formation;
+- other currently implemented formation-specific presentation cases.
+
+These values have already been manually fine-tuned and work correctly in the current 1920×1080 battle presentation.
+
+DO NOT replace, normalize, recompute, retune, simplify, or remove these existing values.
+
+Current conceptual calculation:
+
+    ExistingHeroScale
+    =
+    HeroScaleRate
+    × FormationScaleRate
+
+Keep that behaviour unchanged.
+
+We now want to add ONE new presentation factor:
+
+    FinalHeroScale
+    =
+    HeroScaleRate
+    × FormationScaleRate
+    × BrowserSizeRate
+
+BrowserSizeRate represents viewport/battle-display configuration scaling only.
+
+Important requirements:
+
+- BrowserSizeRate is NOT hero-specific.
+- BrowserSizeRate is NOT formation-specific.
+- All heroes in the same current browser configuration use the same BrowserSizeRate.
+- Existing relative visual size relationships between heroes must therefore remain intact.
+- Existing formation-specific size relationships must remain intact.
+- At the 1920×1080 reference setup, BrowserSizeRate must be 1.0 so that the current presentation remains visually unchanged.
+
+Example:
+
+    HeroScaleRate = existing value
+    FormationScaleRate = existing value
+    BrowserSizeRate = 1.0 at reference desktop
+
+Therefore:
+
+    FinalHeroScale = current existing scale
+
+Do not hardcode arbitrary different responsive rates into individual hero definitions.
+
+--------------------------------------------------
+C. HERO POSITIONING IS SEPARATE FROM HERO SCALE
+--------------------------------------------------
+
+Do NOT use BrowserSizeRate as a general multiplier for hero X/Y positioning.
+
+Size and position are separate concerns.
+
+Hero size:
+
+    HeroScaleRate
+    × FormationScaleRate
+    × BrowserSizeRate
+
+Hero position:
+
+    Existing formation/reference position
+    ->
+    projected/mapped into the current Battlefield Viewport
+
+Preserve the existing formation-position logic unless a wrapper/projection step is required.
+
+Do not change the tactical meaning of formation.
+
+Do not move authoritative combat-position logic into CSS or frontend responsive logic.
+
+--------------------------------------------------
+D. REFERENCE BATTLEFIELD
+--------------------------------------------------
+
+Treat the current 1920×1080 setup as the reference presentation.
+
+The goal is resolution-independent presentation, NOT redesigning the reference layout.
+
+The battle scene should conceptually contain:
+
+    Battle Screen
+    |
+    +-- Screen HUD
+    |
+    +-- Battlefield Viewport
+        |
+        +-- Arena
+        +-- Actors
+        +-- VFX
+        +-- World-Anchored UI
+
+The Battlefield Viewport should provide a stable coordinate/projection context for world elements.
+
+Do not simply scale the entire page as one 1920×1080 canvas because HUD readability/responsive behaviour will later be different from battlefield scaling.
+
+--------------------------------------------------
+E. RESPONSIVE CONFIGURATION FOUNDATION
+--------------------------------------------------
+
+Prepare the battle architecture for these six configurations:
+
+1. Monitor
+2. Laptop Large
+3. Laptop Medium
+4. Pad
+5. Pad Mini
+6. Phone Landscape
+
+Current initial viewport threshold direction:
+
+Monitor:
+    width >= 1600
+    height >= 900
+
+Laptop Large:
+    approximately width 1440–1599
+    and adequate height around 800+
+
+Laptop Medium:
+    approximately width 1180–1439
+    and adequate height around 700+
+
+Pad:
+    approximately width 900–1179
+    landscape
+
+Pad Mini:
+    approximately width 700–899
+    landscape
+
+Phone:
+    landscape only
+    generally identified strongly by short viewport height
+    approximately max-height around 550px
+
+These thresholds are starting design categories, not permission to blindly redesign the UI.
+
+Please inspect the current battle CSS before deciding the exact implementation.
+
+Height must be considered, not only width.
+
+A viewport that is wide but very short must be able to use a denser battle presentation mode later.
+
+Do not create dozens of width × height combinations.
+
+Prefer a small understandable configuration system.
+
+--------------------------------------------------
+F. BATTLE HEIGHT BEHAVIOUR
+--------------------------------------------------
+
+Current battle behaviour keeps the page non-scrolling and allows the central battlefield to absorb most vertical compression.
+
+We want to improve this architecture.
+
+Keep the battle scene as a non-scrolling game screen.
+
+Do NOT solve battle responsiveness by introducing normal page scrolling.
+
+Instead, prepare for:
+- height-aware HUD density;
+- compact/dense HUD modes;
+- controlled reduction of padding/gaps;
+- a minimum usable battlefield area;
+- future structural simplification of HUD at small sizes.
+
+The battlefield should not be the only region sacrificed when viewport height becomes short.
+
+However, do not redesign skill cards/HUD details beyond what is necessary for the architectural foundation in this task.
+
+--------------------------------------------------
+G. CSS / IMPLEMENTATION PRINCIPLES
+--------------------------------------------------
+
+Where appropriate:
+
+- Prefer CSS variables for battle responsive configuration values.
+- Prefer clamp() or continuous responsive sizing for values that should smoothly scale.
+- Use breakpoints only when the presentation genuinely changes.
+- Keep world/battlefield scaling separate from HUD responsive layout.
+- Avoid device-model detection.
+- Respond to viewport dimensions/orientation.
+- Avoid unnecessary JavaScript if CSS can cleanly handle presentation.
+- If JavaScript is required to determine a battle display mode, centralize it rather than scattering independent viewport checks throughout components.
+
+Do not introduce a new framework/library unless clearly necessary.
+
+--------------------------------------------------
+H. PHONE ORIENTATION
+--------------------------------------------------
+
+Phone support is LANDSCAPE ONLY.
+
+Do not build a portrait battle layout.
+
+Eventually a portrait phone should display a rotate-device message rather than attempting to render the full battle.
+
+For this task, only establish the architecture required for that behaviour if appropriate.
+
+--------------------------------------------------
+I. REGRESSION REQUIREMENT
+--------------------------------------------------
+
+The most important acceptance test:
+
+At the current 1920×1080 reference viewport, the battle scene should look and behave the same as before this change.
+
+Specifically preserve:
+- hero visual sizes;
+- relative hero visual sizes;
+- formation-dependent hero scaling;
+- hero positions;
+- arena composition;
+- current HUD arrangement;
+- battle functionality;
+- current controls;
+- existing animations/effects;
+- all gameplay behaviour.
+
+Do not make visual “improvements” unrelated to responsiveness.
+
+Do not rename or reorganize unrelated code simply for cleanliness.
+
+--------------------------------------------------
+J. FIRST RESPONSE BEFORE CODING
+--------------------------------------------------
+
+Before editing files, report back with:
+
+1. Current battle-scene files/components/styles involved.
+2. Current hero scaling calculation and where it is implemented.
+3. Current formation scaling calculation and where it is implemented.
+4. Current hero-position calculation and where it is implemented.
+5. Current battle layout/viewport structure.
+6. Current width/height responsive rules affecting the battle scene.
+7. Proposed exact scope boundary.
+8. Proposed minimal implementation plan.
+9. Any risks of changing the existing 1920×1080 appearance.
+10. How you will verify that 1920×1080 remains unchanged.
+
+Then implement only after you have established that boundary.
+
+After implementation, provide:
+- files changed;
+- exact behaviour changed;
+- behaviour intentionally left unchanged;
+- test/build/lint results;
+- comparison of 1920×1080 before vs after;
+- any remaining work needed for the six final responsive layouts.
+
+Again: preserve the current working 1920×1080 hero and formation tuning. This task is to ADD a clean browser-responsive presentation layer, not to replace the existing battle design.

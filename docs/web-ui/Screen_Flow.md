@@ -107,7 +107,10 @@ shows all server-authored node previews; only the next unresolved node can
 open its squad-limited Team Builder. The player selects the node-size team and
 friendly formation where applicable; the server supplies its computer enemy.
 Friendly victory commits one node and advances once, while other outcomes
-retry. After node twelve, an intentional New Arena Run action is required.
+retry. After node twelve, the completion panel exposes **OK**; it returns the
+player to Stage Map. Re-entering Arena then opens the intentional six-hero
+squad builder rather than replaying the completion panel. The completed run is
+replaced only after the player confirms a new squad.
 The node Team Builder is the sole page presentation, using the same shared
 layout as Warrior's Barrack and Paladin's Altar. Its twelve-node progress strip
 occupies the Builder's normal full-width progression row rather than wrapping a
@@ -118,6 +121,11 @@ CURRENT RUN** control requires a
 YES/NO confirmation. YES deletes only the active slot's current run and returns
 to Stage Map, where the player can build a new six-hero Arena squad; NO leaves
 the run untouched.
+
+The Arena hub and six-hero squad builder use their own viewport-height-bounded
+vertical scroll region with the same right-side scrollbar treatment as Team
+Builder. Stage cards show only the node number and node status; battle size
+remains server-owned launch data, not progress-strip copy.
 
 ### Team Builder
 

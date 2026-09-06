@@ -2,319 +2,304 @@
 
 ## Status
 
-Ready for implementation
+Ready for implementation — mandatory pre-code boundary report
 
 ---
 
 ## Task ID
 
-UI-023
+UI-024
 
 ## Title
 
-Add Stage-Map Navigation and Engineering Debug Mode; Redesign Arena as a Persistent 12-Battle Run
+Establish a Layered, Height-Aware Responsive Architecture for the Battle Scene
 
 ## Objective
 
-Add accessible Stage Map navigation to the title and Engineering Test &
-Debugging pages, create a player-data-independent debugging battle page with
-the full registered roster, and replace the player-facing free-form Arena with
-an active-save-slot-owned, twelve-node roguelike-style Arena Run MVP.
+Refactor only the Battle Scene presentation into a clear responsive foundation
+for Monitor, Laptop Large, Laptop Medium, Pad, Pad Mini, and landscape-phone
+configurations—without redesigning those final layouts now and without changing
+the approved 1920×1080 battle presentation.
 
 ## Background
 
-The Stage Map is the current post-save-slot hub but has no direct return to the
-title scene and no entry to a safe engineering test environment. Its current
-Arena destination opens the general Team Builder and permits a player to choose
-any available size, enemy mode, control mode, and seed for every individual
-battle. That is useful for development but does not provide the owner-approved
-Arena Run loop.
+The current battle page is a non-scrolling CSS grid rooted at
+`BattleScreen.tsx` / `.battle-shell`. It uses `height: 100dvh`,
+`min-width: 1180px`, and grid rows for header, battle layout, command deck,
+and controls. The battle layout has two fixed-width Team Information panels
+and a central `.battlefield`. Current compact rules are width-only media
+queries at 1600px, 1450px, and 1370px; there is no battle-specific height or
+orientation configuration system.
 
-The 31 August owner review defines Arena as a 12-battle run: create a fixed
-six-hero squad from heroes unlocked in the active local save, preview each
-upcoming battle's 1v1/2v2/3v3 size, choose the required subset from the locked
-squad, and face a backend-generated computer enemy. Run state must participate
-in the existing five-slot save system. The Engineering page must retain the
-old free-form experimentation capability without reading, changing, unlocking,
-or otherwise depending on player data.
+The battlefield already has conceptual layers, but their responsibilities are
+not yet made explicit for responsive work: `.battlefield` background/pseudo
+overlays, formation-slot figure actors, effect layers, figure-attached world
+UI, and the screen-space header/side panels/command deck/controls. This task
+makes those boundaries clear without requiring five new physical root nodes.
+
+The current, owner-tuned hero figure scale is exactly:
+
+```
+current figure scale = formationScale × heroFigureScaleFor(definitionId)
+```
+
+`formationScale`, coordinate anchors, and presentation depth come from
+`web-ui/lib/battle/formations.ts`; hero-specific rates come from the stable
+`heroFigureScales` registry in `web-ui/lib/battle/assets.ts`. The Battle Screen
+passes the computed scale through `--figure-scale`; Python remains authoritative
+for combat positions, legality, skills, damage, events, and outcomes. These
+contracts were tuned at 1920×1080 and must remain intact.
+
+## Mandatory Pre-Code Boundary Report
+
+Before editing implementation files, Core must inspect the current source and
+send the project owner a concise report containing all ten items below:
+
+1. Battle-scene files/components/styles in scope.
+2. Current hero-scale calculation and its implementation location.
+3. Current formation-scale calculation and its implementation location.
+4. Current hero-position calculation and its implementation location.
+5. Current battle layout/viewport structure.
+6. Current width/height responsive rules affecting the battle scene.
+7. Exact proposed scope boundary.
+8. Minimal implementation plan.
+9. Risks to the existing 1920×1080 appearance.
+10. How 1920×1080 before/after equivalence will be verified.
+
+The report must explicitly state that source-owned hero scales, formation
+coordinates/scales/depth, and Python combat logic will not be retuned. After
+the report establishes this boundary, implementation may begin only within the
+requirements below.
 
 ## Requirements
 
-### 1. Stage Map navigation controls
+### 1. Five conceptual presentation responsibilities
 
-1. Add a semi-transparent spanner/wrench icon button in the Stage Map's upper
-   right corner. Its accessible name must identify Engineering Test & Debugging
-   and it must route to `/debug`.
-2. Add a visually appropriate, clearly labelled title/home-return icon button
-   in the upper left corner. It must route to the existing Game Start route
-   (`/`), not create a second startup implementation.
-3. Both controls must be keyboard reachable, visibly focused, responsive,
-   positioned above map art/hotspots without obscuring them, and preserve the
-   dark-fantasy visual language. They must not alter hotspot geometry,
-   activation, or debug-hotspot behavior.
+1. Establish and document a clear responsive responsibility boundary for:
+   - **Arena / World Background:** arena artwork and controlled crop/scale only.
+   - **Combat Actors:** heroes and future summons/temporary actors placed in
+     the battlefield coordinate system.
+   - **Combat VFX:** projectiles, spells, hits, ground effects, and other
+     world-space effects.
+   - **World-Anchored UI:** actor-following target controls/markers, transient
+     HP HUD, floating numbers, casting indicators, and related presentation.
+   - **Screen UI / HUD:** header/round/turn chrome, team panels, command deck,
+     skills, battle log, speed/auto/select/resign controls, and dialogs.
+2. Physical DOM changes are permitted only where they clarify ownership. Do
+   not create five wrapper elements merely to mirror the conceptual list.
+3. World background, actors, VFX, and world-anchored UI must share the
+   Battlefield Viewport/projection context. Screen HUD must stay conceptually
+   separate and must not be scaled as one 1920×1080 page canvas.
+4. Do not move combat authority, skill/legal-target logic, events, outcomes,
+   or formation decision-making into presentation code.
 
-### 2. Engineering Test & Debugging page
+### 2. Preserve exact hero and formation tuning
 
-1. Add the dedicated `/debug` page/route. Its starting UI may reuse the
-   current free-form Arena Team Builder and Battle Screen visual structure,
-   but it must be explicitly presented as Engineering Test & Debugging, not as
-   player Arena progress.
-2. Both player and enemy team selection must expose every hero returned by the
-   registered web/API roster, regardless of the active save slot, unlocked
-   heroes, training progress, or whether a save slot exists. Preserve current
-   battle-size, formation, Random/Specified enemy, enemy-control, and seed
-   tools suitable for testing.
-3. Debug battles must use a deliberate debug-only API/creation boundary that
-   bypasses player-roster ownership checks but retains normal adapter combat
-   validation, legal actions, deterministic seed behavior, event contracts,
-   and computer control. Do not weaken the normal Arena or structured-stage
-   ownership checks.
-4. The debug page must not fetch or mutate progression/save-slot/arena-run
-   data, unlock heroes, grant rewards, commit stage victory, or write any
-   persistent player data. Ending/reloading a debug battle simply returns to
-   its debug builder; active battle sessions remain process-local.
-5. Provide a clear route back to Stage Map and preserve existing accessibility,
-   fallback assets, and responsive layout.
+1. Preserve every existing `heroFigureScales` value, fallback behavior,
+   `formationScale` value, formation coordinate, ordered slot, depth, figure
+   frame calculation, target-control geometry, and enemy mirror behavior.
+2. Introduce only one shared responsive presentation factor:
 
-### 3. Arena Run lifecycle and persistence
+   ```
+   final figure scale = heroFigureScaleRate × formationScaleRate × browserSizeRate
+   ```
 
-1. Replace the player-facing Stage Map Arena flow with an Arena Run hub owned
-   by the currently active save slot. Exactly one active or completed run
-   record is retained per occupied slot; no active state, squad, schedule, or
-   results may cross slots.
-2. Arena remains unavailable until the active profile owns at least six
-   distinct registered heroes. Display the exact current/required count and
-   explain that six unlocked heroes are required. Do not silently use locked,
-   static-enemy, or debug-only heroes.
-3. When eligible and no active run exists, show a Hero Squad Build step using
-   currently unlocked heroes. The player must select exactly six distinct
-   definitions, confirm the squad, and start a new run. Persist the chosen
-   ordered squad atomically with the run schedule; it becomes immutable until
-   the run ends.
-4. A run contains exactly 12 ordered, independent battle nodes. Generate and
-   persist each node's battle size at run creation using the requested
-   per-battle probability distribution: 1v1 20%, 2v2 50%, 3v3 30%. Persisted
-   node definitions—not client random choices—remain authoritative across
-   reloads. A battle's size is shown before the player chooses its team.
-5. The hub exposes the current/upcoming node and completed history sufficiently
-   to understand run progress. The player may launch only the next unresolved
-   node; later nodes are not playable early. After victory, atomically record
-   that node as complete and advance to the next. Defeat, draw, or round-limit
-   does not advance the run and permits retry of that same node.
-6. A saved active run must resume after page reload, application restart, and
-   save-slot switch/load with its locked squad, node schedule, and current
-   progress intact. A process-local in-progress battle need not be recoverable;
-   reopening the unresolved node creates a fresh session from its persisted
-   node definition.
-7. After the twelfth friendly victory, mark the run completed and provide a
-   clear completion state. A subsequent new run may be started only through a
-   clear, intentional New Arena Run action; do not reset a run automatically.
-8. No Arena rewards, relics, injury, healing, shop, branching path, elite,
-   boss, achievement, difficulty modifier, cloud/account, leaderboard, or
-   active-battle save/resume system is in scope.
+   `browserSizeRate` is configuration/viewport-owned; it is neither hero- nor
+   formation-specific. It must be centrally expressed (preferably a battle CSS
+   custom property consumed at the existing figure-scale boundary), never
+   copied into definition metadata or individual formations.
+3. At the 1920×1080 reference configuration, `browserSizeRate` is exactly
+   `1.0`; therefore computed final figure scales, relative hero sizes, and all
+   formation-specific relationships match the pre-task result exactly.
+4. Browser-size scaling applies to actor presentation only. It must not become
+   a blanket multiplier for formation X/Y coordinates, tactical positions,
+   pointer legality, or screen-HUD layout.
 
-### 4. Arena team selection and authoritative enemy generation
+### 3. Battlefield projection and responsive configuration foundation
 
-1. Before each node, reuse/adapt Team Builder so the player selects exactly
-   the node's required 1/2/3 heroes from the locked six-hero squad. The player
-   cannot add, substitute, or otherwise select a hero outside that squad. In
-   2v2/3v3 retain the existing player formation choice; 1v1 has none.
-2. The Arena Run UI must show the upcoming size and the backend-authored enemy
-   composition/formation summary before battle launch. Remove/disable free-form
-   Arena controls that conflict with the node: battle-size selection, random
-   versus specified enemy selection, enemy-team editing, enemy control mode,
-   and client seed input.
-3. Generate enemy team and formation server-side for each persisted node using
-   the full registered roster, allowing repeated enemy definitions. Computer
-   control is mandatory. The client never supplies/replaces the enemy roster,
-   formation, outcome, completion, or run randomness.
-4. For a 2v2 node: choose either `side-by-side` with both heroes from the full
-   roster, or `front-rear` with the ordered front hero sampled from Warrior or
-   Paladin and the ordered rear hero sampled from Mage, Rogue, or Priest.
-5. For a 3v3 node: interpret the owner’s “Side by Side” as existing
-   `all-front`, with all three heroes sampled from the full roster. For
-   `two-front-one-rear` and `one-front-two-rear`, every ordered front position
-   must be Warrior or Paladin and every ordered rear position Mage, Rogue, or
-   Priest. Preserve the existing formation IDs and adapter ordering semantics.
-6. For a 1v1 node, sample one enemy from the full registered roster. Use an
-   authoritative persisted seed/node data so reloading or retrying cannot
-   change the advertised node's size, formation, or enemy composition.
-7. The debug-only ownership bypass is restricted to section 2. Every ordinary
-   player route, including Arena Run and structured training, continues to
-   enforce the active profile's owned hero roster.
+1. Define a stable Battlefield Viewport/reference-projection boundary for
+   world-space actors, VFX, and anchored UI. Existing formation percentages
+   remain reference positions and are mapped into the current battlefield
+   viewport; no formation meanings or adapter-authored positions may change.
+2. Prepare one small, understandable display-configuration system considering
+   width, height, and orientation. Its initial categories are:
+   - Monitor: width ≥1600 and height ≥900.
+   - Laptop Large: approximately 1440–1599 with adequate height around 800+.
+   - Laptop Medium: approximately 1180–1439 with adequate height around 700+.
+   - Pad: approximately 900–1179 landscape.
+   - Pad Mini: approximately 700–899 landscape.
+   - Phone: landscape only, strongly identified by short height, approximately
+     550px or below.
+3. Treat these as starting categories, not a demand to implement six finished
+   visual designs or a matrix of width × height rules. A wide, short viewport
+   must be distinguishable from a wide, tall viewport for future dense HUD
+   behavior.
+4. Prefer CSS custom properties, `clamp()`, and a small number of genuine
+   layout breakpoints. If runtime JavaScript is needed for a named display
+   mode, centralize it in one battle-presentation boundary; do not scatter
+   independent viewport checks among components. Do not add a library.
+5. Keep the battle screen non-scrolling. Do not solve responsiveness through
+   document scrolling, broad `min-width` overflow, or scaling every HUD region
+   together. Establish controlled HUD-density variables/slots and a minimum
+   usable battlefield area for later work, without redesigning skill cards or
+   HUD content in this task.
+6. Support landscape phone as an architectural configuration. Do not build a
+   portrait-phone battle layout; establish a contained rotate-device state only
+   if necessary to prevent an unusable portrait game screen.
 
-### 5. Data/API and migration safeguards
+### 4. 1920×1080 regression lock
 
-1. Extend the SQLite progression schema with an explicit, versioned Arena Run
-   model linked to profile/save-slot identity. Store immutable squad, 12-node
-   schedule/configuration, node completion, lifecycle state, and enough
-   server-owned random data to recreate a node consistently. Use transactional,
-   idempotent creation and completion operations.
-2. Existing UI-021 save-slot progression, training stage indices/rewards, and
-   active-slot authority must migrate non-destructively. Slots without an Arena
-   Run receive no fabricated history; completed/active data is never copied to
-   another slot or silently reset.
-3. Define typed API contracts for Arena availability/state, creating a run,
-   launching only the current node, and committing only an authoritative
-   friendly victory for that run node. Reject invalid slot/profile state,
-   insufficient/locked/duplicate squad members, malformed/out-of-order node
-   requests, stale profile/session ownership, repeat completion, and
-   client-supplied enemy/random/progress data with clear typed errors.
-4. Keep training completion distinct from Arena completion. Update the generic
-   battle completion route or add a dedicated Arena commit path only where this
-   cleanly preserves existing stage semantics and idempotency.
+1. At 1920×1080, preserve the current visual result and behavior: actor size,
+   relative hero size, formation scale/depth/position, arena composition/crop,
+   header and side-panel arrangement, command deck, controls, HUD spacing,
+   animations/VFX, target interactions, and gameplay.
+2. Do not perform unrelated visual cleanup, hero/formation retuning, text
+   edits, asset/art changes, source reorganization, or component renames.
+3. Any baseline difference that cannot be directly justified as essential to
+   the responsive architecture is a regression and must be removed.
 
 ## Out of Scope
 
-- Any work discarded with UI-022; do not restore or recreate that task’s
-  event-triggered HUD, targeting, or 2v2-scale changes.
-- New hero definitions/art/classes, battle balance, skills, statuses, attack
-  types, engine targeting rules, battle-event schema changes, or roster
-  expansion beyond the registered ten definitions.
-- Arena rewards/relics, campaign/branching, shop/healing/injury, elite/boss,
-  difficulty, achievements, online accounts, cloud sync, or active battle
-  recovery.
-- Altering the five-save-slot count, new-game roster, overwrite behaviour,
-  structured curricula/rewards, Stage Map hotspot geometry, or UI-018/UI-019
-  formation semantics.
+- Any screen other than the live Battle Scene: Team Builder, Squad Builder,
+  Arena Run hub, debug page, Stage Map, startup/save flow, assets/gallery, and
+  all non-battle routes.
+- Python/FastAPI logic; game/hero/skill/status data; battle rules, legal
+  actions, targeting, formation logic, damage, events, AI, persistence,
+  Arena/Stage logic, and API/data contracts.
+- Changes to approved hero-specific scales; 2v2/3v3 coordinates, scales, or
+  depth; target hit-area behavior; transient HP HUD timing/content; or any
+  UI-022 work previously discarded by the owner.
+- Full visual redesign of the six target configurations, portrait-phone battle
+  layout, new art/assets, or unrelated code cleanup.
 - Editing the owner-controlled
   `docs/web-ui/screenshots_debug/UI_Review_Human.md`.
 
 ## Relevant Files
 
-### Stage map, routes, and user interface
+### Primary Battle Scene scope
 
-- `web-ui/components/stages/StageSelectionScreen.tsx`
-- `web-ui/components/stages/stage-config.ts`
-- `web-ui/app/stages/page.tsx`, `web-ui/app/page.tsx`, and `web-ui/app/game/page.tsx`
-- new `web-ui/app/debug/page.tsx` and debug experience/component modules
-- `web-ui/components/battle/BattleExperience.tsx`
-- `web-ui/components/battle/TeamBuilder.tsx`
 - `web-ui/components/battle/BattleScreen.tsx`
-- `web-ui/app/globals.css`
+- `web-ui/app/globals.css` — battle-shell/layout/viewport/figure/VFX/HUD rules
+- `web-ui/lib/battle/formations.ts`
+- `web-ui/lib/battle/assets.ts`
+- focused new presentation configuration/projection module only if warranted
 
-### Contracts, API, and persistence
+### Existing regression tests and documentation
 
-- `web-ui/lib/battle/types.ts` and `web-ui/lib/battle/liveProvider.ts`
-- `battle_api/models.py`, `battle_api/app.py`, and `battle_api/adapter.py`
-- `battle_api/progression.py`
-- existing save-slot, battle-session, completion, and API fixtures
-
-### Tests and documentation
-
-- `tests/test_ui020_progression.py`, `tests/test_battle_api.py`, and focused
-  Arena Run/debug API, persistence, migration, and enemy-generation tests
-- `web-ui/tests/ui-012-stage-selection.test.tsx`,
-  `web-ui/tests/ui-013-team-builder.test.tsx`,
-  `web-ui/tests/ui-020-progression.test.tsx`,
-  `web-ui/tests/ui-021-save-slots-and-previews.test.tsx`, and focused new UI tests
-- `docs/GDD/Game_Design_Document.md` and `docs/GDD/Combat_System.md`
-- `docs/Technical/Player_Data_and_Save_System.md`, `docs/Technical/Architecture.md`,
-  and `docs/Technical/Networking.md`
-- `docs/web-ui/BATTLE_DATA_CONTRACT_V1.md`, `docs/web-ui/Screen_Flow.md`,
-  `docs/web-ui/WEB_UI_ARCHITECTURE.md`, and `docs/web-ui/Style_Guide.md`
+- `web-ui/tests/battle-screen.test.tsx`
+- `web-ui/tests/ui-007-regressions.test.tsx`
+- `web-ui/tests/ui-019-formations.test.tsx`
+- `web-ui/tests/hero-figure-scales.test.tsx`
+- `web-ui/tests/quick-hp-hud.test.tsx`
+- focused new responsive-architecture tests and baseline evidence
+- `docs/web-ui/WEB_UI_ARCHITECTURE.md`
+- `docs/web-ui/Style_Guide.md`
+- `docs/Technical/Architecture.md`
 - `docs/Codex/Completed.md`
 
 ## Acceptance Criteria
 
-1. Stage Map has accessible upper-left title/home and upper-right semi-transparent
-   Engineering Test & Debugging controls; both routes work without breaking map
-   hotspots, keyboard navigation, or responsive rendering.
-2. `/debug` exposes the full roster to both sides and free-form test controls
-   without a save slot/progression fetch or write. Its debug-only creation API
-   permits full-roster testing while normal player APIs still reject locked
-   player heroes.
-3. An active save with fewer than six unlocked heroes cannot start Arena and
-   receives a clear requirement. With six or more, exactly six distinct owned
-   heroes are required to start a run and stay immutable through it.
-4. A new Arena Run persists exactly 12 server-authored nodes with 20%/50%/30%
-   size selection logic; all node size/formation/enemy data remains stable on
-   reload/retry and is visible before each launch.
-5. Arena player team selection is limited to the locked squad and exact node
-   size; free-form enemy/size/control/seed controls are absent. Existing player
-   formation selection remains valid for 2v2/3v3.
-6. Enemy teams can repeat definitions and meet every stated formation/faculty
-   constraint. They are computer-controlled and cannot be forged by the client.
-7. Only the current node can launch; only an authoritative friendly victory
-   advances it once. Defeat/draw/round-limit retries it. Run state survives
-   reload/restart and remains isolated per save slot; twelve victories produce
-   a completed state and intentional new-run entry.
-8. Existing five-slot, training, ordinary battle, formation, and debug-free
-   player-data boundaries have regression coverage and remain functional.
+1. Core provides the mandatory ten-item pre-code boundary report before
+   implementation work, accurately identifying the existing Battle Screen,
+   CSS grid/breakpoints, `heroFigureScaleFor`, and formation registry boundary.
+2. The Battle Scene has documented/enforced conceptual separation between
+   world background, actors, VFX, world-anchored UI, and screen HUD without
+   forcing unnecessary DOM complexity or moving any gameplay ownership.
+3. A small height- and orientation-aware responsive configuration foundation
+   exists for all six named categories, without broad scrolling or a finished
+   redesign of every category.
+4. The central scale path supports exactly one `browserSizeRate` factor, whose
+   reference result at 1920×1080 is 1.0. All per-hero and per-formation inputs,
+   relative results, and position semantics remain unchanged.
+5. World actor/VFX/anchored UI projection is distinct from screen-HUD density
+   handling. Browser-size scaling does not multiply existing formation X/Y
+   positions or alter authoritative combat positions/legality.
+6. The current 1920×1080 page is visually and functionally equivalent before
+   versus after in every listed regression-lock item; no unrelated screen,
+   data, backend, Team Builder, Arena, asset, text, or battle-rule change is
+   present.
+7. Landscape phone is accounted for without a portrait battle layout. Existing
+   desktop and compact-width behavior is retained until a later task explicitly
+   authorizes final per-configuration layouts.
 
 ## Validation Required
 
 ### Automated
 
-1. Backend: clean and migrated schema tests; active-slot isolation; eligibility;
-   exact unique owned squad; atomic run create/resume/retry/complete; 12 nodes;
-   deterministic node recreation; out-of-order/stale/repeated completion
-   rejection; reload/restart; training coexistence; and no persistence from
-   debug battles.
-2. Enemy-generation property/seed tests across many runs: 1v1/2v2/3v3 type
-   distribution logic, duplicates allowed, computer control, supported IDs,
-   and each required front/rear faculty constraint and ordering.
-3. API/contract tests: typed arena state/create/launch/commit/errors; no
-   client-supplied enemy/progress/random fields; normal ownership enforcement;
-   debug-only bypass isolation; existing stage completion unchanged.
-4. Frontend: Stage Map controls/routes/focus; debug full roster and no
-   progression calls; eligibility and six-squad interactions; locked squad;
-   current-node-only flow; preview/configuration rendering; retry/completion;
-   save-slot switching/reload; responsive and keyboard checks.
-5. Run focused and full relevant backend/frontend suites, TypeScript typecheck,
-   ESLint, production build, Python compileall, and task-scoped
-   `git diff --check`; record exact commands/results and distinguish inherited
-   failures.
+1. Add focused tests for the centralized configuration boundary: width + height
+   category selection or CSS variable contract, landscape/portrait handling,
+   reference `browserSizeRate: 1`, and no scattered component-level viewport
+   behavior.
+2. Add/retain tests proving exact current hero scale multiplication, all
+   formation registry positions/scales/depth, figure frame/HP-HUD anchoring,
+   target-control contracts, VFX layering, and Battle Screen interaction.
+3. Add a 1920×1080 baseline regression test/snapshot/style assertion that
+   proves the reference mode uses the prior grid/scale/position values. If
+   pixel screenshots are used, capture comparable before/after evidence with
+   the same fixture, browser, zoom, DPR, and deterministic battle state.
+4. Run affected/frontend full suites, TypeScript typecheck, ESLint, production
+   build, and task-scoped `git diff --check`. Record exact commands/results and
+   distinguish pre-existing failures.
 
 ### Manual browser validation
 
-1. At desktop and narrow widths, use both new Stage Map controls via pointer
-   and keyboard, then verify all three existing map locations still enter the
-   correct destinations.
-2. Open `/debug` with no active slot and verify both teams can use every roster
-   hero, random/specified/control/seed tools work, battles resolve, and no
-   player progression/save data changes.
-3. Load slots with four, six, and different unlocked rosters. Confirm gating,
-   squad selection, persistent node preview, allowed player-team choices,
-   computer constrained enemy presentation, retry, save-slot isolation, reload,
-   and twelve-node completion/new-run flow.
-4. Smoke test structured stages, save selection/overwrite, ordinary battle
-   launch, 2v2/3v3 formations, console/network errors, and adapter restart.
+1. Capture a deterministic 1920×1080 baseline before modifying the Battle
+   Scene, then compare the same 1v1, 2v2, and 3v3 fixtures after implementation
+   at the same browser zoom/DPR. Verify every regression-lock item explicitly.
+2. Inspect representative Monitor, Laptop Large, Laptop Medium, Pad, Pad Mini,
+   and short landscape-phone viewports. Confirm non-scrolling behavior, clear
+   battlefield/HUD responsibility boundaries, no unintended positioning or
+   scale retune, and no horizontal-overflow workaround masquerading as layout.
+3. Verify portrait phone is not treated as a full supported battle layout.
+   If a rotate-device state is implemented, confirm it is accessible, contained,
+   and appears only for portrait/unsupported small configurations.
+4. Exercise battle opening, automatic turns, skill targeting/multi-target,
+   HP/combat/VFX presentation, fullscreen, completion/resign dialogs, keyboard
+   controls, and reduced-motion behavior at the reference viewport. Record
+   console/network/runtime errors.
+
+## Documentation/Handoff Requirements
+
+- Update `WEB_UI_ARCHITECTURE.md`, `Style_Guide.md`, and Technical Architecture
+  with the exact five conceptual layers, configuration ownership, scale formula,
+  1920×1080 invariants, non-scrolling/density direction, and deferred final
+  configuration designs.
+- Append UI-024 completion evidence to `Completed.md`: pre-code report,
+  changed files, exact behavior added, explicitly unchanged behavior, test/build
+  results, 1920×1080 comparison evidence, known risks, and remaining six-layout
+  work.
 
 ## Agent Assignments
 
 ### Complexity and risk
 
-**Very high-risk cross-boundary progression feature.** It adds persistent,
-randomized run state, player ownership gates, a secure debug bypass, battle
-launch/commit boundaries, and routing/UI changes. Main risks are player-data
-leakage through debug tools, slot leakage, client-forged enemies/progression,
-non-repeatable nodes, duplicate advancement, accidental reset, and regression
-to current training/save-slot contracts.
+**High-risk frontend architectural refactor.** It must make future responsive
+work safer while preserving finely tuned desktop geometry. Primary risks are a
+hidden reference-scale change, accidental formation-coordinate scaling,
+background/HUD coupling, global scrolling/overflow, duplicated viewport logic,
+and visual regression to battle interaction or effects.
 
 ### Participating agents
 
-- `project-manager` — coordinate scope, lifecycle decisions, role handoff,
-  migration/slot safety, documentation, and evidence; prevent future features.
-- `game-engine-developer` — own versioned SQLite Arena Run schema, seeded
-  node/enemy generation, authoritative launch/completion, debug API isolation,
-  migrations, contracts, and backend tests.
-- `ui-developer` — own Stage Map controls, `/debug`, Arena hub/squad/node UI,
-  Team Builder mode separation, accessibility, responsive styling, and frontend
-  contracts; never author progression/enemy state locally.
-- `test-automator` — own deterministic persistence/seed/property, debug
-  isolation, save-slot, lifecycle, accessibility, responsive, and regression
-  evidence.
-- `reviewer` — independently audit authority, duplicates, save isolation,
-  debug no-write boundary, formation constraints, migration, accessibility,
-  documentation, and deferred scope.
+- `project-manager` — first produce the mandatory boundary report, enforce
+  scope, coordinate baseline evidence and documentation, and prevent scope
+  expansion into non-battle systems.
+- `ui-developer` — own the Battle Screen/CSS presentation boundaries, central
+  configuration variables/resolver, reference-projection foundation, and
+  responsive accessibility without retuning visual inputs.
+- `test-automator` — own deterministic 1920×1080 before/after evidence,
+  viewport/configuration regressions, scale/position preservation, interaction,
+  reduced-motion, and build/test results.
+- `reviewer` — independently compare the reference output and audit scale,
+  coordinates, layer ownership, overflow/non-scroll behavior, documented
+  deferred scope, and absence of non-battle changes.
+- `game-engine-developer` — confirm no Python/API/contract modification is
+  necessary; do not alter engine or adapter behavior for this task.
 
 ## Completion Notes
 
-Do not mark UI-023 complete until all selected roles report; clean and migrated
-databases prove per-slot Arena isolation and idempotent lifecycle; debug is
-proven save-independent; every node/enemy constraint is validated; browser
-evidence covers the controls, gating, squad, node/retry/completion flows; and
-existing save, training, battle, and formation contracts pass. Append exact
-files, validation commands/results, reviewer decision, known risks, and
-deferred features to `docs/Codex/Completed.md`.
+Do not mark UI-024 complete until the pre-code report and all selected role
+reports are available; reference 1920×1080 comparison evidence establishes no
+unapproved visual/behavior difference; focused and full frontend validation is
+recorded; and docs state exactly what foundation was added versus what final
+responsive designs remain deferred.

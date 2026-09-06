@@ -32,7 +32,11 @@ submits node seeds, enemy teams, progression, or completion outcomes. The
 browser may also abandon a run only by posting its server-issued run ID to the
 profile-scoped abandon endpoint after explicit player confirmation; the server
 deletes the active profile's matching run and returns the new Arena state.
-separate `/api/v1/debug/battles` route accepts free-form development battles
+After the twelfth committed victory, the UI acknowledges the persisted completed
+state and routes to Stage Map. A later Arena visit uses that completed state
+only to authorize the replacement-squad flow; it does not display the former
+completion page again or create a run without an explicit squad request.
+A separate `/api/v1/debug/battles` route accepts free-form development battles
 without reading or mutating save/progression data.
 
 ## Protocols and Interfaces

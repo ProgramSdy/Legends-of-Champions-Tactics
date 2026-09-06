@@ -95,6 +95,19 @@ _To be documented._
 
 ### Battle Formations
 
+- The Battle Scene is a non-scrolling landscape presentation. Its responsive
+  owner is `presentationConfig.ts`, which assigns one named display mode and
+  one `browserSizeRate`; components must not add independent viewport checks.
+  Portrait is a contained rotate-device state, not a portrait battle layout.
+- The battlefield separates world background, combat actors, VFX, and
+  world-anchored UI from the screen HUD. Only world responsibilities share the
+  formation projection; headers, side panels, command deck, controls, and
+  dialogs never scale together as a full-screen canvas.
+- At the 1920×1080 Monitor reference, browser size rate is `1.0`. Final actor
+  scale is hero rate × formation rate × browser rate. Do not use that browser
+  rate to move formation X/Y anchors, retune formation depth, alter target
+  legality, or resize source-owned hero metadata.
+
 - Hero figures must read as grounded on the arena floor in every live format.
 - The formation registry is the single source for presentation coordinates.
   Duel retains its established coordinates. The approved 2v2 pairs are
@@ -192,8 +205,9 @@ _To be documented._
   the crosshair until all targets are selected. In a genuine overlap of two
   target controls, the approved higher visual-depth figure receives pointer
   input.
-- Desktop Team Builder and Battle Asset Registry scrolling uses a finite,
-  focusable region with a stable right-side scrollbar gutter when overflowing.
+- Desktop Team Builder, Arena Run hub/squad builder, and Battle Asset Registry
+  scrolling uses a finite, focusable region with a stable right-side scrollbar
+  gutter when overflowing. The Battle Scene itself remains non-scrolling.
 - Battle entry is a non-interactive overlay on the composed battlefield. The
   `3`, `2`, and `1` frames share one centered layout box, font metrics,
   transform origin, and animation; `START` uses its separate intentional label

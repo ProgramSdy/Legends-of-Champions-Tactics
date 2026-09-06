@@ -10,7 +10,7 @@ const OWNER_CONFIGURED_SCALES = {
   "hero.priest.comprehensiveness": 1,
   "hero.priest.discipline": 1,
   "hero.mage.comprehensiveness": 0.9,
-  "hero.warrior.defence": 1.2,
+  "hero.warrior.defence": 1.15,
   "hero.warrior.weapon_master": 1.1,
   "hero.rogue.comprehensiveness": 1,
 } as const;
@@ -53,9 +53,9 @@ describe("per-definition hero figure scales", () => {
       return Number(owner.style.getPropertyValue("--figure-scale"));
     };
 
-    // Trio front formation is 1.02; enemy centre formation is .94.
-    expect(readFigureScale("Scaled Warrior")).toBeCloseTo(1.02 * 1.2);
-    expect(readFigureScale("Scaled Mage")).toBeCloseTo(0.94 * 0.9);
+    // The owner-approved One Front, Two Rear registry uses .94 then .8.
+    expect(readFigureScale("Scaled Warrior")).toBeCloseTo(0.94 * 1.2);
+    expect(readFigureScale("Scaled Mage")).toBeCloseTo(0.8 * 0.9);
   });
 
   it("does not alter final-image dimensions or enemy mirroring", async () => {
@@ -64,8 +64,8 @@ describe("per-definition hero figure scales", () => {
     Object.assign(snapshot.combatants["enemy.nighthawk"], { definitionId: "hero.warrior.defence", displayName: "Enemy Figure", faculty: "Warrior" });
 
     render(<BattleScreen provider={new MockBattleProvider(snapshot)} />);
-    const friendly = await screen.findByLabelText("Friendly Figure figure");
-    const enemy = screen.getByLabelText("Enemy Figure figure");
+    const friendly = (await screen.findAllByLabelText("Friendly Figure figure")).find((image) => image.closest(".battlefield"))!;
+    const enemy = screen.getAllByLabelText("Enemy Figure figure").find((image) => image.closest(".battlefield"))!;
     expect(friendly).toHaveAttribute("width", "160");
     expect(friendly).toHaveAttribute("height", "160");
     expect(enemy).toHaveAttribute("width", "160");

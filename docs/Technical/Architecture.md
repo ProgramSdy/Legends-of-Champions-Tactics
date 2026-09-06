@@ -45,12 +45,28 @@ combat.
 | 2v2/3v3 formation selection input | Team Builder; validated and resolved by Python |
 | Snapshot formation/position data | Python adapter |
 | Figure anchors, scale, stacking, UI effects, accessibility | Next.js presentation registry |
+| Browser display mode and shared actor browser-size rate | Next.js battle presentation configuration |
 | Five-slot selection, training unlocks, stage progress, generic reward counts, Arena Run state | SQLite progression store / FastAPI |
 | Profile naming/deletion, active-battle recovery, inventory/equipment, cloud/account saves | Not implemented |
 
 The formation registry must never assign combat positions or decide legal
 targets. Conversely, visual 3v3 depth is formation-, side-, and slot-specific
 presentation data, not an additional Python gameplay state.
+
+### Battle Scene responsive presentation
+
+`web-ui/lib/battle/presentationConfig.ts` centrally classifies the live Battle
+Scene by width, height, and orientation. It provides Monitor, Laptop Large,
+Laptop Medium, Pad, Pad Mini, landscape Phone, and a portrait rotate-device
+state without adding any Python/API field. The scene remains non-scrolling.
+
+The Battlefield is the common projection context for arena background, combat
+actors, combat VFX, and world-anchored UI. Screen HUD remains a distinct
+responsibility. The effective actor scale is
+`heroFigureScaleRate × formationScaleRate × browserSizeRate`; at the 1920×1080
+reference Monitor, browser size rate is exactly `1.0`. Formation percentage
+coordinates, depth, hero registry values, input geometry semantics, and all
+combat authority remain unchanged.
 
 ## Data Flow
 

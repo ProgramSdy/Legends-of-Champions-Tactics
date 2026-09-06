@@ -54,7 +54,11 @@ the thin Python adapter. Python remains the sole gameplay authority.
   the static roster and creates sessions through the dedicated debug route.
   `components/battle/ArenaRunExperience.tsx` owns active-slot Arena Run state,
   squad/node UI, and the dedicated launch/completion routes; it never authors
-  enemy configuration, node progress, or run randomness locally.
+  enemy configuration, node progress, or run randomness locally. It presents a
+  just-completed run once with an **OK** route to Stage Map; a later Arena visit
+  renders the intentional replacement six-hero squad builder. Its hub and
+  squad-builder region retain a bounded right-side vertical scrollbar when
+  content exceeds viewport height.
 - `components/battle/BattleExperience.tsx` owns the Team Builder/battle
   lifecycle. It loads static roster and authoritative progression/stage data,
   creates Arena or stage-scoped providers, commits friendly victories, and
@@ -73,6 +77,42 @@ the thin Python adapter. Python remains the sole gameplay authority.
 - `components/battle/BattleScreen.tsx` and its child components are generic.
   They contain no API, hero-name, damage, healing, legality, cooldown, status
   duration, turn, summon, or victory rules.
+- `lib/battle/presentationConfig.ts` is the sole browser-viewport observer for
+  the live Battle Scene. It classifies Monitor, Laptop Large, Laptop Medium,
+  Pad, Pad Mini, landscape Phone, and a contained portrait rotate-device state.
+  It supplies the one responsive `browserSizeRate`; no component derives a
+  display mode from its own viewport check. For engineering verification, the
+  battlefield's top-right non-interactive readout displays the current viewport
+  dimensions and the resulting active configuration.
+
+## Battle Presentation Projection
+
+The Battle Scene remains a non-scrolling screen HUD. It has five conceptual
+responsibilities, sharing only the battlefield projection where appropriate:
+
+1. **Arena / World Background** — battlefield artwork and crop.
+2. **Combat Actors** — formation-slot figures and future temporary actors.
+3. **Combat VFX** — projectiles, spells, hits, and ground effects.
+4. **World-Anchored UI** — target controls, figure aura, transient HP HUD,
+   floating values, and casting indicators.
+5. **Screen UI / HUD** — header, team panels, command deck, controls, and
+   dialogs.
+
+The first four use the positioned Battlefield context; Screen UI is not scaled
+as a 1920×1080 canvas. `formations.ts` retains the reference percentage anchors
+and presentation depth. Its values map directly into the current battlefield;
+responsive presentation never multiplies those coordinates or recreates target
+legality.
+
+Final actor presentation is
+`heroFigureScaleRate × formationScaleRate × browserSizeRate`. Hero rates remain
+in `assets.ts`; formation rates/depth/coordinates remain in `formations.ts`;
+only the browser rate comes from `presentationConfig.ts`. At 1920×1080 Monitor,
+`browserSizeRate` is exactly `1`, preserving the approved reference result.
+The browser rate scales the actor/its bounded target control and keeps the
+figure-attached HP HUD vertically anchored; it does not alter combat positions,
+formation values, or screen-HUD geometry. Final density treatment for each
+named configuration remains deliberately deferred.
 
 ## Authority and Reconciliation
 

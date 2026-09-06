@@ -10,6 +10,7 @@ import { SkillCard } from "./SkillCard";
 import { formationFor, getBattleFormat } from "@/lib/battle/formations";
 import { BATTLE_BACKGROUND } from "@/lib/battle/battleBackgrounds";
 import { heroFigureScaleFor } from "@/lib/battle/assets";
+import { useBattlePresentationConfig } from "@/lib/battle/presentationConfig";
 
 const logGlyph: Record<BattleEventType, string> = {
   battleStarted: "◆", roundStarted: "◎", turnStarted: "▶", skillStarted: "✦",
@@ -49,7 +50,6 @@ function TeamPanel({ side, heroes, activeId, highlightedTargetIds }: { side: "fr
       <div className="team-cards">
         {heroes.map((hero, index) => hero ? <HeroCard key={hero.id} hero={hero} active={hero.id === activeId} targetHighlighted={highlightedTargetIds.includes(hero.id)} /> : <div className="empty-slot" key={`empty-${index}`}><span>◇</span><small>OPEN SLOT</small></div>)}
       </div>
-      <div className="team-bonus"><strong>TEAM BOND</strong><span>{side === "friendly" ? "☽ +5% Vitality" : "✦ +5% Spell Power"}</span><span>{side === "friendly" ? "✧ +3% Resolve" : "◆ +5% Ward"}</span></div>
     </aside>
   );
 }
@@ -101,13 +101,13 @@ function BattlefieldFigure({ hero, active, event, hpEvent, healingCasterEvent, e
       data-figure-footprint="shared"
       style={{ "--figure-frame-width": `${FIGURE_FRAME_WIDTH}px`, "--figure-frame-height": `${figureFrameHeight}px`, "--figure-scale": figureScale } as CSSProperties}
     >
-      {hpEvent?.targetId === hero.id && <div className="overhead event-hud" role="status" aria-live="polite">
+      {hpEvent?.targetId === hero.id && <div className="overhead event-hud" data-battle-layer="world-ui" role="status" aria-live="polite">
         <div className="overhead-health">
           <span className="overhead-name">{hero.displayName}</span>
           <Meter value={hero.hp.current} maximum={hero.hp.maximum} kind="hp" label={`${hero.displayName} health`} />
         </div>
       </div>}
-      <button className={`battle-target-control ${targetSelectionPending ? "target-selection-pending" : ""}`} type="button" disabled={!selectable} onClick={onSelect}
+      <button className={`battle-target-control ${targetSelectionPending ? "target-selection-pending" : ""}`} data-battle-layer="world-ui" type="button" disabled={!selectable} onClick={onSelect}
         onMouseEnter={() => { if (selectable) onTargetHover(hero.id); }}
         onMouseLeave={() => onTargetHover(null)}
         onFocus={() => { if (selectable) onTargetHover(hero.id); }}
@@ -151,6 +151,7 @@ type EntryCountdown = 3 | 2 | 1 | "start" | null;
 
 export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundImage, entryCountdownStepMs, onBattleComplete, completionActionLabel, onReturnToBuilder, onResign }: BattleScreenProps) {
   const mountedBackground = backgroundImage ?? BATTLE_BACKGROUND;
+  const presentationConfig = useBattlePresentationConfig();
   const { snapshot, revision, activeEvent, activeHpEvent, activeHealingCasterEvent, log, setLog, speed, setSpeed, isPlaying, isOpening, hasPendingOpening, canSkip, error, errorKind, present, playOpening, skip, retry } = usePresentationQueue(provider);
   const [entryCountdown, setEntryCountdown] = useState<EntryCountdown>(entryCountdownStepMs === undefined ? null : 3);
   const [selectedSkill, setSelectedSkill] = useState<string | null>(null);
@@ -276,7 +277,13 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
   };
 
   return (
-    <main className={`battle-shell format-${getBattleFormat(snapshot)}`} data-format={getBattleFormat(snapshot)}>
+    <main
+      className={`battle-shell format-${getBattleFormat(snapshot)}`}
+      data-format={getBattleFormat(snapshot)}
+      data-presentation-mode={presentationConfig.mode}
+      data-orientation={presentationConfig.orientation}
+      style={{ "--browser-size-rate": presentationConfig.browserSizeRate } as CSSProperties}
+    >
       <header className="battle-header">
         <div className="header-tools"><button aria-label="Open menu">☰</button><button aria-label="Settings">⚙</button></div>
         <div className="side-banner friendly"><span className="crest">L</span><strong>YOUR TEAM</strong><i>READY</i></div>
@@ -296,14 +303,20 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
         <section
           className={`battlefield ${activeEvent ? "event-active" : ""}`}
           aria-label="Battlefield"
+          data-battle-layer-context="world"
           data-background={mountedBackground}
           style={{ "--battle-background-image": `url("${mountedBackground}")` } as CSSProperties}
         >
+          <aside className="battle-viewport-readout" aria-label="Battle viewport configuration">
+            <small>VIEWPORT</small>
+            <strong>{presentationConfig.viewport.width} × {presentationConfig.viewport.height}</strong>
+            <span>{presentationConfig.mode.replaceAll("-", " ").toUpperCase()}</span>
+          </aside>
           {(activeEvent?.effectHint === "magic" || activeEvent?.effectHint === "summon")
-            && <div className={`effect-layer ${activeEvent.effectHint}`} aria-hidden="true"><span /></div>}
+            && <div className={`effect-layer ${activeEvent.effectHint}`} data-battle-layer="combat-vfx" aria-hidden="true"><span /></div>}
           {battlefield.map((hero) => {
             const position = formationFor(snapshot, hero.sideId, hero.slot, hero.position);
-            return <div className="formation-slot" key={hero.id} data-slot={position.slot} data-position={hero.position} style={{ left: `${position.x}%`, top: `${position.y}%`, zIndex: position.depth, "--figure-scale": position.scale } as CSSProperties}>
+            return <div className="formation-slot" key={hero.id} data-battle-layer="combat-actor" data-slot={position.slot} data-position={hero.position} style={{ left: `${position.x}%`, top: `${position.y}%`, zIndex: position.depth, "--figure-scale": position.scale } as CSSProperties}>
             <BattlefieldFigure hero={hero} active={hero.id === snapshot.activeCombatantId}
               event={activeEvent} hpEvent={activeHpEvent} healingCasterEvent={activeHealingCasterEvent}
               eventSourceSide={eventSourceSide} eventSourceIsPriest={eventSourceIsPriest}
@@ -318,6 +331,10 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
         </section>
         <TeamPanel side="enemy" heroes={sideHeroes("enemy")} activeId={snapshot.activeCombatantId} highlightedTargetIds={highlightedTargetIds} />
       </section>
+
+      {presentationConfig.orientation === "portrait" ? <aside className="battle-orientation-guard" role="alert">
+        <strong>ROTATE DEVICE</strong><span>Battle is currently supported in landscape orientation.</span>
+      </aside> : null}
 
       <section className="command-deck">
         {active
