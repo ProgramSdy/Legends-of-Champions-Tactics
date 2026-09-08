@@ -362,6 +362,159 @@ class Warrior_Defence(Warrior):
  
     # Battling Strategy_________________________________________________________
 
+    # Part A — battle information collection ----------------------------------
+    def _defence_combatant_snapshot(self, hero):
+        active_statuses = {name for name, active in hero.status.items() if active}
+        return {
+            "hero": hero,
+            "faculty": hero.faculty,
+            "major": hero.major,
+            "position": hero.position,
+            "alive": hero.hp > 0,
+            "hp_ratio": hero.hp / hero.hp_max if hero.hp_max else 0,
+            "defense": hero.defense,
+            "armor_breaker_stacks": getattr(hero, "armor_breaker_stacks", 0),
+            "active_statuses": active_statuses,
+            "buffs": [buff.name for buff in hero.buffs],
+            "debuffs": [debuff.name for debuff in hero.debuffs],
+            "skill_cooldowns": {
+                skill.name: {
+                    "available": skill.is_available and not skill.if_cooldown,
+                    "rounds_remaining": skill.cooldown,
+                }
+                for skill in hero.skills
+            },
+        }
+
+    def collect_battle_information(self, opponents, allies):
+        """Collect the Defence Warrior's live, formation-authoritative state."""
+        opponents_state = [
+            self._defence_combatant_snapshot(hero) for hero in opponents
+        ]
+        allies_state = [self._defence_combatant_snapshot(hero) for hero in allies]
+        alive_opponents = [item for item in opponents_state if item["alive"]]
+        melee_targets = [
+            item for item in alive_opponents if item["position"] == "front"
+        ] or alive_opponents
+        return {
+            "self": self._defence_combatant_snapshot(self),
+            "allies": [item for item in allies_state if item["alive"]],
+            "opponents": alive_opponents,
+            "melee_targets": melee_targets,
+            "ranged_targets": alive_opponents,
+            "formations": {
+                "ally_positions": tuple(item["position"] for item in allies_state),
+                "opponent_positions": tuple(item["position"] for item in opponents_state),
+            },
+            "skills": {
+                skill.name: skill
+                for skill in self.skills
+                if skill.is_available and not skill.if_cooldown
+            },
+        }
+
+    # Part B — battle analysis -------------------------------------------------
+    @staticmethod
+    def _defence_priority_target(candidates):
+        threat_rank = {"Mage": 0, "Rogue": 1, "Priest": 2, "Warrior": 3, "Paladin": 4}
+        return min(
+            candidates,
+            key=lambda item: (
+                item["hp_ratio"],
+                threat_rank.get(item["faculty"], 5),
+                -item["defense"],
+                item["hero"].name,
+            ),
+        )
+
+    def analyse_battle_strategy(self, battle_information):
+        """Choose one of seven Defence Warrior priorities for this turn."""
+        skills = battle_information["skills"]
+        melee_targets = battle_information["melee_targets"]
+        ranged_targets = battle_information["ranged_targets"]
+        if not ranged_targets:
+            return next(iter(skills.values()), None), None
+
+        devastate = skills.get("Devastate")
+        shield_bash = skills.get("Shield Bash")
+        thunder_pot = skills.get("Thunder Pot")
+
+        # 1. Immediately interrupt and stun a reachable active caster.
+        casters = [
+            item for item in melee_targets if "magic_casting" in item["active_statuses"]
+        ]
+        if shield_bash and casters:
+            return shield_bash, self._defence_priority_target(casters)["hero"]
+
+        # 2. Use Devastate to finish a reachable opponent before it can act.
+        low_health = [item for item in melee_targets if item["hp_ratio"] <= 0.30]
+        if devastate and low_health:
+            return devastate, self._defence_priority_target(low_health)["hero"]
+
+        # 3. Use Thunder Pot's multi-target Scoff and resistance gain when it
+        # can affect at least two live enemies, especially dangerous casters.
+        priority_ranged = [
+            item
+            for item in ranged_targets
+            if item["faculty"] in {"Mage", "Rogue", "Priest"}
+            or "magic_casting" in item["active_statuses"]
+        ]
+        if thunder_pot and len(ranged_targets) >= 2 and priority_ranged:
+            ordered = sorted(
+                ranged_targets,
+                key=lambda item: (
+                    item not in priority_ranged,
+                    item["hp_ratio"],
+                    item["hero"].name,
+                ),
+            )
+            return thunder_pot, [item["hero"] for item in ordered[:2]]
+
+        # 4. Stun a reachable Mage or Rogue to blunt the highest immediate
+        # offensive threat when an interruption is not already required.
+        high_threat_melee = [
+            item for item in melee_targets if item["faculty"] in {"Mage", "Rogue"}
+        ]
+        if shield_bash and high_threat_melee:
+            return shield_bash, self._defence_priority_target(high_threat_melee)["hero"]
+
+        # 5. Apply or build Devastate's Armor Breaker on the most heavily
+        # defended reachable target.  Devastate's engine effect caps at two.
+        stackable_defenders = [
+            item for item in melee_targets if item["armor_breaker_stacks"] < 2
+        ]
+        if devastate and stackable_defenders:
+            return devastate, max(
+                stackable_defenders,
+                key=lambda item: (item["defense"], -item["hp_ratio"], item["hero"].name),
+            )["hero"]
+
+        # 6. If no priority control target exists, use Thunder Pot to hold two
+        # opponents' attention on the tank whenever it can hit both.
+        if thunder_pot and len(ranged_targets) >= 2:
+            ordered = sorted(
+                ranged_targets,
+                key=lambda item: (item["hp_ratio"], item["hero"].name),
+            )
+            return thunder_pot, [item["hero"] for item in ordered[:2]]
+
+        # 7. Fall back to reliable melee pressure on the most vulnerable legal
+        # target.  The adapter verifies this target before execution.
+        target = self._defence_priority_target(melee_targets)["hero"]
+        return devastate or shield_bash or thunder_pot, target
+
+    # Part C — return the selected action to the live API adapter -------------
+    def ai_choose_skill(self, opponents, allies):
+        self.defence_battle_information = self.collect_battle_information(
+            opponents, allies
+        )
+        skill, target = self.analyse_battle_strategy(self.defence_battle_information)
+        self.preset_target = target
+        return skill
+
+    def ai_choose_target(self, chosen_skill, opponents, allies):
+        return self.preset_target
+
 class Warrior_Weapon_Master(Warrior):
     
     major = "Weapon_Master"
@@ -498,6 +651,203 @@ class Warrior_Weapon_Master(Warrior):
 
 
     # Battling Strategy_________________________________________________________
+
+    # Part A — battle information collection ----------------------------------
+    def _weapon_master_combatant_snapshot(self, hero):
+        """Return the combat facts Weapon Master strategy is allowed to inspect.
+
+        The API adapter owns formation assignment and target validation.  The
+        engine exposes that authoritative formation state on each hero's
+        ``position`` field, so strategy reads positions rather than duplicating
+        formation IDs or frontend layout rules here.
+        """
+        active_statuses = {
+            name for name, active in hero.status.items() if active
+        }
+        return {
+            "hero": hero,
+            "faculty": hero.faculty,
+            "major": hero.major,
+            "position": hero.position,
+            "alive": hero.hp > 0,
+            "hp": hero.hp,
+            "hp_max": hero.hp_max,
+            "hp_ratio": hero.hp / hero.hp_max if hero.hp_max else 0,
+            "defense": hero.defense,
+            "original_defense": hero.original_defense,
+            "armor_breaker_stacks": getattr(hero, "armor_breaker_stacks", 0),
+            "active_statuses": active_statuses,
+            "buffs": [buff.name for buff in hero.buffs],
+            "debuffs": [debuff.name for debuff in hero.debuffs],
+            "skill_cooldowns": {
+                skill.name: {
+                    "available": skill.is_available and not skill.if_cooldown,
+                    "rounds_remaining": skill.cooldown,
+                }
+                for skill in hero.skills
+            },
+        }
+
+    def collect_battle_information(self, opponents, allies):
+        """Collect the current, engine-authoritative state for one AI turn."""
+        opponent_snapshots = [
+            self._weapon_master_combatant_snapshot(hero) for hero in opponents
+        ]
+        ally_snapshots = [
+            self._weapon_master_combatant_snapshot(hero) for hero in allies
+        ]
+        alive_opponents = [item for item in opponent_snapshots if item["alive"]]
+        alive_allies = [item for item in ally_snapshots if item["alive"]]
+        living_front_opponents = [
+            item for item in alive_opponents if item["position"] == "front"
+        ]
+
+        # This exactly matches battle_api.adapter._valid_target_ids for the
+        # Weapon Master's melee damage skills.  When no front defender remains,
+        # rear opponents become reachable.
+        reachable_opponents = living_front_opponents or alive_opponents
+        return {
+            "self": self._weapon_master_combatant_snapshot(self),
+            "allies": alive_allies,
+            "opponents": alive_opponents,
+            "reachable_opponents": reachable_opponents,
+            "formations": {
+                "ally_positions": tuple(item["position"] for item in ally_snapshots),
+                "opponent_positions": tuple(
+                    item["position"] for item in opponent_snapshots
+                ),
+            },
+            "skills": {
+                skill.name: skill
+                for skill in self.skills
+                if skill.is_available and not skill.if_cooldown
+            },
+        }
+
+    # Part B — battle analysis -------------------------------------------------
+    @staticmethod
+    def _weapon_master_priority_target(candidates):
+        """Prefer a lower-health, higher-threat target without random choices."""
+        threat_rank = {"Mage": 0, "Rogue": 1, "Priest": 2, "Warrior": 3, "Paladin": 4}
+        return min(
+            candidates,
+            key=lambda item: (
+                item["hp_ratio"],
+                threat_rank.get(item["faculty"], 5),
+                -item["defense"],
+                item["hero"].name,
+            ),
+        )
+
+    def analyse_battle_strategy(self, battle_information):
+        """Choose a Weapon Master action from a small, explainable rule set.
+
+        The returned target is always drawn from the formation-legal melee
+        pool.  The API adapter remains the final authority and validates this
+        choice again before it resolves the skill.
+        """
+        skills = battle_information["skills"]
+        reachable = battle_information["reachable_opponents"]
+        self_state = battle_information["self"]
+
+        if not reachable:
+            return next(iter(skills.values()), None), None
+
+        fatal_strike = skills.get("Fatal Strike")
+        armor_crush = skills.get("Armor Crush")
+        antivenom = skills.get("Antivenom Potion")
+
+        # 1. Finish a reachable, low-health opponent with Fatal Strike.
+        low_health = [item for item in reachable if item["hp_ratio"] <= 0.35]
+        if fatal_strike and low_health:
+            return fatal_strike, self._weapon_master_priority_target(low_health)["hero"]
+
+        # 2. Stabilise: cure toxic effects (and their related bleeding effects)
+        # or recover from critical health whenever Antivenom is ready.
+        removable_statuses = (
+            set(self.list_status_debuff_toxic) | set(self.list_status_debuff_bleeding)
+        )
+        if antivenom and (
+            self_state["hp_ratio"] <= 0.35
+            or self_state["active_statuses"] & removable_statuses
+        ):
+            return antivenom, None
+
+        # 3. Against a team with a living Priest, apply healing reduction to a
+        # reachable target that does not already have Fatal Strike.
+        enemy_has_healer = any(
+            item["faculty"] == "Priest" for item in battle_information["opponents"]
+        )
+        unmarked_targets = [
+            item for item in reachable if "fatal_strike" not in item["active_statuses"]
+        ]
+        if fatal_strike and enemy_has_healer and unmarked_targets:
+            return fatal_strike, self._weapon_master_priority_target(unmarked_targets)["hero"]
+
+        # 4. Strip defence from a reachable Warrior or Paladin before spending
+        # attacks on lower-defence targets.  Three stacks is the engine cap.
+        armored_frontliners = [
+            item
+            for item in reachable
+            if item["faculty"] in {"Warrior", "Paladin"}
+            and item["armor_breaker_stacks"] < 3
+        ]
+        if armor_crush and armored_frontliners:
+            target = max(
+                armored_frontliners,
+                key=lambda item: (item["defense"], -item["hp_ratio"], item["hero"].name),
+            )
+            stacks = target["armor_breaker_stacks"]
+            if fatal_strike and stacks == 1:
+                # Owner rule: reinforce once 65% of the time, otherwise apply
+                # Fatal Strike's healing-reduction pressure.
+                return (
+                    armor_crush if random.random() < 0.65 else fatal_strike,
+                    target["hero"],
+                )
+            if fatal_strike and stacks == 2:
+                # Owner rule: at two stacks, reinforce and Fatal Strike are
+                # equally likely choices.
+                return (
+                    armor_crush if random.random() < 0.50 else fatal_strike,
+                    target["hero"],
+                )
+            return armor_crush, target["hero"]
+
+        # 5. Focus the reachable high-threat Mage or Rogue.
+        high_threat = [
+            item for item in reachable if item["faculty"] in {"Mage", "Rogue"}
+        ]
+        if fatal_strike and high_threat:
+            return fatal_strike, self._weapon_master_priority_target(high_threat)["hero"]
+
+        # 6. Continue Armor Crush on another reachable, stackable defender.
+        stackable = [item for item in reachable if item["armor_breaker_stacks"] < 3]
+        if armor_crush and stackable:
+            return armor_crush, max(
+                stackable,
+                key=lambda item: (item["defense"], -item["hp_ratio"], item["hero"].name),
+            )["hero"]
+
+        # 7. A deterministic damage fallback keeps this specialization from
+        # handing target choice to the adapter's random missing-target fallback.
+        fallback_target = self._weapon_master_priority_target(reachable)["hero"]
+        return fatal_strike or armor_crush or next(iter(skills.values())), fallback_target
+
+    # Part C — return the chosen action to the live API adapter ----------------
+    def ai_choose_skill(self, opponents, allies):
+        self.weapon_master_battle_information = self.collect_battle_information(
+            opponents, allies
+        )
+        skill, target = self.analyse_battle_strategy(
+            self.weapon_master_battle_information
+        )
+        self.preset_target = target
+        return skill
+
+    def ai_choose_target(self, chosen_skill, opponents, allies):
+        # Targetless Antivenom is executed by the adapter without a target.
+        return self.preset_target
 
 class Warrior_Berserker(Warrior):
 
@@ -688,3 +1038,164 @@ class Warrior_Berserker(Warrior):
                return other_hero.take_damage(damage_dealt, attack_type, self)
         else:
           return other_hero.take_damage(damage_dealt, attack_type, self)
+
+    # Part A — battle information collection ----------------------------------
+    def _berserker_combatant_snapshot(self, hero):
+        active_statuses = {name for name, active in hero.status.items() if active}
+        return {
+            "hero": hero,
+            "faculty": hero.faculty,
+            "major": hero.major,
+            "position": hero.position,
+            "alive": hero.hp > 0,
+            "hp_ratio": hero.hp / hero.hp_max if hero.hp_max else 0,
+            "defense": hero.defense,
+            "armor_breaker_stacks": getattr(hero, "armor_breaker_stacks", 0),
+            "active_statuses": active_statuses,
+            "buffs": [buff.name for buff in hero.buffs],
+            "debuffs": [debuff.name for debuff in hero.debuffs],
+            "skill_cooldowns": {
+                skill.name: {
+                    "available": skill.is_available and not skill.if_cooldown,
+                    "rounds_remaining": skill.cooldown,
+                }
+                for skill in hero.skills
+            },
+        }
+
+    def collect_battle_information(self, opponents, allies):
+        """Collect the Berserker's live, formation-authoritative state."""
+        opponents_state = [
+            self._berserker_combatant_snapshot(hero) for hero in opponents
+        ]
+        allies_state = [self._berserker_combatant_snapshot(hero) for hero in allies]
+        alive_opponents = [item for item in opponents_state if item["alive"]]
+        melee_targets = [
+            item for item in alive_opponents if item["position"] == "front"
+        ] or alive_opponents
+        return {
+            "self": self._berserker_combatant_snapshot(self),
+            "allies": [item for item in allies_state if item["alive"]],
+            "opponents": alive_opponents,
+            "melee_targets": melee_targets,
+            # Moon Slash is ranged instant and can select any live opponent.
+            "moon_slash_targets": alive_opponents,
+            "formations": {
+                "ally_positions": tuple(item["position"] for item in allies_state),
+                "opponent_positions": tuple(item["position"] for item in opponents_state),
+            },
+            "skills": {
+                skill.name: skill
+                for skill in self.skills
+                if skill.is_available and not skill.if_cooldown
+            },
+        }
+
+    # Part B — battle analysis -------------------------------------------------
+    @staticmethod
+    def _berserker_priority_target(candidates):
+        threat_rank = {"Mage": 0, "Rogue": 1, "Priest": 2, "Warrior": 3, "Paladin": 4}
+        return min(
+            candidates,
+            key=lambda item: (
+                item["hp_ratio"],
+                threat_rank.get(item["faculty"], 5),
+                -item["defense"],
+                item["hero"].name,
+            ),
+        )
+
+    def analyse_battle_strategy(self, battle_information):
+        """Choose one of seven aggressive Berserker priorities for this turn."""
+        skills = battle_information["skills"]
+        melee_targets = battle_information["melee_targets"]
+        moon_targets = battle_information["moon_slash_targets"]
+        self_state = battle_information["self"]
+        if not moon_targets:
+            return next(iter(skills.values()), None), None
+
+        moon_slash = skills.get("Moon Slash")
+        warlust = skills.get("Warlust")
+        meteorite = skills.get("Strike of Meteorite")
+
+        # 1. Interrupt an active caster the Berserker can reach in melee.
+        casters = [
+            item for item in melee_targets if "magic_casting" in item["active_statuses"]
+        ]
+        if meteorite and casters:
+            return meteorite, self._berserker_priority_target(casters)["hero"]
+
+        # 2. Finish a reachable low-health opponent with the stronger melee
+        # strike before it can recover or act.
+        low_health = [item for item in melee_targets if item["hp_ratio"] <= 0.30]
+        if meteorite and low_health:
+            return meteorite, self._berserker_priority_target(low_health)["hero"]
+
+        # 3. Exploit existing Armor Breaker on two targets: Moon Slash applies
+        # its bleeding effect to every selected armor-broken opponent.
+        armor_broken = [
+            item for item in moon_targets if "armor_breaker" in item["active_statuses"]
+        ]
+        if moon_slash and len(moon_targets) >= 2 and armor_broken:
+            ordered = sorted(
+                moon_targets,
+                key=lambda item: (
+                    item not in armor_broken,
+                    item["hp_ratio"],
+                    item["hero"].name,
+                ),
+            )
+            return moon_slash, [item["hero"] for item in ordered[:2]]
+
+        # 4. Establish Warlust's damage increase and control immunity before a
+        # multi-enemy engagement or while Blood Frenzy makes the Berserker more
+        # exposed at low health.  Turn directives still handle active control.
+        if warlust and "warlust" not in self_state["active_statuses"] and (
+            len(moon_targets) >= 2
+            or self_state["hp_ratio"] <= 0.50
+            or "blood_frenzy" in self_state["active_statuses"]
+        ):
+            return warlust, None
+
+        # 5. Use Strike of Meteorite to open or deepen Armor Breaker on a
+        # reachable high-defence target.  Its engine effect can stack to three.
+        stackable_defenders = [
+            item for item in melee_targets if item["armor_breaker_stacks"] < 3
+        ]
+        if meteorite and stackable_defenders:
+            return meteorite, max(
+                stackable_defenders,
+                key=lambda item: (item["defense"], -item["hp_ratio"], item["hero"].name),
+            )["hero"]
+
+        # 6. Pressure two living enemies with Moon Slash, favoring Mage/Rogue
+        # targets so its ranged reach remains useful across formations.
+        if moon_slash and len(moon_targets) >= 2:
+            ordered = sorted(
+                moon_targets,
+                key=lambda item: (
+                    item["faculty"] not in {"Mage", "Rogue"},
+                    item["hp_ratio"],
+                    item["hero"].name,
+                ),
+            )
+            return moon_slash, [item["hero"] for item in ordered[:2]]
+
+        # 7. Fall back to focused melee pressure on the most vulnerable legal
+        # target; the adapter validates final melee legality before execution.
+        target = self._berserker_priority_target(melee_targets)["hero"]
+        return meteorite or moon_slash or warlust, target
+
+    # Part C — return the selected action to the live API adapter -------------
+    def ai_choose_skill(self, opponents, allies):
+        self.berserker_battle_information = self.collect_battle_information(
+            opponents, allies
+        )
+        skill, target = self.analyse_battle_strategy(
+            self.berserker_battle_information
+        )
+        self.preset_target = target
+        return skill
+
+    def ai_choose_target(self, chosen_skill, opponents, allies):
+        return self.preset_target

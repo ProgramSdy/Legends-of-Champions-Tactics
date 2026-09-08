@@ -85,6 +85,14 @@ describe("battle presentation configuration", () => {
     expect(css).toContain('.battle-shell[data-presentation-mode="monitor"] .turn-order { top: 92px; gap: 5px; padding: 8px 18px 9px; }');
   });
 
+  it("mirrors the damage reaction for enemy figures", () => {
+    const css = readFileSync("app/globals.css", "utf8").replace(/\s+/g, "");
+    expect(css).toContain('.battle-figure.friendly.fx-damageApplied{animation:target-shake-friendly.35s}');
+    expect(css).toContain('.battle-figure.enemy.fx-damageApplied{animation:target-shake-enemy.35s}');
+    expect(css).toContain('@keyframestarget-shake-friendly{25%{transform:translateX(-7px)}60%{transform:translateX(6px)}}');
+    expect(css).toContain('@keyframestarget-shake-enemy{25%{transform:translateX(7px)}60%{transform:translateX(-6px)}}');
+  });
+
 
   it("shows the live browser dimensions and active configuration in the battlefield readout", async () => {
     render(<BattleScreen provider={new MockBattleProvider()} />);
