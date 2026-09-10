@@ -47,19 +47,20 @@ def test_holy_aura_is_a_non_selectable_passive_skill_and_visible_team_buff():
         assert aura["sourceCombatantId"] == paladin_id
 
 
-def test_holy_aura_heals_every_living_friendly_for_twelve_when_round_starts(monkeypatch):
+def test_holy_aura_rolls_six_to_eight_independently_for_each_living_friendly(monkeypatch):
     _adapter, session, _envelope = _battle()
     paladin, ally = session.game.player_heroes
     paladin.hp -= 30
     ally.hp -= 30
+    rolls = iter((0, 2))
     monkeypatch.setattr(
-        "game.status_effect_manager.random.randint", lambda _low, _high: 0
+        "game.status_effect_manager.random.randint", lambda _low, _high: next(rolls)
     )
 
     session.game.update_battle_information()
 
-    assert paladin.hp == paladin.hp_max - 18
-    assert ally.hp == ally.hp_max - 18
+    assert paladin.hp == paladin.hp_max - 24
+    assert ally.hp == ally.hp_max - 22
 
 
 def test_holy_aura_round_healing_event_names_the_protection_paladin_source(monkeypatch):
@@ -80,7 +81,7 @@ def test_holy_aura_round_healing_event_names_the_protection_paladin_source(monke
         if event["type"] == "healingApplied"
         and event["targetId"] == "friendly.warrior_weapon_master.2"
     )
-    assert healing["amount"] == 12
+    assert healing["amount"] == 6
     assert healing["sourceId"] == adapter._combatant_id(session, paladin)
 
 
@@ -111,7 +112,7 @@ def test_status_phase_emits_aura_then_each_dot_as_distinct_ordered_events(monkey
         "damageApplied",
         "damageApplied",
     ]
-    assert [event["amount"] for event in ally_events] == [12, 7, 9]
+    assert [event["amount"] for event in ally_events] == [6, 7, 9]
     assert ally_events[0]["sourceId"] == adapter._combatant_id(session, paladin)
     assert ally_events[0]["statusId"] == "status.holy_aura"
     assert [event["statusId"] for event in ally_events[1:]] == [
@@ -119,9 +120,9 @@ def test_status_phase_emits_aura_then_each_dot_as_distinct_ordered_events(monkey
         "status.shadow_word_pain",
     ]
     assert [event["hpAfter"]["current"] for event in ally_events] == [
-        ally.hp_max - 28,
-        ally.hp_max - 35,
-        ally.hp_max - 44,
+        ally.hp_max - 34,
+        ally.hp_max - 41,
+        ally.hp_max - 50,
     ]
     assert [event["sequence"] for event in ally_events] == sorted(
         event["sequence"] for event in ally_events

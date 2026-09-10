@@ -20,6 +20,84 @@ class Paladin(Hero):
             super().__init__(sys_init, name, group, is_player_controlled, major, faculty=self.__class__.faculty, position=position)
             self.hero_damage_type = "hybrid"
 
+    # Part A — battle information collection -------------------------------
+    # These mirror the adapter's target contract.  Strategy may rank every
+    # live enemy for ranged skills, but a melee skill must never nominate a
+    # rear hero while a living front hero protects that side.
+    def collect_battle_information(self, opponents, allies):
+        live_opponents = [hero for hero in opponents if hero.hp > 0]
+        live_allies = [hero for hero in allies if hero.hp > 0]
+
+        def combatant(hero):
+            return {
+                "hero": hero,
+                "hp_ratio": hero.hp / hero.hp_max if hero.hp_max else 0,
+                "position": hero.position,
+                "faculty": hero.faculty,
+                "major": hero.major,
+                "defense": hero.defense,
+                "damage": hero.damage,
+                "active_statuses": {
+                    name for name, active in hero.status.items() if active
+                },
+            }
+
+        return {
+            "self": combatant(self),
+            "allies": [combatant(hero) for hero in live_allies],
+            "opponents": [combatant(hero) for hero in live_opponents],
+            "skills": {
+                skill.name: skill
+                for skill in self.skills
+                if not skill.is_passive and skill.is_available and not skill.if_cooldown
+            },
+            "formations": {
+                "ally_positions": tuple(hero.position for hero in live_allies),
+                "opponent_positions": tuple(hero.position for hero in live_opponents),
+            },
+        }
+
+    def _paladin_legal_targets(self, skill, opponents, allies):
+        if skill is None or skill.target_qty == 0:
+            return []
+        if skill.skill_type in {"healing", "buffs"}:
+            pool = [hero for hero in allies if hero.hp > 0]
+        elif skill.skill_type == "damage_healing":
+            pool = [hero for hero in opponents + allies if hero.hp > 0]
+        else:
+            pool = [hero for hero in opponents if hero.hp > 0]
+        if skill.skill_type == "damage" and skill.attack_type == "melee":
+            front = [hero for hero in pool if hero.position == "front"]
+            if front:
+                pool = front
+        return pool
+
+    @staticmethod
+    def _paladin_lowest_health(combatants):
+        return min(
+            combatants,
+            key=lambda item: (item["hp_ratio"], item["hero"].name),
+        ) if combatants else None
+
+    @staticmethod
+    def _paladin_priority_enemy(combatants):
+        threat = {"Mage": 0, "Rogue": 0, "Priest": 1, "Paladin": 2, "Warrior": 2}
+        return min(
+            combatants,
+            key=lambda item: (
+                threat.get(item["faculty"], 1),
+                item["hp_ratio"],
+                item["hero"].name,
+            ),
+        ) if combatants else None
+
+    def _paladin_choose(self, skill, target=None):
+        self.preset_target = target
+        return skill
+
+    def ai_choose_target(self, chosen_skill, opponents, allies):
+        return getattr(self, "preset_target", None)
+
 class Paladin_Retribution(Paladin):
 
     major = "Retribution"
@@ -95,91 +173,92 @@ class Paladin_Retribution(Paladin):
           self.game.display_battle_info(f"{self.name} casts Flash of Light on {other_hero.name}.")
         return other_hero.take_healing(healing_amount)
 
-# Battling Strategy_________________________________________________________
 
-    def strategy_0(self):
-      self.probability_hammer_of_anger = 0.3
-      self.probability_crusader_strike = 0.4
-      self.probability_flash_of_light = 0.3
+    # Part B — battle analysis -------------------------------------------------
+    def analyse_battle_strategy(self, battle_information, opponents, allies):
+        """Choose Retribution's action around a two-stack Wrath rhythm.
 
-    def strategy_1(self):
-      self.probability_hammer_of_anger = 1
-      self.probability_crusader_strike = 0
-      self.probability_flash_of_light = 0
+        Crusader Strike is the dependable anti-armour attack and the only way
+        to build Wrath.  At two stacks, Wrath makes Flash of Light markedly
+        stronger and can make Hammer of Anger worthwhile despite defence.
+        """
+        skills = battle_information["skills"]
+        hammer = skills.get("Hammer of Anger")
+        strike = skills.get("Crusader Strike")
+        heal = skills.get("Flash of Light")
+        ranged = self._paladin_legal_targets(hammer, opponents, allies)
+        melee = self._paladin_legal_targets(strike, opponents, allies)
+        heal_targets = self._paladin_legal_targets(heal, opponents, allies)
+        ally_info = [item for item in battle_information["allies"] if item["hero"] in heal_targets]
+        enemy_info = [item for item in battle_information["opponents"] if item["hero"] in ranged]
+        melee_info = [item for item in battle_information["opponents"] if item["hero"] in melee]
+        weakest_ally = self._paladin_lowest_health(ally_info)
+        priority_enemy = self._paladin_priority_enemy(enemy_info)
+        weakest_enemy = self._paladin_lowest_health(enemy_info)
+        wrath_stacks = self.wrath_of_crusader_stacks
+        wrath_needs_refresh = self.wrath_of_crusader_duration <= 1
 
-    def strategy_2(self):
-      self.probability_hammer_of_anger = 0
-      self.probability_crusader_strike = 1
-      self.probability_flash_of_light = 0
+        # 1. Execute a softer high-threat Mage, Rogue, or Priest at or below
+        # 20% HP with ranged Hammer of Anger.
+        soft_finisher = [
+            item for item in enemy_info
+            if item["faculty"] in {"Mage", "Rogue", "Priest"}
+            and item["hp_ratio"] <= 0.20
+            and item["defense"] <= self.damage
+        ]
+        if hammer and soft_finisher:
+            return self._paladin_choose(
+                hammer, self._paladin_priority_enemy(soft_finisher)["hero"]
+            )
 
-    def strategy_3(self):
-      self.probability_hammer_of_anger = 0
-      self.probability_crusader_strike = 0
-      self.probability_flash_of_light = 1
+        # 2. Emergency healing is the only priority that interrupts the
+        # build-up rhythm before two Wrath stacks are ready.
+        if heal and weakest_ally and weakest_ally["hp_ratio"] <= 0.28:
+            return self._paladin_choose(heal, weakest_ally["hero"])
 
+        # 3. Build the first and second Wrath stacks, or refresh their short
+        # duration, using stable ~20 damage that ignores target defence.
+        if strike and melee_info and (wrath_stacks < 2 or wrath_needs_refresh):
+            tank = max(melee_info, key=lambda item: (item["defense"], item["hero"].name))
+            return self._paladin_choose(strike, tank["hero"])
 
-    def battle_analysis(self, opponents, allies):
-      # Sort hp from low to high
-      sorted_opponents = sorted(opponents, key=lambda hero: hero.hp, reverse=False)
-      sorted_allies = sorted(allies, key=lambda hero: hero.hp, reverse=False)
-      sorted_allies_excludes_self = [ally for ally in sorted_allies if ally != self]
+        # 4. At two stacks, use the greatly strengthened Flash of Light to
+        # recover a wounded ally before the buff expires.
+        if heal and wrath_stacks >= 2 and weakest_ally and weakest_ally["hp_ratio"] <= 0.60:
+            return self._paladin_choose(heal, weakest_ally["hero"])
 
-      # Priority targets tackling strategy--->
-      # Prioritize keeping Shield of Righteous active
-      if self.wrath_of_crusader_stacks < 1 or self.wrath_of_crusader_duration <= 1:
-        self.strategy_2()  # Focus on casting Shield of Righteous if not activated
-        return sorted_opponents[0]  # Attack to keep the buff up
-      # Decide if damage or healing
-      if sorted_allies[0].hp <= round(0.35 * sorted_allies[0].hp_max):
-        if sorted_opponents[0].hp <= round(0.25 * sorted_opponents[0].hp_max):
-          accuracy = 50 # When there is an low hp ally and a low hp opponent, there is 50-50 chance to damage or to heal
-          roll = random.randint(1, 100)  # Simulate a roll of 100-sided dice
-          if roll <= accuracy:
-            if sorted_opponents[0].faculty == "Warrior" or sorted_opponents[0].faculty == "Paladin": # eliminate low hp high defense target
-              self.strategy_2()
-              opponent = sorted_opponents[0]
-              return opponent
-            else: # eliminate low hp low defense target
-              self.strategy_1()
-              opponent = sorted_opponents[0]
-              return opponent
-          else:
-            self.strategy_3()
-            ally = sorted_allies[0]
-            return ally
-        else:
-          self.strategy_3()
-          ally = sorted_allies[0]
-          return ally
+        # 5. At two stacks, finish a vulnerable opponent with the strengthened
+        # ranged Hammer, including a reachable rear target.
+        if hammer and wrath_stacks >= 2 and weakest_enemy and weakest_enemy["hp_ratio"] <= 0.42:
+            return self._paladin_choose(hammer, weakest_enemy["hero"])
 
-      # Cast damage to low defense high threat target
-      valid_classes = ["Mage", "Warlock", "Necromancer", "Rogue"]
-      # Filter opponents to only include those from valid_classes
-      sorted_opponents_high_threat = [opponent for opponent in opponents if opponent.faculty in valid_classes]
-      if sorted_opponents_high_threat:
-        sorted_opponents_high_threat = sorted(sorted_opponents_high_threat, key=lambda hero: hero.hp, reverse=False)
-        opponent = sorted_opponents_high_threat[0]
-        self.strategy_1()
-        return opponent
-      else:
-        opponent = sorted_opponents[0]
-        if opponent.faculty == "Warrior" or opponent.faculty == "Paladin":
-          self.strategy_2()
-          return opponent
-        else: # conduct damage to priest
-          self.strategy_1()
-          return opponent
+        # 6. A two-stack Hammer is also preferred when its expected post-defence
+        # damage matches Crusader Strike's stable output against a priority foe.
+        if hammer and wrath_stacks >= 2 and priority_enemy:
+            expected_hammer = max(0, self.damage - priority_enemy["defense"]) + 7
+            if expected_hammer >= 20:
+                return self._paladin_choose(hammer, priority_enemy["hero"])
 
+        # 7. Otherwise Crusader Strike remains the best answer to an armoured
+        # Warrior or Paladin in the legal melee lane.
+        armoured = [item for item in melee_info if item["faculty"] in {"Warrior", "Paladin"}]
+        if strike and armoured:
+            return self._paladin_choose(strike, max(armoured, key=lambda item: item["defense"])["hero"])
+
+        # Deterministic fallback when none of the seven priorities apply.
+        if strike and melee_info:
+            return self._paladin_choose(strike, self._paladin_priority_enemy(melee_info)["hero"])
+        if hammer and weakest_enemy:
+            return self._paladin_choose(hammer, weakest_enemy["hero"])
+        return self._paladin_choose(next(iter(skills.values()), None))
+
+    # Part C — return the chosen action to the live API adapter ----------------
     def ai_choose_skill(self, opponents, allies):
-        self.strategy_0()
-        self.preset_target = self.battle_analysis(opponents, allies)
-        skill_weights = [self.probability_hammer_of_anger, self.probability_crusader_strike, self.probability_flash_of_light]
-        chosen_skill = random.choices(self.skills, weights = skill_weights)[0]
-        return chosen_skill
+        information = self.collect_battle_information(opponents, allies)
+        return self.analyse_battle_strategy(information, opponents, allies)
 
     def ai_choose_target(self, chosen_skill, opponents, allies):
-          chosen_opponent = self.preset_target
-          return chosen_opponent
+        return self.preset_target
 
 class Paladin_Protection(Paladin):
 
@@ -313,92 +392,97 @@ class Paladin_Protection(Paladin):
                 skill.cooldown = 3
             return f"Holy light showers {self.name}. {self.take_healing(actual_healing)}. {self.name} casts Heroric Charge on {other_hero.name}. {other_hero.take_damage(actual_damage, attack_type, self)}. {other_hero.name} developed a deep hatred toward {self.name}."
 
-# Battling Strategy_________________________________________________________
-'''
-    def strategy_0(self):
-      self.probability_hammer_of_anger = 0.3
-      self.probability_shield_of_righteous = 0.4
-      self.probability_flash_of_light = 0.3
+    def analyse_battle_strategy(self, battle_information, opponents, allies):
+        skills = battle_information["skills"]
+        hammer, shield, charge = (
+            skills.get("Hammer of Revenge"), skills.get("Shield of Righteous"), skills.get("Heroric Charge")
+        )
+        enemies = battle_information["opponents"]
+        melee = [item for item in enemies if item["hero"] in self._paladin_legal_targets(shield, opponents, allies)]
+        charge_targets = [item for item in enemies if item["hero"] in self._paladin_legal_targets(charge, opponents, allies)]
+        weakest = self._paladin_lowest_health(enemies)
+        priority = self._paladin_priority_enemy(enemies)
+        casters = [item for item in charge_targets if "magic_casting" in item["active_statuses"]]
+        revenge_debuffs = (
+            set(self.list_status_debuff_magic)
+            | set(self.list_status_debuff_bleeding)
+            | set(self.list_status_debuff_disease)
+            | set(self.list_status_debuff_toxic)
+            | set(self.list_status_debuff_physical)
+        )
+        revenge_debuff_count = len(
+            battle_information["self"]["active_statuses"] & revenge_debuffs
+        )
 
-    def strategy_1(self):
-      self.probability_hammer_of_anger = 1
-      self.probability_shield_of_righteous = 0
-      self.probability_flash_of_light = 0
+        # 1. Interrupt casting before any other priority.
+        if charge and casters:
+            return self._paladin_choose(charge, self._paladin_priority_enemy(casters)["hero"])
 
-    def strategy_2(self):
-      self.probability_hammer_of_anger = 0
-      self.probability_shield_of_righteous = 1
-      self.probability_flash_of_light = 0
+        # 2. At three self-debuffs, Hammer of Revenge reaches its strongest
+        # damage band; convert that pressure into an aggressive ranged hit.
+        if hammer and priority and revenge_debuff_count >= 3:
+            return self._paladin_choose(hammer, priority["hero"])
 
-    def strategy_3(self):
-      self.probability_hammer_of_anger = 0
-      self.probability_shield_of_righteous = 0
-      self.probability_flash_of_light = 1
+        # 3. At two debuffs, use the growing Hammer bonus to finish or pressure
+        # a vulnerable high-priority foe rather than spending another tank turn.
+        if hammer and priority and revenge_debuff_count >= 2 and priority["hp_ratio"] <= .55:
+            return self._paladin_choose(hammer, priority["hero"])
 
+        # 4. Heal and apply Scoff when the tank is threatened.
+        if charge and battle_information["self"]["hp_ratio"] <= .42 and charge_targets:
+            return self._paladin_choose(charge, self._paladin_priority_enemy(charge_targets)["hero"])
 
-    def battle_analysis(self, opponents, allies):
-      # Sort hp from low to high
-      sorted_opponents = sorted(opponents, key=lambda hero: hero.hp, reverse=False)
-      sorted_allies = sorted(allies, key=lambda hero: hero.hp, reverse=False)
-      sorted_allies_excludes_self = [ally for ally in sorted_allies if ally != self]
+        # 5. Establish or refresh the defensive shield through legal melee.
+        if shield and melee and (self.shield_of_righteous_stacks < 2 or self.shield_of_righteous_duration <= 1):
+            return self._paladin_choose(shield, max(melee, key=lambda item: (item["defense"], item["damage"]))["hero"])
 
-      # Priority targets tackling strategy--->
-      # Prioritize keeping Shield of Righteous active
-      if self.shield_of_righteous_stacks < 1 or self.shield_of_righteous_duration <= 1:
-        self.strategy_2()  # Focus on casting Shield of Righteous if not activated
-        return sorted_opponents[0]  # Attack to keep the buff up
-      # Decide if damage or healing
-      if sorted_allies[0].hp <= round(0.35 * sorted_allies[0].hp_max):
-        if sorted_opponents[0].hp <= round(0.25 * sorted_opponents[0].hp_max):
-          accuracy = 50 # When there is an low hp ally and a low hp opponent, there is 50-50 chance to damage or to heal
-          roll = random.randint(1, 100)  # Simulate a roll of 100-sided dice
-          if roll <= accuracy:
-            if sorted_opponents[0].faculty == "Warrior" or sorted_opponents[0].faculty == "Paladin": # eliminate low hp high defense target
-              self.strategy_2()
-              opponent = sorted_opponents[0]
-              return opponent
-            else: # eliminate low hp low defense target
-              self.strategy_1()
-              opponent = sorted_opponents[0]
-              return opponent
-          else:
-            self.strategy_3()
-            ally = sorted_allies[0]
-            return ally
-        else:
-          self.strategy_3()
-          ally = sorted_allies[0]
-          return ally
+        # 6. While shielded, Revenge also reduces a priority enemy's damage.
+        if hammer and priority and self.status["shield_of_righteous"]:
+            return self._paladin_choose(hammer, priority["hero"])
 
-      # Cast damage to low defense high threat target
-      valid_classes = ["Mage", "Warlock", "Necromancer", "Rogue"]
-      # Filter opponents to only include those from valid_classes
-      sorted_opponents_high_threat = [opponent for opponent in opponents if opponent.faculty in valid_classes]
-      if sorted_opponents_high_threat:
-        sorted_opponents_high_threat = sorted(sorted_opponents_high_threat, key=lambda hero: hero.hp, reverse=False)
-        opponent = sorted_opponents_high_threat[0]
-        self.strategy_1()
-        return opponent
-      else:
-        opponent = sorted_opponents[0]
-        if opponent.faculty == "Warrior" or opponent.faculty == "Paladin":
-          self.strategy_2()
-          return opponent
-        else: # conduct damage to priest
-          self.strategy_1()
-          return opponent
+        # 7. Control threats, then retain defence and ranged revenge fallback.
+        if charge and charge_targets:
+            return self._paladin_choose(charge, self._paladin_priority_enemy(charge_targets)["hero"])
+        if shield and melee:
+            return self._paladin_choose(shield, max(melee, key=lambda item: item["defense"])["hero"])
+        if hammer and weakest:
+            return self._paladin_choose(hammer, weakest["hero"])
+        return self._paladin_choose(next(iter(skills.values()), None))
 
     def ai_choose_skill(self, opponents, allies):
-        self.strategy_0()
-        self.preset_target = self.battle_analysis(opponents, allies)
-        skill_weights = [self.probability_hammer_of_anger, self.probability_shield_of_righteous, self.probability_flash_of_light]
-        chosen_skill = random.choices(self.skills, weights = skill_weights)[0]
-        return chosen_skill
+        return self.analyse_battle_strategy(self.collect_battle_information(opponents, allies), opponents, allies)
 
-    def ai_choose_target(self, chosen_skill, opponents, allies):
-          chosen_opponent = self.preset_target
-          return chosen_opponent
-'''
+        heal, blast, protection = (
+            skills.get("Purify Healing"), skills.get("Holy Blast"), skills.get("Shield of Protection")
+        )
+        allies_info, enemies = battle_information["allies"], battle_information["opponents"]
+        weakest_ally = self._paladin_lowest_health(allies_info)
+        curable = set(self.list_status_debuff_magic) | set(self.list_status_debuff_bleeding) | set(self.list_status_debuff_disease) | set(self.list_status_debuff_physical) | set(self.list_status_debuff_toxic)
+        afflicted = [item for item in allies_info if item["active_statuses"] & curable]
+        self_afflicted = bool(battle_information["self"]["active_statuses"] & curable)
+        # 1. Cleanse/protect self; 2. save critical allies; 3. remove ally debuffs.
+        if protection and (battle_information["self"]["hp_ratio"] <= .40 or self_afflicted):
+            return self._paladin_choose(protection)
+        if heal and weakest_ally and weakest_ally["hp_ratio"] <= .38:
+            return self._paladin_choose(heal, weakest_ally["hero"])
+        if heal and afflicted:
+            return self._paladin_choose(heal, self._paladin_lowest_health(afflicted)["hero"])
+        # 4. Prefer Holy Blast's two-target value; 5. sustain an injured ally.
+        if blast and len(enemies) >= 2:
+            ordered = sorted(enemies, key=lambda item: ({"Mage": 0, "Rogue": 0, "Priest": 1}.get(item["faculty"], 2), item["hp_ratio"], item["hero"].name))
+            return self._paladin_choose(blast, [item["hero"] for item in ordered[:2]])
+        if heal and weakest_ally and weakest_ally["hp_ratio"] <= .62:
+            return self._paladin_choose(heal, weakest_ally["hero"])
+        # 6. Ranged pressure; 7. protection when no viable target remains.
+        if blast and enemies:
+            return self._paladin_choose(blast, [self._paladin_priority_enemy(enemies)["hero"]])
+        if protection:
+            return self._paladin_choose(protection)
+        return self._paladin_choose(next(iter(skills.values()), None))
+
+    def ai_choose_skill(self, opponents, allies):
+        return self.analyse_battle_strategy(self.collect_battle_information(opponents, allies), opponents, allies)
+
 
 class Paladin_Holy(Paladin):
 
@@ -484,90 +568,29 @@ class Paladin_Holy(Paladin):
               skill.cooldown = 3
         return f"{YELLOW}{self.name} is immune towards all damage.{RESET}"
 
+    # Part B — battle analysis -------------------------------------------------
+    def analyse_battle_strategy(self, battle_information):
+        skills = battle_information["skills"]
+        heal = skills.get("Purify Healing")
+        blast = skills.get("Holy Blast")
+        protection = skills.get("Shield of Protection")
+        allies = battle_information["allies"]
+        enemies = battle_information["opponents"]
+        weakest = self._paladin_lowest_health(allies)
+        curable = set(self.list_status_debuff_magic) | set(self.list_status_debuff_bleeding) | set(self.list_status_debuff_disease) | set(self.list_status_debuff_physical) | set(self.list_status_debuff_toxic)
+        afflicted = [item for item in allies if item["active_statuses"] & curable]
+        # 1. Protect/cleanse self; 2. heal critical; 3. dispel ally.
+        if protection and (battle_information["self"]["hp_ratio"] <= .40 or battle_information["self"]["active_statuses"] & curable): return protection, None
+        if heal and weakest and weakest["hp_ratio"] <= .38: return heal, weakest["hero"]
+        if heal and afflicted: return heal, self._paladin_lowest_health(afflicted)["hero"]
+        # 4. Two-target blast; 5. sustain; 6. single pressure; 7. fallback.
+        if blast and len(enemies) >= 2: return blast, [item["hero"] for item in sorted(enemies, key=lambda item: (item["hp_ratio"], item["hero"].name))[:2]]
+        if heal and weakest and weakest["hp_ratio"] <= .62: return heal, weakest["hero"]
+        if blast and enemies: return blast, [self._paladin_priority_enemy(enemies)["hero"]]
+        return protection or next(iter(skills.values()), None), None
 
-# Battling Strategy_________________________________________________________
-'''
-    def strategy_0(self):
-      self.probability_hammer_of_anger = 0.3
-      self.probability_shield_of_righteous = 0.4
-      self.probability_flash_of_light = 0.3
-
-    def strategy_1(self):
-      self.probability_hammer_of_anger = 1
-      self.probability_shield_of_righteous = 0
-      self.probability_flash_of_light = 0
-
-    def strategy_2(self):
-      self.probability_hammer_of_anger = 0
-      self.probability_shield_of_righteous = 1
-      self.probability_flash_of_light = 0
-
-    def strategy_3(self):
-      self.probability_hammer_of_anger = 0
-      self.probability_shield_of_righteous = 0
-      self.probability_flash_of_light = 1
-
-
-    def battle_analysis(self, opponents, allies):
-      # Sort hp from low to high
-      sorted_opponents = sorted(opponents, key=lambda hero: hero.hp, reverse=False)
-      sorted_allies = sorted(allies, key=lambda hero: hero.hp, reverse=False)
-      sorted_allies_excludes_self = [ally for ally in sorted_allies if ally != self]
-
-      # Priority targets tackling strategy--->
-      # Prioritize keeping Shield of Righteous active
-      if self.shield_of_righteous_stacks < 1 or self.shield_of_righteous_duration <= 1:
-        self.strategy_2()  # Focus on casting Shield of Righteous if not activated
-        return sorted_opponents[0]  # Attack to keep the buff up
-      # Decide if damage or healing
-      if sorted_allies[0].hp <= round(0.35 * sorted_allies[0].hp_max):
-        if sorted_opponents[0].hp <= round(0.25 * sorted_opponents[0].hp_max):
-          accuracy = 50 # When there is an low hp ally and a low hp opponent, there is 50-50 chance to damage or to heal
-          roll = random.randint(1, 100)  # Simulate a roll of 100-sided dice
-          if roll <= accuracy:
-            if sorted_opponents[0].faculty == "Warrior" or sorted_opponents[0].faculty == "Paladin": # eliminate low hp high defense target
-              self.strategy_2()
-              opponent = sorted_opponents[0]
-              return opponent
-            else: # eliminate low hp low defense target
-              self.strategy_1()
-              opponent = sorted_opponents[0]
-              return opponent
-          else:
-            self.strategy_3()
-            ally = sorted_allies[0]
-            return ally
-        else:
-          self.strategy_3()
-          ally = sorted_allies[0]
-          return ally
-
-      # Cast damage to low defense high threat target
-      valid_classes = ["Mage", "Warlock", "Necromancer", "Rogue"]
-      # Filter opponents to only include those from valid_classes
-      sorted_opponents_high_threat = [opponent for opponent in opponents if opponent.faculty in valid_classes]
-      if sorted_opponents_high_threat:
-        sorted_opponents_high_threat = sorted(sorted_opponents_high_threat, key=lambda hero: hero.hp, reverse=False)
-        opponent = sorted_opponents_high_threat[0]
-        self.strategy_1()
-        return opponent
-      else:
-        opponent = sorted_opponents[0]
-        if opponent.faculty == "Warrior" or opponent.faculty == "Paladin":
-          self.strategy_2()
-          return opponent
-        else: # conduct damage to priest
-          self.strategy_1()
-          return opponent
-
+    # Part C — return the chosen action to the live API adapter ----------------
     def ai_choose_skill(self, opponents, allies):
-        self.strategy_0()
-        self.preset_target = self.battle_analysis(opponents, allies)
-        skill_weights = [self.probability_hammer_of_anger, self.probability_shield_of_righteous, self.probability_flash_of_light]
-        chosen_skill = random.choices(self.skills, weights = skill_weights)[0]
-        return chosen_skill
-
-    def ai_choose_target(self, chosen_skill, opponents, allies):
-          chosen_opponent = self.preset_target
-          return chosen_opponent
-'''
+        self.holy_battle_information = self.collect_battle_information(opponents, allies)
+        skill, self.preset_target = self.analyse_battle_strategy(self.holy_battle_information)
+        return skill

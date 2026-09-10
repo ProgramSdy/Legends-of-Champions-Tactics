@@ -61,7 +61,9 @@ class StatusEffectManager:
             "healingPresentation": "status",
         }
         try:
-            healing_amount = 12 + random.randint(-2, 2)
+            # Roll independently for this recipient.  Aura resolution visits
+            # heroes one at a time, so no team-wide amount is shared.
+            healing_amount = 6 + random.randint(0, 2)
             result = hero.take_healing(healing_amount)
             self.game.display_status_updates(
                 f"{BLUE}{hero.name} is restored by {aura.initiator.name}'s Holy Aura. "

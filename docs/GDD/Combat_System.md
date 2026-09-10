@@ -40,6 +40,15 @@ the supported web/API adapter removes the acting hero but retains the
 round-start queue order. Agility-changing effects can therefore affect later
 ordering differently between paths. Equal-agility design intent is unconfirmed.
 
+Computer-controlled Paladin Retribution, Protection, and Holy heroes use
+specialization-owned, ordered strategy rules. The rules select only available
+non-passive skills and use the same formation-aware target pool as the adapter:
+melee respects a living front defender, while classified ranged attacks may
+select a rear combatant. Retribution prioritises critical healing, finishing,
+and Wrath upkeep; Protection prioritises caster interruption, survival/Scoff,
+and Shield of Righteous; Holy prioritises self-protection/cleanse, critical
+healing and dispels, then multi-target Holy Blast pressure.
+
 ## Action and Target Rules
 
 An action requires an available, off-cooldown skill and a target shape accepted
@@ -113,6 +122,9 @@ specialization.
 Statuses are implemented as hero flags, counters, attributes, and optional
 records—not one uniform status class. Most tick at round start; duration,
 stack, spread, dispel, restoration, and expiry semantics are status-specific.
+Holy Aura is a Protection Paladin passive represented on each living friendly
+recipient while its source remains alive. It resolves before other round-start
+statuses and rolls an independent 6–8 healing amount for each recipient.
 Control directives include skip states such as stun/paralysis/fear and forced
 Scoff behavior. Non-instant casts become automatic later actions and may be
 interrupted by specialization-specific behavior.
@@ -145,6 +157,9 @@ owner confirmation.
 
 ## Change Log
 
+- 2026-09-10 — Reduced Protection Paladin Holy Aura to an independently rolled
+  6–8 heal per living recipient and documented the live Paladin computer
+  strategies and their formation-aware targeting.
 - 2026-08-15 — Extended authoritative formations to the three approved 3v3
   mappings without changing Warrior targeting or damage formulas.
 - 2026-08-14 — Added authoritative 2v2 formations, Warrior attack-position

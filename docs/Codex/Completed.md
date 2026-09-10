@@ -2,6 +2,21 @@
 
 Completed work should be appended in reverse chronological order, with the newest entry first.
 
+## 2026-09-10 — Paladin Aura Tuning and Computer Strategies
+
+**Summary:**
+
+Protection Paladin Holy Aura now rolls an independent 6–8 healing amount for
+each living recipient at round start. Added specialization-owned, ordered
+computer strategies for Paladin Retribution, Protection, and Holy. Strategy
+target selection follows the adapter's formation rules: melee never selects a
+screened rear combatant, while the approved ranged Paladin skills may do so.
+
+**Validation:**
+
+- `pytest -q tests/test_paladin_strategy.py tests/test_paladin_protection_holy_aura.py tests/test_battle_adapter.py` — 82 passed.
+- Python compilation and `git diff --check` — passed.
+
 ## 2026-09-09 — UI-026 Paladin Healing Target Animation
 
 **Summary:**
