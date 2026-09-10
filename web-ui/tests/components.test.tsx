@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { AssetImage } from "@/components/battle/AssetImage";
 import { HeroCard, Meter } from "@/components/battle/HeroCard";
-import { SkillCard } from "@/components/battle/SkillCard";
+import { NoFourthSkillCard, SkillCard } from "@/components/battle/SkillCard";
 import { StatusIcon } from "@/components/battle/StatusIcon";
 import { statusRegistry } from "@/lib/battle/assets";
 import { initialSnapshot } from "@/lib/battle/fixture";
@@ -17,6 +17,7 @@ const adapterStatusIds = [
   "status.bleeding_sharp_blade",
   "status.poisoned_dagger",
   "status.shadow_evasion",
+  "status.holy_aura",
 ] as const;
 
 describe("battle components", () => {
@@ -60,6 +61,34 @@ describe("battle components", () => {
     expect(screen.getByRole("button", { name: /Test skill/i })).toBeDisabled();
     expect(screen.getByText("Cooldown 2")).toBeVisible();
     expect(screen.getByText("Cooldown active")).toBeVisible();
+  });
+
+  it("renders passive skills as a visible, non-selectable card", () => {
+    const passive: SkillState = {
+      id: "skill.paladin.holy_aura", displayName: "Holy Aura",
+      targetMode: "none", maximumTargets: 0, cooldownRemaining: 0,
+      available: true, isPassive: true, unavailableReason: null, resourceCost: null,
+    };
+    const onSelect = vi.fn();
+    render(<SkillCard skill={passive} selected={false} legal={false} disabled={false} onSelect={onSelect} />);
+
+    const card = screen.getByRole("button", { name: /Holy Aura/i });
+    expect(card).toBeDisabled();
+    expect(card).toHaveClass("passive");
+    expect(screen.getByText("Passive Aura")).toBeVisible();
+    fireEvent.click(card);
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it("renders the fourth-skill placeholder as display-only content", () => {
+    render(<NoFourthSkillCard />);
+
+    const placeholder = screen.getByRole("article", { name: /No Fourth Skill/i });
+    expect(placeholder).toHaveClass("skill-placeholder");
+    expect(placeholder).toHaveTextContent("No additional skill is available for this hero.");
+    expect(placeholder).toHaveTextContent("N/A");
+    expect(screen.queryByRole("button", { name: /No Fourth Skill/i })).not.toBeInTheDocument();
+    expect(placeholder).not.toHaveAttribute("tabindex");
   });
 
   it("makes status tooltip content keyboard reachable", () => {

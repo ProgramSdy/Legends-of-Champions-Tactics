@@ -117,6 +117,7 @@ export const statusRegistry: Record<string, { glyph: string; name: string; descr
   "status.warlust": { glyph: "⚔", name: "Warlust", description: "Increases damage and prevents control effects while active.", harmful: false },
   "status.bleeding_moon_slash": { glyph: "◒", name: "Moon Slash Bleeding", description: "Suffers authoritative bleeding damage at round start.", harmful: true },
   "status.blood_frenzy": { glyph: "◆", name: "Blood Frenzy", description: "Grants agility and lifesteal while reducing defense.", harmful: false },
+  "status.holy_aura": { glyph: "✦", name: "Holy Aura", description: "A living Paladin Protection restores 10–14 HP to every living teammate at the start of each round.", harmful: false },
 };
 
 export const effectRegistry = {

@@ -35,6 +35,12 @@ class Game:
         # Ordered, channel-aware presentation prose for non-terminal clients.
         # Authoritative state remains in the normal mutable battle model.
         self.presentation_log = []
+        # Structured HP mutations produced during the ordered round-status
+        # phase.  The API adapter drains these records into presentation
+        # events, rather than inferring one net HP delta after the whole phase.
+        self.status_effect_events = []
+        self._capturing_status_effects = False
+        self._status_effect_context = None
         self.interface = interface  # New addition to hold GameInterface instance
         self.status_manager = StatusEffectManager(self)  # Instantiate the status manager
         self.status_dispeller = StatusDispell(self)
@@ -105,12 +111,86 @@ class Game:
         return alive_groups
 
     def update_battle_information(self):
+      # Establish the passive recipient buffs before individual heroes process
+      # their status effects.  Holy Aura's actual healing is deliberately
+      # performed first inside StatusEffectManager for each hero, so its UI
+      # event retains the same sequence as the engine effects that follow it.
+      self.refresh_holy_auras()
       for hero in self.heroes:
         self.check_heroes_skill_cooldown(hero)
         #self.notify_observers()
       for hero in self.heroes:
         self.status_manager.check_heroes_status_effects(hero)
         #self.notify_observers()
+      # A status tick can defeat the aura source after round-start healing.
+      # Remove the recipient buff before the action phase in that case.
+      self.refresh_holy_auras()
+
+    def refresh_holy_auras(self):
+      """Maintain Protection Paladin Holy Aura ownership.
+
+      A team can receive this aura from one living Protection Paladin. The buff
+      is represented on every living recipient so the API snapshot and battle
+      sidebar can show its icon and source. It has no duration: it remains only
+      while its Paladin source is alive.
+      """
+      for team in (self.player_heroes, self.opponent_heroes):
+        living_team = [hero for hero in team if hero.hp > 0]
+        source = next(
+          (
+            hero for hero in living_team
+            if getattr(hero, "provides_holy_aura", False)
+          ),
+          None,
+        )
+        for hero in team:
+          aura_buffs = [buff for buff in hero.buffs if buff.name == "Holy Aura"]
+          if source is None or hero.hp <= 0:
+            hero.status["holy_aura"] = False
+            for buff in aura_buffs:
+              hero.buffs.remove(buff)
+              hero.buffs_debuffs_recycle_pool.append(buff)
+            continue
+
+          hero.status["holy_aura"] = True
+          matching_buff = next(
+            (buff for buff in aura_buffs if buff.initiator is source), None
+          )
+          for buff in aura_buffs:
+            if buff is not matching_buff:
+              hero.buffs.remove(buff)
+              hero.buffs_debuffs_recycle_pool.append(buff)
+          if matching_buff is None:
+            matching_buff = Buff(
+              name="Holy Aura", duration=None, initiator=source, effect=12
+            )
+            hero.add_buff(matching_buff)
+
+
+    def record_status_effect_hp_change(self, hero, event_type, hp_before, hp_after):
+      """Record one status-phase HP activation in engine execution order.
+
+      Hero.take_damage/take_healing call this only while StatusEffectManager
+      is resolving a hero.  Keeping actual hero references here avoids a
+      parallel identity system; the adapter resolves them to combatant IDs at
+      its existing serialization boundary.
+      """
+      if not self._capturing_status_effects:
+        return
+      context = self._status_effect_context or {}
+      self.status_effect_events.append(
+        {
+          "type": event_type,
+          "hero": hero,
+          "source": context.get("source"),
+          "statusId": context.get("statusId"),
+          "effectHint": context.get("effectHint", "status"),
+          "healingPresentation": context.get("healingPresentation", "status"),
+          "amount": abs(hp_after - hp_before),
+          "hpAfter": hp_after,
+          "maximum": hero.hp_max,
+        }
+      )
 
     def check_heroes_skill_cooldown(self, hero):
       if hero.hp > 0:

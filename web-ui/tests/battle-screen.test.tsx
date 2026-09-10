@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
@@ -63,6 +63,42 @@ describe("battle screen integration", () => {
     expect(skill).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: "Sashein, selectable target" })).toHaveClass("target-selection-pending");
     expect(screen.getByRole("button", { name: "CAST SKILL" })).toBeDisabled();
+  });
+
+  it("pads fewer than four real skills with a non-interactive display slot without changing commands", async () => {
+    const provider = new MockBattleProvider();
+    const submit = vi.spyOn(provider, "submitCommand");
+    await renderBattle(provider);
+
+    const deck = screen.getByLabelText("Skills");
+    expect(within(deck).getAllByRole("button")).toHaveLength(3);
+    expect(within(deck).getByRole("article", { name: /No Fourth Skill/i })).toHaveClass("skill-placeholder");
+    expect(within(deck).queryByRole("button", { name: /No Fourth Skill/i })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Life Drain/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Andonidas, selectable target" }));
+    fireEvent.click(screen.getByRole("button", { name: "CAST SKILL" }));
+    expect(submit).toHaveBeenCalledOnce();
+  });
+
+  it("does not truncate future real skills when the deck exceeds four", async () => {
+    const snapshot = (await new MockBattleProvider().getState()).snapshot;
+    const actor = snapshot.combatants["friendly.arthas"];
+    actor.skills.push({
+      id: "skill.extra.one", displayName: "Extra One", description: "Future real skill one.",
+      targetMode: "none", maximumTargets: 0, cooldownRemaining: 0,
+      available: true, unavailableReason: null, resourceCost: null,
+    }, {
+      id: "skill.extra.two", displayName: "Extra Two", description: "Future real skill two.",
+      targetMode: "none", maximumTargets: 0, cooldownRemaining: 0,
+      available: true, unavailableReason: null, resourceCost: null,
+    });
+    await renderBattle(new MockBattleProvider(snapshot));
+
+    const deck = screen.getByLabelText("Skills");
+    expect(within(deck).getAllByRole("button")).toHaveLength(5);
+    expect(within(deck).queryByRole("article", { name: /No Fourth Skill/i })).not.toBeInTheDocument();
+    expect(within(deck).getByRole("button", { name: /Extra Two/i })).toBeVisible();
   });
 
   it("gives the matching sidebar hero a gold frame while its legal figure is hovered", async () => {

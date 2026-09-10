@@ -935,7 +935,8 @@ def test_approved_roster_constructs_with_stable_definition_and_skill_ids():
 
         assert combatant["definitionId"] == definition_id
         assert combatant["isPlayerControlled"] is True
-        assert len(combatant["skills"]) == 3
+        expected_skill_count = 4 if definition_id == "hero.paladin.protection" else 3
+        assert len(combatant["skills"]) == expected_skill_count
         assert all(skill["id"].startswith("skill.") for skill in combatant["skills"])
         assert adapter.snapshot(session)["combatants"][friendly_id]["skills"] == combatant["skills"]
 

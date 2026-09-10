@@ -188,7 +188,14 @@ _To be documented._
 
 ## Interaction and Feedback
 
-- Healing feedback is green and anchored to the authoritative event target.
+- Generic healing feedback is green and anchored to the authoritative event
+  target. Priest healing retains its soft-gold treatment and caster runes;
+  Paladin healing uses a bright, soft white-gold/sun-gold descending target
+  blessing that settles into a restrained ground glow. Each ordered
+  status-phase HP event receives its own feedback—never a net-change animation.
+- Consecutive same-target, same-type HP events retain one committed idle frame
+  between presentations. This deliberately restarts CSS motion and floating
+  text, so two damage ticks produce two shakes and two damage numbers.
 - Authoritative `statusPresentation: "buff"` uses blue double rings;
   `"debuff"` uses red double rings. Neutral or unrelated status events do not
   invent a local gameplay classification.

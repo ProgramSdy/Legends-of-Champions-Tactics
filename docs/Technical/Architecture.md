@@ -74,8 +74,9 @@ combat authority remain unchanged.
 Team Builder configuration
   → POST /api/v1/battles
   → FastAPI validation and seeded formation resolution
-  → Hero construction with authoritative front/rear positions
+ → Hero construction with authoritative front/rear positions
   → Game session + snapshot/events/legal actions
+  → ordered per-activation round-status HP journal
   → browser live provider
   → Battle Screen presentation queue and formation registry
 ```

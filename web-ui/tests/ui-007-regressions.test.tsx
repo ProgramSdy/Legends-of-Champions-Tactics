@@ -183,6 +183,62 @@ describe("UI-007 target-bound battle effects", () => {
     expect(screen.getByText("+0")).toBeInTheDocument();
   });
 
+  it.each([
+    [1, "friendly.ragnar", "enemy.nighthawk"],
+    [2, "friendly.black_heart", "enemy.andonidas"],
+    [3, "friendly.arthas", "enemy.sashein"],
+  ] as const)("anchors Paladin healing to its recipient in %sv%s", async (size, sourceId, targetId) => {
+    const snapshot = createFormatFixture(size);
+    snapshot.combatants[sourceId].faculty = "Paladin";
+    const target = snapshot.combatants[targetId];
+    const event = {
+      id: `evt.paladin-heal.${size}`, sequence: 1, type: "healingApplied", sourceId, targetId,
+      amount: 12, hpAfter: { current: target.hp.current, maximum: target.hp.maximum }, effectHint: "healing",
+      message: "Paladin healing reaches its target.",
+    } satisfies BattleEvent;
+    const provider = new MockBattleProvider(snapshot);
+    render(<BattleScreen provider={provider} mockDemos={[{
+      id: "paladin-heal", label: "Paladin healing", run: async () => ({ id: "paladin-heal", label: "Paladin healing", eventType: "healing", events: [event], snapshot, revision: 2 }),
+    }]} />);
+    await screen.findByRole("region", { name: "Battlefield" });
+    fireEvent.click(screen.getByRole("button", { name: "×2" }));
+    fireEvent.click(screen.getByRole("button", { name: "Paladin healing" }));
+
+    await waitFor(() => expect(document.querySelector(`[data-combatant-id='${targetId}'] .target-effect.effect-paladin-healing`)).toBeInTheDocument());
+    expect(document.querySelector(`[data-combatant-id='${targetId}']`)).toHaveClass("paladin-healing-target");
+    expect(document.querySelector(`[data-combatant-id='${targetId}'] .priest-healing-caster`)).not.toBeInTheDocument();
+  });
+
+  it("keeps Priest and generic healing presentations distinct from Paladin healing", async () => {
+    const snapshot = createFormatFixture(1);
+    const source = snapshot.combatants["friendly.ragnar"];
+    const target = snapshot.combatants["enemy.nighthawk"];
+    const event = {
+      id: "evt.priest-heal", sequence: 1, type: "healingApplied", sourceId: source.id, targetId: target.id,
+      amount: 12, hpAfter: { current: target.hp.current, maximum: target.hp.maximum }, effectHint: "healing", message: "Priest healing.",
+    } satisfies BattleEvent;
+    source.faculty = "Priest";
+    const provider = new MockBattleProvider(snapshot);
+    render(<BattleScreen provider={provider} mockDemos={[{
+      id: "priest-heal", label: "Priest healing", run: async () => ({ id: "priest-heal", label: "Priest healing", eventType: "healing", events: [event], snapshot, revision: 2 }),
+    }]} />);
+    await screen.findByRole("region", { name: "Battlefield" });
+    fireEvent.click(screen.getByRole("button", { name: "×2" }));
+    fireEvent.click(screen.getByRole("button", { name: "Priest healing" }));
+    await waitFor(() => expect(document.querySelector(`[data-combatant-id='${target.id}'] .target-effect.effect-priest-healing`)).toBeInTheDocument());
+    expect(document.querySelector(`[data-combatant-id='${target.id}'] .target-effect.effect-paladin-healing`)).not.toBeInTheDocument();
+  });
+
+  it("defines Paladin's soft descending target blessing and a restrained reduced-motion fallback in CSS", () => {
+    const css = readFileSync("app/globals.css", "utf8").replace(/\s+/g, "");
+    expect(css).toMatch(/\.target-effect\.effect-paladin-healing\{[^}]*radial-gradient[^}]*animation:paladin-healing-settle/);
+    expect(css).toMatch(/\.target-effect\.effect-paladin-healing::before\{[^}]*border-radius:50%[^}]*animation:paladin-healing-descend/);
+    expect(css).toMatch(/\.target-effect\.effect-paladin-healing::after\{[^}]*border-radius:50%[^}]*animation:paladin-healing-ground/);
+    expect(css).toMatch(/@keyframespaladin-healing-descend/);
+    expect(css).not.toMatch(/paladin-healing-beam|paladin-healing-flare|effect-paladin-healing[^}]*clip-path/);
+    expect(css).toMatch(/@media\(prefers-reduced-motion:reduce\).*effect-paladin-healing,.target-effect\.effect-paladin-healing::before,.target-effect\.effect-paladin-healing::after\{animation:none!important/);
+  });
+
   it("anchors a harmful status as a red debuff effect to the enemy target", async () => {
     await renderDemos();
     fireEvent.click(screen.getByRole("button", { name: "Debuff" }));

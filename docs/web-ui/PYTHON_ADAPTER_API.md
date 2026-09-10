@@ -246,6 +246,14 @@ presentation lines. `channel` is `battleInfo` or `statusUpdate`. Typed semantic
 events remain authoritative for mutations and playback; `visibleInLog: false`
 only suppresses their generic text when a Python line would duplicate it.
 
+Round-start status processing is an ordered engine journal: the adapter emits
+one typed HP event for every `take_healing` or `take_damage` activation reached
+from `StatusEffectManager.check_heroes_status_effects`, with its intermediate
+`hpAfter`, `statusId`, and known source. It never substitutes a single net HP
+event for several status activations on one hero. Holy Aura is the first status
+activation for each eligible recipient, followed by that method's existing
+source order. The browser must play these events by `sequence`.
+
 Each `statusApplied` event also includes the additive `statusPresentation`
 classification: `buff`, `debuff`, or the compatible `neutral` fallback. The
 adapter derives it from authoritative serialized status metadata; control
@@ -311,7 +319,7 @@ applicable.
 | Battle state and rounds | `game.game.Game` | `Game([ragnar], [nighthawk], "simulation")`, `game_initialization`, `start_round`, `end_round` |
 | Target/evasion dispatch | `skills.skill.Skill` | `Skill.execute` and `Skill.resolve_targets` |
 | Damage/defeat | `heroes.hero.Hero` | `take_damage`, `take_damage_action`, `check_if_defeated` |
-| Round status/cooldown | `game.status_effect_manager.StatusEffectManager`, `Game.update_battle_information` | invoked by `Game.start_round` |
+| Round status/cooldown | `game.status_effect_manager.StatusEffectManager`, `Game.update_battle_information` | invoked by `Game.start_round`; per-activation HP journal preserves status execution order |
 
 Target rules come from `Skill.target_qty`, `target_type`, `skill_type`, and the
 engine-maintained living allies/opponents lists. Fatal Strike, Armor Crush,

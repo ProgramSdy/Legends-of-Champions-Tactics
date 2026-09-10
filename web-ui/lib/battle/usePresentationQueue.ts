@@ -202,6 +202,14 @@ export function usePresentationQueue(provider: BattleProvider) {
         } else if (event.type !== "battleLog") {
           await new Promise((resolve) => window.setTimeout(resolve, BASE_DELAY / speed));
         }
+        // A second damage/healing event can immediately target the same figure
+        // during round-status processing.  Clear the semantic event and yield
+        // one paint frame before the next one so React removes the identical
+        // CSS class/text node.  Without this boundary, CSS treats two adjacent
+        // `fx-damageApplied` events as one animation and the second status tick
+        // has no shake or floating number.
+        setActiveEvent(null);
+        await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
       }
       if (generation.current !== token) return;
       setVisibleSnapshot(structuredClone(script.snapshot));

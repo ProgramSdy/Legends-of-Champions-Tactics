@@ -6,7 +6,7 @@ import { usePresentationQueue } from "@/lib/battle/usePresentationQueue";
 import type { BattleEvent, BattleEventType, BattleOutcome, BattleProvider, CombatantState, PresentationScript, SideId } from "@/lib/battle/types";
 import { AssetImage } from "./AssetImage";
 import { HeroCard, Meter } from "./HeroCard";
-import { SkillCard } from "./SkillCard";
+import { NoFourthSkillCard, SkillCard } from "./SkillCard";
 import { formationFor, getBattleFormat } from "@/lib/battle/formations";
 import { BATTLE_BACKGROUND } from "@/lib/battle/battleBackgrounds";
 import { heroFigureScaleFor } from "@/lib/battle/assets";
@@ -54,7 +54,7 @@ function TeamPanel({ side, heroes, activeId, highlightedTargetIds }: { side: "fr
   );
 }
 
-type TargetEffect = "healing" | "priest-healing" | "buff" | "debuff" | "damage-prevented";
+type TargetEffect = "healing" | "priest-healing" | "paladin-healing" | "buff" | "debuff" | "damage-prevented";
 
 const FIGURE_FRAME_WIDTH = 172;
 const FALLBACK_FIGURE_FRAME_HEIGHT = 202;
@@ -64,9 +64,9 @@ function frameHeightFor({ naturalWidth, naturalHeight }: { naturalWidth: number;
   return Math.round((FIGURE_FRAME_WIDTH * naturalHeight / naturalWidth) * 100) / 100;
 }
 
-function targetEffectFor(event: BattleEvent | null, combatantId: string, isPriestHealing: boolean): TargetEffect | null {
+function targetEffectFor(event: BattleEvent | null, combatantId: string, isPriestHealing: boolean, isPaladinHealing: boolean): TargetEffect | null {
   if (!event || event.targetId !== combatantId) return null;
-  if (event.type === "healingApplied") return isPriestHealing ? "priest-healing" : "healing";
+  if (event.type === "healingApplied") return isPriestHealing ? "priest-healing" : isPaladinHealing ? "paladin-healing" : "healing";
   if (event.type === "damagePrevented") return "damage-prevented";
   if (event.type === "statusApplied" && (event.statusPresentation === "buff" || event.statusPresentation === "debuff")) {
     return event.statusPresentation;
@@ -74,17 +74,17 @@ function targetEffectFor(event: BattleEvent | null, combatantId: string, isPries
   return null;
 }
 
-function BattlefieldFigure({ hero, active, event, hpEvent, healingCasterEvent, eventSourceSide, eventSourceIsPriest, selectable, targetSelectionPending, selected, onSelect, onTargetHover, formationScale }: {
+function BattlefieldFigure({ hero, active, event, hpEvent, healingCasterEvent, eventSourceSide, eventSourceIsPriest, eventSourceIsPaladin, selectable, targetSelectionPending, selected, onSelect, onTargetHover, formationScale }: {
   hero: CombatantState; active: boolean; event: BattleEvent | null; eventSourceSide: SideId | null;
   hpEvent: BattleEvent | null;
-  healingCasterEvent: BattleEvent | null; eventSourceIsPriest: boolean;
+  healingCasterEvent: BattleEvent | null; eventSourceIsPriest: boolean; eventSourceIsPaladin: boolean;
   selectable: boolean; targetSelectionPending: boolean; selected: boolean; onSelect: () => void; onTargetHover: (combatantId: string | null) => void; formationScale: number;
 }) {
   const [figureFrameHeight, setFigureFrameHeight] = useState(FALLBACK_FIGURE_FRAME_HEIGHT);
   const eventTarget = event?.targetId === hero.id;
   const moved = event?.type === "characterMoved" && event.sourceId === hero.id;
   const effect = eventTarget || moved ? event?.type ?? null : null;
-  const targetEffect = targetEffectFor(event, hero.id, eventSourceIsPriest);
+  const targetEffect = targetEffectFor(event, hero.id, eventSourceIsPriest, eventSourceIsPaladin);
   const isPriestHealingCaster = healingCasterEvent?.type === "healingApplied"
     && healingCasterEvent.sourceId === hero.id && hero.faculty === "Priest";
   const movementClass = moved && event?.movement === "lunge"
@@ -96,7 +96,7 @@ function BattlefieldFigure({ hero, active, event, hpEvent, healingCasterEvent, e
   const figureScale = formationScale * heroFigureScaleFor(hero.definitionId);
   return (
     <div
-      className={`battle-figure slot-${hero.slot} ${hero.sideId} ${active ? "acting" : ""} ${effect ? `fx-${effect}` : ""} ${targetEffect === "priest-healing" ? "priest-healing-target" : ""} ${movementClass} ${evadeClass} ${selectable ? "selectable" : ""} ${selected ? "targeted" : ""}`}
+      className={`battle-figure slot-${hero.slot} ${hero.sideId} ${active ? "acting" : ""} ${effect ? `fx-${effect}` : ""} ${targetEffect === "priest-healing" ? "priest-healing-target" : ""} ${targetEffect === "paladin-healing" ? "paladin-healing-target" : ""} ${movementClass} ${evadeClass} ${selectable ? "selectable" : ""} ${selected ? "targeted" : ""}`}
       data-combatant-id={hero.id}
       data-figure-footprint="shared"
       style={{ "--figure-frame-width": `${FIGURE_FRAME_WIDTH}px`, "--figure-frame-height": `${figureFrameHeight}px`, "--figure-scale": figureScale } as CSSProperties}
@@ -200,6 +200,14 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
     ? snapshot?.legalActions.find((action) => action.skillId === selectedSkill)
     : undefined;
   const targetSelectionPending = Boolean(legal && selectedTargets.length < legal.maximumTargets);
+  const orderedActiveSkills = active
+    ? active.skills.filter((skill) => !skill.isPassive)
+    : [];
+  const passiveSkills = active?.skills.filter((skill) => skill.isPassive) ?? [];
+  // Placeholders carry no fabricated ID or action state. Keep real passive
+  // skills at the far right, as requested, while future real skills remain
+  // visible even if the total exceeds the four-column baseline.
+  const placeholderCount = Math.max(0, 4 - orderedActiveSkills.length - passiveSkills.length);
   const highlightedTargetIds = [...selectedTargets, ...(legal && hoveredTargetId ? [hoveredTargetId] : [])];
   const sideHeroes = (side: "friendly" | "enemy") => {
     const definition = snapshot?.sides.find((item) => item.id === side);
@@ -214,6 +222,9 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
   const eventSourceIsPriest = activeEvent?.type === "healingApplied"
     && activeEvent.sourceId !== undefined
     && combatants[activeEvent.sourceId]?.faculty === "Priest";
+  const eventSourceIsPaladin = activeEvent?.type === "healingApplied"
+    && activeEvent.sourceId !== undefined
+    && combatants[activeEvent.sourceId]?.faculty === "Paladin";
 
   if (!snapshot) return <main className="loading-screen" aria-live="polite">
     {error ? <section className={`connection-state ${errorKind ?? "adapter"}`} role="alert"><strong>{errorKind === "disconnected" ? "BATTLE SERVICE OFFLINE" : "BATTLE COULD NOT OPEN"}</strong><p>{error}</p><button onClick={retry}>Retry connection</button></section> : <><span className="loading-rune">◇</span>Opening the battlefield…</>}
@@ -319,7 +330,7 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
             return <div className="formation-slot" key={hero.id} data-battle-layer="combat-actor" data-slot={position.slot} data-position={hero.position} style={{ left: `${position.x}%`, top: `${position.y}%`, zIndex: position.depth, "--figure-scale": position.scale } as CSSProperties}>
             <BattlefieldFigure hero={hero} active={hero.id === snapshot.activeCombatantId}
               event={activeEvent} hpEvent={activeHpEvent} healingCasterEvent={activeHealingCasterEvent}
-              eventSourceSide={eventSourceSide} eventSourceIsPriest={eventSourceIsPriest}
+              eventSourceSide={eventSourceSide} eventSourceIsPriest={eventSourceIsPriest} eventSourceIsPaladin={eventSourceIsPaladin}
               selectable={acceptsCommands && Boolean(legal?.validTargetIds.includes(hero.id)) && !isPlaying}
               targetSelectionPending={acceptsCommands && Boolean(legal?.validTargetIds.includes(hero.id)) && !isPlaying && targetSelectionPending}
               selected={selectedTargets.includes(hero.id)}
@@ -353,10 +364,14 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
           }</span></div></div>
           : <div className="acting-card battle-ended" role="status"><div className="ended-crest">◇</div><div><small>BATTLE COMPLETE</small><h2>{outcomeLabel}</h2><p>The final board reflects the authoritative Python result.</p><span className="turn-intent">NO FURTHER COMMANDS ARE LEGAL</span></div></div>}
         <div className="skills" aria-label="Skills">
-          {active?.skills.map((item) => (
+          {orderedActiveSkills.map((item) => (
             <SkillCard key={item.id} skill={item} selected={selectedSkill === item.id}
               legal={acceptsCommands && snapshot.legalActions.some((action) => action.skillId === item.id)}
               disabled={isPlaying || !acceptsCommands} onSelect={() => { setSelectedSkill(item.id); setSelectedTargets([]); }} />
+          ))}
+          {Array.from({ length: placeholderCount }, (_, index) => <NoFourthSkillCard key={`no-fourth-skill-${index}`} />)}
+          {passiveSkills.map((item) => (
+            <SkillCard key={item.id} skill={item} selected={false} legal={false} disabled onSelect={() => undefined} />
           ))}
         </div>
         <div className="battle-log">

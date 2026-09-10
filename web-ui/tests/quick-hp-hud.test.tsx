@@ -7,7 +7,7 @@ import type { BattleEvent, BattleSnapshot, PresentationScript } from "@/lib/batt
 
 const clone = <T,>(value: T): T => structuredClone(value);
 
-async function renderDemo(event: BattleEvent, snapshotMutator?: (snapshot: BattleSnapshot) => void, useFakeTimers = false, battleSize?: 1 | 2 | 3, initialSnapshotMutator?: (snapshot: BattleSnapshot) => void) {
+async function renderDemo(event: BattleEvent | BattleEvent[], snapshotMutator?: (snapshot: BattleSnapshot) => void, useFakeTimers = false, battleSize?: 1 | 2 | 3, initialSnapshotMutator?: (snapshot: BattleSnapshot) => void) {
   const initialProvider = battleSize ? new MockBattleProvider(createFormatFixture(battleSize)) : new MockBattleProvider();
   const initialState = await initialProvider.getState();
   initialSnapshotMutator?.(initialState.snapshot);
@@ -15,12 +15,12 @@ async function renderDemo(event: BattleEvent, snapshotMutator?: (snapshot: Battl
   const state = initialSnapshotMutator ? await provider.getState() : initialState;
   const snapshot = clone(state.snapshot);
   snapshotMutator?.(snapshot);
+  const events = Array.isArray(event) ? event : [event];
   render(<BattleScreen provider={provider} mockDemos={[{
     id: "quick-hp",
-    label: "Quick HP event",
-    run: async (): Promise<PresentationScript> => ({
-      id: "quick-hp", label: "Quick HP event", eventType: event.type === "healingApplied" ? "healing" : "melee",
-      events: [event], snapshot, revision: 2,
+    label: "Quick HP event", run: async (): Promise<PresentationScript> => ({
+      id: "quick-hp", label: "Quick HP event", eventType: events[0].type === "healingApplied" ? "healing" : "melee",
+      events, snapshot, revision: 2,
     }),
   }]} />);
   await screen.findByRole("region", { name: "Battlefield" });
@@ -57,6 +57,42 @@ describe("quick HP HUD contract", () => {
       const figure = document.querySelector("[data-combatant-id='enemy.sashein']")!;
       await act(async () => { await vi.advanceTimersByTimeAsync(300); });
       expect(figure.querySelector(".combat-text.heal")).toHaveTextContent("+0");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("restarts target damage feedback for consecutive status damage events", async () => {
+    try {
+      const first = hpEvent("damageApplied", 7, { current: 69, maximum: 76 });
+      first.id = "evt.status.shadow-word-pain";
+      first.sequence = 1;
+      first.statusId = "status.shadow_word_pain";
+      first.effectHint = "status";
+      const second = hpEvent("damageApplied", 5, { current: 64, maximum: 76 });
+      second.id = "evt.status.poisoned-dagger";
+      second.sequence = 2;
+      second.statusId = "status.poisoned_dagger";
+      second.effectHint = "status";
+
+      await renderDemo([first, second], undefined, true);
+      const figure = document.querySelector("[data-combatant-id='enemy.sashein']")!;
+      await act(async () => { await vi.advanceTimersByTimeAsync(300); });
+      const firstNumber = figure.querySelector(".combat-text.damage");
+      expect(firstNumber).toHaveTextContent("−7");
+      expect(figure).toHaveClass("fx-damageApplied");
+
+      // The queue commits an idle frame after the first event. This makes the
+      // next same-type class application a fresh CSS animation, not a merge.
+      await act(async () => { await vi.advanceTimersByTimeAsync(766); });
+      expect(figure).not.toHaveClass("fx-damageApplied");
+      expect(figure.querySelector(".combat-text.damage")).not.toBeInTheDocument();
+
+      await act(async () => { await vi.advanceTimersByTimeAsync(300); });
+      const secondNumber = figure.querySelector(".combat-text.damage");
+      expect(secondNumber).toHaveTextContent("−5");
+      expect(secondNumber).not.toBe(firstNumber);
+      expect(figure).toHaveClass("fx-damageApplied");
     } finally {
       vi.useRealTimers();
     }

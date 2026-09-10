@@ -141,6 +141,7 @@ STATUS_KINDS = {
     "warlust": "buff",
     "bleeding_moon_slash": "debuff",
     "blood_frenzy": "buff",
+    "holy_aura": "buff",
 }
 
 STATUS_DURATIONS = {
@@ -167,6 +168,7 @@ STATUS_DURATIONS = {
     "warlust": "warlust_duration",
     "bleeding_moon_slash": "bleeding_moon_slash_duration",
     "blood_frenzy": "blood_frenzy_duration",
+    "holy_aura": None,
 }
 
 STATUS_ENGINE_NAMES = {
@@ -178,6 +180,7 @@ STATUS_ENGINE_NAMES = {
     "shield_lash": "Shield Lash",
     "purify_healing": "Purify Healing",
     "bleeding_moon_slash": "Moon Slash",
+    "holy_aura": "Holy Aura",
 }
 
 STATUS_SELF_SOURCED = {
@@ -354,6 +357,10 @@ class BattleAdapter:
                 game = Game(player_heroes, opponent_heroes, "simulation")
                 game.game_initialization()
                 game.start_round()
+                # Initial setup is not replayed to a newly connected client.
+                # Later round-start status effects are drained as ordered typed
+                # events after their engine mutations occur.
+                game.status_effect_events.clear()
                 session = BattleSession(
                     battle_id=battle_id or f"battle.{uuid.uuid4().hex}",
                     game=game,
@@ -778,6 +785,10 @@ class BattleAdapter:
             actor.status["scoff"] = False
         for status in command.get("_clearStatuses", []):
             actor.status[status] = False
+        # A Protection Paladin may have been defeated by this action. Refresh
+        # passive aura ownership before serializing the post-action snapshot so
+        # sidebar status icons disappear immediately rather than next round.
+        game.refresh_holy_auras()
         after = self._capture(session)
         mutation_events = self._mutation_events(
             session, actor, skill, targets, before, after
@@ -815,9 +826,10 @@ class BattleAdapter:
                         message=f"Round {game.round_counter} started.",
                     )
                 )
+                events.extend(self._drain_status_effect_events(session))
                 events.extend(
                     self._state_delta_events(
-                        session, round_before, self._capture(session)
+                        session, round_before, self._capture(session), include_hp=False
                     )
                 )
                 round_log_events = self._drain_presentation_log(session)
@@ -858,6 +870,52 @@ class BattleAdapter:
                     message=message,
                 )
             )
+        return events
+
+    def _drain_status_effect_events(
+        self, session: BattleSession
+    ) -> list[dict[str, Any]]:
+        """Serialize per-activation round-status HP changes in engine order.
+
+        The mutable engine records a small structured entry immediately after
+        every `take_damage`/`take_healing` reached from
+        `check_heroes_status_effects`.  Do not coalesce these records: one
+        hero can receive Aura healing and multiple independent DoT hits in a
+        single status phase, all of which need a visible UI response.
+        """
+        pending = session.game.status_effect_events
+        session.game.status_effect_events = []
+        events: list[dict[str, Any]] = []
+        for mutation in pending:
+            hero = mutation["hero"]
+            source = mutation.get("source")
+            event_type = mutation["type"]
+            event = self._event(
+                session,
+                event_type,
+                sourceId=(self._combatant_id(session, source) if source else None),
+                targetId=self._combatant_id(session, hero),
+                amount=mutation["amount"],
+                hpAfter={
+                    "current": mutation["hpAfter"],
+                    "maximum": mutation["maximum"],
+                },
+                statusId=mutation.get("statusId"),
+                effectHint=mutation.get("effectHint", "status"),
+                healingPresentation=(
+                    mutation.get("healingPresentation", "status")
+                    if event_type == "healingApplied"
+                    else None
+                ),
+                message=(
+                    f"{self._combatant_id(session, hero)} recovered "
+                    f"{mutation['amount']} HP."
+                    if event_type == "healingApplied"
+                    else f"{self._combatant_id(session, hero)} took "
+                    f"{mutation['amount']} status damage."
+                ),
+            )
+            events.append(event)
         return events
 
     @staticmethod
@@ -1162,9 +1220,10 @@ class BattleAdapter:
                         message=f"Round {game.round_counter} started.",
                     )
                 )
+                events.extend(self._drain_status_effect_events(session))
                 events.extend(
                     self._state_delta_events(
-                        session, round_before, self._capture(session)
+                        session, round_before, self._capture(session), include_hp=False
                     )
                 )
         if self._is_ended(game):
@@ -1370,12 +1429,12 @@ class BattleAdapter:
                 )
         return events
 
-    def _state_delta_events(self, session, before, after):
+    def _state_delta_events(self, session, before, after, *, include_hp=True):
         """Serialize engine-owned round-start mutations without reading prose."""
         events = []
         for combatant_id, old in before.items():
             new = after[combatant_id]
-            if new["hp"] < old["hp"]:
+            if include_hp and new["hp"] < old["hp"]:
                 events.append(
                     self._event(
                         session,
@@ -1387,15 +1446,15 @@ class BattleAdapter:
                         message=f"{combatant_id} took {old['hp'] - new['hp']} status damage.",
                     )
                 )
-            elif new["hp"] > old["hp"]:
-                priest_source_id = self._priest_healing_status_source_id(
+            elif include_hp and new["hp"] > old["hp"]:
+                healing_source_id = self._healing_status_source_id(
                     session, new["statuses"], old["statuses"]
                 )
                 events.append(
                     self._event(
                         session,
                         "healingApplied",
-                        sourceId=priest_source_id,
+                        sourceId=healing_source_id,
                         targetId=combatant_id,
                         amount=new["hp"] - old["hp"],
                         hpAfter={"current": new["hp"], "maximum": new["maximum"]},
@@ -1469,13 +1528,13 @@ class BattleAdapter:
                 )
         return events
 
-    def _priest_healing_status_source_id(self, session, *status_sets):
-        """Return a Priest author for a status-driven healing delta, if known.
+    def _healing_status_source_id(self, session, *status_sets):
+        """Return the authoritative source for a status-driven healing delta.
 
         Round-start mutations do not have an acting hero.  Status snapshots do
         retain the authoritative source combatant ID, so preserve that source
-        for Priest-authored healing and let the UI select the Priest treatment
-        without parsing battle-log prose or guessing from a green effect.
+        for Priest- and Paladin-authored healing without parsing battle-log
+        prose or guessing from an effect colour.
         """
         priest_ids = {
             self._combatant_id(session, hero)
@@ -1485,6 +1544,8 @@ class BattleAdapter:
         for statuses in status_sets:
             for status in statuses.values():
                 source_id = status.get("sourceCombatantId")
+                if status.get("id") == "status.holy_aura" and source_id:
+                    return source_id
                 if source_id in priest_ids:
                     return source_id
         return None
@@ -1518,6 +1579,7 @@ class BattleAdapter:
                     "maximumTargets": skill.target_qty,
                     "cooldownRemaining": skill.cooldown if skill.if_cooldown else 0,
                     "available": bool(skill.is_available and not skill.if_cooldown),
+                    "isPassive": bool(skill.is_passive),
                     "unavailableReason": (
                         "cooldown" if skill.if_cooldown else
                         ("unavailable" if not skill.is_available else None)
@@ -1577,7 +1639,7 @@ class BattleAdapter:
             return []
         actions = []
         for skill in actor.skills:
-            if skill.if_cooldown or not skill.is_available:
+            if skill.is_passive or skill.if_cooldown or not skill.is_available:
                 continue
             valid_targets = self._valid_target_ids(session, actor, skill)
             required_targets = (

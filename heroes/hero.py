@@ -1,6 +1,7 @@
 import math
 import random
 from dataclasses import dataclass
+from functools import wraps
 from heroes import *
 from skills import *
 
@@ -12,6 +13,23 @@ BLUE = "\033[94m"
 MAGENTA = "\033[95m"
 CYAN = "\033[96m"
 RESET = "\033[0m"
+
+
+def _record_status_hp_mutation(event_type):
+    """Decorate HP operations so status ticks retain their real sequence."""
+    def decorate(operation):
+        @wraps(operation)
+        def wrapped(self, *args, **kwargs):
+            hp_before = self.hp
+            result = operation(self, *args, **kwargs)
+            game = getattr(self, "game", None)
+            if game is not None:
+                game.record_status_effect_hp_change(
+                    self, event_type, hp_before, self.hp
+                )
+            return result
+        return wrapped
+    return decorate
 
 
 @dataclass(frozen=True)
@@ -103,6 +121,7 @@ class Hero:
         'bleeding_moon_slash': False,
         'warlust': False,
         'blood_frenzy': False,
+        'holy_aura': False,
         'death_bolt': False,
         'bleeding_corroded_blade': False,
         'arcane_bolt': False,
@@ -615,6 +634,7 @@ class Hero:
           results = "0"
           return results
 
+    @_record_status_hp_mutation("damageApplied")
     def take_damage(self, damage_dealt, attack_type="NA", attacker=None):
       is_ally_priest_devine = False
       for ally in self.allies:
@@ -697,6 +717,22 @@ class Hero:
                   multiplier = 0.80
           return max(0, math.floor(damage_dealt * multiplier))
 
+    def _apply_void_connection_linked_damage(self, linked_hero, damage_dealt):
+          """Apply Void Connection's shared damage and journal the recipient.
+
+          Void Connection historically mutates the linked summon directly
+          instead of calling its `take_damage`.  During a status tick that
+          would otherwise bypass the ordered status-mutation journal, leaving
+          the summon without a UI damage event.
+          """
+          hp_before = linked_hero.hp
+          linked_hero.hp = max(0, linked_hero.hp - damage_dealt)
+          game = getattr(linked_hero, "game", None)
+          if game is not None:
+              game.record_status_effect_hp_change(
+                  linked_hero, "damageApplied", hp_before, linked_hero.hp
+              )
+
     def take_damage_action(self, damage_dealt, attack_type="NA", attacker=None):
           damage_dealt = self.take_damage_calculation(
               damage_dealt, attack_type, attacker
@@ -730,7 +766,7 @@ class Hero:
                   if self.status['void_connection'] == True and self.summoned_unit != None and self.summoned_unit.hp > 0:
                     for buff in self.buffs:
                       if buff.name == "Void Connection":
-                        buff.initiator.hp = buff.initiator.hp - round(damage_dealt * buff.effect)
+                        self._apply_void_connection_linked_damage(buff.initiator, round(damage_dealt * buff.effect))
                         self.hp = self.hp - (damage_dealt - round(damage_dealt * buff.effect))
                         if self.hp < 0:
                             self.hp = 0
@@ -746,7 +782,7 @@ class Hero:
                   if self.status['void_connection'] == True and self.summoned_unit != None and self.summoned_unit.hp > 0:
                     for buff in self.buffs:
                       if buff.name == "Void Connection":
-                        buff.initiator.hp = buff.initiator.hp - round(damage_dealt * buff.effect)
+                        self._apply_void_connection_linked_damage(buff.initiator, round(damage_dealt * buff.effect))
                         self.hp = self.hp - (damage_dealt - round(damage_dealt * buff.effect))
                         if self.hp < 0:
                             self.hp = 0
@@ -762,7 +798,7 @@ class Hero:
                 if self.status['void_connection'] == True and self.summoned_unit != None and self.summoned_unit.hp > 0:
                     for buff in self.buffs:
                       if buff.name == "Void Connection":
-                        buff.initiator.hp = buff.initiator.hp - round(damage_dealt * buff.effect)
+                        self._apply_void_connection_linked_damage(buff.initiator, round(damage_dealt * buff.effect))
                         self.hp = self.hp - (damage_dealt - round(damage_dealt * buff.effect))
                         if self.hp < 0:
                             self.hp = 0
@@ -788,7 +824,7 @@ class Hero:
                 if self.status['void_connection'] == True and self.summoned_unit != None and self.summoned_unit.hp > 0:
                   for buff in self.buffs:
                     if buff.name == "Void Connection":
-                      buff.initiator.hp = buff.initiator.hp - round(damage_dealt * buff.effect)
+                      self._apply_void_connection_linked_damage(buff.initiator, round(damage_dealt * buff.effect))
                       self.hp = self.hp - (damage_dealt - round(damage_dealt * buff.effect))
                       if self.hp < 0:
                           self.hp = 0
@@ -804,7 +840,7 @@ class Hero:
                 if self.status['void_connection'] == True and self.summoned_unit != None and self.summoned_unit.hp > 0:
                   for buff in self.buffs:
                     if buff.name == "Void Connection":
-                      buff.initiator.hp = buff.initiator.hp - round(damage_dealt * buff.effect)
+                      self._apply_void_connection_linked_damage(buff.initiator, round(damage_dealt * buff.effect))
                       self.hp = self.hp - (damage_dealt - round(damage_dealt * buff.effect))
                       if self.hp < 0:
                           self.hp = 0
@@ -820,7 +856,7 @@ class Hero:
               if self.status['void_connection'] == True and self.summoned_unit != None and self.summoned_unit.hp > 0:
                   for buff in self.buffs:
                     if buff.name == "Void Connection":
-                      buff.initiator.hp = buff.initiator.hp - round(damage_dealt * buff.effect)
+                      self._apply_void_connection_linked_damage(buff.initiator, round(damage_dealt * buff.effect))
                       self.hp = self.hp - (damage_dealt - round(damage_dealt * buff.effect))
                       if self.hp < 0:
                           self.hp = 0
@@ -842,6 +878,7 @@ class Hero:
     def add_debuff(self, debuff):
         self.debuffs.append(debuff)
 
+    @_record_status_hp_mutation("healingApplied")
     def take_healing(self, healing_amount):
       total_boost = sum(self.healing_boost_effects.values())  # Sum all healing boosts
       total_reduction = sum(self.healing_reduction_effects.values())  # Sum all healing reductions

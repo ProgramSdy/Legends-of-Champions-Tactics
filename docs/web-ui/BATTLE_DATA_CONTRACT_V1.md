@@ -380,10 +380,15 @@ post-change value (`hpAfter`, status duration, or full summoned combatant).
 `healingApplied` also serves as a typed presentation event for an explicitly
 selected target of a pure healing skill that was already at maximum HP. That
 event uses `amount: 0` and an unchanged `hpAfter`; it does not imply an HP
-mutation. Clients should show the target-bound healing presentation but must
-not display a misleading `+0` floating amount. The adapter does not synthesize
-this event for damage, buff, or hybrid skills merely because their HP result is
-unchanged.
+mutation, but clients still show the target-bound presentation and `+0`.
+
+At round start, the adapter emits one ordered `damageApplied` or
+`healingApplied` event for every individual HP activation performed by
+`StatusEffectManager.check_heroes_status_effects`. Each event carries the
+intermediate `hpAfter` from that activation and, when known, its authoritative
+`sourceId` and `statusId`. Consumers must play that ordered stream as supplied;
+they must not coalesce it into a net HP change. A full-HP status heal and a
+landed zero-damage status tick are therefore visible `amount: 0` events.
 Every `statusApplied` event includes the additive authoritative
 `statusPresentation` cue. Beneficial statuses use `buff`, harmful and control
 statuses use `debuff`, and an unclassified status uses the compatible `neutral`
@@ -401,8 +406,8 @@ Independent caster or ally effects may still produce their own events. One
 Life Drain resolution can
 produce ordered damage and healing events. Flesh Slam Multi can produce
 multiple target damage events followed by self-damage. Stitch of Agony produces
-`statusApplied` on cast and later `damageApplied` events at authoritative
-round-start processing.
+`statusApplied` on cast and later ordered `damageApplied` events at
+authoritative round-start processing.
 
 `damagePrevented` is an additive event emitted only when the engine's explicit
 per-target immunity result identifies Shield of Protection. It carries the

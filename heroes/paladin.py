@@ -187,9 +187,15 @@ class Paladin_Protection(Paladin):
 
     def __init__(self, sys_init, name, group, is_player_controlled, position="front"):
             super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major, position=position)
+            self.provides_holy_aura = True
             self.add_skill(Skill(self, "Hammer of Revenge", self.hammer_of_revenge, target_type = "single", skill_type= "damage", attack_type = "ranged_instant"))
             self.add_skill(Skill(self, "Shield of Righteous", self.shield_of_righteous, target_type = "single", skill_type= "damage", attack_type = "melee", independent_effect_action=self.independent_shield_of_righteous))
             self.add_skill(Skill(self, "Heroric Charge", self.heroric_charge, target_type = "single", skill_type= "damage", attack_type = "ranged_instant", is_control_skill = True, independent_effect_action=self.independent_heroric_charge))
+            self.add_skill(Skill(self, "Holy Aura", self.holy_aura, target_type = "self", skill_type= "effect", target_qty=0, is_passive=True))
+
+    def holy_aura(self):
+        """Passive marker for the round-start aura handled by Game/status effects."""
+        return None
 
     def hammer_of_revenge(self, other_hero, attack_type="NA"):
         variation = random.randint(-4, -1)
@@ -263,9 +269,10 @@ class Paladin_Protection(Paladin):
         basic_damage = round((self.damage - other_hero.defense) * 1)
         variation = random.randint(-1, 1)
         actual_damage = max(1, basic_damage + variation)
-        basic_healing_heroric_charge = 22
+        basic_healing_heroric_charge = 32
         variation = random.randint(-2, 2)
         actual_healing = basic_healing_heroric_charge + variation
+
         if other_hero.is_immunity_condition_control == True:
            if other_hero.status['magic_casting'] == True:
              result = self.interrupt_magic_casting(other_hero)

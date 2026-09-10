@@ -206,6 +206,7 @@ export interface SkillState {
   maximumTargets: number;
   cooldownRemaining: number;
   available: boolean;
+  isPassive?: boolean;
   unavailableReason: string | null;
   resourceCost: null | { kind: string; amount: number };
 }

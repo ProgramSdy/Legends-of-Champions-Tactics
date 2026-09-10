@@ -1,5 +1,6 @@
 import random
 import math
+from functools import wraps
 from heroes import *
 from skills import *
 
@@ -12,12 +13,97 @@ MAGENTA = "\033[95m"
 CYAN = "\033[96m"
 RESET = "\033[0m"
 
+
+def _capture_status_effect_mutations(operation):
+    """Limit Hero HP mutation recording to this ordered status phase."""
+    @wraps(operation)
+    def wrapped(self, hero):
+        previous_capture = self.game._capturing_status_effects
+        previous_context = self.game._status_effect_context
+        self.game._capturing_status_effects = True
+        self.game._status_effect_context = None
+        try:
+            return operation(self, hero)
+        finally:
+            self.game._capturing_status_effects = previous_capture
+            self.game._status_effect_context = previous_context
+    return wrapped
+
 class StatusEffectManager:
     def __init__(self, game):
         self.game = game
 
+    def _apply_holy_aura(self, hero):
+        """Resolve Holy Aura before every other status on this hero.
+
+        The recipient buff is established by Game.refresh_holy_auras.  This
+        method intentionally owns only the round activation, preserving the
+        normal StatusEffectManager sequence as the source of truth for both
+        engine mutation and UI presentation.
+        """
+        if not hero.status.get("holy_aura") or hero.hp <= 0:
+            return
+        aura = next(
+            (
+                buff
+                for buff in hero.buffs
+                if buff.name == "Holy Aura" and buff.initiator.hp > 0
+            ),
+            None,
+        )
+        if aura is None:
+            return
+        previous_context = self.game._status_effect_context
+        self.game._status_effect_context = {
+            "source": aura.initiator,
+            "statusId": "status.holy_aura",
+            "effectHint": "healing",
+            "healingPresentation": "status",
+        }
+        try:
+            healing_amount = 12 + random.randint(-2, 2)
+            result = hero.take_healing(healing_amount)
+            self.game.display_status_updates(
+                f"{BLUE}{hero.name} is restored by {aura.initiator.name}'s Holy Aura. "
+                f"{result}{RESET}"
+            )
+        finally:
+            self.game._status_effect_context = previous_context
+
+    def _status_damage(self, hero, amount, status_id, source=None):
+        """Apply one labelled status-damage activation for the UI stream."""
+        previous_context = self.game._status_effect_context
+        self.game._status_effect_context = {
+            "source": source,
+            "statusId": f"status.{status_id}",
+            "effectHint": "status",
+        }
+        try:
+            return hero.take_damage(amount)
+        finally:
+            self.game._status_effect_context = previous_context
+
+    def _status_healing(self, hero, amount, status_id, source=None):
+        """Apply one labelled status-healing activation for the UI stream."""
+        previous_context = self.game._status_effect_context
+        self.game._status_effect_context = {
+            "source": source,
+            "statusId": f"status.{status_id}",
+            "effectHint": "healing",
+            "healingPresentation": "status",
+        }
+        try:
+            return hero.take_healing(amount)
+        finally:
+            self.game._status_effect_context = previous_context
+
+    @_capture_status_effect_mutations
     def check_heroes_status_effects(self, hero):
         if hero.hp > 0: # Only process heroes who are not defeated
+            # Holy Aura has the highest round-status priority.  Its distinct
+            # healing mutation is recorded before any debuff can damage this
+            # same hero.
+            self._apply_holy_aura(hero)
             # Casting Magic Duration
             if hero.status['magic_casting'] == True and hero.hp > 0:
               hero.magic_casting_duration -=1
@@ -52,7 +138,7 @@ class StatusEffectManager:
                       actual_healing = basic_healing + variation
                       buff.duration -= 1
                       if buff.duration > 0:
-                          self.game.display_status_updates(f"{BLUE}{hero.name}'s Aqua Ring from {buff.initiator.name} lasts {buff.duration} rounds. {hero.take_healing(actual_healing)}{RESET}")
+                          self.game.display_status_updates(f"{BLUE}{hero.name}'s Aqua Ring from {buff.initiator.name} lasts {buff.duration} rounds. {self._status_healing(hero, actual_healing, 'aqua_ring', buff.initiator)}{RESET}")
                           hero_status_activated = [key for key, value in hero.status.items() if value == True]
                           set_comb = set(hero.list_status_debuff_magic) |  set(hero.list_status_debuff_toxic)
                           equal_status = set(hero_status_activated) & set_comb
@@ -102,7 +188,7 @@ class StatusEffectManager:
                 hero.bleeding_slash_duration -=1
                 if hero.bleeding_slash_duration > 0:
                     variation = random.randint(-2, 2)
-                    self.game.display_status_updates(f"{BLUE}{hero.name}'s bleeding effect from Slash is {hero.bleeding_slash_duration} rounds. {hero.take_damage(hero.bleeding_slash_continuous_damage + variation)}{RESET}")
+                    self.game.display_status_updates(f"{BLUE}{hero.name}'s bleeding effect from Slash is {hero.bleeding_slash_duration} rounds. {self._status_damage(hero, hero.bleeding_slash_continuous_damage + variation, 'bleeding_slash')}{RESET}")
                 elif hero.bleeding_slash_duration == 0:
                     hero.bleeding_slash_continuous_damage = 0
                     hero.status['bleeding_slash'] = False
@@ -137,7 +223,7 @@ class StatusEffectManager:
                 hero.shadow_word_pain_debuff_duration -=1
                 if hero.shadow_word_pain_debuff_duration > 0:
                     variation = random.randint(-2, 2)
-                    self.game.display_status_updates(f"{BLUE}{hero.name}'s Shadow Word Pain debuff duration is {hero.shadow_word_pain_debuff_duration} rounds. {hero.take_damage(hero.shadow_word_pain_continuous_damage + variation)}{RESET}")
+                    self.game.display_status_updates(f"{BLUE}{hero.name}'s Shadow Word Pain debuff duration is {hero.shadow_word_pain_debuff_duration} rounds. {self._status_damage(hero, hero.shadow_word_pain_continuous_damage + variation, 'shadow_word_pain')}{RESET}")
                 elif hero.shadow_word_pain_debuff_duration == 0:
                     hero.shadow_word_pain_continuous_damage = 0 # Reset shadow word pain continuous_damage
                     hero.status['shadow_word_pain'] = False
@@ -152,7 +238,7 @@ class StatusEffectManager:
                         hero.poisoned_dagger_continuous_damage = math.ceil((hero.poisoned_dagger_applier_damage - hero.poison_resistance)/4)
                     elif hero.poisoned_dagger_stacks == 2:
                         hero.poisoned_dagger_continuous_damage = math.ceil((hero.poisoned_dagger_applier_damage - hero.poison_resistance)/2)
-                    self.game.display_status_updates(f"{BLUE}{hero.name}'s Poisoned Dagger duration is {hero.poisoned_dagger_debuff_duration} rounds. {hero.take_damage(hero.poisoned_dagger_continuous_damage + variation)}{RESET}")
+                    self.game.display_status_updates(f"{BLUE}{hero.name}'s Poisoned Dagger duration is {hero.poisoned_dagger_debuff_duration} rounds. {self._status_damage(hero, hero.poisoned_dagger_continuous_damage + variation, 'poisoned_dagger')}{RESET}")
                 elif hero.poisoned_dagger_debuff_duration == 0:
                     hero.poisoned_dagger_continuous_damage = 0 # Reset shadow word pain continuous_damage
                     hero.status['poisoned_dagger'] = False
@@ -165,7 +251,7 @@ class StatusEffectManager:
                 if hero.paralyze_blade_debuff_duration > 0:
                     variation = random.randint(-2, 2)
                     hero.paralyze_blade_continuous_damage = math.ceil((hero.paralyze_blade_applier_damage - hero.poison_resistance)/6)
-                    self.game.display_status_updates(f"{BLUE}{hero.name}'s Paralyze Blade duration is {hero.paralyze_blade_debuff_duration} rounds. {hero.take_damage(hero.paralyze_blade_continuous_damage + variation)}{RESET}")
+                    self.game.display_status_updates(f"{BLUE}{hero.name}'s Paralyze Blade duration is {hero.paralyze_blade_debuff_duration} rounds. {self._status_damage(hero, hero.paralyze_blade_continuous_damage + variation, 'paralyze_blade')}{RESET}")
                 elif hero.paralyze_blade_debuff_duration == 0:
                     hero.paralyze_blade_continuous_damage = 0
                     hero.agility = hero.agility + hero.agility_reduced_amount_by_paralyze_blade  # Restore original agility
@@ -214,14 +300,14 @@ class StatusEffectManager:
                     variation = random.randint(-2, 2)
                     hero.status['unstable_compound'] = False
                     hero.unstable_compound_damage = hero.unstable_compound_damage + variation
-                    self.game.display_status_updates(f"{ORANGE}Unstable Compound from {hero.name} has exploded. {hero.take_damage(hero.sharp_blade_continuous_damage + variation)}{RESET}")
+                    self.game.display_status_updates(f"{ORANGE}Unstable Compound from {hero.name} has exploded. {self._status_damage(hero, hero.sharp_blade_continuous_damage + variation, 'unstable_compound')}{RESET}")
 
             # Handle Sharp Blade Debuff Duration
             if hero.status['bleeding_sharp_blade'] and hero.hp > 0:
                 hero.sharp_blade_debuff_duration -=1
                 if hero.sharp_blade_debuff_duration > 0:
                     variation = random.randint(-2, 2)
-                    self.game.display_status_updates(f"{BLUE}{hero.name}'s bleeding effect from Sharp Blade is {hero.sharp_blade_debuff_duration} rounds. {hero.take_damage(hero.sharp_blade_continuous_damage + variation)}{RESET}")
+                    self.game.display_status_updates(f"{BLUE}{hero.name}'s bleeding effect from Sharp Blade is {hero.sharp_blade_debuff_duration} rounds. {self._status_damage(hero, hero.sharp_blade_continuous_damage + variation, 'bleeding_sharp_blade')}{RESET}")
                 elif hero.sharp_blade_debuff_duration == 0:
                     hero.sharp_blade_continuous_damage = 0 # Reset shadow word pain continuous_damage
                     hero.status['bleeding_sharp_blade'] = False
@@ -268,7 +354,7 @@ class StatusEffectManager:
                       if debuff.duration > 0:
                         variation = random.randint(-1, 1)
                         actual_damage = debuff.effect + variation
-                        self.game.display_status_updates(f"{BLUE}{hero.name}'s Holy Word Punishment debuff duration is {debuff.duration} rounds. {hero.take_damage(actual_damage)}{RESET}")
+                        self.game.display_status_updates(f"{BLUE}{hero.name}'s Holy Word Punishment debuff duration is {debuff.duration} rounds. {self._status_damage(hero, actual_damage, 'holy_word_punishment', debuff.initiator)}{RESET}")
 
                         # Check any ally hero with Holy Word Redemption from same caster
                         allies_with_buff = [ally for ally in debuff.initiator.allies if ally.hp > 0 and any(buff.name == "Holy Word Redemption" and buff.initiator == debuff.initiator for buff in ally.buffs)]
@@ -280,7 +366,7 @@ class StatusEffectManager:
                                   buff_healing = math.ceil(buff.effect * actual_damage)
                                   healing_variation = random.randint(-1, 1)
                                   total_healing = round((buff_healing + healing_variation) * hero.take_healing_coefficient(num_allies))
-                                  self.game.display_status_updates(f"{BLUE}{ally.name} is protected by Holy Word Redemption. {ally.take_healing(total_healing)}{RESET}")
+                                  self.game.display_status_updates(f"{BLUE}{ally.name} is protected by Holy Word Redemption. {self._status_healing(ally, total_healing, 'holy_word_redemption', buff.initiator)}{RESET}")
 
                       elif debuff.duration == 0:
                           hero.status['holy_word_punishment'] = False
@@ -302,7 +388,7 @@ class StatusEffectManager:
                 hero.holy_fire_duration -=1
                 if hero.holy_fire_duration > 0:
                     variation = random.randint(-1, 2)
-                    self.game.display_status_updates(f"{BLUE}{hero.name}'s Holy Fire duration is {hero.holy_fire_duration} rounds. {hero.take_healing(hero.holy_fire_continuous_healing + variation)}{RESET}")
+                    self.game.display_status_updates(f"{BLUE}{hero.name}'s Holy Fire duration is {hero.holy_fire_duration} rounds. {self._status_healing(hero, hero.holy_fire_continuous_healing + variation, 'holy_fire')}{RESET}")
                 elif hero.holy_fire_duration == 0:
                     hero.holy_fire_continuous_healing = 0 # Reset holy fire continuous healing
                     hero.status['holy_fire'] = False
@@ -342,7 +428,7 @@ class StatusEffectManager:
                       if buff.duration > 0:
                         variation = random.randint(-1, 1)
                         actual_damage = hero.unholy_frenzy_continuous_damage + variation
-                        self.game.display_status_updates(f"{BLUE}{hero.name}'s unholy frenzy duration is {buff.duration} rounds. {hero.take_damage(actual_damage)}{RESET}")
+                        self.game.display_status_updates(f"{BLUE}{hero.name}'s unholy frenzy duration is {buff.duration} rounds. {self._status_damage(hero, actual_damage, 'unholy_frenzy', buff.initiator)}{RESET}")
 
                       elif buff.duration == 0:
                           hero.status['unholy_frenzy'] = False
@@ -362,7 +448,7 @@ class StatusEffectManager:
                     index = abs(hero.curse_of_agony_duration -4)
                     damage_dealt = hero.curse_of_agony_continuous_damage[index]
                     variation = random.randint(-1, 1)
-                    self.game.display_status_updates(f"{BLUE}{hero.name}'s Curse of Agony duration is {hero.curse_of_agony_duration} rounds. {hero.take_damage(damage_dealt + variation)}{RESET}")
+                    self.game.display_status_updates(f"{BLUE}{hero.name}'s Curse of Agony duration is {hero.curse_of_agony_duration} rounds. {self._status_damage(hero, damage_dealt + variation, 'curse_of_agony')}{RESET}")
                 elif hero.curse_of_agony_duration == 0:
                     hero.curse_of_agony_continuous_damage = [0, 0, 0, 0] # Reset shadow word pain continuous_damage
                     hero.status['curse_of_agony'] = False
@@ -400,7 +486,7 @@ class StatusEffectManager:
                 hero.corrosion_duration -=1
                 if hero.corrosion_duration > 0:
                     variation = random.randint(-1, 1)
-                    self.game.display_status_updates(f"{BLUE}{hero.name}'s Corrosion duration is {hero.corrosion_duration} rounds. {hero.take_damage(hero.corrosion_continuous_damage + variation)}{RESET}")
+                    self.game.display_status_updates(f"{BLUE}{hero.name}'s Corrosion duration is {hero.corrosion_duration} rounds. {self._status_damage(hero, hero.corrosion_continuous_damage + variation, 'corrosion')}{RESET}")
                 elif hero.corrosion_duration == 0:
                     hero.corrosion_continuous_damage = 0
                     hero.defense = hero.defense + hero.defense_reduced_amount_by_corrosion
@@ -417,7 +503,7 @@ class StatusEffectManager:
                           variation = random.randint(-1, 1)
                           damage_dealt = hero.soul_siphon_continuous_damage + variation
                           hero.soul_siphon_healing_amount += round(damage_dealt * 0.75)
-                          self.game.display_status_updates(f"{BLUE}{hero.name}'s Soul Siphon duration is {debuff.duration} rounds. {hero.take_damage(damage_dealt)}{RESET}")
+                          self.game.display_status_updates(f"{BLUE}{hero.name}'s Soul Siphon duration is {debuff.duration} rounds. {self._status_damage(hero, damage_dealt, 'soul_siphon', debuff.initiator)}{RESET}")
                           #hero.check_if_defeated()
                       elif debuff.duration == 0:
                           hero.soul_siphon_continuous_damage = 0
@@ -426,7 +512,7 @@ class StatusEffectManager:
                           hero.buffs_debuffs_recycle_pool.append(debuff)
                           self.game.display_status_updates(f"{BLUE}{hero.name}'s soul has stopped hurting. Soul Siphon effect has faded away from {hero.name}.{RESET}")
                           if debuff.initiator.hp > 0:
-                            self.game.display_status_updates(f"{BLUE}{debuff.initiator.name} has gain life through Soul Siphon. {debuff.initiator.take_healing(hero.soul_siphon_healing_amount)}{RESET}")
+                            self.game.display_status_updates(f"{BLUE}{debuff.initiator.name} has gain life through Soul Siphon. {self._status_healing(debuff.initiator, hero.soul_siphon_healing_amount, 'soul_siphon', debuff.initiator)}{RESET}")
                           hero.soul_siphon_healing_amount = 0
 
             # Handle Immolate Duration
@@ -438,7 +524,7 @@ class StatusEffectManager:
                         variation = random.randint(-1, 1)
                         damage_dealt = hero.immolate_continuous_damage + variation
                         debuff.initiator.immolate_accumulate_damage += damage_dealt
-                        self.game.display_status_updates(f"{BLUE}{hero.name}'s Immolate duration is {debuff.duration} rounds. {hero.take_damage(damage_dealt)}{RESET}")
+                        self.game.display_status_updates(f"{BLUE}{hero.name}'s Immolate duration is {debuff.duration} rounds. {self._status_damage(hero, damage_dealt, 'immolate', debuff.initiator)}{RESET}")
                         if debuff.initiator.immolate_accumulate_damage > debuff.initiator.hell_flame_threshold and debuff.initiator.hp > 0:
                           debuff.initiator.status['hell_flame'] = True
                           debuff.initiator.immolate_accumulate_damage = 0
@@ -501,7 +587,7 @@ class StatusEffectManager:
                         variation = random.randint(-1, 1)
                         actual_damage = max(1, basic_damage + variation)
                         hero.frost_fever_continuous_damage = round(actual_damage * debuff.effect)
-                        self.game.display_status_updates(f"{BLUE}{hero.name}'s Frost Fever duration is {debuff.duration} rounds. {hero.take_damage(hero.frost_fever_continuous_damage)}{RESET}")
+                        self.game.display_status_updates(f"{BLUE}{hero.name}'s Frost Fever duration is {debuff.duration} rounds. {self._status_damage(hero, hero.frost_fever_continuous_damage, 'frost_fever', debuff.initiator)}{RESET}")
 
                       elif debuff.duration == 0:
                           hero.status['frost_fever'] = False
@@ -557,7 +643,7 @@ class StatusEffectManager:
                             variation = random.randint(-1, 1)
                             actual_damage = max(1, basic_damage + variation)
                             hero.necrotic_decay_continuous_damage = round(actual_damage * debuff.effect)
-                            self.game.display_status_updates(f"{BLUE}{hero.name}'s Necrotic Decay duration is {debuff.duration} rounds. {hero.take_damage(hero.necrotic_decay_continuous_damage)}.{RESET}")
+                            self.game.display_status_updates(f"{BLUE}{hero.name}'s Necrotic Decay duration is {debuff.duration} rounds. {self._status_damage(hero, hero.necrotic_decay_continuous_damage, 'necrotic_decay', debuff.initiator)}.{RESET}")
                         elif debuff.duration == 0:
                             hero.status['necrotic_decay'] = False
                             hero.necrotic_decay_continuous_damage = 0
@@ -577,7 +663,7 @@ class StatusEffectManager:
                             basic_damage = round((debuff.initiator.original_damage - hero.poison_resistance) * debuff.effect)
                             variation = random.randint(-1, 1)
                             hero.virulent_infection_continuous_damage = max(1, basic_damage + variation)
-                            self.game.display_status_updates(f"{BLUE}{hero.name}'s Virulent Infection is {debuff.duration} rounds. {hero.take_damage(hero.virulent_infection_continuous_damage)}.{RESET}")
+                            self.game.display_status_updates(f"{BLUE}{hero.name}'s Virulent Infection is {debuff.duration} rounds. {self._status_damage(hero, hero.virulent_infection_continuous_damage, 'virulent_infection', debuff.initiator)}.{RESET}")
 
                             # Spread Mechanic (Every Other Round)
                             if debuff.duration % 2 == 0:  # Spread occurs on even rounds
@@ -630,9 +716,9 @@ class StatusEffectManager:
                                 hero.blood_plague_continuous_damage = round(actual_damage * debuff.effect)
                                 hero.blood_plague_blood_drain = hero.blood_plague_continuous_damage * debuff.effect
 
-                            self.game.display_status_updates(f"{BLUE}{hero.name}'s Blood Plague is {debuff.duration} rounds. {hero.take_damage(hero.blood_plague_continuous_damage)}.{RESET}")
+                            self.game.display_status_updates(f"{BLUE}{hero.name}'s Blood Plague is {debuff.duration} rounds. {self._status_damage(hero, hero.blood_plague_continuous_damage, 'blood_plague', debuff.initiator)}.{RESET}")
                             if debuff.initiator.hp > 0:
-                              self.game.display_status_updates(f"{BLUE}{debuff.initiator.name} is draining blood. {debuff.initiator.take_healing(hero.blood_plague_blood_drain)}{RESET}")
+                              self.game.display_status_updates(f"{BLUE}{debuff.initiator.name} is draining blood. {self._status_healing(debuff.initiator, hero.blood_plague_blood_drain, 'blood_plague', debuff.initiator)}{RESET}")
 
                             # Spread Mechanic
                             if debuff.duration == 3 or debuff.duration == 1:  
@@ -688,7 +774,7 @@ class StatusEffectManager:
                 hero.bleeding_crimson_cleave_duration -=1
                 if hero.bleeding_crimson_cleave_duration > 0:
                     variation = random.randint(-2, 2)
-                    self.game.display_status_updates(f"{BLUE}{hero.name}'s bleeding effect from Crimson Cleave is {hero.bleeding_crimson_cleave_duration} rounds. {hero.take_damage(hero.bleeding_crimson_cleave_continuous_damage + variation)}{RESET}")
+                    self.game.display_status_updates(f"{BLUE}{hero.name}'s bleeding effect from Crimson Cleave is {hero.bleeding_crimson_cleave_duration} rounds. {self._status_damage(hero, hero.bleeding_crimson_cleave_continuous_damage + variation, 'bleeding_crimson_cleave')}{RESET}")
                 elif hero.bleeding_crimson_cleave_duration == 0:
                     hero.bleeding_crimson_cleave_continuous_damage = 0
                     hero.status['bleeding_crimson_cleave'] = False
@@ -747,7 +833,7 @@ class StatusEffectManager:
                 hero.wound_backstab_debuff_duration -= 1
                 if hero.wound_backstab_debuff_duration > 0:
                     variation = random.randint(-1, 1)
-                    self.game.display_status_updates(f"{BLUE}{hero.name}'s wound from Backstab is {hero.wound_backstab_debuff_duration} rounds. {hero.take_damage(hero.wound_backstab_continuous_damage + variation)}{RESET}")
+                    self.game.display_status_updates(f"{BLUE}{hero.name}'s wound from Backstab is {hero.wound_backstab_debuff_duration} rounds. {self._status_damage(hero, hero.wound_backstab_continuous_damage + variation, 'wound_backstab')}{RESET}")
                 elif hero.wound_backstab_debuff_duration == 0:
                     hero.wound_backstab_continuous_damage = 0
                     hero.agility = hero.agility + hero.agility_reduced_amount_by_wound_backstab
@@ -826,7 +912,7 @@ class StatusEffectManager:
                         hero.scorchbrand_continuous_damage = random.randint(3, 8)
                       debuff.duration -= 1
                       if debuff.duration > 0:
-                         self.game.display_status_updates(f"{BLUE}{hero.name} is vulnerable towards fire attack. {hero.name}'s Scorchbrand debuff duration is {debuff.duration} rounds. {hero.take_damage(hero.scorchbrand_continuous_damage)}{RESET}")
+                         self.game.display_status_updates(f"{BLUE}{hero.name} is vulnerable towards fire attack. {hero.name}'s Scorchbrand debuff duration is {debuff.duration} rounds. {self._status_damage(hero, hero.scorchbrand_continuous_damage, 'scorchbrand', debuff.initiator)}{RESET}")
                       elif debuff.duration == 0:
                           hero.status['scorchbrand'] = False
                           hero.fire_resistance = hero.fire_resistance + hero.fire_resistance_reduced_amount_by_scorchbrand
@@ -880,7 +966,7 @@ class StatusEffectManager:
                 hero.bleeding_armor_crush_duration -=1
                 if hero.bleeding_armor_crush_duration > 0:
                     variation = random.randint(-2, 2)
-                    self.game.display_status_updates(f"{BLUE}{hero.name}'s bleeding effect from Armor Crush is {hero.bleeding_armor_crush_duration} rounds. {hero.take_damage(hero.bleeding_armor_crush_continuous_damage + variation)}{RESET}")
+                    self.game.display_status_updates(f"{BLUE}{hero.name}'s bleeding effect from Armor Crush is {hero.bleeding_armor_crush_duration} rounds. {self._status_damage(hero, hero.bleeding_armor_crush_continuous_damage + variation, 'bleeding_armor_crush')}{RESET}")
                 elif hero.bleeding_armor_crush_duration == 0:
                     hero.bleeding_armor_crush_continuous_damage = 0
                     hero.status['bleeding_armor_crush'] = False
@@ -952,7 +1038,7 @@ class StatusEffectManager:
                     moon_slash_debuff.duration = hero.bleeding_moon_slash_duration
                 if hero.bleeding_moon_slash_duration > 0:
                     variation = random.randint(-2, 2)
-                    self.game.display_status_updates(f"{BLUE}{hero.name}'s bleeding effect from Moon Slash is {hero.bleeding_moon_slash_duration} rounds. {hero.take_damage(hero.bleeding_moon_slash_continuous_damage + variation)}{RESET}")
+                    self.game.display_status_updates(f"{BLUE}{hero.name}'s bleeding effect from Moon Slash is {hero.bleeding_moon_slash_duration} rounds. {self._status_damage(hero, hero.bleeding_moon_slash_continuous_damage + variation, 'bleeding_moon_slash')}{RESET}")
                 elif hero.bleeding_moon_slash_duration == 0:
                     hero.bleeding_moon_slash_continuous_damage = 0
                     hero.status['bleeding_moon_slash'] = False
@@ -977,7 +1063,7 @@ class StatusEffectManager:
                 hero.corroded_blade_debuff_duration -=1
                 if hero.corroded_blade_debuff_duration > 0:
                     variation = random.randint(-2, 2)
-                    self.game.display_status_updates(f"{BLUE}{hero.name}'s bleeding effect from Corroded Blade is {hero.corroded_blade_debuff_duration} rounds. {hero.take_damage(hero.corroded_blade_continuous_damage + variation)}{RESET}")
+                    self.game.display_status_updates(f"{BLUE}{hero.name}'s bleeding effect from Corroded Blade is {hero.corroded_blade_debuff_duration} rounds. {self._status_damage(hero, hero.corroded_blade_continuous_damage + variation, 'bleeding_corroded_blade')}{RESET}")
                 elif hero.corroded_blade_debuff_duration == 0:
                     hero.corroded_blade_continuous_damage = 0 # Reset shadow word pain continuous_damage
                     hero.status['bleeding_corroded_blade'] = False
@@ -1018,7 +1104,7 @@ class StatusEffectManager:
                     if hero.faculty in ["Necromancer", "Death Knight"] or hero.major in ["FleshPuppet", "Skeleton"]:
                         hero.stitch_of_agony_continuous_damage = 5
                     variation = random.randint(-2, 2)
-                    self.game.display_status_updates(f"{BLUE}{hero.name}'s Stitch of Agony debuff duration is {hero.stitch_of_agony_duration} rounds. {hero.take_damage(hero.stitch_of_agony_continuous_damage + variation)}{RESET}")
+                    self.game.display_status_updates(f"{BLUE}{hero.name}'s Stitch of Agony debuff duration is {hero.stitch_of_agony_duration} rounds. {self._status_damage(hero, hero.stitch_of_agony_continuous_damage + variation, 'stitch_of_agony')}{RESET}")
                 elif hero.stitch_of_agony_duration == 0:
                     hero.stitch_of_agony_continuous_damage = 0 
                     hero.status['stitch_of_agony'] = False

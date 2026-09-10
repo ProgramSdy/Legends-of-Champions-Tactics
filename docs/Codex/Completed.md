@@ -2,6 +2,116 @@
 
 Completed work should be appended in reverse chronological order, with the newest entry first.
 
+## 2026-09-09 — UI-026 Paladin Healing Target Animation
+
+**Summary:**
+
+Replaced the Paladin-only hard, clipped healing beam with a target-bound
+white-gold/sun-gold blessing: a soft radial glow descends from above the healed
+figure and settles into a restrained lower ground glow. The presentation is
+constructed only from radial gradients, opacity, blur, and rounded layers; it
+does not use a rectangular column, polygon clipping, projectile, or screen-wide
+flash. Priest rune/target feedback and generic green healing remain separate.
+
+**Files Changed:**
+
+- `web-ui/app/globals.css`
+- `web-ui/tests/ui-007-regressions.test.tsx`
+- `docs/web-ui/Style_Guide.md`
+- `docs/Codex/Completed.md`
+
+**Validation:**
+
+- Focused frontend suites (`ui-007-regressions`, `quick-hp-hud`, and
+  `battle-screen`) — 66 passed.
+- `npm run typecheck` and `git diff --check` — passed.
+- Ego local Debug Battle: 1v1 loaded without runtime alert; 2v2 rendered four
+  figures and 3v3 rendered six at 1920×1080. At 1366×768, the 3v3 layout had
+  no horizontal overflow or runtime alert. CSS regression coverage verifies
+  target anchoring, the soft radial/rounded implementation, removal of the
+  obsolete beam/flare keyframes, and reduced-motion static fallback.
+
+**Unresolved Issues:**
+
+- None within UI-026 scope.
+
+## 2026-09-09 — Restart Consecutive Status-Damage Presentation
+
+**Summary:**
+
+The status-event stream was already correct: a hero with Shadow Word Pain and
+Poisoned Dagger received two sequenced `damageApplied` events. The browser
+presentation queue, however, replaced one active `damageApplied` with the next
+without removing the identical class from the target figure. CSS therefore
+treated both events as one animation. The queue now clears the active semantic
+event and yields one rendered frame between every presented event. Consecutive
+same-target damage events now remount their floating number and restart their
+side-aware shake independently.
+
+**Files Changed:**
+
+- `web-ui/lib/battle/usePresentationQueue.ts`
+- `web-ui/tests/quick-hp-hud.test.tsx`
+- `docs/web-ui/Style_Guide.md`
+- `docs/Codex/Completed.md`
+
+**Validation:**
+
+- Focused frontend presentation tests — 59 passed across the quick HP HUD,
+  target-bound effect, and Battle presentation configuration suites.
+- TypeScript typecheck and `git diff --check` — passed.
+- Browser/Ego local Debug Battle loaded at 1920×1080 with the updated client;
+  no runtime or rendering error occurred. The deterministic UI regression
+  specifically proves the first `−7` damage node is removed during the idle
+  frame and a newly mounted second `−5` node restarts the target's
+  `fx-damageApplied` feedback.
+
+**Unresolved Issues:**
+
+- None for consecutive damage presentation.
+
+## 2026-09-09 — Ordered Round-Status HP Presentation
+
+**Summary:**
+
+Holy Aura now resolves at the top of each living hero's
+`StatusEffectManager.check_heroes_status_effects` pass. The engine journals
+every subsequent status-phase heal or damage activation in the precise order it
+executes, including full-HP healing and zero-damage hits. The adapter serializes
+those journal records as distinct events with intermediate HP, status IDs, and
+known sources rather than one net HP delta per combatant. The existing UI
+presentation queue already plays supplied events sequentially, so every event
+now receives its own healing or damage feedback. Void Connection shared damage
+is also journaled separately for its linked recipient and primary target.
+
+**Files Changed:**
+
+- `game/game.py`
+- `game/status_effect_manager.py`
+- `heroes/hero.py`
+- `battle_api/adapter.py`
+- `tests/test_paladin_protection_holy_aura.py`
+- `tests/test_battle_adapter.py`
+- `docs/web-ui/BATTLE_DATA_CONTRACT_V1.md`
+- `docs/web-ui/PYTHON_ADAPTER_API.md`
+- `docs/web-ui/Style_Guide.md`
+- `docs/Technical/Architecture.md`
+- `docs/Codex/Completed.md`
+
+**Validation:**
+
+- `pytest -q tests/test_paladin_protection_holy_aura.py tests/test_battle_adapter.py` — 76 passed.
+- `cd web-ui && npm test -- --run tests/quick-hp-hud.test.tsx tests/ui-007-regressions.test.tsx` — 41 passed.
+- `cd web-ui && npm run typecheck` — passed.
+- Full Python suite — 254 passed; 7 pre-existing Warrior Defence/Shield Lash
+  failures remain outside this status-phase change.
+- `git diff --check` — passed.
+
+**Unresolved Issues:**
+
+- The unrelated Warrior Defence/Shield Lash full-suite failures predate this
+  work and were not changed by the status-event implementation.
+
 ## 2026-09-05 — UI-024 Battle Scene responsive presentation foundation
 
 **Summary:**
@@ -3900,3 +4010,54 @@ Ctrl-C/termination to stop the two launched child processes.
 
 - None known; the launcher requires the existing Python virtual environment and
   frontend dependencies to be installed.
+
+---
+
+## 2026-09-09 — UI-025: Fourth Skill Placeholder and Paladin Golden Healing Beam
+
+**Summary:**
+
+Active combatants with fewer than four real skills now receive only the needed
+number of professional, muted display slots. The slot states “No Fourth Skill,”
+explains that no additional skill is available, and shows `N/A`; it is an
+`article`, not a `SkillState` or interactive control. Real skills remain in
+their original order, previously established passive skills remain at the far
+right, and future heroes with four or more real skills are not truncated.
+
+`healingApplied` events now render a target-anchored, rich-gold descending beam
+only when the authoritative source combatant has faculty `Paladin`. The
+existing Priest soft-gold target treatment and caster runes, together with the
+generic green healing treatment, remain separate and unchanged. The beam is
+inside the shared figure footprint, so it inherits the established responsive
+formation placement and scale rules. A reduced-motion static beam/flare state
+is supplied.
+
+**Files Changed:**
+
+- `web-ui/components/battle/BattleScreen.tsx`
+- `web-ui/components/battle/SkillCard.tsx`
+- `web-ui/app/globals.css`
+- `web-ui/tests/components.test.tsx`
+- `web-ui/tests/battle-screen.test.tsx`
+- `web-ui/tests/ui-007-regressions.test.tsx`
+- `docs/Codex/Completed.md`
+
+**Validation:**
+
+- `cd web-ui && npm test -- --run tests/components.test.tsx tests/battle-screen.test.tsx tests/ui-007-regressions.test.tsx` — passed: 82 tests across 3 files.
+- `cd web-ui && npm run typecheck` — passed.
+- UI regression coverage verifies display-only/no-focus placeholder behavior,
+  unchanged real-skill command submission, non-truncation beyond four real
+  skills, authoritative Paladin source classification, Priest separation, and
+  Paladin target anchoring for 1v1, 2v2, and 3v3 fixtures.
+- Live Ego browser checks at 1920×1080 verified a Paladin Holy battle with its
+  three real skills plus the display-only fourth slot; executing Purify Healing
+  produced an `effect-paladin-healing` attached to the healed Paladin target.
+- Live debug 2v2 and 3v3 runs retained the existing `duo`/`trio` formation
+  layouts, rendered four skill-deck children including the placeholder, and
+  showed four/six battlefield figures respectively. A 1366×768 check retained
+  the four-card deck without horizontal overflow.
+
+**Unresolved Issues:**
+
+- None known within UI-025 scope.
