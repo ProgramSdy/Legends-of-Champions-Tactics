@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from copy import deepcopy
 from dataclasses import dataclass, field
+from fractions import Fraction
+import math
 from pathlib import Path
 import random
 import re
@@ -354,7 +356,12 @@ class BattleAdapter:
                         battle_size, enemy_formation
                     ),
                 )
-                game = Game(player_heroes, opponent_heroes, "simulation")
+                game = Game(
+                    player_heroes,
+                    opponent_heroes,
+                    "simulation",
+                    battle_size=battle_size,
+                )
                 game.game_initialization()
                 game.start_round()
                 # Initial setup is not replayed to a newly connected client.
@@ -663,6 +670,234 @@ class BattleAdapter:
                     random.setstate(global_state)
             session.command_results[command_id] = deepcopy(result)
             return result
+
+    def preview(
+        self, session: BattleSession, request: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Evaluate an audited action without executing or consuming RNG.
+
+        Preview shares the session's command authority boundary, but it never
+        installs the session RNG, calls ``Skill.execute``, publishes events, or
+        modifies revision/turn/command state.
+        """
+        with session.lock:
+            actor, skill, targets = self._validate_preview(session, request)
+            return self._evaluate_preview(session, actor, skill, targets, request)
+
+    def _validate_preview(self, session: BattleSession, request: dict[str, Any]):
+        if self._is_ended(session.game):
+            raise BattleAdapterError("battleEnded", "The battle has ended.")
+        if request.get("expectedRevision") != session.revision:
+            raise BattleAdapterError("staleRevision", "The expected revision is stale.")
+
+        actor = self._current_actor(session.game)
+        if actor is None or request.get("actorId") != self._combatant_id(session, actor):
+            raise BattleAdapterError("notYourTurn", "The actor is not the current combatant.")
+        directive = actor.turn_directive(
+            actor.opponents, actor.allies, select_action=False
+        )
+        if directive.disposition != "playerCommand" or not directive.accepts_commands:
+            raise BattleAdapterError(
+                "notYourTurn", "The current turn does not accept player commands."
+            )
+
+        skill = self._skill_by_id(actor, request.get("skillId"))
+        if skill is None or skill.is_passive or not skill.is_available or skill.if_cooldown:
+            raise BattleAdapterError(
+                "illegalSkill", "The skill does not exist or is unavailable."
+            )
+        approved_skills = (
+            {
+                "Fireball",
+                "Arcane Missiles",
+                "Frost Bolt",
+            }
+            if isinstance(actor, Mage_Comprehensiveness)
+            else {"Sharp Blade", "Poisoned Dagger"}
+            if isinstance(actor, Rogue_Comprehensiveness)
+            else set()
+        )
+        if skill.name not in approved_skills:
+            raise BattleAdapterError(
+                "previewUnavailable",
+                "Authoritative preview is not available for this skill.",
+            )
+
+        target_ids = request.get("targetIds")
+        if not isinstance(target_ids, list):
+            raise BattleAdapterError("invalidPreview", "targetIds must be an array.")
+        required_targets = 2 if skill.name == "Arcane Missiles" else 1
+        if len(target_ids) != required_targets:
+            raise BattleAdapterError(
+                "illegalTargets",
+                f"The preview requires exactly {required_targets} target(s).",
+            )
+        if len(set(target_ids)) != len(target_ids):
+            raise BattleAdapterError("illegalTargets", "Duplicate targets are not allowed.")
+
+        published_action = next(
+            (
+                action
+                for action in self._legal_actions(session, actor)
+                if action["skillId"] == request.get("skillId")
+            ),
+            None,
+        )
+        if published_action is None:
+            raise BattleAdapterError(
+                "illegalSkill", "The skill is not a published legal action."
+            )
+        valid_ids = set(published_action["validTargetIds"])
+        if any(target_id not in valid_ids for target_id in target_ids):
+            raise BattleAdapterError("illegalTargets", "One or more targets are illegal.")
+        targets = [self._hero_by_id(session, target_id) for target_id in target_ids]
+        return actor, skill, targets
+
+    @staticmethod
+    def _direct_hit_chance_percent(target) -> int:
+        half_agility = target.agility * 0.5
+        if target.evasion_capability <= half_agility:
+            evasion_chance = min(50, half_agility)
+        else:
+            evasion_chance = target.evasion_capability
+        return max(0, min(100, 100 - math.ceil(evasion_chance)))
+
+    @staticmethod
+    def _deterministic_prevention(skill, target) -> str | None:
+        if any(target.status.get(state, False) for state in skill.immunity_condition_all):
+            return "prevention.allDamage"
+        if skill.damage_nature == "physical" and any(
+            target.status.get(state, False)
+            for state in skill.immunity_condition_physical
+        ):
+            return "prevention.physicalDamage"
+        if skill.damage_nature == "magical" and any(
+            target.status.get(state, False)
+            for state in skill.immunity_condition_magical
+        ):
+            return "prevention.magicalDamage"
+        return None
+
+    @staticmethod
+    def _apply_audited_damage_receipt(target, damage: int) -> tuple[int, str | None]:
+        """Mirror deterministic HP-facing receipt without mutating the target."""
+        if target.status.get("holy_word_shell", False):
+            damage = max(0, damage - target.holy_word_shell_absorption)
+            if damage == 0:
+                return 0, "prevention.absorption"
+        if (
+            target.status.get("void_connection", False)
+            and target.summoned_unit is not None
+            and target.summoned_unit.hp > 0
+        ):
+            linked_buff = next(
+                (buff for buff in target.buffs if buff.name == "Void Connection"),
+                None,
+            )
+            if linked_buff is None:
+                return damage, None
+            damage -= round(damage * linked_buff.effect)
+        return max(0, damage), None
+
+    def _preview_consequences(self, actor, skill, target) -> list[dict[str, Any]]:
+        if isinstance(actor, Rogue_Comprehensiveness):
+            if skill.name == "Sharp Blade" and not target.status.get(
+                "bleeding_sharp_blade", False
+            ):
+                return [
+                    {
+                        "kind": "bleed",
+                        "certainty": "conditional",
+                        "chancePercent": 50,
+                    }
+                ]
+            if skill.name == "Poisoned Dagger" and (
+                not target.status.get("poisoned_dagger", False)
+                or target.poisoned_dagger_stacks < 2
+            ):
+                return [
+                    {
+                        "kind": "poison",
+                        "certainty": "conditional",
+                        "chancePercent": 85,
+                    }
+                ]
+        if (
+            isinstance(actor, Mage_Comprehensiveness)
+            and skill.name == "Frost Bolt"
+            and not target.status.get("cold", False)
+        ):
+            return [{"kind": "cold", "certainty": "onHit"}]
+        return []
+
+    def _evaluate_preview(self, session, actor, skill, targets, request):
+        target_results = []
+        for target in targets:
+            target_id = self._combatant_id(session, target)
+            prevention = self._deterministic_prevention(skill, target)
+            consequences = [] if prevention else self._preview_consequences(
+                actor, skill, target
+            )
+            if prevention:
+                minimum = maximum = 0
+                primary_kind = "prevented"
+                primary_reason = prevention
+            else:
+                raw_range = actor.audited_direct_damage_range(skill.name, target)
+                if raw_range is None:
+                    return {
+                        "revision": session.revision,
+                        "actorId": request["actorId"],
+                        "skillId": request["skillId"],
+                        "requestedTargetIds": list(request["targetIds"]),
+                        "selectedTargetIds": list(request["targetIds"]),
+                        "coverage": "unavailable",
+                        "reasonId": "preview.unauditedState",
+                        "targets": [],
+                    }
+                received = []
+                absorption_reasons = []
+                for raw_damage in raw_range:
+                    if isinstance(actor, Mage_Comprehensiveness):
+                        raw_damage = target.take_damage_calculation(
+                            raw_damage, skill.attack_type, actor
+                        )
+                    direct_damage, absorption_reason = (
+                        self._apply_audited_damage_receipt(target, raw_damage)
+                    )
+                    received.append(direct_damage)
+                    absorption_reasons.append(absorption_reason)
+                minimum, maximum = min(received), max(received)
+                if maximum == 0 and all(absorption_reasons):
+                    primary_kind = "prevented"
+                    primary_reason = "prevention.absorption"
+                else:
+                    primary_kind = "damage"
+                    primary_reason = None
+            target_results.append(
+                {
+                    "targetId": target_id,
+                    "currentHp": target.hp,
+                    "maxHp": target.hp_max,
+                    "primary": {
+                        "kind": primary_kind,
+                        "amountRange": {"min": minimum, "max": maximum},
+                        "reasonId": primary_reason,
+                    },
+                    "directHitChancePercent": self._direct_hit_chance_percent(target),
+                    "consequences": consequences,
+                }
+            )
+        return {
+            "revision": session.revision,
+            "actorId": request["actorId"],
+            "skillId": request["skillId"],
+            "requestedTargetIds": list(request["targetIds"]),
+            "selectedTargetIds": list(request["targetIds"]),
+            "coverage": "authoritative",
+            "reasonId": None,
+            "targets": target_results,
+        }
 
     def _validate(self, session: BattleSession, command: dict[str, Any]) -> None:
         if command.get("type") != "useSkill":
@@ -1119,8 +1354,10 @@ class BattleAdapter:
                     for candidate in actions
                     if candidate["skillId"] == chosen_skill_id
                 ),
-                random.choice(actions),
+                None,
             )
+            if action is None:
+                action = random.choice(actions)
             chosen_skill = self._skill_by_id(actor, action["skillId"])
             assert chosen_skill is not None
             target_count = action["minimumTargets"]
@@ -1750,12 +1987,47 @@ class BattleAdapter:
         if len(groups) == 1:
             side = "friendly" if next(iter(groups)) == "Group_A" else "enemy"
             return {"kind": "victory", "winningSideId": side}
+        if len(groups) == 0:
+            return {"kind": "draw", "winningSideId": None}
         if game.round_counter >= game.round_counter_max:
-            return {"kind": "roundLimit", "winningSideId": None}
+            friendly_living = [hero for hero in game.player_heroes if hero.hp > 0]
+            enemy_living = [hero for hero in game.opponent_heroes if hero.hp > 0]
+            if len(friendly_living) != len(enemy_living):
+                winner = (
+                    "friendly"
+                    if len(friendly_living) > len(enemy_living)
+                    else "enemy"
+                )
+                return {"kind": "victory", "winningSideId": winner}
+
+            # Fraction preserves the exact average of living heroes' HP
+            # fractions, without rounding floats or favouring raw maximum HP.
+            def average_hp_fraction(heroes: list[Any]) -> Fraction:
+                return sum(
+                    (Fraction(hero.hp, hero.hp_max) for hero in heroes),
+                    start=Fraction(),
+                ) / len(heroes)
+
+            friendly_average = average_hp_fraction(friendly_living)
+            enemy_average = average_hp_fraction(enemy_living)
+            if friendly_average > enemy_average:
+                return {"kind": "victory", "winningSideId": "friendly"}
+            if friendly_average < enemy_average:
+                return {"kind": "victory", "winningSideId": "enemy"}
         return {"kind": "draw", "winningSideId": None}
 
     def _outcome_message(self, game: Game) -> str:
         outcome = self._outcome(game)
+        if (
+            game.round_counter >= game.round_counter_max
+            and len(game.check_groups_status()) > 1
+        ):
+            return (
+                "Round limit reached. "
+                f"{outcome['winningSideId']} won the battle by the timeout hierarchy."
+                if outcome["winningSideId"]
+                else "Round limit reached. The battle ended in an exact draw."
+            )
         return (
             f"{outcome['winningSideId']} won the battle."
             if outcome["winningSideId"]

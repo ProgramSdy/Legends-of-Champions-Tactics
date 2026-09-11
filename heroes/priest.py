@@ -25,6 +25,7 @@ class Priest_Comprehensiveness(Priest):
 
     def __init__(self, sys_init, name, group, is_player_controlled, position="front"):
             super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major, position=position)
+            self.preset_target = None
             self.add_skill(Skill(self, "Holy Smite", self.holy_smite, target_type = "single", skill_type= "damage", attack_type = "ranged_instant"))
             self.add_skill(Skill(self, "Shadow Word Pain", self.shadow_word_pain, target_type = "single", skill_type= "damage",attack_type = "ranged_instant"))
             self.add_skill(Skill(self, "Binding Heal", self.binding_heal, "single", skill_type= "healing"))
@@ -73,6 +74,221 @@ class Priest_Comprehensiveness(Priest):
           self.game.display_battle_info(f"{self.name} casts Binding Heal on {self.name}.")
           results.append(self.take_healing(healing_amount_2))
           return "\n".join(results)
+
+    # Battling Strategy_________________________________________________________
+
+    # Part A — battle information collection ----------------------------------
+    def _priest_comprehensiveness_combatant_snapshot(self, hero):
+        """Collect live healing and Shadow Word facts used by this Priest."""
+        active_statuses = {
+            name for name, active in hero.status.items() if active
+        }
+        return {
+            "hero": hero,
+            "faculty": hero.faculty,
+            "major": hero.major,
+            "position": hero.position,
+            "actioned": hero.actioned,
+            "alive": hero.hp > 0,
+            "hp": hero.hp,
+            "hp_max": hero.hp_max,
+            "missing_hp": max(0, hero.hp_max - hero.hp),
+            "hp_ratio": hero.hp / hero.hp_max if hero.hp_max else 0,
+            "defense": hero.defense,
+            "agility": hero.agility,
+            "shadow_resistance": hero.shadow_resistance,
+            "active_statuses": active_statuses,
+            "shadow_word_pain_duration": getattr(
+                hero, "shadow_word_pain_debuff_duration", 0
+            ),
+            "buffs": [
+                {
+                    "name": buff.name,
+                    "duration": buff.duration,
+                    "initiator": buff.initiator,
+                }
+                for buff in hero.buffs
+            ],
+            "debuffs": [
+                {
+                    "name": debuff.name,
+                    "duration": debuff.duration,
+                    "initiator": debuff.initiator,
+                }
+                for debuff in hero.debuffs
+            ],
+            "skill_cooldowns": {
+                skill.name: {
+                    "available": skill.is_available and not skill.if_cooldown,
+                    "rounds_remaining": skill.cooldown,
+                }
+                for skill in hero.skills
+            },
+        }
+
+    def collect_battle_information(self, opponents, allies):
+        """Build this Priest's current-turn view from engine-owned state."""
+        opponent_snapshots = [
+            self._priest_comprehensiveness_combatant_snapshot(hero)
+            for hero in opponents
+        ]
+        ally_snapshots = [
+            self._priest_comprehensiveness_combatant_snapshot(hero)
+            for hero in allies
+        ]
+        alive_opponents = [item for item in opponent_snapshots if item["alive"]]
+        damageable_opponents = [
+            item
+            for item in alive_opponents
+            if not (
+                item["active_statuses"]
+                & {"shield_of_protection"}
+            )
+        ]
+        return {
+            "self": self._priest_comprehensiveness_combatant_snapshot(self),
+            "allies": [item for item in ally_snapshots if item["alive"]],
+            "opponents": alive_opponents,
+            "damageable_opponents": damageable_opponents,
+            "formations": {
+                "ally_positions": tuple(item["position"] for item in ally_snapshots),
+                "opponent_positions": tuple(
+                    item["position"] for item in opponent_snapshots
+                ),
+            },
+            "skills": {
+                skill.name: skill
+                for skill in self.skills
+                if skill.is_available and not skill.if_cooldown
+            },
+        }
+
+    # Part B — battle analysis -------------------------------------------------
+    @staticmethod
+    def _priest_comprehensiveness_priority_target(candidates):
+        return min(
+            candidates,
+            key=lambda item: (
+                item["hp_ratio"],
+                -item["agility"],
+                item["hero"].name,
+            ),
+        )
+
+    def _binding_heal_target(self, allies):
+        """Use Binding Heal's ally-plus-self branch whenever both can benefit."""
+        injured_others = [
+            item
+            for item in allies
+            if item["hero"] is not self and item["missing_hp"] > 0
+        ]
+        if injured_others:
+            return min(
+                injured_others,
+                key=lambda item: (
+                    item["hp_ratio"],
+                    -item["missing_hp"],
+                    item["hero"].name,
+                ),
+            )["hero"]
+        self_state = next(
+            (item for item in allies if item["hero"] is self),
+            None,
+        )
+        return self_state["hero"] if self_state is not None else None
+
+    def analyse_battle_strategy(self, battle_information):
+        """Choose one legal damage, pressure, or triage action."""
+        skills = battle_information["skills"]
+        allies = battle_information["allies"]
+        opponents = battle_information["opponents"]
+        damageable = battle_information["damageable_opponents"] or opponents
+
+        holy_smite = skills.get("Holy Smite")
+        shadow_word_pain = skills.get("Shadow Word Pain")
+        binding_heal = skills.get("Binding Heal")
+
+        # 1. Triage a critical living ally. Targeting another injured ally also
+        # activates Binding Heal's implemented secondary self-heal.
+        critical_allies = [item for item in allies if item["hp_ratio"] <= 0.35]
+        if binding_heal and critical_allies:
+            return binding_heal, self._binding_heal_target(critical_allies)
+
+        # 2. Holy Smite's minimum roll is 16 and ignores resistance, making it
+        # the reliable execution choice at or below that exact HP amount.
+        guaranteed_finish = [item for item in damageable if item["hp"] <= 16]
+        if holy_smite and guaranteed_finish:
+            return (
+                holy_smite,
+                self._priest_comprehensiveness_priority_target(
+                    guaranteed_finish
+                )["hero"],
+            )
+
+        # 3. Establish Shadow Word Pain on a durable, unmarked opponent where
+        # lower Shadow resistance improves both its direct and periodic value.
+        unmarked = [
+            item
+            for item in damageable
+            if "shadow_word_pain" not in item["active_statuses"]
+            and item["hp"] > 16
+        ]
+        if shadow_word_pain and unmarked:
+            target = min(
+                unmarked,
+                key=lambda item: (
+                    item["shadow_resistance"],
+                    -item["hp_ratio"],
+                    -item["agility"],
+                    item["hero"].name,
+                ),
+            )
+            return shadow_word_pain, target["hero"]
+
+        # 4. Spend Binding Heal when at least one recipient is missing enough HP
+        # to use its smallest implemented direct heal without routine waste.
+        meaningfully_injured = [
+            item for item in allies if item["missing_hp"] >= 22
+        ]
+        if binding_heal and meaningfully_injured:
+            return binding_heal, self._binding_heal_target(meaningfully_injured)
+
+        # 5. Keep Holy Smite pressure on the lowest-health viable opponent once
+        # a guaranteed finish is not available.
+        if holy_smite and damageable:
+            return (
+                holy_smite,
+                self._priest_comprehensiveness_priority_target(damageable)["hero"],
+            )
+
+        # 6. Shadow Word Pain remains a legal direct attack when Smite is not
+        # available, even though an existing effect will not refresh.
+        if shadow_word_pain and damageable:
+            return (
+                shadow_word_pain,
+                self._priest_comprehensiveness_priority_target(damageable)["hero"],
+            )
+
+        # 7. Deterministic legal fallback. Binding Heal remains useful for any
+        # injured ally, but the strategy does not spend it on a full-HP team.
+        injured_allies = [item for item in allies if item["missing_hp"] > 0]
+        if binding_heal and injured_allies:
+            return binding_heal, self._binding_heal_target(injured_allies)
+        return None, None
+
+    # Part C — return the chosen action to the live API adapter ----------------
+    def ai_choose_skill(self, opponents, allies):
+        self.priest_comprehensiveness_battle_information = (
+            self.collect_battle_information(opponents, allies)
+        )
+        skill, target = self.analyse_battle_strategy(
+            self.priest_comprehensiveness_battle_information
+        )
+        self.preset_target = target
+        return skill
+
+    def ai_choose_target(self, chosen_skill, opponents, allies):
+        return self.preset_target
 
 class Priest_Shelter(Priest):
 
@@ -256,6 +472,7 @@ class Priest_Discipline(Priest):
 
     def __init__(self, sys_init, name, group, is_player_controlled=False, position="front"):
             super().__init__(sys_init, name, group, is_player_controlled, major = self.__class__.major, position=position)
+            self.preset_target = None
             self.add_skill(Skill(self, "Penance", self.penance, "single", skill_type= "damage_healing", attack_type = "ranged_instant"))
             self.add_skill(Skill(self, "Holy Word Redemption", self.holy_word_redemption, "single", skill_type= "buffs"))
             self.add_skill(Skill(self, "Holy Word Punishment", self.holy_word_punishment, target_type = "multi", skill_type= "damage", attack_type = "ranged_instant", target_qty= 2))
@@ -373,194 +590,246 @@ class Priest_Discipline(Priest):
                     buff.duration = 5   # Effect lasts for 4 rounds
             return f"{self.name} uses Holy Word Redemption on {other_hero.name} and refreshes it's duration"
 
-# Battling Strategy_________________________________________________________
-    def strategy_0(self):
-        """Initial strategy probabilities."""
-        self.probability_penance = 0.5
-        self.probability_punishment = 0.5
-        self.probability_redemption = 0
+    # Battling Strategy_________________________________________________________
 
-    def strategy_1(self):
-        """Full focus on casting Holy Word Redemption."""
-        self.probability_penance = 0
-        self.probability_punishment = 0
-        self.probability_redemption = 1
+    # Part A — battle information collection ----------------------------------
+    def _priest_discipline_combatant_snapshot(self, hero):
+        """Collect live facts for Penance/Redemption/Punishment decisions."""
+        active_statuses = {
+            name for name, active in hero.status.items() if active
+        }
+        redemption = next(
+            (
+                buff
+                for buff in hero.buffs
+                if buff.name == "Holy Word Redemption" and buff.initiator is self
+            ),
+            None,
+        )
+        punishment = next(
+            (
+                debuff
+                for debuff in hero.debuffs
+                if debuff.name == "Holy Word Punishment"
+            ),
+            None,
+        )
+        return {
+            "hero": hero,
+            "faculty": hero.faculty,
+            "major": hero.major,
+            "position": hero.position,
+            "actioned": hero.actioned,
+            "alive": hero.hp > 0,
+            "hp": hero.hp,
+            "hp_max": hero.hp_max,
+            "missing_hp": max(0, hero.hp_max - hero.hp),
+            "hp_ratio": hero.hp / hero.hp_max if hero.hp_max else 0,
+            "defense": hero.defense,
+            "agility": hero.agility,
+            "shadow_resistance": hero.shadow_resistance,
+            "active_statuses": active_statuses,
+            "redemption_from_self": redemption is not None,
+            "redemption_duration": redemption.duration if redemption else 0,
+            "punishment_active": "holy_word_punishment" in active_statuses,
+            "punishment_from_self": (
+                punishment is not None and punishment.initiator is self
+            ),
+            "punishment_duration": punishment.duration if punishment else 0,
+            "buffs": [
+                {
+                    "name": buff.name,
+                    "duration": buff.duration,
+                    "initiator": buff.initiator,
+                }
+                for buff in hero.buffs
+            ],
+            "debuffs": [
+                {
+                    "name": debuff.name,
+                    "duration": debuff.duration,
+                    "initiator": debuff.initiator,
+                }
+                for debuff in hero.debuffs
+            ],
+            "skill_cooldowns": {
+                skill.name: {
+                    "available": skill.is_available and not skill.if_cooldown,
+                    "rounds_remaining": skill.cooldown,
+                }
+                for skill in hero.skills
+            },
+        }
 
-    def strategy_2(self):
-        """Full focus on casting Holy Word Punishment."""
-        self.probability_penance = 0
-        self.probability_punishment = 1
-        self.probability_redemption = 0
+    def collect_battle_information(self, opponents, allies):
+        """Build Discipline's current-turn view from engine-owned state."""
+        opponent_snapshots = [
+            self._priest_discipline_combatant_snapshot(hero)
+            for hero in opponents
+        ]
+        ally_snapshots = [
+            self._priest_discipline_combatant_snapshot(hero)
+            for hero in allies
+        ]
+        alive_opponents = [item for item in opponent_snapshots if item["alive"]]
+        damageable_opponents = [
+            item
+            for item in alive_opponents
+            if not (
+                item["active_statuses"]
+                & {"shield_of_protection"}
+            )
+        ]
+        return {
+            "self": self._priest_discipline_combatant_snapshot(self),
+            "allies": [item for item in ally_snapshots if item["alive"]],
+            "opponents": alive_opponents,
+            "damageable_opponents": damageable_opponents,
+            "formations": {
+                "ally_positions": tuple(item["position"] for item in ally_snapshots),
+                "opponent_positions": tuple(
+                    item["position"] for item in opponent_snapshots
+                ),
+            },
+            "skills": {
+                skill.name: skill
+                for skill in self.skills
+                if skill.is_available and not skill.if_cooldown
+            },
+        }
 
-    def strategy_3(self):
-        """Focus on Penance if Punishment is not an option."""
-        self.probability_penance = 1
-        self.probability_punishment = 0
-        self.probability_redemption = 0
+    # Part B — battle analysis -------------------------------------------------
+    @staticmethod
+    def _priest_discipline_priority_target(candidates):
+        return min(
+            candidates,
+            key=lambda item: (
+                item["hp_ratio"],
+                -item["agility"],
+                item["hero"].name,
+            ),
+        )
 
-    def battle_analysis(self, opponents, allies):
-        """
-        Analyzes the battle situation and determines the next action based on conditions:
-        - Redemption casting based on the number of alive allies.
-        - Choose Penance or Punishment based on specific conditions.
-        """
-        # Check how many allies are alive
-        alive_allies = [ally for ally in allies if ally.hp > 0]
-        alive_allies_count = len(alive_allies)
+    def _priest_discipline_punishment_targets(self, candidates):
+        return sorted(
+            candidates,
+            key=lambda item: (
+                item["hp_ratio"],
+                -item["agility"],
+                item["hero"].name,
+            ),
+        )[:2]
 
-        # Sort hp and resistance from low to high
-        sorted_opponents = sorted(opponents, key=lambda hero: hero.hp, reverse=False)
-        sorted_allies = sorted(allies, key=lambda hero: hero.hp, reverse=False)
+    def analyse_battle_strategy(self, battle_information):
+        """Choose one side-compatible Discipline action and exact target set."""
+        skills = battle_information["skills"]
+        allies = battle_information["allies"]
+        opponents = battle_information["opponents"]
+        damageable = battle_information["damageable_opponents"] or opponents
 
-        # Find opponent heroes with/without Holy Word Punishment debuff
-        opponents_with_punishment = [opponent for opponent in opponents if opponent.status.get('holy_word_punishment', False)]
-        opponents_qty_with_punishment = len(opponents_with_punishment)
-        opponents_without_punishment = [opponent for opponent in opponents if not any(debuff.name == "Holy Word Punishment" for debuff in opponent.debuffs)]
-        opponents_qty_without_punishment = len(opponents_without_punishment)
+        penance = skills.get("Penance")
+        redemption = skills.get("Holy Word Redemption")
+        punishment = skills.get("Holy Word Punishment")
 
-        # Find ally heroes with/without Holy Word Redemption buff
-        allies_with_redemption = [ally for ally in allies if ally.status.get('holy_word_redemption', False)]
-        allies_qty_with_redemption = len(allies_with_redemption)
-        allies_without_redemption = [ally for ally in allies if not any(buff.name == "Holy Word Redemption" for buff in ally.buffs)]
-        allies_qty_without_redemption = len(allies_without_redemption)
+        # 1. Penance immediately restores a critically injured living ally.
+        critical_allies = [item for item in allies if item["hp_ratio"] <= 0.35]
+        if penance and critical_allies:
+            return (
+                penance,
+                self._priest_discipline_priority_target(critical_allies)["hero"],
+            )
 
-        # Check if the previous action was Holy Word Redemption
-        previous_action = self.previous_action if hasattr(self, "previous_action") else None
+        # 2. Penance's minimum opponent damage is 17 and ignores resistance.
+        guaranteed_finish = [item for item in damageable if item["hp"] <= 17]
+        if penance and guaranteed_finish:
+            return (
+                penance,
+                self._priest_discipline_priority_target(guaranteed_finish)["hero"],
+            )
 
-        # Eliminate low hp opponent
-        if sorted_opponents[0].hp <= 17:
-            self.strategy_3()
-            return sorted_opponents[0]
-        
-        # 25% chance heal an low hp hero
-        if sorted_allies[0].hp <= round(0.35 * sorted_allies[0].hp_max):
-            if random.random() < 0.25:
-                self.strategy_3()
-                return sorted_allies[0]
+        protected_allies = [item for item in allies if item["redemption_from_self"]]
+        unprotected_allies = [
+            item for item in allies if not item["redemption_from_self"]
+        ]
+        expiring_redemptions = [
+            item for item in protected_allies if item["redemption_duration"] <= 1
+        ]
 
-        # Make sure holy word redemption will not be cast consecutively
-        if previous_action == "Holy Word Redemption":
-            if len(opponents) >= 2 and opponents_qty_with_punishment == 0:
-                self.strategy_2()
-                return random.sample(opponents, 2)
-            elif len(opponents) > 2 and opponents_qty_with_punishment == 1:
-                self.strategy_2()
-                return random.sample(opponents_without_punishment, 2)
-            else:
-                self.strategy_3()
-                return sorted_opponents[0]
+        # 3. Establish the first same-caster Redemption, or refresh one that
+        # would expire before another Punishment/Penance damage trigger.
+        if redemption and (not protected_allies or expiring_redemptions):
+            candidates = expiring_redemptions or unprotected_allies
+            if candidates:
+                return (
+                    redemption,
+                    self._priest_discipline_priority_target(candidates)["hero"],
+                )
 
-        # Strategy to determine next move
-        if alive_allies_count >= 3:
-            if allies_qty_with_redemption == 0  or allies_qty_with_redemption == 1:
-                # If none of the allies have Holy Word Redemption, cast it on a random ally
-                self.strategy_1()
-                return random.choice(allies_without_redemption)
+        # The engine exposes Punishment as one shared target status: while any
+        # caster's copy is active, this Priest cannot add or refresh her own.
+        unpunished = [item for item in damageable if not item["punishment_active"]]
 
-            elif allies_qty_with_redemption == 2:
-                # 30% chance to cast Holy Word Redemption, otherwise move to Punishment or Penance
-                if random.random() < 0.3:
-                    self.strategy_1()
-                    return random.choice(allies_without_redemption)
-                else:
-                    if len(opponents) >= 2 and opponents_qty_with_punishment == 0:
-                        self.strategy_2()
-                        return random.sample(opponents, 2)
-                    elif len(opponents) > 2 and opponents_qty_with_punishment == 1:
-                        self.strategy_2()
-                        return random.sample(opponents_without_punishment, 2)
-                    else:
-                        self.strategy_3()
-                        return sorted_opponents[0]
+        # 4. With Redemption established, apply Punishment to exactly two new
+        # targets so both direct hits and later ticks can trigger its healing.
+        if punishment and protected_allies and len(unpunished) >= 2:
+            targets = self._priest_discipline_punishment_targets(unpunished)
+            return punishment, [item["hero"] for item in targets]
 
-            elif allies_qty_with_redemption >= 3:
-                # If all have Redemption, choose either Penance or Punishment
-                if len(opponents) >= 2 and opponents_qty_with_punishment == 0:
-                        self.strategy_2()
-                        return random.sample(opponents, 2)
-                elif len(opponents) > 2 and opponents_qty_with_punishment == 1:
-                    self.strategy_2()
-                    return random.sample(opponents_without_punishment, 2)
-                else:
-                    self.strategy_3()
-                    return sorted_opponents[0]
+        # 5. Extend Redemption to a second living ally while the team is stable.
+        # The skill itself may author one additional target when its caster is
+        # at or below 75% HP; this strategy still returns one legal ally target.
+        stable_team = all(item["hp_ratio"] > 0.35 for item in allies)
+        desired_coverage = min(2, len(allies))
+        if (
+            redemption
+            and stable_team
+            and len(protected_allies) < desired_coverage
+            and unprotected_allies
+        ):
+            return (
+                redemption,
+                self._priest_discipline_priority_target(unprotected_allies)["hero"],
+            )
 
-        if alive_allies_count == 2:
-            if allies_qty_with_redemption == 0:
-                # If none of the allies have Holy Word Redemption, cast it on a random ally
-                self.strategy_1()
-                return random.choice(allies_without_redemption)
+        # 6. Punishment remains valuable pressure without Redemption, but only
+        # when a complete pair of distinct unpunished opponents is available.
+        if punishment and len(unpunished) >= 2:
+            targets = self._priest_discipline_punishment_targets(unpunished)
+            return punishment, [item["hero"] for item in targets]
 
-            elif allies_qty_with_redemption == 1:
-                # 30% chance to cast Holy Word Redemption, otherwise move to Punishment or Penance
-                if random.random() < 0.3:
-                    self.strategy_1()
-                    return random.choice(allies_without_redemption)
-                else:
-                    if len(opponents) >= 2 and opponents_qty_with_punishment == 0:
-                        self.strategy_2()
-                        return random.sample(opponents, 2)
-                    elif len(opponents) > 2 and opponents_qty_with_punishment == 1:
-                        self.strategy_2()
-                        return random.sample(opponents_without_punishment, 2)
-                    else:
-                        self.strategy_3()
-                        return sorted_opponents[0]
+        # 7. Penance is the deterministic one-target damage fallback and also
+        # activates healing on any allies carrying this caster's Redemption.
+        if penance and damageable:
+            return (
+                penance,
+                self._priest_discipline_priority_target(damageable)["hero"],
+            )
+        if redemption and allies:
+            candidates = expiring_redemptions or unprotected_allies or allies
+            return (
+                redemption,
+                self._priest_discipline_priority_target(candidates)["hero"],
+            )
+        if penance and opponents:
+            return (
+                penance,
+                self._priest_discipline_priority_target(opponents)["hero"],
+            )
+        return None, None
 
-            elif allies_qty_with_redemption > 1:
-                # If all have Redemption, choose either Penance or Punishment
-                if len(opponents) >= 2 and opponents_qty_with_punishment == 0:
-                        self.strategy_2()
-                        return random.sample(opponents, 2)
-                elif len(opponents) > 2 and opponents_qty_with_punishment == 1:
-                    self.strategy_2()
-                    return random.sample(opponents_without_punishment, 2)
-                else:
-                    self.strategy_3()
-                    return sorted_opponents[0]
-
-        if alive_allies_count == 1:
-            if allies_qty_with_redemption == 0:
-                # If none of the allies have Holy Word Redemption, cast it on a random ally
-                self.strategy_1()
-                return random.choice(allies_without_redemption)
-            else:
-                # If all have Redemption, choose either Penance or Punishment
-                if len(opponents) >= 2 and opponents_qty_with_punishment == 0:
-                        self.strategy_2()
-                        return random.sample(opponents, 2)
-                elif len(opponents) > 2 and opponents_qty_with_punishment == 1:
-                    self.strategy_2()
-                    return random.sample(opponents_without_punishment, 2)
-                else:
-                    self.strategy_3()
-                    return sorted_opponents[0]
-        
-        # Default behavior if less than 3 allies are alive or no conditions are met
-        self.strategy_0()
-        return random.choice(opponents)
-
-    # AI chooses a skill based on current strategy
+    # Part C — return the chosen action to the live API adapter ----------------
     def ai_choose_skill(self, opponents, allies):
-        self.strategy_0()  # Reset to default strategy at the beginning of each turn
-        self.preset_target = self.battle_analysis(opponents, allies)
-        skill_weights = [self.probability_penance, self.probability_redemption, self.probability_punishment]
-        chosen_skill = random.choices(self.skills, weights=skill_weights)[0]
-        self.previous_action = chosen_skill.name  # Track the previous action for future turns
-        return chosen_skill
+        self.priest_discipline_battle_information = self.collect_battle_information(
+            opponents, allies
+        )
+        skill, target = self.analyse_battle_strategy(
+            self.priest_discipline_battle_information
+        )
+        self.preset_target = target
+        return skill
 
-    # AI chooses the target for the chosen skill
     def ai_choose_target(self, chosen_skill, opponents, allies):
-        chosen_opponent = self.preset_target
-        return chosen_opponent
-
-    # Helper method to find allies in critical health
-    def find_critical_ally(self, sorted_allies):
-        critical_hp_threshold = 0.3
-        for ally in sorted_allies:
-            if ally.hp / ally.hp_max < critical_hp_threshold:
-                return ally
-        return None
+        return self.preset_target
     
 class Priest_Shadow(Priest):
 

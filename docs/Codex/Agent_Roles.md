@@ -41,6 +41,21 @@ fewer agents only when the project manager documents why the reduced assignment
 is appropriate. Codex must follow the announced selection and must not silently
 omit a selected agent.
 
+## Selection and Dispatch Gate
+
+A role is selected only when the project manager gives it a concrete ownership
+assignment and dispatches it, or records an environment/tool availability
+failure that prevents dispatch. A generic `Agent Assignments` section copied
+into a task is not evidence of participation. Before any implementation edit
+on an official task, the task record must identify the complexity/risk
+assessment, selected roles and ownership, and the rationale for every omitted
+role.
+
+If a selected role is temporarily unavailable, record that blocker and either
+run it in a later coordinated wave or ask the owner whether a single-agent
+fallback is acceptable. Do not claim an unavailable or undispatched role as a
+participant in `Completed.md`.
+
 ## Project Manager
 
 ### Role
@@ -211,6 +226,10 @@ regression testing, cross-boundary impact assessment, and independent review.
 The project manager may document a narrower selection when the task clearly
 does not need that breadth. If concurrency or tool limits prevent simultaneous
 activation, selected agents may run in coordinated waves.
+
+This selection-and-dispatch gate applies even when work later proves small. It
+prevents a role list from becoming a substitute for actual coordination,
+testing, or independent review.
 
 ## Assignment and Completion Requirements
 

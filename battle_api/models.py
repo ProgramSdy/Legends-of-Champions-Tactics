@@ -178,6 +178,61 @@ class UseSkillCommand(ApiModel):
     target_ids: list[str] = Field(alias="targetIds", max_length=3)
 
 
+class BattlePreviewRequest(StrictApiModel):
+    expected_revision: int = Field(alias="expectedRevision", ge=0)
+    actor_id: str = Field(alias="actorId", min_length=1)
+    skill_id: str = Field(alias="skillId", min_length=1)
+    target_ids: list[str] = Field(alias="targetIds", min_length=1, max_length=2)
+
+
+class DamageAmountRange(ApiModel):
+    minimum: int = Field(alias="min", ge=0)
+    maximum: int = Field(alias="max", ge=0)
+
+
+class DamagePreviewPrimary(ApiModel):
+    kind: Literal["damage", "prevented"]
+    amount_range: DamageAmountRange = Field(alias="amountRange")
+    reason_id: str | None = Field(default=None, alias="reasonId")
+
+
+class DamagePreviewConsequence(ApiModel):
+    kind: Literal["bleed", "poison", "cold"]
+    certainty: Literal["conditional", "onHit"]
+    chance_percent: int | None = Field(
+        default=None, alias="chancePercent", ge=0, le=100
+    )
+
+
+class DamagePreviewTarget(ApiModel):
+    target_id: str = Field(alias="targetId")
+    current_hp: int = Field(alias="currentHp", ge=0)
+    max_hp: int = Field(alias="maxHp", ge=1)
+    primary: DamagePreviewPrimary
+    direct_hit_chance_percent: int = Field(
+        alias="directHitChancePercent", ge=0, le=100
+    )
+    consequences: list[DamagePreviewConsequence]
+
+
+class BattlePreviewData(ApiModel):
+    revision: int = Field(ge=0)
+    actor_id: str = Field(alias="actorId")
+    skill_id: str = Field(alias="skillId")
+    requested_target_ids: list[str] = Field(alias="requestedTargetIds")
+    selected_target_ids: list[str] = Field(alias="selectedTargetIds")
+    coverage: Literal["authoritative", "unavailable"]
+    reason_id: str | None = Field(default=None, alias="reasonId")
+    targets: list[DamagePreviewTarget]
+
+
+class BattlePreviewResponse(ApiModel):
+    contract_version: Literal["1.0"] = Field(default="1.0", alias="contractVersion")
+    battle_id: str = Field(alias="battleId")
+    revision: int = Field(ge=0)
+    data: BattlePreviewData
+
+
 class ErrorResponse(ApiModel):
     code: str
     message: str

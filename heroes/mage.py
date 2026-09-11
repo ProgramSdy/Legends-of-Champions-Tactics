@@ -29,15 +29,61 @@ class Mage_Comprehensiveness(Mage):
 
     def __init__(self, sys_init, name, group, is_player_controlled, position="front"):
         super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major, position=position)
+        self.preset_target = None
         self.add_skill(Skill(self, "Fireball", self.fireball, target_type = "single", skill_type= "damage", attack_type = "ranged_projectile",damage_nature = "magical", damage_type = "fire"))
         self.add_skill(Skill(self, "Arcane Missiles", self.arcane_missiles, target_type = "multi", skill_type= "damage", attack_type = "ranged_projectile", target_qty= 2, damage_nature = "magical", damage_type = "arcane"))
         self.add_skill(Skill(self, "Frost Bolt", self.frost_bolt, target_type = "single", skill_type= "damage", attack_type = "ranged_projectile", damage_nature = "magical", damage_type = "frost"))
 
+    @staticmethod
+    def _fireball_direct_damage(damage, fire_resistance, variation):
+        """Pure pre-formation damage shared by execution and audited preview."""
+        return max(damage + variation - fire_resistance, 0)
+
+    @staticmethod
+    def _arcane_missiles_direct_damage(damage, arcane_resistance, variation):
+        """Pure per-target damage for Arcane's one shared variation roll."""
+        return math.ceil((damage + variation - arcane_resistance) * 2 / 3)
+
+    @staticmethod
+    def _frost_bolt_direct_damage(damage, frost_resistance, variation):
+        """Pure pre-formation damage shared by execution and audited preview."""
+        return max(
+            math.ceil((damage + variation - frost_resistance) * 4 / 5),
+            0,
+        )
+
+    def audited_direct_damage_range(self, skill_name, target):
+        """Return the five-skill MVP's RNG-free direct input range.
+
+        This method deliberately excludes evasion, deterministic prevention,
+        formation adjustment, absorption, and linked damage. The adapter owns
+        those current-battle facts and applies them without executing a skill.
+        """
+        if skill_name == "Fireball":
+            calculate = self._fireball_direct_damage
+            resistance = target.fire_resistance
+            variations = (-5, 5)
+        elif skill_name == "Arcane Missiles":
+            calculate = self._arcane_missiles_direct_damage
+            resistance = target.arcane_resistance
+            variations = (-3, 3)
+        elif skill_name == "Frost Bolt":
+            calculate = self._frost_bolt_direct_damage
+            resistance = target.frost_resistance
+            variations = (-2, 2)
+        else:
+            return None
+        values = [
+            max(0, calculate(self.damage, resistance, variation))
+            for variation in variations
+        ]
+        return min(values), max(values)
+
     def fireball(self, other_hero, attack_type="NA"):
         variation = random.randint(-5, 5)
-        actual_damage = self.damage + variation
-        damage_dealt = actual_damage - other_hero.fire_resistance
-        damage_dealt = max(damage_dealt, 0)
+        damage_dealt = self._fireball_direct_damage(
+            self.damage, other_hero.fire_resistance, variation
+        )
         self.game.display_battle_info(f"{self.name} casts Fireball at {other_hero.name}.")
         return other_hero.take_damage(damage_dealt, attack_type, self)
 
@@ -46,10 +92,11 @@ class Mage_Comprehensiveness(Mage):
           other_heros = [other_heros]
         results = []
         variation = random.randint(-3, 3)
-        actual_damage = self.damage + variation
         selected_opponents = other_heros
         for opponent in selected_opponents:
-            damage_dealt = math.ceil((actual_damage - opponent.arcane_resistance) * 2/3)
+            damage_dealt = self._arcane_missiles_direct_damage(
+                self.damage, opponent.arcane_resistance, variation
+            )
             self.game.display_battle_info(f"{self.name} casts Arcane Missiles at {opponent.name}.")
             results.append(opponent.take_damage(damage_dealt, attack_type, self))
         return "\n".join(results)
@@ -66,10 +113,236 @@ class Mage_Comprehensiveness(Mage):
         else:
             self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Frost Bolt")
         variation = random.randint(-2, 2)
-        actual_damage = self.damage + variation
-        damage_dealt = math.ceil((actual_damage - other_hero.frost_resistance) * 4/5)
-        damage_dealt = max(damage_dealt, 0)
+        damage_dealt = self._frost_bolt_direct_damage(
+            self.damage, other_hero.frost_resistance, variation
+        )
         return other_hero.take_damage(damage_dealt, attack_type, self)
+
+    # Battling Strategy_________________________________________________________
+
+    # Part A — battle information collection ----------------------------------
+    def _mage_comprehensiveness_combatant_snapshot(self, hero):
+        """Collect live elemental and control facts used by this Mage."""
+        active_statuses = {
+            name for name, active in hero.status.items() if active
+        }
+        return {
+            "hero": hero,
+            "faculty": hero.faculty,
+            "major": hero.major,
+            "position": hero.position,
+            "actioned": hero.actioned,
+            "alive": hero.hp > 0,
+            "hp": hero.hp,
+            "hp_max": hero.hp_max,
+            "hp_ratio": hero.hp / hero.hp_max if hero.hp_max else 0,
+            "defense": hero.defense,
+            "agility": hero.agility,
+            "original_agility": hero.original_agility,
+            "fire_resistance": hero.fire_resistance,
+            "frost_resistance": hero.frost_resistance,
+            "arcane_resistance": hero.arcane_resistance,
+            "active_statuses": active_statuses,
+            "cold_duration": getattr(hero, "cold_duration", 0),
+            "buffs": [
+                {
+                    "name": buff.name,
+                    "duration": buff.duration,
+                    "initiator": buff.initiator,
+                }
+                for buff in hero.buffs
+            ],
+            "debuffs": [
+                {
+                    "name": debuff.name,
+                    "duration": debuff.duration,
+                    "initiator": debuff.initiator,
+                }
+                for debuff in hero.debuffs
+            ],
+            "skill_cooldowns": {
+                skill.name: {
+                    "available": skill.is_available and not skill.if_cooldown,
+                    "rounds_remaining": skill.cooldown,
+                }
+                for skill in hero.skills
+            },
+        }
+
+    def collect_battle_information(self, opponents, allies):
+        """Build the Mage's current-turn view from engine-owned state."""
+        opponent_snapshots = [
+            self._mage_comprehensiveness_combatant_snapshot(hero)
+            for hero in opponents
+        ]
+        ally_snapshots = [
+            self._mage_comprehensiveness_combatant_snapshot(hero)
+            for hero in allies
+        ]
+        alive_opponents = [item for item in opponent_snapshots if item["alive"]]
+        damageable_opponents = [
+            item
+            for item in alive_opponents
+            if not (
+                item["active_statuses"]
+                & {"shield_of_protection", "anti_magic_shield"}
+            )
+        ]
+        return {
+            "self": self._mage_comprehensiveness_combatant_snapshot(self),
+            "allies": [item for item in ally_snapshots if item["alive"]],
+            "opponents": alive_opponents,
+            "damageable_opponents": damageable_opponents,
+            "formations": {
+                "ally_positions": tuple(item["position"] for item in ally_snapshots),
+                "opponent_positions": tuple(
+                    item["position"] for item in opponent_snapshots
+                ),
+            },
+            "skills": {
+                skill.name: skill
+                for skill in self.skills
+                if skill.is_available and not skill.if_cooldown
+            },
+        }
+
+    # Part B — battle analysis -------------------------------------------------
+    @staticmethod
+    def _mage_priority_target(candidates):
+        """Prefer lower HP, then an efficient rank and stable name."""
+        return min(
+            candidates,
+            key=lambda item: (
+                item["hp_ratio"],
+                0 if item["position"] == "front" else 1,
+                -item["agility"],
+                item["hero"].name,
+            ),
+        )
+
+    @staticmethod
+    def _mage_single_target_skill(target, fireball, frost_bolt):
+        """Choose between the two single attacks from current resistance."""
+        if fireball and frost_bolt:
+            if target["frost_resistance"] < target["fire_resistance"]:
+                return frost_bolt
+            return fireball
+        return fireball or frost_bolt
+
+    @staticmethod
+    def _mage_arcane_targets(candidates):
+        return sorted(
+            candidates,
+            key=lambda item: (
+                item["arcane_resistance"],
+                item["hp_ratio"],
+                0 if item["position"] == "front" else 1,
+                item["hero"].name,
+            ),
+        )[:2]
+
+    def analyse_battle_strategy(self, battle_information):
+        """Choose one legal Mage action without duplicating damage formulas."""
+        skills = battle_information["skills"]
+        opponents = battle_information["opponents"]
+        damageable = battle_information["damageable_opponents"] or opponents
+
+        fireball = skills.get("Fireball")
+        arcane_missiles = skills.get("Arcane Missiles")
+        frost_bolt = skills.get("Frost Bolt")
+
+        if not opponents:
+            return None, None
+
+        # 1. Concentrate a single spell on an opponent already under kill
+        # pressure, using the lower of its current Fire/Frost resistances.
+        low_health = [item for item in damageable if item["hp_ratio"] <= 0.25]
+        if low_health and (fireball or frost_bolt):
+            target = self._mage_priority_target(low_health)
+            return (
+                self._mage_single_target_skill(target, fireball, frost_bolt),
+                target["hero"],
+            )
+
+        # 2. Apply Cold to the fastest viable opponent that does not already
+        # have it. Recasting while Cold is active would not refresh duration.
+        cold_candidates = [
+            item for item in damageable if "cold" not in item["active_statuses"]
+        ]
+        cold_is_already_controlling = any(
+            "cold" in item["active_statuses"] for item in damageable
+        )
+        if frost_bolt and cold_candidates and not cold_is_already_controlling:
+            target = min(
+                cold_candidates,
+                key=lambda item: (
+                    -item["agility"],
+                    item["frost_resistance"],
+                    item["hp_ratio"],
+                    item["hero"].name,
+                ),
+            )
+            return frost_bolt, target["hero"]
+
+        # 3. Arcane Missiles is deliberately reserved for a complete pair of
+        # distinct living targets; 1v1 never relies on adapter target filling.
+        if arcane_missiles and len(damageable) >= 2:
+            targets = self._mage_arcane_targets(damageable)
+            return arcane_missiles, [item["hero"] for item in targets]
+
+        # 4. Exploit the lower current Fire/Frost resistance on the most urgent
+        # target once Cold and multi-target priorities are exhausted.
+        if fireball or frost_bolt:
+            target = min(
+                damageable,
+                key=lambda item: (
+                    min(item["fire_resistance"], item["frost_resistance"]),
+                    item["hp_ratio"],
+                    0 if item["position"] == "front" else 1,
+                    item["hero"].name,
+                ),
+            )
+            return (
+                self._mage_single_target_skill(target, fireball, frost_bolt),
+                target["hero"],
+            )
+
+        # 5. If only Arcane Missiles remains available, keep its required pair.
+        if arcane_missiles and len(opponents) >= 2:
+            targets = self._mage_arcane_targets(opponents)
+            return arcane_missiles, [item["hero"] for item in targets]
+
+        # 6. A hard-immunity state is still target-legal. Preserve a stable
+        # legal single-target fallback when no damageable alternative exists.
+        fallback_target = self._mage_priority_target(opponents)["hero"]
+        if fireball or frost_bolt:
+            target_state = next(
+                item for item in opponents if item["hero"] is fallback_target
+            )
+            return (
+                self._mage_single_target_skill(
+                    target_state, fireball, frost_bolt
+                ),
+                fallback_target,
+            )
+        if arcane_missiles and len(opponents) >= 2:
+            targets = self._mage_arcane_targets(opponents)
+            return arcane_missiles, [item["hero"] for item in targets]
+        return None, None
+
+    # Part C — return the chosen action to the live API adapter ----------------
+    def ai_choose_skill(self, opponents, allies):
+        self.mage_comprehensiveness_battle_information = (
+            self.collect_battle_information(opponents, allies)
+        )
+        skill, target = self.analyse_battle_strategy(
+            self.mage_comprehensiveness_battle_information
+        )
+        self.preset_target = target
+        return skill
+
+    def ai_choose_target(self, chosen_skill, opponents, allies):
+        return self.preset_target
 
 class Mage_Water(Mage):
 

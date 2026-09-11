@@ -897,7 +897,7 @@ def test_battle_can_progress_to_authoritative_end_and_reject_later_commands():
         assert result["accepted"]
     else:
         pytest.fail("seeded battle did not end")
-    assert adapter.snapshot(session)["outcome"]["kind"] in {"victory", "draw", "roundLimit"}
+    assert adapter.snapshot(session)["outcome"]["kind"] in {"victory", "draw"}
     ended = adapter.snapshot(session)
     rejected = adapter.submit(
         session,

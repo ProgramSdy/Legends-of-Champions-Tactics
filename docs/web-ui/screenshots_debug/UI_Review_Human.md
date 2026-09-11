@@ -945,3 +945,144 @@ After implementation, provide:
 - any remaining work needed for the six final responsive layouts.
 
 Again: preserve the current working 1920×1080 hero and formation tuning. This task is to ADD a clean browser-responsive presentation layer, not to replace the existing battle design.
+
+
+# Date
+
+2026-09-11
+
+### Screenshot name
+
+N/A
+
+### Task List
+
+## 1. Battle-End Conditions Update
+
+# Current Battle-End Conditions
+
+The current battle design has two primary termination conditions:
+
+1. **Elimination victory** — if all heroes on one team become unable to continue fighting, the opposing team wins.
+2. **Maximum-round termination** — if neither team has been eliminated when the maximum number of rounds is reached, the battle ends.
+
+The current general maximum is 15 rounds.
+
+# New Battle-End Conditions:
+
+Keep rule 1 as no change.
+1. **Elimination victory** — if all heroes on one team become unable to continue fighting, the opposing team wins.
+
+Rule 2 need to be changed. Detail list below:
+
+Maximum-Round Result Hierarchy
+
+Two possible timeout criteria were considered: surviving hero count and remaining HP percentage.
+
+The agreed direction is to use them hierarchically.
+
+- First tiebreaker — surviving heroes
+
+When the maximum round is reached:
+
+> **The team with more surviving heroes wins.**
+
+Example:
+
+ Team A: 3 surviving heroes
+ Team B: 2 surviving heroes
+
+Team A wins regardless of remaining HP percentages.
+
+The reasoning is that surviving hero count represents battlefield control and action economy. If combat continued, the team with more active heroes generally has additional actions, skills, targeting options, and combination potential.
+
+- Second tiebreaker — remaining HP percentage average.
+
+Only when both teams have the **same number of surviving heroes** should remaining HP percentage average be compared. Average is calculated via adding all remaining hero hp percentage and then devided by the number of remaining heroses.
+
+```text
+Maximum round reached
+        ↓
+Compare surviving hero count
+        ↓
+Different? → More surviving heroes wins
+        ↓
+Equal
+        ↓
+Compare remaining HP percentage average
+```
+
+
+Exact Tie → Draw
+
+An edge case was discussed where both teams have:
+
+- the same surviving hero count; and
+- the same remaining HP percentage average.
+
+Example:
+
+- Team A: 1 survivor at 50% HP
+- Team B: 1 survivor at 50% HP
+
+Decision
+
+> **The battle result should be Draw.**
+
+
+
+PvP Draw Behaviour
+
+For PvP, Draw is a natural and acceptable result.
+
+If both players finish with equal surviving hero count and equal remaining HP percentage, neither has demonstrated superiority according to the defined objectives. The match should therefore be recorded as a Draw rather than arbitrarily awarding victory.
+
+PvE Draw Behaviour — Battle Result vs Stage Result
+
+PvE requires a distinction between **battle outcome** and **stage progression**.
+
+Decision
+
+A PvE Draw does **not** clear the stage.
+
+```text
+Battle Result: DRAW
+Stage Result:  NOT CLEARED
+```
+
+The player must replay the encounter to progress.
+
+This does not require the battle itself to be labelled a Loss. The player genuinely achieved a Draw, but did not satisfy the requirement to defeat the stage encounter.
+
+This distinction may also provide useful feedback: a Draw can communicate that the player is close to clearing the encounter.
+
+Future reward design could potentially distinguish Draw from Loss, but no consolation reward was finalized.
+
+
+
+## 2. Different Maximum Rounds for 1v1, 2v2, and 3v3
+
+The current system uses approximately 15 rounds as a general maximum, but 1v1, 2v2, and 3v3 have substantially different:
+
+- combatant counts;
+- action density;
+- interaction complexity;
+- healing capacity;
+- combination opportunities;
+- expected battle duration.
+
+The discussion therefore supports making maximum rounds configurable by battle size.
+
+Initial illustrative values were:
+
+```text
+1v1 → approximately 9 rounds
+2v2 → approximately 13 rounds
+3v3 → approximately 15 rounds
+```
+
+Conceptually:
+
+- **1v1** should feel shorter and more duel-like.
+- **2v2** introduces stronger hero-combination and Interlock play.
+- **3v3** is the fullest tactical expression and may require more time for formation, combinations, and evolving battle states.

@@ -1,90 +1,172 @@
 # Current Task
 
-**Status:** Queued — wait for Core Project Team to complete its current task before starting
-**Task ID:** UI-026
-**Title:** Refine the Paladin Healing Target Animation
-**Prepared:** 2026-09-09
+**Status:** Completed
+**Task ID:** BATTLE-TRANSPARENCY-001
+**Title:** Battle Information Transparency MVP — Mage and Rogue Damage Skills
+**Prepared:** 2026-09-11
 
 ## Objective
 
-Replace the current Paladin healing target beam, which reads as a hard golden rectangle/block moving over the hero, with a polished target-bound effect based on the successful Priest healing target animation.
+Implement the first safe version of **Battle Information Transparency**. When a player selects an in-scope damage skill and hovers or keyboard-focuses a legal target before confirming the action, show a compact, authoritative preview of the immediate decision-relevant result.
+
+The MVP applies only to:
+
+| Hero | Included skills |
+|---|---|
+| Mage Comprehensiveness | Fireball, Arcane Missiles, Frost Bolt |
+| Rogue Comprehensiveness | Sharp Blade, Poisoned Dagger |
+
+Rogue Shadow Evasion is a self/targetless buff and is explicitly not part of this target-preview MVP. Healing, other heroes, chained effects, and future damage-over-time totals are deferred.
+
+## Owner Decisions Incorporated
+
+- Start with Mage and Rogue only; all three Mage skills are direct-damage skills and Rogue’s two targetable damage skills are in scope.
+- The direct **Hit Chance** field applies only to the skill’s immediate direct damage. It must not include Bleed or Poison application chance.
+- A separate effect row may state a conditional material effect, such as `Bleed: 50% chance` or `Poison: 85% chance`.
+- Do not show, estimate, or imply future Bleed/Poison tick damage in this MVP.
+- Complex/chained skill presentation is deferred; do not add generic “additional effects may occur” behaviour to cover out-of-scope heroes.
 
 ## Background
 
-UI-025 introduced a distinct Paladin target effect for `healingApplied` events authored by a Paladin. Its current tall, clipped linear-gradient beam (`effect-paladin-healing`) is visually too solid and geometric. The owner prefers the existing Priest target treatment: a contained, soft radial light that rises from the target rather than a large opaque shape.
+The approved `STUDY-001` report established that React must not calculate combat outcomes and that existing mutating skill execution must not be dry-run for hover previews. Current resolution can consume seeded RNG and mutate HP, statuses, cooldowns, logs, turn state, and secondary targets.
 
-The improved Paladin treatment should begin from that same proven visual language but remain recognisably Paladin: brighter, warmer gold and a clear top-to-bottom light movement. It must be a target effect only; the Priest caster rune presentation is unrelated and must not be copied into Paladin healing.
+This MVP must therefore use an engine-owned, non-mutating evaluator for a small audited skill allowlist and an additive, revision-bound adapter contract. The UI displays only supplied preview facts. It does not parse descriptions, reconstruct formulas, infer status rules, or calculate damage/hit chance itself.
 
-## Requirements
+## Required Player Experience
 
-### 1. Visual direction
+### Compact target preview
 
-- Use the existing Priest **target** effect (`effect-priest-healing`) as the starting reference for scale, soft-edge radial light, containment within the hero footprint, and overall polish.
-- Replace the current Paladin clipped beam/flare design. The final Paladin effect must not read as a rectangle, solid colour block, triangle, or a hard-edged light column.
-- Make the Paladin palette visibly brighter and warmer than the Priest soft gold: use a controlled white-gold highlight with rich sun-gold edges, while preserving battlefield readability and the dark-fantasy style.
-- Convey the requested top-to-bottom motion through a soft, rounded light treatment: it should begin above/at the target hero's head and descend over the target into a gentle lower-body/ground glow. Use opacity, blur, radial gradients, and/or small soft light layers rather than a large opaque beam.
-- Keep the effect brief, restrained, and legible. It should feel like a blessing/sunlight settling onto the healed target—not an attack, projectile, explosion, or fullscreen flash.
+After a player selects an in-scope skill and hovers/focuses a legal target, show a compact panel associated with that target. Use plain, decision-focused labels, for example:
 
-### 2. Presentation behaviour
+```text
+FIREBALL → Venombane
+Damage:      18–29
+Hit Chance:     85%
+Target HP:    21 / 85
+```
 
-- Continue to select the treatment only for authoritative `healingApplied` events whose source combatant faculty is `Paladin`.
-- Preserve the existing event timing, queue ordering, target identity, `+healing` floating text, and healing mechanics.
-- Keep the effect entirely target-bound inside the shared battlefield figure footprint so it follows 1v1, 2v2, and 3v3 formation depth, hero scale, side mirroring, and UI-024 responsive presentation rules.
-- Preserve the existing Priest target effect and Priest caster runes exactly. Preserve generic green healing and all non-healing feedback exactly.
-- Update reduced-motion handling so the Paladin effect becomes a visible, non-moving soft golden target glow—without reviving the current beam/block appearance.
+For Rogue effects, show a separate material-effect row only when it is meaningful:
 
-### 3. Implementation hygiene
+```text
+SHARP BLADE → Venombane
+Damage:      12–19
+Hit Chance:     85%
+Target HP:    21 / 85
+Bleed:          50% chance
+```
 
-- Simplify/remove obsolete Paladin beam-specific CSS and keyframes once the replacement is in place; do not leave duplicate/competing `target-effect` or Paladin healing definitions.
-- Do not change the battle API, adapter, game engine, hero/skill data, event schema, or faculty classification logic for this visual-only refinement.
+```text
+POISONED DAGGER → Venombane
+Damage:       6–10
+Hit Chance:     85%
+Target HP:    21 / 85
+Poison:         85% chance
+```
+
+- Damage must be the authoritative immediate target-specific range for the live current battle state, including only the same direct-damage adjustments that the audited live path applies. It must not include future DoT, chained, shared, or speculative effects.
+- `Hit Chance` means the authoritative probability that the direct damage is not evaded for this target under the current direct-damage resolution rule. It must never include random damage variation, Bleed/Poison chance, or a future unimplemented Accuracy system.
+- If the selected direct attack is deterministically prevented/immune under the current target state, show a clear blocked/prevented outcome and `Damage: 0`; do not present a misleading positive damage range or fold prevention into Hit Chance.
+- If a fact cannot be supported truthfully for an in-scope situation, show a concise `Preview unavailable` state rather than invented precision. It must not block a legal action.
+- Retain current target highlights and selection behaviour. The preview is information only; it does not select, lock, or submit a target.
+
+### Skill-specific content rules
+
+- **Fireball:** immediate direct fire-damage range and direct Hit Chance only.
+- **Arcane Missiles:** immediate per-target arcane-damage range and direct Hit Chance only. Do not show aggregate total damage or pretend each target’s random result is independent when the current implementation shares variation.
+  - While selecting targets, clearly indicate required target count and show a hovered target’s individual preview only when it can be evaluated truthfully.
+  - Once two legal targets are selected, evaluate the complete selected pair for the command-consistent preview; show per-target facts, not a fabricated aggregate.
+- **Frost Bolt:** immediate direct frost-damage range and direct Hit Chance. If Cold is not active and can be applied by a successful direct hit, show a concise material consequence such as `On hit: Applies Cold`; if Cold is already active, accurately omit or state that no new Cold application occurs according to the actual rule.
+- **Sharp Blade:** immediate direct physical-damage range and direct Hit Chance. Show `Bleed: 50% chance` only when the target can meaningfully receive the Bleed under current status/cap rules; do not show future Bleed damage.
+- **Poisoned Dagger:** immediate direct physical-damage range and direct Hit Chance. Show `Poison: 85% chance` only when the target can meaningfully receive/add Poison under current status/stack-cap rules; when the cap/current state prevents a new material Poison effect, do not imply an additional stack or future damage.
+
+### Interaction, accessibility, and responsive rules
+
+- Pointer hover and keyboard focus on the same legal target must request/display the same preview. The target remains the interactive control; the preview must use `pointer-events: none` and must not obstruct target hit areas.
+- Clear or ignore a preview when the actor, selected skill, target set, legal actions, or battle revision changes; when playback/auto battle disables commands; or when the skill is unavailable, passive, targetless, or out of scope.
+- Use cancellation/debouncing and revision/actor/skill/target matching so rapid target movement cannot display stale information. A stale/error response must be discarded and must not affect command state.
+- For touch and compact landscape layouts, use a stable pinned/reserved presentation after a legal target interaction rather than an overlapping popover that hides combatants. Preserve the existing portrait-orientation guard and UI-024 responsive presentation boundaries.
+- Provide an accessible association from the focused target to the preview without repeated noisy announcements while a pointer moves. Keep keyboard target selection and Enter/Space behaviour unchanged.
+
+## Engine and Contract Requirements
+
+### 1. Authoritative non-mutating evaluator
+
+- Do not execute existing mutating skill callbacks as a preview and do not clone/restore a live battle to simulate one.
+- Introduce a small engine-owned preview/evaluation boundary for only the five approved skills. It must use audited pure outcome/range primitives shared with, or demonstrably equivalent to, the live direct-damage calculation path.
+- The evaluator must not call or consume `random.randint`, `random.random`, `choice`, `sample`, or `shuffle`; it must not mutate any hero/game/session field, status, stack, duration, cooldown, log, event cursor, command result, turn state, adapter revision, or RNG state.
+- Preserve current live game mechanics exactly. If a skill’s live path has a legacy metadata/formation behaviour, the preview must represent the live outcome rather than silently “correcting” balance. Any discovered inconsistency requiring a rules change must be documented and escalated, not changed inside this task.
+- Calculate evasion/direct Hit Chance from the same current authoritative direct-damage rule. Do not implement or infer a global Accuracy stat/model.
+
+### 2. Revision-bound adapter operation
+
+- Add one minimal additive adapter/API operation for previewing a requested action against a live battle revision. It must validate battle existence, expected revision, active actor, selected available in-scope skill, legal target side/IDs, target count, duplicate targets, and complete multi-target selection where required.
+- The operation must take the same session-lock/authority boundary as a command but leave the session unchanged. It must never enqueue combat events or advance a turn.
+- The typed response must include the echoed revision, actor, skill, requested/selected target IDs, coverage/availability state, per-target current/max HP, immediate primary range or prevented state, direct Hit Chance/reliability fact where authoritative, and material consequences with separate chance/certainty.
+- Keep the contract additive and document it in Python and TypeScript. No current battle endpoint, command schema, snapshot, event ordering, or existing caller may break.
+- Do not include raw hidden formula inputs or arbitrary internal status names in player-facing data. Use stable typed IDs/fields and map final player copy in an approved presentation layer.
+
+### 3. Frontend integration
+
+- Add a provider/client method that requests the authoritative preview only for the selected in-scope skill and legal hovered/focused target state.
+- Render the supplied facts in Battle Screen presentation only. TypeScript must not calculate range, direct Hit Chance, effect chance, cap, resistance, prevention, or target legality.
+- Preserve all current player command submission, auto battle, target selection, formation/depth, HUD, presentation queue, and 1920×1080 baseline behaviour outside the new compact preview.
 
 ## Out of Scope
 
-- Priest caster animation or Priest target-effect changes.
-- New art assets, particle libraries, audio, gameplay balance, healing calculations, or status-event changes.
-- Changes to other Paladin effects, skill cards, battle layout, formation rules, or UI-024 configuration.
+- Healing previews, Shadow Evasion, all non-Mage/Rogue skills, all other faculties, future DoT totals, chains, spreads, summons, multi-stage resolution totals, and non-approved status outcomes.
+- Adding/changing Accuracy, Evasion, damage, healing, status, immunity, cooldown, targeting, formation, or balance rules.
+- A broad skill-system rewrite, full combat simulator, client-side formula copy, prediction from the next seeded random roll, or revealing all internal math.
+- Changes to current battle commands, event stream/order, random determinism, stage/Arena progression, or player save data.
 
 ## Relevant Files
 
-- `web-ui/app/globals.css` — replace `.target-effect.effect-paladin-healing`, its pseudo-elements/keyframes, and reduced-motion rule with the refined treatment.
-- `web-ui/components/battle/BattleScreen.tsx` — inspect only to preserve the existing target-effect mounting and Paladin source-faculty selection; no behavioural rewrite is expected.
-- `web-ui/tests/battle-screen.test.tsx` and `web-ui/tests/ui-007-regressions.test.tsx` — retain/add target-classification and Paladin/Priest separation coverage.
-- `docs/web-ui/Style_Guide.md` — update only if its brief feedback description needs to reflect the final approved direction.
-- `docs/Codex/Completed.md` — record the completed visual refinement and validation evidence after acceptance.
+- `heroes/mage.py` and `heroes/rogue.py` — audit the five in-scope skill formulas/effects and share pure direct-outcome primitives with live paths where safe.
+- `heroes/hero.py` and `skills/skill.py` — authoritative direct-damage, evasion, immunity/prevention, formation, and mutation boundaries; preserve existing rules.
+- `battle_api/adapter.py`, `battle_api/app.py`, and applicable API models — revision-bound preview validation and additive transport.
+- `web-ui/lib/battle/types.ts`, provider/API client modules, and `web-ui/components/battle/BattleScreen.tsx` — typed preview consumption, request lifecycle, hover/focus/pinned interaction, and rendering.
+- `web-ui/app/globals.css` and `docs/web-ui/Style_Guide.md` — compact visual/accessibility/responsive treatment.
+- `docs/web-ui/BATTLE_DATA_CONTRACT_V1.md`, `docs/web-ui/PYTHON_ADAPTER_API.md`, and `docs/Technical/Architecture.md` — authoritative preview contract/architecture documentation.
+- Existing adapter, skill, hero, Battle Screen, quick-targeting, formation, and responsive test suites; add focused preview tests in clear backend/frontend test modules.
+- `docs/Codex/Analysis/2026-09-11_Battle_Information_Transparency_Feasibility_Study.md` — approved research basis and scope guardrail.
+- `docs/Codex/Completed.md` — completion evidence and actual role contributions.
 
 ## Acceptance Criteria
 
-1. A Paladin healing event no longer displays a rectangular, triangular, hard-edged, or block-like golden beam.
-2. The effect clearly takes the Priest target animation’s soft, contained light language as its base while appearing brighter and warmer gold.
-3. The Paladin light visibly travels from above the healed hero downward, ending in a soft target/ground glow without obscuring the hero.
-4. The effect is mounted only on the healed target and remains correctly aligned in 1v1, 2v2, and 3v3 at desktop and responsive viewports.
-5. Priest target soft-gold treatment and Priest caster runes remain unchanged; generic healing remains green and unchanged.
-6. `healingApplied` selection, combat state, logs, event ordering, and API/backend contracts are unchanged.
-7. Reduced-motion renders a stable soft gold target indication with no movement and no hard beam/block.
-8. No obsolete duplicate Paladin-beam CSS/keyframes remain after the replacement.
+1. Hovering/focusing a legal target with each in-scope selected skill shows an authoritative compact target preview before command confirmation.
+2. Fireball, Arcane Missiles, Frost Bolt, Sharp Blade, and Poisoned Dagger show only truthful immediate direct-damage information for the current target/state.
+3. `Hit Chance` applies only to direct damage and is separate from random damage range and status-proc chance.
+4. Sharp Blade shows a separate 50% Bleed chance only when meaningful; Poisoned Dagger shows a separate 85% Poison chance only when a material application/addition is possible. Neither shows future DoT damage.
+5. Frost Bolt accurately communicates its immediate Cold consequence only when the current rule supports it; Arcane Missiles handles two-target selection without a fake aggregate total.
+6. Preview requests/responses make no combat, UI command-state, session, event, revision, or RNG mutation. A command after preview remains identical in seeded outcome to the same command without preview.
+7. The backend rejects invalid/stale/out-of-scope preview requests safely and without mutation; the UI clears/discards stale data without blocking a legal command.
+8. The UI is usable by pointer, keyboard, and compact/touch layout without blocking target hit areas or changing existing target selection/highlight behaviour.
+9. Existing commands, combat results, API consumers, UI-024 responsive presentation, and 1920×1080 baseline remain unchanged outside the compact preview.
+10. Contract, architecture, style guidance, and completion documentation describe the actual approved MVP scope and do not imply unsupported full-roster coverage.
 
 ## Validation Required
 
-- Run the focused Battle Screen and UI regression tests that cover Paladin, Priest, and generic healing classification.
-- Add or update regression coverage for the refined Paladin target class without weakening the Priest-separation assertions.
-- Manually verify Paladin healing in 1v1, 2v2, and 3v3, including a different formation depth and a narrower responsive viewport.
-- Compare a Paladin heal and Priest heal side by side: Paladin must be brighter warm gold with descending motion; Priest must retain its existing soft-gold rise and caster runes.
-- Verify `prefers-reduced-motion` renders a non-moving soft gold Paladin target glow, not the prior beam.
-- Run `npm run typecheck`, relevant frontend tests, and `git diff --check`; record exact commands/results in `Completed.md`.
+- Add backend unit/integration tests for each in-scope skill across minimum/maximum direct range, direct Hit Chance/evasion, deterministic prevention/immune state, current status/stack boundaries, and exact Arcane Missiles pair behaviour.
+- Prove preview has no state or RNG impact: deep-compare relevant game/session/snapshot data and random/session RNG state before/after preview; patch all random helpers to fail during preview; prove the later same-seed command result matches an untouched control.
+- Test stale revision, inactive actor, unavailable/out-of-scope skill, wrong side, dead target, duplicate target, insufficient/extra Arcane target selection, and rapid request cancellation/error behaviour.
+- Add frontend tests for pointer hover, keyboard focus, target selection, stale/error clearing, in-scope/out-of-scope visibility, separate effect-proc wording, prevented state, Arcane multi-target presentation, responsive/touch pinned state, and no client formula duplication.
+- Run relevant Python, API, frontend, typecheck, lint/build as applicable, and `git diff --check`.
+- Manually validate 1v1, 2v2, and 3v3 with Mage/Rogue player turns, including formations with screened melee targets, evasion/prevention state, Rogue status stack boundaries, and compact responsive viewport.
+- Record exact validation commands/results, any unsupported edge cases, and actual agent contributions in `Completed.md`.
 
-## Documentation / Handoff Requirements
+## Agent Selection and Dispatch Gate
 
-- Do not notify Core Project Team about this task until its current task has completed.
-- After Core completes this queued task, update `docs/Codex/Completed.md` with the final visual description, changed files, and validation evidence.
+**Complexity/risk assessment:** High cross-system implementation. It adds a new authoritative game-information capability spanning legacy stateful combat calculation, RNG guarantees, adapter/API contract validation, asynchronous frontend interaction, responsive/accessibility presentation, and misleading-information risk. All five roles are required.
 
-## Agent Assignments
+**Selected roles — must be concretely dispatched before implementation:**
 
-- **UI developer:** Design and implement the refined Paladin target-only effect by adapting the Priest target-effect language; remove the block-like beam implementation.
-- **Test automator:** Maintain classification/separation coverage and validate animation/reduced-motion regressions.
-- **Reviewer:** Compare the effect against the acceptance criteria, focusing on softness, downward readability, target anchoring, Priest isolation, and responsive formation alignment.
-- **Game-engine developer:** Not required unless a verified presentation data gap appears; do not alter engine/API behaviour for this task.
-- **Project manager:** Wait for the current Core task to finish before dispatching UI-026, then coordinate validation and documentation handoff.
+- **project-manager:** coordinate the study-to-build handoff, phased dependency order, agent dispatch, scope guardrails, documentation, and evidence.
+- **game-engine-developer:** own audited pure evaluator/primitives, no-mutation/RNG guarantees, adapter/API validation, and additive typed contract.
+- **ui-developer:** own provider request lifecycle, Battle Screen target-preview presentation, accessibility, and responsive compact/touch behaviour.
+- **test-automator:** own deterministic backend/frontend contract, no-mutation/no-RNG, stale/legality, interaction, and regression coverage.
+- **reviewer:** independently assess range/hit/proc truthfulness, authority boundaries, random determinism, UI clarity, contract compatibility, and scope compliance.
 
 ## Completion Notes
 
-To be completed by the implementation team after acceptance.
+Implemented and independently reviewed on 2026-09-11. The authoritative
+completion evidence, dispatch contributions, validation, and deferred scope are
+recorded in `docs/Codex/Completed.md`.

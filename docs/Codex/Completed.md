@@ -50,6 +50,55 @@ flash. Priest rune/target feedback and generic green healing remain separate.
 
 - None within UI-026 scope.
 
+## 2026-09-11 — BATTLE-TRANSPARENCY-001: Mage/Rogue Damage Preview MVP
+
+**Summary:**
+
+The Battle Scene can now show an authoritative, compact preview for selected
+Mage Fireball, Arcane Missiles, Frost Bolt and Rogue Sharp Blade/Poisoned
+Dagger targets before command confirmation. The server supplies only immediate
+direct-damage facts: current target HP, an audited target-specific range,
+evasion-only direct Hit Chance, deterministic prevented `Damage 0`, and
+separate meaningful Bleed/Poison/Cold consequences. Arcane returns per-target
+facts for its exact selected pair without an aggregate total.
+
+Preview is engine/adapter-owned, revision-bound, and non-mutating. It does not
+execute skill callbacks, consume RNG, enqueue events, alter command/turn state,
+or recreate combat formulas in React. Other heroes, healing, Shadow Evasion,
+DoT totals, chains, spreads, and generic fallback remain intentionally deferred.
+
+**Required role dispatch and contributions:**
+
+- **project-manager:** sequenced engine-contract/UI/test/review gates and
+  maintained the strict five-skill scope.
+- **game-engine-developer:** implemented audited pure evaluation primitives,
+  additive typed API models/route, revision/legality validation, and no-RNG
+  adapter behavior. A transient usage-limit interruption occurred after the
+  contract checkpoint; the role resumed after reset and completed its slice.
+- **ui-developer:** implemented typed provider lifecycle, abort/stale matching,
+  hover/focus/pinned compact presentation, accessibility, and Arcane
+  focus-first/hover-second correction without client combat calculations.
+- **test-automator:** added backend/API purity and legality coverage plus
+  frontend interaction coverage, including an exact 80% direct-Hit-Chance
+  regression. The role also resumed after the same transient usage interruption.
+- **reviewer:** identified the hover/focus precedence and documentation
+  blockers, then verified their resolution and final boundary compliance.
+
+**Validation:**
+
+- `.venv/bin/pytest -q tests/test_battle_transparency_preview.py` — passed: 15 tests (one existing FastAPI/httpx deprecation warning).
+- Backend selected regression suite — passed: 73 tests across preview, AI-001,
+  Mage attack-type propagation, and Battle API coverage.
+- Frontend preview and BattleScreen suites — passed: 37 tests across 3 suites.
+- `cd web-ui && npm run typecheck` — passed.
+- `cd web-ui && npm run lint -- --quiet` — passed.
+- Python compilation and `git diff --check` — passed.
+
+**Deferred scope:**
+
+- Healing, Shadow Evasion, all non-Mage/Rogue skills, future DoT totals,
+  chains/spreads/summons, and a generic roster preview are not represented.
+
 ## 2026-09-09 — Restart Consecutive Status-Damage Presentation
 
 **Summary:**
@@ -4076,3 +4125,119 @@ is supplied.
 **Unresolved Issues:**
 
 - None known within UI-025 scope.
+
+---
+
+## 2026-09-11 — AI-001: Structured Battle Strategies for Four Core Heroes
+
+**Summary:**
+
+Rogue Comprehensiveness, Mage Comprehensiveness, Priest Comprehensiveness, and
+Priest Discipline now use the documented Part A / Part B / Part C strategy
+pattern: bounded engine-authoritative snapshots, ordered explainable choices,
+and the existing skill/target handoff. The work only changes computer strategy
+selection; it does not alter skill formulas, statuses, target contracts,
+player flow, APIs, or UI.
+
+Mage and Discipline only select their two-target skills when an exact, distinct
+living pair exists. Priest Comprehensiveness does not spend Binding Heal on a
+full-health team. The adapter also no longer eagerly evaluates its random
+fallback when the strategy already provided a valid action.
+
+**Required role dispatch and contributions:**
+
+- **project-manager:** sequenced the study-first gate, ownership, test, and
+  review handoffs; assessed the work as moderate-to-high risk.
+- **game-engine-developer:** studied the live hero/adapter paths and implemented
+  the four structured strategies plus the minimal lazy adapter-fallback fix.
+- **test-automator:** added the deterministic AI-001 suite covering direct
+  decisions, seeded adapter turns, 1v1/2v2/3v3 legality, cooldown/dead-target
+  guards, stacks/refresh boundaries, flexible/multi-target cardinality, and
+  no-random-repair proof.
+- **reviewer:** independently identified and then verified resolution of the
+  multi-target, full-HP-heal, and test-harness blockers; final review approved.
+- **ui-developer:** intentionally omitted because no client change was
+  authorised or required.
+
+**Files Changed:**
+
+- `heroes/rogue.py`
+- `heroes/mage.py`
+- `heroes/priest.py`
+- `battle_api/adapter.py`
+- `tests/test_ai001_core_strategies.py`
+- `docs/Codex/Analysis/2026-09-11_AI-001_Four_Core_Hero_Strategy_Study.md`
+- `docs/Technical/Battle_Strategy_Template.md`
+- `docs/Technical/Architecture.md`
+- `docs/Codex/Current_Task.md`
+- `docs/Codex/Completed.md`
+
+**Validation:**
+
+- `.venv/bin/pytest -q tests/test_ai001_core_strategies.py` — passed: 35 tests.
+- `.venv/bin/python -m py_compile heroes/rogue.py heroes/mage.py heroes/priest.py battle_api/adapter.py` — passed.
+- `git diff --check` — passed.
+- Broader selected strategy/adapter/formation regression run — 160 passed;
+  one unrelated existing Warrior Defence expectation failed because it requests
+  `Shield Lash`, which the current runtime hero does not expose. This was not
+  modified for AI-001.
+
+**Known Follow-up:**
+
+- Mage tactical deprioritization of `Anti Magic Shield` follows current status
+  intent but is not a mechanics change; revisit only if a future engine audit
+  changes how that status is enforced.
+
+---
+
+## 2026-09-11 — COMBAT-008: Battle-Size Round Limits and Timeout Result Hierarchy
+
+**Summary:**
+
+The live adapter now gives each validated battle size an engine-owned maximum
+of completed rounds: 1v1 9, 2v2 13, and 3v3 15. The last permitted round
+finishes before the battle ends. Elimination remains decisive at that boundary;
+otherwise the backend selects the timeout winner by living-hero count and then
+by exact average living-hero HP percentage. Exact equality is a draw.
+
+New timeout results use the existing `victory` or `draw` outcome contract;
+friendly timeout victories can therefore progress stage/Arena PvE normally,
+while enemy victories and draws remain retryable. The UI continues to display
+the authoritative result and retains a display-only legacy `roundLimit` branch
+for older serialized payloads.
+
+**Files Changed:**
+
+- `game/game.py`
+- `battle_api/adapter.py`
+- `tests/test_battle_round_limits.py`
+- `tests/test_battle_adapter.py`
+- `web-ui/components/battle/BattleScreen.tsx`
+- `web-ui/lib/battle/types.ts`
+- `web-ui/tests/ui-017-stage-and-structured-config.test.tsx`
+- `docs/GDD/Combat_System.md`
+- `docs/GDD/Game_Design_Document.md`
+- `docs/web-ui/BATTLE_DATA_CONTRACT_V1.md`
+- `docs/web-ui/Screen_Flow.md`
+- `docs/Technical/Player_Data_and_Save_System.md`
+- `docs/Codex/Completed.md`
+
+**Validation:**
+
+- `.venv/bin/pytest -q tests/test_battle_round_limits.py tests/test_battle_adapter.py` — passed: 81 tests.
+- `.venv/bin/pytest -q tests/test_ui020_progression.py tests/test_ui023_arena.py` — passed: 21 tests; the existing stage/Arena API gates retain friendly-victory-only progression.
+- `cd web-ui && npm test -- --run tests/ui-017-stage-and-structured-config.test.tsx` — passed: 8 tests.
+- `cd web-ui && npm test -- --run tests/ui-017-stage-and-structured-config.test.tsx tests/ui-020-progression.test.tsx tests/ui-023-arena-debug.test.tsx` — passed: 27 tests; completion routing preserves advance only for the authoritative friendly victory.
+- `cd web-ui && npm run typecheck` — passed.
+- `git diff --check` — passed.
+- Local Ego inspection at 1613×838 loaded the Debug Team Builder without a
+  Battle Screen layout regression. The isolated browser selection control did
+  not accept the scripted hero assignment, so forced-timeout presentation was
+  validated through deterministic adapter/progression/UI tests rather than a
+  manually played live timeout.
+
+**Unresolved Issues:**
+
+- A manual live timeout walkthrough for each battle size remains desirable
+  before release; no correctness failure was found in the deterministic
+  engine, API, progression, or UI validation above.

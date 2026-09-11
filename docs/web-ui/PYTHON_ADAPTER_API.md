@@ -306,6 +306,25 @@ applicable.
 
 ## Source and rule mapping
 
+## BATTLE-TRANSPARENCY-001 additive preview operation
+
+`POST /api/v1/battles/{battleId}/preview` is an additive, revision-bound
+information operation for the audited MVP allowlist only: Mage
+Comprehensiveness Fireball, Arcane Missiles, and Frost Bolt; Rogue
+Comprehensiveness Sharp Blade and Poisoned Dagger. It accepts
+`expectedRevision`, `actorId`, `skillId`, and `targetIds` and validates the
+active actor, available skill, exact legal IDs/cardinality, and duplicate IDs
+under the battle session lock. It does not execute a skill, enqueue events,
+advance a turn or revision, mutate battle state, or consume the session/global
+RNG.
+
+Each target response supplies current/max HP, either an immediate direct damage
+range or deterministic prevented state (`Damage 0`), direct-damage Hit Chance
+(evasion only), and separately typed material consequences. There is no DoT or
+chain total, full-roster fallback, hidden formula input, or combined hit/proc
+percentage. Arcane requires exactly two distinct legal targets and returns
+per-target facts only; there is no aggregate total.
+
 | Contract definition | Exact Python source | Constructor / engine skills |
 |---|---|---|
 | `hero.priest.comprehensiveness` / Aurelia | `heroes.priest.Priest_Comprehensiveness` | Holy Smite, Shadow Word Pain, Binding Heal |

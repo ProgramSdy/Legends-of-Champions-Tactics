@@ -251,6 +251,8 @@ export interface TurnControl {
 }
 
 export type BattleOutcome = {
+  // `roundLimit` is retained only so an older serialized payload can still be
+  // displayed. New adapter outcomes resolve the timeout as victory or draw.
   kind: "victory" | "draw" | "roundLimit";
   winningSideId: SideId | null;
 };
@@ -332,6 +334,43 @@ export type BattleCommand =
   | { type: "useSkill"; commandId: string; expectedRevision: number; actorId: string; skillId: string; targetIds: string[] }
   | { type: "endTurn"; commandId: string; expectedRevision: number; actorId: string };
 
+export interface BattlePreviewRequest {
+  expectedRevision: number;
+  actorId: string;
+  skillId: string;
+  targetIds: string[];
+}
+
+export type BattlePreviewConsequence = {
+  kind: "bleed" | "poison" | "cold";
+  certainty: "conditional" | "onHit";
+  chancePercent?: number | null;
+};
+
+export interface BattlePreviewTarget {
+  targetId: string;
+  currentHp: number;
+  maxHp: number;
+  primary: {
+    kind: "damage" | "prevented";
+    amountRange: { min: number; max: number };
+    reasonId?: string | null;
+  };
+  directHitChancePercent: number;
+  consequences: BattlePreviewConsequence[];
+}
+
+export interface BattlePreview {
+  revision: number;
+  actorId: string;
+  skillId: string;
+  requestedTargetIds: string[];
+  selectedTargetIds: string[];
+  coverage: "authoritative" | "unavailable";
+  reasonId?: string | null;
+  targets: BattlePreviewTarget[];
+}
+
 export interface BattleState {
   revision: number;
   snapshot: BattleSnapshot;
@@ -343,6 +382,7 @@ export interface BattleState {
 export interface BattleProvider {
   getState(): Promise<BattleState>;
   submitCommand(command: BattleCommand): Promise<PresentationScript>;
+  previewAction?(request: BattlePreviewRequest, signal?: AbortSignal): Promise<BattlePreview>;
 }
 
 export type ProviderErrorKind = "disconnected" | "rejected" | "stale" | "adapter";

@@ -348,7 +348,7 @@ class Paladin_Protection(Paladin):
         basic_damage = round((self.damage - other_hero.defense) * 1)
         variation = random.randint(-1, 1)
         actual_damage = max(1, basic_damage + variation)
-        basic_healing_heroric_charge = 32
+        basic_healing_heroric_charge = 30
         variation = random.randint(-2, 2)
         actual_healing = basic_healing_heroric_charge + variation
 
@@ -451,34 +451,6 @@ class Paladin_Protection(Paladin):
 
     def ai_choose_skill(self, opponents, allies):
         return self.analyse_battle_strategy(self.collect_battle_information(opponents, allies), opponents, allies)
-
-        heal, blast, protection = (
-            skills.get("Purify Healing"), skills.get("Holy Blast"), skills.get("Shield of Protection")
-        )
-        allies_info, enemies = battle_information["allies"], battle_information["opponents"]
-        weakest_ally = self._paladin_lowest_health(allies_info)
-        curable = set(self.list_status_debuff_magic) | set(self.list_status_debuff_bleeding) | set(self.list_status_debuff_disease) | set(self.list_status_debuff_physical) | set(self.list_status_debuff_toxic)
-        afflicted = [item for item in allies_info if item["active_statuses"] & curable]
-        self_afflicted = bool(battle_information["self"]["active_statuses"] & curable)
-        # 1. Cleanse/protect self; 2. save critical allies; 3. remove ally debuffs.
-        if protection and (battle_information["self"]["hp_ratio"] <= .40 or self_afflicted):
-            return self._paladin_choose(protection)
-        if heal and weakest_ally and weakest_ally["hp_ratio"] <= .38:
-            return self._paladin_choose(heal, weakest_ally["hero"])
-        if heal and afflicted:
-            return self._paladin_choose(heal, self._paladin_lowest_health(afflicted)["hero"])
-        # 4. Prefer Holy Blast's two-target value; 5. sustain an injured ally.
-        if blast and len(enemies) >= 2:
-            ordered = sorted(enemies, key=lambda item: ({"Mage": 0, "Rogue": 0, "Priest": 1}.get(item["faculty"], 2), item["hp_ratio"], item["hero"].name))
-            return self._paladin_choose(blast, [item["hero"] for item in ordered[:2]])
-        if heal and weakest_ally and weakest_ally["hp_ratio"] <= .62:
-            return self._paladin_choose(heal, weakest_ally["hero"])
-        # 6. Ranged pressure; 7. protection when no viable target remains.
-        if blast and enemies:
-            return self._paladin_choose(blast, [self._paladin_priority_enemy(enemies)["hero"]])
-        if protection:
-            return self._paladin_choose(protection)
-        return self._paladin_choose(next(iter(skills.values()), None))
 
     def ai_choose_skill(self, opponents, allies):
         return self.analyse_battle_strategy(self.collect_battle_information(opponents, allies), opponents, allies)

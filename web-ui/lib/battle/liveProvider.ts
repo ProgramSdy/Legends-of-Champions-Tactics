@@ -6,6 +6,8 @@ import {
   type ArenaStateResponse,
   type BattleCreateConfiguration,
   type BattleCommand,
+  type BattlePreview,
+  type BattlePreviewRequest,
   type BattleProvider,
   type BattleSnapshot,
   type BattleState,
@@ -136,6 +138,46 @@ function isSaveSlotId(value: unknown): value is SaveSlotId {
 
 function isNullableString(value: unknown): value is string | null {
   return value === null || typeof value === "string";
+}
+
+function isBattlePreview(value: unknown): value is BattlePreview {
+  if (!isRecord(value)
+    || !Number.isInteger(value.revision)
+    || typeof value.actorId !== "string"
+    || typeof value.skillId !== "string"
+    || !Array.isArray(value.requestedTargetIds)
+    || !value.requestedTargetIds.every((id) => typeof id === "string")
+    || !Array.isArray(value.selectedTargetIds)
+    || !value.selectedTargetIds.every((id) => typeof id === "string")
+    || (value.coverage !== "authoritative" && value.coverage !== "unavailable")
+    || !(value.reasonId === undefined || isNullableString(value.reasonId))
+    || !Array.isArray(value.targets)) return false;
+
+  return value.targets.every((target) => {
+    if (!isRecord(target)
+      || typeof target.targetId !== "string"
+      || !Number.isFinite(target.currentHp)
+      || !Number.isFinite(target.maxHp)
+      || !isRecord(target.primary)
+      || (target.primary.kind !== "damage" && target.primary.kind !== "prevented")
+      || !isRecord(target.primary.amountRange)
+      || !Number.isFinite(target.primary.amountRange.min)
+      || !Number.isFinite(target.primary.amountRange.max)
+      || !(target.primary.reasonId === undefined || isNullableString(target.primary.reasonId))
+      || !Number.isFinite(target.directHitChancePercent)
+      || Number(target.directHitChancePercent) < 0
+      || Number(target.directHitChancePercent) > 100
+      || !Array.isArray(target.consequences)) return false;
+
+    return target.consequences.every((consequence) => isRecord(consequence)
+      && (consequence.kind === "bleed" || consequence.kind === "poison" || consequence.kind === "cold")
+      && (consequence.certainty === "conditional" || consequence.certainty === "onHit")
+      && (consequence.chancePercent === undefined
+        || consequence.chancePercent === null
+        || (Number.isFinite(consequence.chancePercent)
+          && Number(consequence.chancePercent) >= 0
+          && Number(consequence.chancePercent) <= 100)));
+  });
 }
 
 function isSaveSlotSummary(value: unknown): value is SaveSlotSummary {
@@ -563,5 +605,26 @@ export class LiveBattleProvider implements BattleProvider {
       snapshot: result.snapshot,
       revision: result.revision,
     };
+  }
+
+  async previewAction(request: BattlePreviewRequest, signal?: AbortSignal): Promise<BattlePreview> {
+    if (!this.battleId) {
+      throw new BattleProviderError("The live battle session has not initialized.", "adapter");
+    }
+    const envelope = await this.request<unknown>(
+      `/api/v1/battles/${encodeURIComponent(this.battleId)}/preview`,
+      { method: "POST", body: JSON.stringify(request), signal },
+    );
+    if (!isBattlePreview(envelope.data)
+      || envelope.revision !== envelope.data.revision
+      || envelope.data.revision !== request.expectedRevision
+      || envelope.data.actorId !== request.actorId
+      || envelope.data.skillId !== request.skillId) {
+      throw new BattleProviderError(
+        "The battle service returned an unsupported action preview.",
+        "adapter",
+      );
+    }
+    return structuredClone(envelope.data);
   }
 }

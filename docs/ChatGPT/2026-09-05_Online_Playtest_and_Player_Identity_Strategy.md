@@ -1,4 +1,4 @@
-# Legends of Champions Tactics --- Online Playtest & Player Identity Strategy
+# Legends of Champions Tactics --- Online Play Test & Player Identity Strategy
 
 **Date:** 5 September 2026 **Status:** Planning decision / pre-alpha
 online playtest

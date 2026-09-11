@@ -142,11 +142,16 @@ design rule.
 
 ## Outcomes and Round Limit
 
-Exactly one living group wins; no living group is a draw. The configured cap is
-15, but the current increment/check placement normally permits actions in
-rounds 1–14 and produces a round-limit result on the next transition. It does
-not currently choose a HP/tiebreak winner. Whether this is intended requires
-owner confirmation.
+Exactly one living group wins; no living group is a draw. The completed-round
+cap is battle-size owned: 1v1 allows 9 rounds, 2v2 allows 13, and 3v3 allows
+15. The final permitted round always resolves fully and no later round begins.
+At that boundary, elimination remains decisive. If both sides still have living
+heroes, the side with more living heroes wins; if the counts match, the engine
+compares each side's exact average living-hero HP percentage. Raw HP and
+rounded/tolerance float values are not used. An exact equality is a draw.
+Timeout winners use the normal victory outcome with their winning side, so
+only a friendly timeout victory can progress PvE; a timeout draw remains
+retryable.
 
 ## Known Limitations and Open Questions
 
@@ -160,6 +165,9 @@ owner confirmation.
 - 2026-09-10 — Reduced Protection Paladin Holy Aura to an independently rolled
   6–8 heal per living recipient and documented the live Paladin computer
   strategies and their formation-aware targeting.
+- 2026-09-11 — Added battle-size completed-round caps (1v1 9, 2v2 13, 3v3
+  15), final-round completion, and the authoritative timeout winner/draw
+  hierarchy.
 - 2026-08-15 — Extended authoritative formations to the three approved 3v3
   mappings without changing Warrior targeting or damage formulas.
 - 2026-08-14 — Added authoritative 2v2 formations, Warrior attack-position

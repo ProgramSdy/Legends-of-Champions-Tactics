@@ -18,9 +18,16 @@ MAGENTA = "\033[95m"
 CYAN = "\033[96m"
 RESET = "\033[0m"
 
+# The adapter supplies its already-validated battle size when it constructs a
+# live web battle.  Keeping the limits here makes the engine, rather than a
+# screen or progression caller, the owner of the completed-round boundary.
+MAX_COMPLETED_ROUNDS_BY_BATTLE_SIZE = {1: 9, 2: 13, 3: 15}
+
 class Game:
 
-    def __init__(self, player_heroes, opponent_heroes, mode, interface=None):
+    def __init__(
+        self, player_heroes, opponent_heroes, mode, interface=None, battle_size=None
+    ):
         self.player_heroes = player_heroes
         self.opponent_heroes = opponent_heroes
         self.mode = mode
@@ -30,7 +37,12 @@ class Game:
         self.groups_hero = {}
         self.winner = []
         self.round_counter = 1
-        self.round_counter_max = 15
+        self.battle_size = battle_size
+        self.round_counter_max = (
+            MAX_COMPLETED_ROUNDS_BY_BATTLE_SIZE[battle_size]
+            if battle_size is not None
+            else 15
+        )
         self.output_buffer = []
         # Ordered, channel-aware presentation prose for non-terminal clients.
         # Authoritative state remains in the normal mutable battle model.
@@ -412,11 +424,16 @@ class Game:
         #self.notify_observers()
 
     def end_round(self):
-        self.round_counter += 1
         self.reset_hero_action_label()
-        if self.round_counter >= self.round_counter_max or len(self.check_groups_status()) <= 1:
+        # A completed final round is allowed to resolve in full.  Elimination
+        # is checked before the timeout boundary so a last-round knockout
+        # always wins over any survivor/HP tiebreak.
+        if len(self.check_groups_status()) <= 1:
+            self.game_state = "game_over"
+        elif self.round_counter >= self.round_counter_max:
             self.game_state = "game_over"
         else:
+            self.round_counter += 1
             self.game_state = "round_start"
 
     def game_over(self):

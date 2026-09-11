@@ -102,7 +102,9 @@ Arena Run creation validates exactly six distinct owned definition IDs and
 atomically stores the ordered squad plus twelve server-seeded nodes. Only the
 current node may launch; only its authoritative friendly victory can add a
 receipt and advance the run. Duplicate completion returns existing state
-without advancing twice. Loss, draw, and round limit leave the node retryable.
+without advancing twice. Loss and draw leave the node retryable. A completed
+round-limit resolves to an ordinary authoritative victory or draw; only a
+friendly victory may advance the node.
 An explicitly confirmed abandon atomically deletes that active profile's run
 and its twelve-node records; it does not alter its unlocks, training progress,
 or other save slots. A new run remains an intentional six-hero squad action.

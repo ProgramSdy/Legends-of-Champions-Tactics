@@ -1,5 +1,22 @@
 # Technical Architecture
 
+## Structured Computer Battle Strategies
+
+## Battle Information Transparency MVP
+
+Battle previews are engine-owned, non-mutating audited facts transported by the
+adapter at a specific revision. The UI requests and renders them only for the
+approved Mage/Rogue damage-skill allowlist; it neither runs skill callbacks nor
+copies combat formulas. Preview evaluation cannot consume RNG, mutate
+heroes/session/events/turns, or predict the next seeded roll. Unsupported
+skills/outcomes are omitted rather than approximated.
+
+New specialization-owned computer strategies follow the authoritative
+study-first Part A / Part B / Part C standard in
+`docs/Technical/Battle_Strategy_Template.md`. That template preserves the
+engine/adapter legality boundary and requires real computer-turn regression
+coverage; it does not change the shared `Hero` AI framework.
+
 ## Purpose
 
 Authoritative high-level technical architecture for **Legends of Champions Tactics**.

@@ -106,8 +106,10 @@ heroes to create an immutable squad and persisted twelve-node run. The hub
 shows all server-authored node previews; only the next unresolved node can
 open its squad-limited Team Builder. The player selects the node-size team and
 friendly formation where applicable; the server supplies its computer enemy.
-Friendly victory commits one node and advances once, while other outcomes
-retry. After node twelve, the completion panel exposes **OK**; it returns the
+Friendly victory commits one node and advances once, while defeat or draw
+retry. A round-limit resolution is an ordinary authoritative victory or draw:
+only a friendly timeout victory commits. After node twelve, the completion panel
+exposes **OK**; it returns the
 player to Stage Map. Re-entering Arena then opens the intentional six-hero
 squad builder rather than replaying the completion panel. The completed run is
 replaced only after the player confirms a new squad.
@@ -238,8 +240,10 @@ outcome, initially focuses its action, and contains keyboard Tab focus. Arena
 returns to its Team Builder. In either structured stage, the typed
 authoritative outcome drives the action: a friendly victory is committed by
 the backend and opens the next permitted battle; the ninth committed victory
-returns to `/stages`. Enemy victory, draw, and round-limit results show
-**Retry Battle** and return to preparation for that same battle. No result is
+returns to `/stages`. Enemy victory and draw show **Retry Battle** and return
+to preparation for that same battle. New timeout results are delivered as
+victory or draw, while legacy round-limit payloads remain retryable for display
+compatibility. No result is
 inferred from a log line or visual label.
 
 ### Asset Gallery

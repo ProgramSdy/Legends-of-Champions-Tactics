@@ -113,7 +113,7 @@ describe("structured-stage compatibility contracts", () => {
     [{ kind: "victory", winningSideId: "friendly" }, "CONTINUE TRAINING"],
     [{ kind: "victory", winningSideId: "enemy" }, "RETRY BATTLE"],
     [{ kind: "draw", winningSideId: null }, "RETRY BATTLE"],
-    [{ kind: "roundLimit", winningSideId: null }, "RETRY BATTLE"],
+    [{ kind: "draw", winningSideId: null }, "RETRY BATTLE"],
   ] satisfies Array<[BattleOutcome, string]>) (
     "forwards authoritative $kind completion without interpreting the result",
     async (outcome, label) => {

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { usePresentationQueue } from "@/lib/battle/usePresentationQueue";
-import type { BattleEvent, BattleEventType, BattleOutcome, BattleProvider, CombatantState, PresentationScript, SideId } from "@/lib/battle/types";
+import type { BattleEvent, BattleEventType, BattleOutcome, BattlePreviewTarget, BattleProvider, CombatantState, LegalAction, PresentationScript, SideId } from "@/lib/battle/types";
 import { AssetImage } from "./AssetImage";
 import { HeroCard, Meter } from "./HeroCard";
 import { NoFourthSkillCard, SkillCard } from "./SkillCard";
@@ -11,6 +11,7 @@ import { formationFor, getBattleFormat } from "@/lib/battle/formations";
 import { BATTLE_BACKGROUND } from "@/lib/battle/battleBackgrounds";
 import { heroFigureScaleFor } from "@/lib/battle/assets";
 import { useBattlePresentationConfig } from "@/lib/battle/presentationConfig";
+import { isAuditedPreviewSkill, useBattlePreview } from "@/lib/battle/useBattlePreview";
 
 const logGlyph: Record<BattleEventType, string> = {
   battleStarted: "◆", roundStarted: "◎", turnStarted: "▶", skillStarted: "✦",
@@ -74,11 +75,55 @@ function targetEffectFor(event: BattleEvent | null, combatantId: string, isPries
   return null;
 }
 
-function BattlefieldFigure({ hero, active, event, hpEvent, healingCasterEvent, eventSourceSide, eventSourceIsPriest, eventSourceIsPaladin, selectable, targetSelectionPending, selected, onSelect, onTargetHover, formationScale }: {
+type TargetPreviewPhase = "idle" | "loading" | "ready" | "unavailable";
+
+const consequenceLabels: Record<BattlePreviewTarget["consequences"][number]["kind"], string> = {
+  bleed: "Bleed",
+  poison: "Poison",
+  cold: "On hit",
+};
+
+function TargetPreviewCard({ id, phase, skillName, targetName, target }: {
+  id: string;
+  phase: TargetPreviewPhase;
+  skillName: string;
+  targetName: string;
+  target: BattlePreviewTarget | null;
+}) {
+  return <section className={`target-preview-card ${phase}`} id={id} data-battle-layer="world-ui">
+    <strong>{skillName.toUpperCase()} <span aria-hidden="true">→</span> {targetName}</strong>
+    {phase === "loading" ? <p>Checking outcome…</p>
+      : phase === "unavailable" || !target ? <p>Preview unavailable</p>
+        : <dl>
+          <div><dt>Damage</dt><dd>{target.primary.kind === "prevented" ? "0 · Blocked" : `${target.primary.amountRange.min}–${target.primary.amountRange.max}`}</dd></div>
+          {target.primary.kind !== "prevented" ? <div><dt>Hit Chance</dt><dd>{target.directHitChancePercent}%</dd></div> : null}
+          <div><dt>Target HP</dt><dd>{target.currentHp} / {target.maxHp}</dd></div>
+          {target.consequences.map((consequence) => <div className="preview-consequence" key={`${consequence.kind}.${consequence.certainty}`}>
+            <dt>{consequenceLabels[consequence.kind]}</dt>
+            <dd>{consequence.kind === "cold"
+              ? "Applies Cold"
+              : consequence.chancePercent === null || consequence.chancePercent === undefined
+                ? consequence.certainty === "onHit" ? "On hit" : "Conditional"
+                : `${consequence.chancePercent}% chance`}</dd>
+          </div>)}
+        </dl>}
+  </section>;
+}
+
+function completePreviewTargets(legal: LegalAction | undefined, selected: readonly string[], anchorId: string | null): string[] {
+  if (!legal || !anchorId) return [];
+  if (legal.maximumTargets === 1) return [anchorId];
+  if (selected.length >= legal.minimumTargets && selected.length <= legal.maximumTargets) return [...selected];
+  const candidate = selected.includes(anchorId) ? [...selected] : [...selected, anchorId];
+  return candidate.length >= legal.minimumTargets && candidate.length <= legal.maximumTargets ? candidate : [];
+}
+
+function BattlefieldFigure({ hero, active, event, hpEvent, healingCasterEvent, eventSourceSide, eventSourceIsPriest, eventSourceIsPaladin, selectable, targetSelectionPending, selected, onSelect, onTargetHover, onTargetFocus, formationScale, previewPhase, previewTarget, previewSkillName, previewDescriptionId }: {
   hero: CombatantState; active: boolean; event: BattleEvent | null; eventSourceSide: SideId | null;
   hpEvent: BattleEvent | null;
   healingCasterEvent: BattleEvent | null; eventSourceIsPriest: boolean; eventSourceIsPaladin: boolean;
-  selectable: boolean; targetSelectionPending: boolean; selected: boolean; onSelect: () => void; onTargetHover: (combatantId: string | null) => void; formationScale: number;
+  selectable: boolean; targetSelectionPending: boolean; selected: boolean; onSelect: () => void; onTargetHover: (combatantId: string | null) => void; onTargetFocus: (combatantId: string | null) => void; formationScale: number;
+  previewPhase: TargetPreviewPhase; previewTarget: BattlePreviewTarget | null; previewSkillName: string; previewDescriptionId?: string;
 }) {
   const [figureFrameHeight, setFigureFrameHeight] = useState(FALLBACK_FIGURE_FRAME_HEIGHT);
   const eventTarget = event?.targetId === hero.id;
@@ -110,15 +155,17 @@ function BattlefieldFigure({ hero, active, event, hpEvent, healingCasterEvent, e
       <button className={`battle-target-control ${targetSelectionPending ? "target-selection-pending" : ""}`} data-battle-layer="world-ui" type="button" disabled={!selectable} onClick={onSelect}
         onMouseEnter={() => { if (selectable) onTargetHover(hero.id); }}
         onMouseLeave={() => onTargetHover(null)}
-        onFocus={() => { if (selectable) onTargetHover(hero.id); }}
-        onBlur={() => onTargetHover(null)}
+        onFocus={() => { if (selectable) onTargetFocus(hero.id); }}
+        onBlur={() => onTargetFocus(null)}
         onKeyDown={(event) => {
           if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
             onSelect();
           }
         }}
-        aria-label={`${hero.displayName}${selectable ? ", selectable target" : ""}`}>
+        aria-label={`${hero.displayName}${selectable ? ", selectable target" : ""}`}
+        aria-pressed={selectable ? selected : undefined}
+        aria-describedby={previewDescriptionId}>
         <span className="figure-footprint">
           <span className="figure-aura" />
           <AssetImage request={{ kind: "figure", key: assetKey, name: hero.displayName, className: hero.faculty }} className="figure-art"
@@ -131,6 +178,9 @@ function BattlefieldFigure({ hero, active, event, hpEvent, healingCasterEvent, e
         {effect === "healingApplied" && eventTarget && event?.amount !== undefined && <span className="combat-text heal">+{event.amount}</span>}
         {effect === "attackEvaded" && <span className="combat-text evade">EVADE</span>}
       </button>
+      {previewPhase !== "idle" && previewDescriptionId
+        ? <TargetPreviewCard id={previewDescriptionId} phase={previewPhase} skillName={previewSkillName} targetName={hero.displayName} target={previewTarget} />
+        : null}
     </div>
   );
 }
@@ -157,6 +207,7 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
   const [selectedSkill, setSelectedSkill] = useState<string | null>(null);
   const [selectedTargets, setSelectedTargets] = useState<string[]>([]);
   const [hoveredTargetId, setHoveredTargetId] = useState<string | null>(null);
+  const [focusedTargetId, setFocusedTargetId] = useState<string | null>(null);
   const [autoBattle, setAutoBattle] = useState(false);
   const [fullscreenError, setFullscreenError] = useState<string | null>(null);
   const [completionPending, setCompletionPending] = useState(false);
@@ -208,7 +259,33 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
   // skills at the far right, as requested, while future real skills remain
   // visible even if the total exceeds the four-column baseline.
   const placeholderCount = Math.max(0, 4 - orderedActiveSkills.length - passiveSkills.length);
-  const highlightedTargetIds = [...selectedTargets, ...(legal && hoveredTargetId ? [hoveredTargetId] : [])];
+  // Pointer intent wins while present; keyboard focus remains the fallback.
+  // This lets a focused first Arcane target combine with a hovered second one.
+  const previewAnchorId = hoveredTargetId ?? focusedTargetId ?? selectedTargets.at(-1) ?? null;
+  const previewTargetIds = completePreviewTargets(legal, selectedTargets, previewAnchorId);
+  const previewRequest = acceptsCommands
+    && !autoBattle
+    && snapshot?.activeCombatantId
+    && selectedSkill
+    && isAuditedPreviewSkill(selectedSkill)
+    && previewTargetIds.length > 0
+    ? {
+        expectedRevision: revision,
+        actorId: snapshot.activeCombatantId,
+        skillId: selectedSkill,
+        targetIds: previewTargetIds,
+      }
+    : null;
+  const { phase: previewPhase, preview } = useBattlePreview(provider, previewRequest);
+  const previewSkillName = active?.skills.find((skill) => skill.id === selectedSkill)?.displayName ?? "Selected skill";
+  const compactPreview = presentationConfig.mode === "pad"
+    || presentationConfig.mode === "pad-mini"
+    || presentationConfig.mode === "phone";
+  const highlightedTargetIds = [...new Set([
+    ...selectedTargets,
+    ...(legal && hoveredTargetId ? [hoveredTargetId] : []),
+    ...(legal && focusedTargetId ? [focusedTargetId] : []),
+  ])];
   const sideHeroes = (side: "friendly" | "enemy") => {
     const definition = snapshot?.sides.find((item) => item.id === side);
     const items = definition?.combatantIds.map((id) => combatants[id]) ?? [];
@@ -232,7 +309,8 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
 
   const outcomeLabel = snapshot.outcome?.kind === "victory"
     ? `${snapshot.outcome.winningSideId === "friendly" ? "YOUR TEAM" : "ENEMY TEAM"} VICTORIOUS`
-    : snapshot.outcome?.kind === "roundLimit" ? "ROUND LIMIT REACHED" : "BATTLE ENDED IN A DRAW";
+    : snapshot.outcome?.kind === "roundLimit" ? "BATTLE ENDED AT ROUND LIMIT"
+      : "BATTLE ENDED IN A DRAW";
   const completionLabel = snapshot.outcome && completionActionLabel
     ? completionActionLabel(snapshot.outcome)
     : "RETURN TO TEAM BUILDER";
@@ -264,7 +342,7 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
       skillId: selectedSkill,
       targetIds: selectedTargets,
     }));
-    setSelectedSkill(null); setSelectedTargets([]);
+    setSelectedSkill(null); setSelectedTargets([]); setHoveredTargetId(null); setFocusedTargetId(null);
   };
 
   const toggleTarget = (heroId: string) => {
@@ -327,6 +405,18 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
             && <div className={`effect-layer ${activeEvent.effectHint}`} data-battle-layer="combat-vfx" aria-hidden="true"><span /></div>}
           {battlefield.map((hero) => {
             const position = formationFor(snapshot, hero.sideId, hero.slot, hero.position);
+            const targetPreview = preview?.targets.find((target) => target.targetId === hero.id) ?? null;
+            const figurePreviewPhase: TargetPreviewPhase = targetPreview && previewPhase === "ready"
+              ? "ready"
+              : hero.id === previewAnchorId && (previewPhase === "loading" || previewPhase === "unavailable")
+                ? previewPhase
+                : "idle";
+            const hasCompactDescription = compactPreview && (targetPreview !== null || figurePreviewPhase !== "idle");
+            const previewDescriptionId = hasCompactDescription
+              ? "battle-target-preview-dock"
+              : !compactPreview && figurePreviewPhase !== "idle"
+                ? `target-preview-${hero.id.replaceAll(".", "-")}`
+                : undefined;
             return <div className="formation-slot" key={hero.id} data-battle-layer="combat-actor" data-slot={position.slot} data-position={hero.position} style={{ left: `${position.x}%`, top: `${position.y}%`, zIndex: position.depth, "--figure-scale": position.scale } as CSSProperties}>
             <BattlefieldFigure hero={hero} active={hero.id === snapshot.activeCombatantId}
               event={activeEvent} hpEvent={activeHpEvent} healingCasterEvent={activeHealingCasterEvent}
@@ -335,9 +425,27 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
               targetSelectionPending={acceptsCommands && Boolean(legal?.validTargetIds.includes(hero.id)) && !isPlaying && targetSelectionPending}
               selected={selectedTargets.includes(hero.id)}
               formationScale={position.scale}
-              onSelect={() => toggleTarget(hero.id)} onTargetHover={setHoveredTargetId} />
+              previewPhase={compactPreview ? "idle" : figurePreviewPhase}
+              previewTarget={targetPreview}
+              previewSkillName={previewSkillName}
+              previewDescriptionId={previewDescriptionId}
+              onSelect={() => toggleTarget(hero.id)} onTargetHover={setHoveredTargetId} onTargetFocus={setFocusedTargetId} />
             </div>;
           })}
+          {selectedSkill && isAuditedPreviewSkill(selectedSkill) && legal && legal.maximumTargets > 1
+            && selectedTargets.length < legal.minimumTargets
+            ? <aside className="target-preview-selection-status" aria-live="polite">
+                SELECT {legal.minimumTargets} TARGETS · {selectedTargets.length} SELECTED
+              </aside>
+            : null}
+          {compactPreview && previewPhase !== "idle" && previewAnchorId ? <aside className="target-preview-dock" id="battle-target-preview-dock">
+            {previewPhase === "ready" && preview
+              ? preview.targets.map((target) => {
+                  const hero = combatants[target.targetId];
+                  return <TargetPreviewCard key={target.targetId} id={`target-preview-dock-${target.targetId.replaceAll(".", "-")}`} phase="ready" skillName={previewSkillName} targetName={hero?.displayName ?? "Target"} target={target} />;
+                })
+              : <TargetPreviewCard id="target-preview-dock-status" phase={previewPhase} skillName={previewSkillName} targetName={combatants[previewAnchorId]?.displayName ?? "Target"} target={null} />}
+          </aside> : null}
           <div className="battlefield-caption"><span>THE FALLEN CITADEL</span><small>{getBattleFormat(snapshot).toUpperCase()} FORMATION</small></div>
         </section>
         <TeamPanel side="enemy" heroes={sideHeroes("enemy")} activeId={snapshot.activeCombatantId} highlightedTargetIds={highlightedTargetIds} />
@@ -367,7 +475,7 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
           {orderedActiveSkills.map((item) => (
             <SkillCard key={item.id} skill={item} selected={selectedSkill === item.id}
               legal={acceptsCommands && snapshot.legalActions.some((action) => action.skillId === item.id)}
-              disabled={isPlaying || !acceptsCommands} onSelect={() => { setSelectedSkill(item.id); setSelectedTargets([]); }} />
+              disabled={isPlaying || !acceptsCommands} onSelect={() => { setSelectedSkill(item.id); setSelectedTargets([]); setHoveredTargetId(null); setFocusedTargetId(null); }} />
           ))}
           {Array.from({ length: placeholderCount }, (_, index) => <NoFourthSkillCard key={`no-fourth-skill-${index}`} />)}
           {passiveSkills.map((item) => (
@@ -387,7 +495,7 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
         {mockDemos && <div className="demo-controls" aria-label="Mock presentation demos">
           <span>MOCK EVENT DEMOS</span>{mockDemos.map((demo) => <button key={demo.id} disabled={isPlaying || entryLocked} onClick={() => void present(demo.run)}>{demo.label}</button>)}
         </div>}
-        <label className="toggle">AUTO BATTLE <input type="checkbox" checked={autoBattle} disabled={entryLocked || isPlaying} onChange={(event) => setAutoBattle(event.target.checked)} /><span /></label>
+        <label className="toggle">AUTO BATTLE <input type="checkbox" checked={autoBattle} disabled={entryLocked || isPlaying} onChange={(event) => { setAutoBattle(event.target.checked); setHoveredTargetId(null); setFocusedTargetId(null); }} /><span /></label>
         {!active ? <button className="end-turn" disabled>BATTLE ENDED</button> : isPlaying ? <button className="end-turn" onClick={skip} disabled={!canSkip || isOpening}>{isOpening ? "OPENING BATTLE…" : canSkip ? "SKIP EFFECT" : "RESOLVING…"}</button> : !acceptsCommands ? <button className="end-turn" disabled>{entryLocked ? "BATTLE OPENING" : "AUTOMATIC TURN"}</button> : <button className="end-turn" onClick={triggerSkill} disabled={!selectedSkill || !legal || selectedTargets.length < legal.minimumTargets || selectedTargets.length > legal.maximumTargets}>{selectedSkill ? "CAST SKILL" : "SELECT SKILL"}</button>}
         {onResign ? <button type="button" className="resign-battle" onClick={() => setResignConfirmationOpen(true)}>RESIGN</button> : null}
       </footer>

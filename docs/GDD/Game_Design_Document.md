@@ -26,15 +26,17 @@ outcomes.
 3. Create a battle; Python constructs the combatants and begins round flow.
 4. On a player-controlled turn, choose a legal skill and its legal targets.
 5. Observe authoritative events, update strategy around status/cooldown/turn
-   state, and continue until victory, defeat, draw, or round limit.
+   state, and continue until victory, defeat, or draw. At a completed-round
+   limit, the engine resolves a normal victory or exact draw from its
+   authoritative timeout hierarchy.
 
 The Stage Map also offers two backend-authoritative structured training stages:
 Paladin's Altar and Warrior's Barrack. Each has nine fixed battles with an
 ordered predefined computer enemy team and fixed enemy formation. In 2v2 and
 3v3, the player chooses a size-valid friendly formation; 1v1 has no formation
 selection. The player can choose only heroes currently unlocked for the stable
-local profile. Friendly victory is the only progression trigger; defeat, draw,
-and round limit retry the same battle. A completed step unlocks only the next
+local profile. Friendly victory is the only progression trigger; defeat and
+draw retry the same battle. A completed step unlocks only the next
 step in its own stage.
 
 Engineering Test & Debugging is a separate full-roster, no-save-data route. It
@@ -105,9 +107,10 @@ receive inferred attack types. See `Combat_System.md` for the exact rules.
 ## Battle Session and Outcome
 
 One surviving group wins. If no group survives, the result is a draw. The
-engine also stops at its configured round cap; the current implementation
-reports that as an unresolved round-limit outcome without selecting a winner.
-See `Combat_System.md` for the exact lifecycle and its implementation caveat.
+engine's completed-round caps are 9 rounds for 1v1, 13 for 2v2, and 15 for
+3v3. After the final complete round, elimination wins first; otherwise living
+hero count and exact average living HP percentage resolve a normal victory, or
+an exact equality is a draw. See `Combat_System.md` for the lifecycle.
 
 ## Content Model
 

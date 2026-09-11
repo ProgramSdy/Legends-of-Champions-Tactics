@@ -267,6 +267,12 @@ _To be documented._
 
 ## Change Log
 
+- 2026-09-11 — Added compact Battle Information Transparency previews:
+  server-authored immediate range, target HP, evasion-only Hit Chance, and
+  separately labelled material effects appear on legal target hover/focus. The
+  information layer is pointer-transparent, pins in compact landscape, and
+  clears for stale, unavailable, automatic, targetless, and unsupported state.
+
 - 2026-07-26 — Initial document created.
 - 2026-07-30 — Documented format-specific battlefield health-panel clearance.
 - 2026-07-31 — Documented UI-006 grounded formations, complete profession

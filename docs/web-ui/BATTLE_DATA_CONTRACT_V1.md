@@ -172,6 +172,8 @@ type BattleSnapshot = {
   turn: { index: number; total: number };
   activeCombatantId: string | null;
   outcome: null | {
+    // Newly produced outcomes are victory or draw. `roundLimit` remains a
+    // legacy-read compatibility value only.
     kind: "victory" | "draw" | "roundLimit";
     winningSideId: "friendly" | "enemy" | null;
   };
@@ -422,6 +424,18 @@ may be synthesized by the adapter from a versioned skill-presentation registry;
 they never change rules. Unknown event types must be logged and skipped safely,
 then the final snapshot reconciled.
 
+### Timeout outcomes
+
+The backend owns each battle's completed-round cap: 1v1 is 9 rounds, 2v2 is
+13, and 3v3 is 15. The final permitted round resolves fully; no additional
+round starts after it. Elimination takes precedence at that boundary. When
+both sides survive, the adapter returns normal `kind: "victory"` with the
+authoritative `winningSideId` for the side with more living heroes, then (if
+counts are equal) the strictly higher exact average living-hero HP percentage.
+The comparison is exact and is neither rounded nor based on raw HP. Exact
+equality returns `kind: "draw"` and `winningSideId: null`. Clients must render
+this outcome and must not calculate a timeout winner locally.
+
 ## Presentation and reconciliation
 
 The provider returns events in strict `sequence` order plus the post-resolution
@@ -534,6 +548,61 @@ exhaustion permits repeats. Definition IDs, combatant IDs, target identity, and
 idempotency do not depend on the selected display name.
 
 ## UI-002 additive creation contract
+
+## BATTLE-TRANSPARENCY-001 additive preview contract
+
+Preview is separate from snapshots, commands, and events. The MVP allowlist is
+Mage Fireball/Arcane Missiles/Frost Bolt and Rogue Sharp Blade/Poisoned Dagger.
+Each target supplies authoritative current/max HP, immediate direct damage
+range or prevented zero, evasion-only direct Hit Chance, and optional separate
+material-effect facts. Bleed and Poison chance never become Hit Chance; future
+ticks, chains, and aggregate Arcane total are intentionally absent. The web UI
+renders supplied facts and never derives combat numbers or legality.
+
+```ts
+type BattlePreviewRequest = {
+  expectedRevision: number;
+  actorId: string;
+  skillId: string;
+  targetIds: string[];
+};
+
+type BattlePreviewResponse = {
+  contractVersion: "1.0";
+  battleId: string;
+  revision: number;
+  data: {
+    revision: number;
+    actorId: string;
+    skillId: string;
+    requestedTargetIds: string[];
+    selectedTargetIds: string[];
+    coverage: "authoritative" | "unavailable";
+    reasonId?: string;
+    targets: Array<{
+      targetId: string;
+      currentHp: number;
+      maxHp: number;
+      primary: {
+        kind: "damage" | "prevented";
+        amountRange: { min: number; max: number };
+        reasonId?: string;
+      };
+      directHitChancePercent: number;
+      consequences: Array<{
+        kind: "bleed" | "poison" | "cold";
+        certainty: "conditional" | "onHit";
+        chancePercent?: number;
+      }>;
+    }>;
+  };
+};
+```
+
+The request must match the active battle revision, actor, available audited
+skill, exact legal target IDs, and required cardinality. Arcane Missiles only
+accepts its complete pair of two distinct legal targets. Rejection produces the
+existing error envelope and has no battle/RNG mutation.
 
 Contract version `1.0` remains the snapshot, command, event, and envelope
 version. UI-002 additively extends session creation and adds roster discovery:

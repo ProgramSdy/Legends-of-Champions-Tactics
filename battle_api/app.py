@@ -11,10 +11,12 @@ from typing import Annotated
 from fastapi import Depends, FastAPI, HTTPException, Path as ApiPath
 from fastapi.middleware.cors import CORSMiddleware
 
-from .adapter import CONTRACT_VERSION, BattleRegistry
+from .adapter import CONTRACT_VERSION, BattleAdapterError, BattleRegistry
 from .models import (
     ArenaStateResponse,
     ArenaVictoryCommitResponse,
+    BattlePreviewRequest,
+    BattlePreviewResponse,
     ConfirmSaveSlotOverwriteRequest,
     CreateArenaBattleRequest,
     CreateArenaRunRequest,
@@ -595,6 +597,47 @@ async def submit_command(battle_id: str, command: UseSkillCommand) -> dict:
     # the session's newer revision.
     envelope["revision"] = result["revision"]
     return envelope
+
+
+@app.post(
+    "/api/v1/battles/{battle_id}/preview",
+    response_model=BattlePreviewResponse,
+    responses={
+        404: {"model": HttpErrorResponse},
+        409: {"model": HttpErrorResponse},
+        422: {"model": HttpErrorResponse},
+    },
+)
+async def preview_battle_action(
+    battle_id: str, request: BattlePreviewRequest
+) -> dict:
+    """Return audited current-revision combat facts without executing action."""
+    session = registry.get(battle_id)
+    if session is None:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "battleNotFound", "message": "Battle was not found."},
+        )
+
+    def locked_preview() -> dict:
+        with session.lock:
+            try:
+                data = registry.adapter.preview(
+                    session, request.model_dump(by_alias=True)
+                )
+            except BattleAdapterError as exc:
+                status = 409 if exc.code in {
+                    "battleEnded",
+                    "notYourTurn",
+                    "staleRevision",
+                } else 422
+                raise HTTPException(
+                    status_code=status,
+                    detail={"code": exc.code, "message": exc.message},
+                ) from exc
+            return registry.adapter.envelope(session, data)
+
+    return await asyncio.to_thread(locked_preview)
 
 
 @app.post(

@@ -41,6 +41,14 @@ may work in coordinated waves.
 Codex must never silently bypass the project manager's agent-selection step or
 omit a role that the documented assignment selected.
 
+A listed role counts as selected only after it has concrete ownership and is
+actually dispatched. An unavailable agent must be recorded as a blocker, not
+represented as having participated. Do not begin implementation on an official
+task from a generic assignment list alone: record the project manager's
+risk/complexity assessment, selected roles, and omitted-role rationales first.
+If the selected team cannot run because of concurrency or service limits, use
+documented coordinated waves or obtain owner approval for a temporary fallback.
+
 ## Before Editing
 
 1. Read `docs/README.md`.
