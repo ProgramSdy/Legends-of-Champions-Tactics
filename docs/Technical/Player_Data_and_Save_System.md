@@ -209,3 +209,90 @@ out of scope and requires a separate design.
   transactional overwrite.
 - 2026-08-31 — Upgraded to schema version 3 with per-profile Arena Run
   schedule/squad/node persistence and idempotent node advancement.
+
+
+## Online Pre-Alpha Identity and Persistence Extension — 12 September 2026
+
+The first small external online pre-alpha test will continue using the existing **SQLite** persistence model on a single backend VM. This is an extension of the implemented local persistence direction, not a declaration that SQLite is the final production online database.
+
+The initial backend hosting direction is **Google Compute Engine e2-micro**, running the authoritative FastAPI + Python engine. Persistent SQLite data resides server-side with that backend deployment; React/browser clients never directly own or write authoritative progression.
+
+Because server-side SQLite creates dependence on the VM's persistent disk, the online deployment must establish an appropriate database backup procedure. A later migration to PostgreSQL/Supabase remains expected when multi-instance deployment, stronger cloud recovery, larger-scale telemetry, mature online accounts, or serious PvP requirements justify it.
+
+### Online Player Identity
+
+For online pre-alpha, a player is represented by one stable backend player UUID independent of the player's display name and independent of any individual device.
+
+The agreed lightweight authentication/recovery model is **Player Name + Recovery Code**, combined with hidden per-device authentication tokens.
+
+On initial creation:
+
+1. The player chooses a unique player/display name.
+2. The backend creates the stable player UUID.
+3. The backend generates a secure recovery code and presents it to the player for safekeeping.
+4. The backend issues the current browser/device a random secret authentication token.
+5. Normal future visits from that device use the stored device token automatically.
+
+On a new device/browser:
+
+1. The player chooses the returning-player/recovery flow.
+2. The player enters Player Name + Recovery Code.
+3. The backend verifies the recovery credentials.
+4. The backend issues that device a new secret authentication token.
+5. The same stable player UUID and persistent progression are loaded.
+
+This allows a laptop, iPad, and phone to access the same server-side player identity and progression without requiring full email/password registration.
+
+Conceptually, persistence should distinguish:
+
+    Player Identity
+    ---------------
+    player_id
+    display_name
+    normalized_name
+    recovery_code_hash / secure verifier
+    created_at
+    last_seen
+    build_version
+
+    Device Authentication
+    ---------------------
+    player_id
+    device_token_hash / authentication reference
+    created_at
+    last_seen
+    revoked_at (optional)
+
+    Player Progress
+    ---------------
+    existing backend-authoritative unlocks,
+    stage/training progress,
+    rewards,
+    Arena Run state,
+    settings/preferences as implemented or later authorized
+
+The display name is not an authentication credential. Recovery codes and device tokens must be securely generated. Persistent storage should retain secure verification material rather than ordinary readable secret credentials.
+
+### Scope Boundary
+
+This extension does **not** authorize or imply:
+
+- email/password registration;
+- email verification;
+- Google/Apple/social login;
+- a conventional account-management system;
+- cloud synchronization independent of the authoritative backend;
+- persistent live-battle checkpoints;
+- Redis;
+- multi-instance backend deployment;
+- PvP reconnect/recovery.
+
+Live battles remain process-local/in-memory under the existing design. A backend restart may terminate an active pre-alpha battle, while already committed permanent player progression remains in SQLite.
+
+### Migration Principle
+
+The online pre-alpha implementation should preserve the existing domain separation and stable identifiers so that SQLite can later be replaced by PostgreSQL/Supabase or another server database without redefining player identity, hero ownership, progression, Arena Run state, or battle/session concepts.
+
+## Change Log Addition
+
+- 2026-09-12 — Agreed first online pre-alpha persistence/identity extension: retain SQLite on the initial single Google e2-micro backend with an appropriate backup strategy; introduce a stable online player UUID, unique player name, secure recovery code, and per-device hidden authentication tokens so the same player can recover/access shared server-side progress from laptop, iPad, phone, or another browser. Full accounts, PostgreSQL/Supabase migration, Redis, and live-battle recovery remain deferred.

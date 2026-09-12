@@ -72,21 +72,113 @@ def test_each_mage_and_rogue_skill_returns_target_specific_authoritative_facts()
             assert fact["primary"]["amountRange"] == expected
 
 
-def test_arcane_missiles_requires_exact_distinct_pair_and_returns_per_target_facts():
+def test_arcane_missiles_accepts_draft_target_and_returns_complete_pair_facts():
     adapter, session = _session(
         ["hero.mage.comprehensiveness", "hero.rogue.comprehensiveness"],
         ["hero.rogue.comprehensiveness", "hero.paladin.retribution"],
     )
     snapshot = adapter.snapshot(session)
     targets = snapshot["sides"][1]["combatantIds"]
+    draft = adapter.preview(
+        session,
+        _request(
+            adapter,
+            session,
+            "skill.mage.arcane_missiles",
+            targets[:1],
+        ),
+    )
+    assert draft["coverage"] == "authoritative"
+    assert draft["selectedTargetIds"] == targets[:1]
+    assert [fact["targetId"] for fact in draft["targets"]] == targets[:1]
+
     result = adapter.preview(session, _request(adapter, session, "skill.mage.arcane_missiles", targets))
     assert result["coverage"] == "authoritative"
     assert result["selectedTargetIds"] == targets
     assert [fact["targetId"] for fact in result["targets"]] == targets
-    with pytest.raises(BattleAdapterError, match="exactly 2"):
-        adapter.preview(session, _request(adapter, session, "skill.mage.arcane_missiles", targets[:1]))
     with pytest.raises(BattleAdapterError, match="Duplicate"):
         adapter.preview(session, _request(adapter, session, "skill.mage.arcane_missiles", [targets[0], targets[0]]))
+
+
+def test_arcane_missiles_1v1_returns_authoritative_single_target_preview():
+    adapter, session = _session(
+        ["hero.mage.comprehensiveness"],
+        ["hero.rogue.comprehensiveness"],
+    )
+    target = adapter.snapshot(session)["sides"][1]["combatantIds"][0]
+
+    result = adapter.preview(
+        session,
+        _request(adapter, session, "skill.mage.arcane_missiles", [target]),
+    )
+
+    assert result["coverage"] == "authoritative"
+    assert result["selectedTargetIds"] == [target]
+    assert [fact["targetId"] for fact in result["targets"]] == [target]
+
+
+def test_arcane_missiles_draft_preview_does_not_mutate_or_consume_rng():
+    adapter, session = _session(
+        ["hero.mage.comprehensiveness", "hero.rogue.comprehensiveness"],
+        ["hero.rogue.comprehensiveness", "hero.paladin.retribution"],
+    )
+    before = deepcopy(adapter.snapshot(session))
+    rng_before = session.rng_state
+    global_before = random.getstate()
+    target = before["sides"][1]["combatantIds"][0]
+
+    def fail(*_args, **_kwargs):
+        raise AssertionError("preview consumed RNG")
+
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(random, "random", fail)
+        patch.setattr(random, "randint", fail)
+        patch.setattr(random, "choice", fail)
+        patch.setattr(random, "sample", fail)
+        adapter.preview(
+            session,
+            _request(adapter, session, "skill.mage.arcane_missiles", [target]),
+        )
+
+    assert adapter.snapshot(session) == before
+    assert session.rng_state == rng_before
+    assert random.getstate() == global_before
+
+
+@pytest.mark.parametrize("battle_size", [2, 3])
+def test_arcane_missiles_draft_and_pair_previews_work_for_2v2_and_3v3_without_changing_command_cardinality(battle_size):
+    adapter, session = _session(
+        ["hero.mage.comprehensiveness"] * battle_size,
+        ["hero.rogue.comprehensiveness"] * battle_size,
+    )
+    target_ids = adapter.snapshot(session)["sides"][1]["combatantIds"]
+    before = deepcopy(adapter.snapshot(session))
+
+    draft = adapter.preview(session, _request(
+        adapter, session, "skill.mage.arcane_missiles", target_ids[:1]
+    ))
+    assert draft["selectedTargetIds"] == target_ids[:1]
+    assert [fact["targetId"] for fact in draft["targets"]] == target_ids[:1]
+    assert adapter.snapshot(session) == before
+
+    pair = adapter.preview(session, _request(
+        adapter, session, "skill.mage.arcane_missiles", target_ids[:2]
+    ))
+    assert pair["selectedTargetIds"] == target_ids[:2]
+    assert [fact["targetId"] for fact in pair["targets"]] == target_ids[:2]
+    assert adapter.snapshot(session) == before
+
+    command_result = adapter.submit(session, {
+        "type": "useSkill",
+        "commandId": f"cmd.arcane.partial.{battle_size}",
+        "expectedRevision": session.revision,
+        "actorId": before["activeCombatantId"],
+        "skillId": "skill.mage.arcane_missiles",
+        "targetIds": target_ids[:1],
+    })
+    assert command_result["accepted"] is False
+    assert command_result["code"] == "illegalTargets"
+    assert adapter.snapshot(session) == before
 
 
 def test_preview_does_not_mutate_session_or_consume_randomness():
@@ -248,6 +340,16 @@ def test_preview_api_success_stale_out_of_scope_and_missing_battle():
     assert success.status_code == 200
     assert success.json()["data"]["coverage"] == "authoritative"
     assert success.json()["revision"] == request["expectedRevision"]
+
+    arcane = client.post(
+        f"/api/v1/battles/{battle_id}/preview",
+        json={**request, "skillId": "skill.mage.arcane_missiles"},
+    )
+    assert arcane.status_code == 200
+    assert arcane.json()["data"]["selectedTargetIds"] == [target_id]
+    assert [
+        fact["targetId"] for fact in arcane.json()["data"]["targets"]
+    ] == [target_id]
 
     stale = client.post(f"/api/v1/battles/{battle_id}/preview", json={**request, "expectedRevision": 99})
     assert stale.status_code == 409

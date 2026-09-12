@@ -49,8 +49,8 @@ async function mageSnapshot(skillId = "skill.mage.fireball", displayName = "Fire
   snapshot.legalActions = [{
     actorId: actor.id,
     skillId,
-    minimumTargets: skillId === "skill.mage.arcane_missiles" ? 2 : 1,
-    maximumTargets: skillId === "skill.mage.arcane_missiles" ? 2 : 1,
+    minimumTargets: skillId === "skill.mage.arcane_missiles" ? Math.min(2, targets.length) : 1,
+    maximumTargets: skillId === "skill.mage.arcane_missiles" ? Math.min(2, targets.length) : 1,
     validTargetIds: targets,
   }];
   return snapshot;
@@ -163,31 +163,53 @@ describe("BATTLE-TRANSPARENCY-001 target preview", () => {
     await waitFor(() => expect(document.querySelector(".target-preview-card.ready")).toHaveTextContent(expected));
   });
 
-  it("requires a complete Arcane Missiles pair and displays per-target facts without an aggregate", async () => {
+  it("previews an Arcane target immediately, then shows only the current target while preserving the complete pair request", async () => {
     const provider = new PreviewProvider(await mageSnapshot("skill.mage.arcane_missiles", "Arcane Missiles"));
-    provider.previewAction.mockImplementation(async (request) => responseFor(request, [
-      targetFact(request.targetIds[0], { primary: { kind: "damage", amountRange: { min: 11, max: 19 } } }),
-      targetFact(request.targetIds[1], { currentHp: 64, maxHp: 81, primary: { kind: "damage", amountRange: { min: 7, max: 14 } }, directHitChancePercent: 88 }),
-    ]));
+    provider.previewAction.mockImplementation(async (request) => responseFor(request, request.targetIds.map((targetId) => targetId === "enemy.sashein"
+      ? targetFact(targetId, { primary: { kind: "damage", amountRange: { min: 11, max: 19 } } })
+      : targetFact(targetId, { currentHp: 64, maxHp: 81, primary: { kind: "damage", amountRange: { min: 7, max: 14 } }, directHitChancePercent: 88 }))));
     await renderPreviewBattle(provider);
 
     fireEvent.click(screen.getByRole("button", { name: /Arcane Missiles/i }));
     const first = screen.getByRole("button", { name: "Sashein, selectable target" });
     const second = screen.getByRole("button", { name: "Andonidas, selectable target" });
     fireEvent.mouseEnter(first);
-    await new Promise((resolve) => window.setTimeout(resolve, 120));
-    expect(provider.previewAction).not.toHaveBeenCalled();
+    await waitFor(() => expect(provider.previewAction).toHaveBeenCalledOnce());
+    expect(provider.previewAction.mock.calls[0][0].targetIds).toEqual(["enemy.sashein"]);
+    expect(await screen.findByText("11–19")).toBeVisible();
+    expect(document.querySelectorAll(".target-preview-card.ready")).toHaveLength(1);
     expect(screen.getByText("SELECT 2 TARGETS · 0 SELECTED")).toBeVisible();
 
     fireEvent.click(first);
-    fireEvent.focus(first);
     fireEvent.mouseLeave(first);
     fireEvent.mouseEnter(second);
-    await waitFor(() => expect(provider.previewAction).toHaveBeenCalledOnce());
-    expect(provider.previewAction.mock.calls[0][0].targetIds).toEqual(["enemy.sashein", "enemy.andonidas"]);
-    expect(await screen.findByText("11–19")).toBeVisible();
+    await waitFor(() => expect(provider.previewAction).toHaveBeenCalledTimes(2));
+    expect(provider.previewAction.mock.calls[1][0].targetIds).toEqual(["enemy.sashein", "enemy.andonidas"]);
     expect(screen.getByText("7–14")).toBeVisible();
+    expect(screen.queryByText("11–19")).not.toBeInTheDocument();
+    expect(document.querySelectorAll(".target-preview-card.ready")).toHaveLength(1);
     expect(screen.queryByText(/total damage/i)).not.toBeInTheDocument();
+  });
+
+  it("previews Arcane Missiles for its sole legal 1v1 target", async () => {
+    const provider = new PreviewProvider(await mageSnapshot(
+      "skill.mage.arcane_missiles",
+      "Arcane Missiles",
+      ["enemy.sashein"],
+    ));
+    await renderPreviewBattle(provider);
+
+    fireEvent.click(screen.getByRole("button", { name: /Arcane Missiles/i }));
+    fireEvent.mouseEnter(screen.getByRole("button", { name: "Sashein, selectable target" }));
+
+    expect(await screen.findByText("17–31")).toBeVisible();
+    expect(provider.previewAction).toHaveBeenCalledWith({
+      expectedRevision: 1,
+      actorId: "friendly.arthas",
+      skillId: "skill.mage.arcane_missiles",
+      targetIds: ["enemy.sashein"],
+    }, expect.any(AbortSignal));
+    expect(screen.queryByText("Preview unavailable")).not.toBeInTheDocument();
   });
 
   it("discards a superseded response and aborts its request", async () => {
@@ -238,7 +260,7 @@ describe("BATTLE-TRANSPARENCY-001 target preview", () => {
     expect(within(blocked.closest("dl")!).queryByText("Hit Chance")).not.toBeInTheDocument();
   });
 
-  it("pins selected-target facts in the compact battlefield dock", async () => {
+  it("shows compact target facts only while the pointer remains on the target", async () => {
     const oldWidth = window.innerWidth;
     const oldHeight = window.innerHeight;
     Object.defineProperty(window, "innerWidth", { configurable: true, value: 900 });
@@ -250,7 +272,6 @@ describe("BATTLE-TRANSPARENCY-001 target preview", () => {
       const target = screen.getByRole("button", { name: "Sashein, selectable target" });
       fireEvent.mouseEnter(target);
       fireEvent.click(target);
-      fireEvent.mouseLeave(target);
 
       await waitFor(() => expect(document.querySelector(".target-preview-dock")).toBeInTheDocument());
       const dock = document.querySelector<HTMLElement>(".target-preview-dock")!;
@@ -258,6 +279,40 @@ describe("BATTLE-TRANSPARENCY-001 target preview", () => {
       expect(dock).toHaveAttribute("id", "battle-target-preview-dock");
       expect(dock).toHaveTextContent("Damage17–31");
       expect(target).toHaveAttribute("aria-describedby", "battle-target-preview-dock");
+      fireEvent.mouseLeave(target);
+      await waitFor(() => expect(document.querySelector(".target-preview-dock")).not.toBeInTheDocument());
+    } finally {
+      Object.defineProperty(window, "innerWidth", { configurable: true, value: oldWidth });
+      Object.defineProperty(window, "innerHeight", { configurable: true, value: oldHeight });
+      fireEvent(window, new Event("resize"));
+    }
+  });
+
+  it("shows only the current Arcane target in the compact battlefield dock", async () => {
+    const oldWidth = window.innerWidth;
+    const oldHeight = window.innerHeight;
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 900 });
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: 700 });
+    try {
+      const provider = new PreviewProvider(await mageSnapshot("skill.mage.arcane_missiles", "Arcane Missiles"));
+      provider.previewAction.mockImplementation(async (request) => responseFor(request, request.targetIds.map((targetId) => targetId === "enemy.sashein"
+        ? targetFact(targetId, { primary: { kind: "damage", amountRange: { min: 11, max: 19 } } })
+        : targetFact(targetId, { primary: { kind: "damage", amountRange: { min: 7, max: 14 } } }))));
+      await renderPreviewBattle(provider);
+      fireEvent.click(screen.getByRole("button", { name: /Arcane Missiles/i }));
+      const first = screen.getByRole("button", { name: "Sashein, selectable target" });
+      const second = screen.getByRole("button", { name: "Andonidas, selectable target" });
+
+      fireEvent.mouseEnter(first);
+      fireEvent.click(first);
+      await waitFor(() => expect(document.querySelector(".target-preview-dock")).toHaveTextContent("11–19"));
+      fireEvent.mouseLeave(first);
+      fireEvent.mouseEnter(second);
+
+      await waitFor(() => expect(document.querySelector(".target-preview-dock")).toHaveTextContent("7–14"));
+      const dock = document.querySelector<HTMLElement>(".target-preview-dock")!;
+      expect(dock).not.toHaveTextContent("11–19");
+      expect(dock.querySelectorAll(".target-preview-card")).toHaveLength(1);
     } finally {
       Object.defineProperty(window, "innerWidth", { configurable: true, value: oldWidth });
       Object.defineProperty(window, "innerHeight", { configurable: true, value: oldHeight });

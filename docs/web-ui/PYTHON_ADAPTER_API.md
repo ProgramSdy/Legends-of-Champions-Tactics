@@ -322,8 +322,9 @@ Each target response supplies current/max HP, either an immediate direct damage
 range or deterministic prevented state (`Damage 0`), direct-damage Hit Chance
 (evasion only), and separately typed material consequences. There is no DoT or
 chain total, full-roster fallback, hidden formula input, or combined hit/proc
-percentage. Arcane requires exactly two distinct legal targets and returns
-per-target facts only; there is no aggregate total.
+percentage. Arcane accepts a one-target draft preview or its complete distinct
+legal pair, returning per-target facts only; there is no aggregate total. This
+preview-only subset rule never changes the target count required by `useSkill`.
 
 | Contract definition | Exact Python source | Constructor / engine skills |
 |---|---|---|

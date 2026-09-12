@@ -52,6 +52,15 @@ flash. Priest rune/target feedback and generic green healing remain separate.
 
 ## 2026-09-11 — BATTLE-TRANSPARENCY-001: Mage/Rogue Damage Preview MVP
 
+**Follow-up — Arcane Missiles incremental preview:**
+
+Arcane preview now accepts the published one-target draft subset as well as a
+complete pair. This fixes 1v1 and lets 2v2/3v3 show the currently anchored
+target's individual panel while choosing the next target, instead of first
+displaying two panels together. Real `useSkill` command cardinality is
+unchanged. Focused backend coverage passed 19 tests and frontend preview
+coverage passed 13 tests; the adapter/UI continue to preserve state and RNG.
+
 **Summary:**
 
 The Battle Scene can now show an authoritative, compact preview for selected

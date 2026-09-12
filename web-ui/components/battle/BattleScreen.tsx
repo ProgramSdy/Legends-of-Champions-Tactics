@@ -76,6 +76,7 @@ function targetEffectFor(event: BattleEvent | null, combatantId: string, isPries
 }
 
 type TargetPreviewPhase = "idle" | "loading" | "ready" | "unavailable";
+type TargetCursorIntent = "damage" | "healing";
 
 const consequenceLabels: Record<BattlePreviewTarget["consequences"][number]["kind"], string> = {
   bleed: "Bleed",
@@ -110,19 +111,20 @@ function TargetPreviewCard({ id, phase, skillName, targetName, target }: {
   </section>;
 }
 
-function completePreviewTargets(legal: LegalAction | undefined, selected: readonly string[], anchorId: string | null): string[] {
+function previewTargetsForAnchor(legal: LegalAction | undefined, selected: readonly string[], anchorId: string | null): string[] {
   if (!legal || !anchorId) return [];
   if (legal.maximumTargets === 1) return [anchorId];
-  if (selected.length >= legal.minimumTargets && selected.length <= legal.maximumTargets) return [...selected];
-  const candidate = selected.includes(anchorId) ? [...selected] : [...selected, anchorId];
-  return candidate.length >= legal.minimumTargets && candidate.length <= legal.maximumTargets ? candidate : [];
+  if (selected.length >= legal.maximumTargets) {
+    return selected.includes(anchorId) ? [...selected] : [anchorId];
+  }
+  return selected.includes(anchorId) ? [...selected] : [...selected, anchorId];
 }
 
-function BattlefieldFigure({ hero, active, event, hpEvent, healingCasterEvent, eventSourceSide, eventSourceIsPriest, eventSourceIsPaladin, selectable, targetSelectionPending, selected, onSelect, onTargetHover, onTargetFocus, formationScale, previewPhase, previewTarget, previewSkillName, previewDescriptionId }: {
+function BattlefieldFigure({ hero, active, event, hpEvent, healingCasterEvent, eventSourceSide, eventSourceIsPriest, eventSourceIsPaladin, selectable, targetSelectionPending, targetCursorIntent, selected, onSelect, onTargetHover, onTargetFocus, formationScale, previewPhase, previewTarget, previewSkillName, previewDescriptionId }: {
   hero: CombatantState; active: boolean; event: BattleEvent | null; eventSourceSide: SideId | null;
   hpEvent: BattleEvent | null;
   healingCasterEvent: BattleEvent | null; eventSourceIsPriest: boolean; eventSourceIsPaladin: boolean;
-  selectable: boolean; targetSelectionPending: boolean; selected: boolean; onSelect: () => void; onTargetHover: (combatantId: string | null) => void; onTargetFocus: (combatantId: string | null) => void; formationScale: number;
+  selectable: boolean; targetSelectionPending: boolean; targetCursorIntent: TargetCursorIntent; selected: boolean; onSelect: () => void; onTargetHover: (combatantId: string | null) => void; onTargetFocus: (combatantId: string | null, fromKeyboard?: boolean) => void; formationScale: number;
   previewPhase: TargetPreviewPhase; previewTarget: BattlePreviewTarget | null; previewSkillName: string; previewDescriptionId?: string;
 }) {
   const [figureFrameHeight, setFigureFrameHeight] = useState(FALLBACK_FIGURE_FRAME_HEIGHT);
@@ -152,10 +154,10 @@ function BattlefieldFigure({ hero, active, event, hpEvent, healingCasterEvent, e
           <Meter value={hero.hp.current} maximum={hero.hp.maximum} kind="hp" label={`${hero.displayName} health`} />
         </div>
       </div>}
-      <button className={`battle-target-control ${targetSelectionPending ? "target-selection-pending" : ""}`} data-battle-layer="world-ui" type="button" disabled={!selectable} onClick={onSelect}
+      <button className={`battle-target-control target-cursor-${targetCursorIntent} ${targetSelectionPending ? "target-selection-pending" : ""}`} data-battle-layer="world-ui" type="button" disabled={!selectable} onClick={onSelect}
         onMouseEnter={() => { if (selectable) onTargetHover(hero.id); }}
         onMouseLeave={() => onTargetHover(null)}
-        onFocus={() => { if (selectable) onTargetFocus(hero.id); }}
+        onFocus={(event) => { if (selectable) onTargetFocus(hero.id, event.currentTarget.matches(":focus-visible")); }}
         onBlur={() => onTargetFocus(null)}
         onKeyDown={(event) => {
           if (event.key === "Enter" || event.key === " ") {
@@ -208,6 +210,7 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
   const [selectedTargets, setSelectedTargets] = useState<string[]>([]);
   const [hoveredTargetId, setHoveredTargetId] = useState<string | null>(null);
   const [focusedTargetId, setFocusedTargetId] = useState<string | null>(null);
+  const [targetInputMode, setTargetInputMode] = useState<"pointer" | "keyboard" | null>(null);
   const [autoBattle, setAutoBattle] = useState(false);
   const [fullscreenError, setFullscreenError] = useState<string | null>(null);
   const [completionPending, setCompletionPending] = useState(false);
@@ -250,6 +253,15 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
   const legal = acceptsCommands
     ? snapshot?.legalActions.find((action) => action.skillId === selectedSkill)
     : undefined;
+  const selectedSkillState = active?.skills.find((skill) => skill.id === selectedSkill);
+  const targetCursorIntentFor = (hero: CombatantState): TargetCursorIntent => {
+    if (selectedSkillState?.targetMode === "flexible") {
+      return hero.sideId === active?.sideId ? "healing" : "damage";
+    }
+    return selectedSkillState?.targetMode === "singleAlly" || selectedSkillState?.targetMode === "multipleAllies"
+      ? "healing"
+      : "damage";
+  };
   const targetSelectionPending = Boolean(legal && selectedTargets.length < legal.maximumTargets);
   const orderedActiveSkills = active
     ? active.skills.filter((skill) => !skill.isPassive)
@@ -259,10 +271,10 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
   // skills at the far right, as requested, while future real skills remain
   // visible even if the total exceeds the four-column baseline.
   const placeholderCount = Math.max(0, 4 - orderedActiveSkills.length - passiveSkills.length);
-  // Pointer intent wins while present; keyboard focus remains the fallback.
-  // This lets a focused first Arcane target combine with a hovered second one.
-  const previewAnchorId = hoveredTargetId ?? focusedTargetId ?? selectedTargets.at(-1) ?? null;
-  const previewTargetIds = completePreviewTargets(legal, selectedTargets, previewAnchorId);
+  // Mouse departure intentionally clears the panel, even if clicking left the
+  // button focused. Keyboard focus remains an accessible non-pointer fallback.
+  const previewAnchorId = hoveredTargetId ?? (targetInputMode === "keyboard" ? focusedTargetId : null);
+  const previewTargetIds = previewTargetsForAnchor(legal, selectedTargets, previewAnchorId);
   const previewRequest = acceptsCommands
     && !autoBattle
     && snapshot?.activeCombatantId
@@ -342,7 +354,7 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
       skillId: selectedSkill,
       targetIds: selectedTargets,
     }));
-    setSelectedSkill(null); setSelectedTargets([]); setHoveredTargetId(null); setFocusedTargetId(null);
+    setSelectedSkill(null); setSelectedTargets([]); setHoveredTargetId(null); setFocusedTargetId(null); setTargetInputMode(null);
   };
 
   const toggleTarget = (heroId: string) => {
@@ -405,7 +417,9 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
             && <div className={`effect-layer ${activeEvent.effectHint}`} data-battle-layer="combat-vfx" aria-hidden="true"><span /></div>}
           {battlefield.map((hero) => {
             const position = formationFor(snapshot, hero.sideId, hero.slot, hero.position);
-            const targetPreview = preview?.targets.find((target) => target.targetId === hero.id) ?? null;
+            const targetPreview = hero.id === previewAnchorId
+              ? preview?.targets.find((target) => target.targetId === hero.id) ?? null
+              : null;
             const figurePreviewPhase: TargetPreviewPhase = targetPreview && previewPhase === "ready"
               ? "ready"
               : hero.id === previewAnchorId && (previewPhase === "loading" || previewPhase === "unavailable")
@@ -423,13 +437,16 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
               eventSourceSide={eventSourceSide} eventSourceIsPriest={eventSourceIsPriest} eventSourceIsPaladin={eventSourceIsPaladin}
               selectable={acceptsCommands && Boolean(legal?.validTargetIds.includes(hero.id)) && !isPlaying}
               targetSelectionPending={acceptsCommands && Boolean(legal?.validTargetIds.includes(hero.id)) && !isPlaying && targetSelectionPending}
+              targetCursorIntent={targetCursorIntentFor(hero)}
               selected={selectedTargets.includes(hero.id)}
               formationScale={position.scale}
               previewPhase={compactPreview ? "idle" : figurePreviewPhase}
               previewTarget={targetPreview}
               previewSkillName={previewSkillName}
               previewDescriptionId={previewDescriptionId}
-              onSelect={() => toggleTarget(hero.id)} onTargetHover={setHoveredTargetId} onTargetFocus={setFocusedTargetId} />
+              onSelect={() => toggleTarget(hero.id)}
+              onTargetHover={(targetId) => { setTargetInputMode("pointer"); setHoveredTargetId(targetId); }}
+              onTargetFocus={(targetId, fromKeyboard) => { setTargetInputMode(fromKeyboard || !hoveredTargetId ? "keyboard" : "pointer"); setFocusedTargetId(targetId); }} />
             </div>;
           })}
           {selectedSkill && isAuditedPreviewSkill(selectedSkill) && legal && legal.maximumTargets > 1
@@ -440,10 +457,11 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
             : null}
           {compactPreview && previewPhase !== "idle" && previewAnchorId ? <aside className="target-preview-dock" id="battle-target-preview-dock">
             {previewPhase === "ready" && preview
-              ? preview.targets.map((target) => {
-                  const hero = combatants[target.targetId];
-                  return <TargetPreviewCard key={target.targetId} id={`target-preview-dock-${target.targetId.replaceAll(".", "-")}`} phase="ready" skillName={previewSkillName} targetName={hero?.displayName ?? "Target"} target={target} />;
-                })
+              ? (() => {
+                  const target = preview.targets.find((item) => item.targetId === previewAnchorId) ?? null;
+                  const hero = combatants[previewAnchorId];
+                  return <TargetPreviewCard id={`target-preview-dock-${previewAnchorId.replaceAll(".", "-")}`} phase={target ? "ready" : "unavailable"} skillName={previewSkillName} targetName={hero?.displayName ?? "Target"} target={target} />;
+                })()
               : <TargetPreviewCard id="target-preview-dock-status" phase={previewPhase} skillName={previewSkillName} targetName={combatants[previewAnchorId]?.displayName ?? "Target"} target={null} />}
           </aside> : null}
           <div className="battlefield-caption"><span>THE FALLEN CITADEL</span><small>{getBattleFormat(snapshot).toUpperCase()} FORMATION</small></div>
@@ -475,7 +493,7 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
           {orderedActiveSkills.map((item) => (
             <SkillCard key={item.id} skill={item} selected={selectedSkill === item.id}
               legal={acceptsCommands && snapshot.legalActions.some((action) => action.skillId === item.id)}
-              disabled={isPlaying || !acceptsCommands} onSelect={() => { setSelectedSkill(item.id); setSelectedTargets([]); setHoveredTargetId(null); setFocusedTargetId(null); }} />
+              disabled={isPlaying || !acceptsCommands} onSelect={() => { setSelectedSkill(item.id); setSelectedTargets([]); setHoveredTargetId(null); setFocusedTargetId(null); setTargetInputMode(null); }} />
           ))}
           {Array.from({ length: placeholderCount }, (_, index) => <NoFourthSkillCard key={`no-fourth-skill-${index}`} />)}
           {passiveSkills.map((item) => (
@@ -495,7 +513,7 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
         {mockDemos && <div className="demo-controls" aria-label="Mock presentation demos">
           <span>MOCK EVENT DEMOS</span>{mockDemos.map((demo) => <button key={demo.id} disabled={isPlaying || entryLocked} onClick={() => void present(demo.run)}>{demo.label}</button>)}
         </div>}
-        <label className="toggle">AUTO BATTLE <input type="checkbox" checked={autoBattle} disabled={entryLocked || isPlaying} onChange={(event) => { setAutoBattle(event.target.checked); setHoveredTargetId(null); setFocusedTargetId(null); }} /><span /></label>
+        <label className="toggle">AUTO BATTLE <input type="checkbox" checked={autoBattle} disabled={entryLocked || isPlaying} onChange={(event) => { setAutoBattle(event.target.checked); setHoveredTargetId(null); setFocusedTargetId(null); setTargetInputMode(null); }} /><span /></label>
         {!active ? <button className="end-turn" disabled>BATTLE ENDED</button> : isPlaying ? <button className="end-turn" onClick={skip} disabled={!canSkip || isOpening}>{isOpening ? "OPENING BATTLE…" : canSkip ? "SKIP EFFECT" : "RESOLVING…"}</button> : !acceptsCommands ? <button className="end-turn" disabled>{entryLocked ? "BATTLE OPENING" : "AUTOMATIC TURN"}</button> : <button className="end-turn" onClick={triggerSkill} disabled={!selectedSkill || !legal || selectedTargets.length < legal.minimumTargets || selectedTargets.length > legal.maximumTargets}>{selectedSkill ? "CAST SKILL" : "SELECT SKILL"}</button>}
         {onResign ? <button type="button" className="resign-battle" onClick={() => setResignConfirmationOpen(true)}>RESIGN</button> : null}
       </footer>

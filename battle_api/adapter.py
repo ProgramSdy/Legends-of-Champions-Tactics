@@ -726,14 +726,6 @@ class BattleAdapter:
         target_ids = request.get("targetIds")
         if not isinstance(target_ids, list):
             raise BattleAdapterError("invalidPreview", "targetIds must be an array.")
-        required_targets = 2 if skill.name == "Arcane Missiles" else 1
-        if len(target_ids) != required_targets:
-            raise BattleAdapterError(
-                "illegalTargets",
-                f"The preview requires exactly {required_targets} target(s).",
-            )
-        if len(set(target_ids)) != len(target_ids):
-            raise BattleAdapterError("illegalTargets", "Duplicate targets are not allowed.")
 
         published_action = next(
             (
@@ -747,6 +739,22 @@ class BattleAdapter:
             raise BattleAdapterError(
                 "illegalSkill", "The skill is not a published legal action."
             )
+        maximum_targets = published_action["maximumTargets"]
+        if skill.name == "Arcane Missiles":
+            if not 1 <= len(target_ids) <= maximum_targets:
+                raise BattleAdapterError(
+                    "illegalTargets",
+                    "The Arcane Missiles preview requires one draft target or "
+                    f"the complete set of {maximum_targets} target(s).",
+                )
+        elif len(target_ids) != maximum_targets:
+            raise BattleAdapterError(
+                "illegalTargets",
+                f"The preview requires exactly {maximum_targets} target(s).",
+            )
+        if len(set(target_ids)) != len(target_ids):
+            raise BattleAdapterError("illegalTargets", "Duplicate targets are not allowed.")
+
         valid_ids = set(published_action["validTargetIds"])
         if any(target_id not in valid_ids for target_id in target_ids):
             raise BattleAdapterError("illegalTargets", "One or more targets are illegal.")

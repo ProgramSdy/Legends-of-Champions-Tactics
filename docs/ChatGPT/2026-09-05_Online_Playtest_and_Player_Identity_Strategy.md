@@ -253,3 +253,53 @@ retaining enough identity and persistence for repeated external testing
 and useful analysis. The architecture should remain deliberately simple
 now while leaving a clear path toward proper accounts, recoverable
 battle/session state, matchmaking and PvP later.
+
+
+## 12. Update — 12 September 2026: Pre-Alpha Backend Hosting and Multi-Device Identity
+
+### Backend Hosting Decision
+Proceed with **Google Compute Engine e2-micro** as the preferred always-on FastAPI + Python combat-engine server for the first external pre-alpha test. Cost is the primary infrastructure constraint while the game is not generating revenue. Railway remains technically suitable and is a future option if managed deployment, logging, scaling, or reduced server-maintenance effort becomes worth its recurring cost.
+
+The turn-based backend is expected to be lightweight and bursty, but actual suitability must be confirmed by measuring the real service. Begin with one VM and one application worker unless measurement demonstrates otherwise. Measure CPU, RAM, request latency, errors, and representative concurrent battles. Keep static frontend/art/audio assets off the Python VM where practical.
+
+### Persistence Decision
+Keep the **existing SQLite persistence system** for the first small, single-VM online pre-alpha test. SQLite remains backend-authoritative for current persistent player/progression data. Live battle state remains process-local/in-memory and is not checkpointed yet.
+
+Because the SQLite database resides with the VM, add an appropriate backup strategy. SQLite is the pre-alpha persistence choice, not the final online account database. Reconsider PostgreSQL/Supabase when multi-instance deployment, stronger cloud recovery, larger-scale telemetry, mature accounts, or serious PvP justify it.
+
+### Player Name + Recovery Code
+The earlier browser/device-only identity limitation is superseded by a lightweight **Player Name + Recovery Code** design.
+
+Each player has one stable backend player UUID. The unique display/player name is not itself an authentication credential. On player creation, the backend generates a recovery code and the player is instructed to save it. Each authorized browser/device receives its own hidden random authentication token.
+
+Same-device access uses the stored device token automatically. On a new laptop, iPad, phone, or browser, the player enters **Player Name + Recovery Code**. After successful verification, the backend issues a new device authentication token and loads the same stable player UUID and server-side progress.
+
+Recommended identity separation:
+
+    Player
+    ------
+    id
+    display_name
+    normalized_name
+    recovery_code_hash / secure recovery verifier
+    created_at
+    last_seen
+    build_version
+
+    Device Authentication
+    ---------------------
+    player_id
+    device_token_hash / authentication reference
+    created_at
+    last_seen
+    revoked_at (optional)
+
+Recovery codes and device tokens must be generated securely, and server persistence should store secure verification material rather than treating readable credentials as ordinary player data.
+
+Full email/password registration, email verification, social login, conventional account-management UI, and advanced recovery remain deferred.
+
+### Updated Working Direction
+
+> **For the first online pre-alpha: web-first; Google e2-micro as the initial always-on authoritative FastAPI/Python backend; existing SQLite persistence with backup; lightweight unique player names plus recovery codes; per-device hidden authentication tokens; in-memory active battles; and pseudonymous playtest telemetry.**
+
+This keeps infrastructure cost and implementation complexity low while preserving migration paths toward managed hosting, PostgreSQL/Supabase, recoverable battle state, full account systems, Redis, matchmaking, and PvP.

@@ -600,8 +600,10 @@ type BattlePreviewResponse = {
 ```
 
 The request must match the active battle revision, actor, available audited
-skill, exact legal target IDs, and required cardinality. Arcane Missiles only
-accepts its complete pair of two distinct legal targets. Rejection produces the
+skill, and exact legal target IDs. For preview only, Arcane Missiles accepts a
+non-empty distinct legal subset up to the published action maximum: a one-target
+draft preview in 1v1/while choosing a pair, or its complete pair. This does not
+relax the real command's required target cardinality. Rejection produces the
 existing error envelope and has no battle/RNG mutation.
 
 Contract version `1.0` remains the snapshot, command, event, and envelope
