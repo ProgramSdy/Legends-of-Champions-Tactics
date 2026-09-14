@@ -225,6 +225,37 @@ _To be documented._
 
 _To be documented._
 
+### Pre-Alpha Sound Feedback
+
+- Sound is supplementary feedback only. Controls, target legality, effects,
+  status, and outcomes must remain visually and semantically complete with
+  audio unavailable or muted by the browser.
+- Startup, Stage Map, Team Builder, Arena Run, Battle, Debug, and Asset Registry
+  share one application-root click and hover/focus convention. Enabled native
+  buttons, links, form controls and associated labels participate by semantic
+  role; accessible custom controls explicitly opt in with
+  `data-audio-feedback="interactive"`. Disabled, `aria-disabled`, hidden,
+  inert, decorative, and noninteractive content remains silent.
+- Hover is one quiet cue per pointer/focus entry, uses the central cooldown,
+  and must not retrigger from pointer movement inside the same control. Pointer,
+  touch, Enter, and Space activation receive one restrained click cue without
+  changing native behavior. Associated labels and controls are one sound target
+  so a radio/checkbox activation cannot double-play. Typing, input changes,
+  scrolling, rerenders, and passive form-state changes never infer additional
+  cues.
+- Browser sound initializes lazily after a trusted interaction. Autoplay
+  rejection, missing browser audio APIs, provider loading failure, and playback
+  failure are silent failures and must never block interaction or presentation.
+  A browser without sticky user-activation reporting may omit opening sounds
+  until the first eligible pointer, touch, or keyboard activation.
+- Pre-alpha procedural sounds stay low/moderate in volume and distinct by
+  function: restrained mechanical UI click, quieter high tick for hover,
+  notification chime for the battle-start event, energetic skill cue, short impact,
+  upward evade, rising buff, descending debuff, and heavier defeated impact.
+- Ordered battle sounds follow authoritative active presentation events. Never
+  infer sound from HP/status snapshots, log prose, rerenders, or client-side
+  classification. Neutral/unknown status presentation remains silent.
+
 ## Team Builder
 
 - Keep the Battle Rules control bar's labels, native radio/input semantics,
@@ -267,6 +298,15 @@ _To be documented._
 
 ## Change Log
 
+- 2026-09-14 — Extended the centralized `ui.click` / `ui.hover` language to
+  every current player-facing route through one SSR-safe application-root
+  boundary, with semantic eligibility, custom-control opt-in, label/control
+  deduplication, and disabled/decorative/typing anti-spam rules. Ordered battle
+  event sounds remain a separate presentation-queue-only boundary.
+- 2026-09-12 — Added the AUDIO-001 pre-alpha sound language: one lazy,
+  replaceable browser audio boundary, scoped click/hover accessibility cues,
+  ordered event-driven battle feedback, authoritative status classification,
+  and per-ID spam/deduplication safeguards.
 - 2026-09-11 — Added compact Battle Information Transparency previews:
   server-authored immediate range, target HP, evasion-only Hit Chance, and
   separately labelled material effects appear on legal target hover/focus. The

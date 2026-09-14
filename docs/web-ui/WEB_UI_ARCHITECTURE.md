@@ -30,6 +30,26 @@ the thin Python adapter. Python remains the sole gameplay authority.
   events always drive playback and state; additive `battleLog` events carry
   Python-authored display prose. A generation token makes skip/replay
   race-safe.
+- `lib/audio/soundDefinitions.ts` owns stable sound IDs, categories,
+  per-ID cooldowns, volume, and replaceable procedural/file/layer provider
+  definitions. `lib/audio/AudioManager.ts` is the sole browser playback
+  boundary: it loads `jsfxr` lazily after trusted interaction, caches generated
+  sounds, deduplicates semantic occurrences, and absorbs unsupported-audio or
+  autoplay failures. Components never import `jsfxr`.
+- `components/audio/UiAudioBoundary.tsx` wraps the App Router children once and
+  delegates ordinary interaction feedback through `lib/audio/uiAudio.ts`.
+  Enabled native buttons, links, form controls and their labels are eligible by
+  semantic convention; an accessible custom control opts in with
+  `data-audio-feedback="interactive"`. Disabled, `aria-disabled`, hidden,
+  inert, decorative and noninteractive elements remain silent. Pointer entry
+  and keyboard focus use `ui.hover`; one native activation uses `ui.click`.
+  The boundary unlocks the singleton from pointer, touch or keyboard action and
+  never listens to typing, value changes, scrolling, or document-global events.
+- `lib/audio/battleAudio.ts` maps the ordered active `BattleEvent` to a stable
+  sound ID; it does not own ordinary control feedback. Its event callback is
+  invoked only at `usePresentationQueue`'s ordered active-event step—not from
+  snapshots, raw provider responses, or the battle log—so initial state,
+  reconciliation, rerenders, and skipped pending events cannot replay sound.
 - `lib/battle/assets.ts` owns definition/status presentation and fallback
   metadata.
 - `lib/battle/battleBackgrounds.ts` owns the fixed BG03 battle-scene background
@@ -157,6 +177,25 @@ The presentation queue processes every typed semantic event even when
 when an ordered, sanitized `battleLog` line from Python already describes it.
 The client displays `battleLog` prose but never parses it for state, legality,
 identity, or animation decisions.
+
+The pre-alpha audio projection follows the same ordered event boundary.
+`battleStarted`, `skillStarted`, `damageApplied`, `attackEvaded`, and
+`characterDefeated` map respectively to `battle.event`, `battle.skill`,
+`battle.damage`, `battle.evade`, and `battle.defeated`. `statusApplied` maps to
+`battle.buff` or `battle.debuff` only when its authoritative
+`statusPresentation` says so; neutral/unknown status presentation is silent.
+Each battle-event occurrence has a Battle Screen instance plus event
+sequence/ID dedupe key, while battle-event cooldowns remain zero so distinct
+adjacent damage or status events are never collapsed. Loading an existing
+snapshot/log is silent, and opening events sound only if the queue deliberately
+presents them after browser audio has been unlocked by user interaction.
+When supported, the Battle Screen accepts the browser's sticky
+`navigator.userActivation.hasBeenActive` signal from the preceding Team Builder
+launch as that interaction; browsers without this API stay silent until the
+first eligible application-root pointer, touch, or keyboard activation. The
+shared application boundary supplies only `ui.click` and `ui.hover` across
+Startup, Stage Map, Team Builder, Arena Run, Battle, Debug, and Asset Registry;
+it cannot emit or infer a semantic battle sound.
 
 ## Session Lifecycle
 

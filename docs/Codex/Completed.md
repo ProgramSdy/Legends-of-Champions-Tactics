@@ -4250,3 +4250,190 @@ for older serialized payloads.
 - A manual live timeout walkthrough for each battle size remains desirable
   before release; no correctness failure was found in the deterministic
   engine, API, progression, or UI validation above.
+
+---
+
+## 2026-09-12 — AUDIO-001: Pre-Alpha Centralised Procedural Sound Effects
+
+**Summary:**
+
+The web client now has one typed, browser-safe audio boundary using
+`jsfxr@1.4.1`. The initial catalogue is `ui.click`, `ui.hover`,
+`battle.event`, `battle.skill`, `battle.damage`, `battle.evade`,
+`battle.buff`, `battle.debuff`, and `battle.defeated`. Definitions own each
+ID's category, volume, cooldown, and replaceable `jsfxr`, file, or layered
+provider shape; Battle/UI callers use only stable sound IDs.
+
+Battle audio enters exclusively at the ordered active-event step of
+`usePresentationQueue`, never from snapshots, raw provider responses, or log
+rendering. `battleStarted` maps to `battle.event`; `skillStarted`,
+`damageApplied`, `attackEvaded`, and `characterDefeated` map respectively to
+skill, damage, evade, and defeated cues. `statusApplied` produces buff/debuff
+audio only from its authoritative `statusPresentation`; neutral and unknown
+statuses remain silent. Sequence-and-event-ID occurrence keys preserve each
+adjacent ordered event without replaying historical load data.
+
+The Battle Screen limits click/hover/focus sound to explicitly marked normal
+controls: skills, legal targets, speed/auto/command controls, header tools,
+mock controls, completion and resign confirmation controls. Hover is
+entry-based and centrally cooled down; native click is the single activation
+cue for pointer and keyboard interaction. Audio unlock/load/play failures are
+quiet and cannot block input or presentation.
+
+**Role contributions:**
+
+- **project-manager:** read all role definitions, protected the frontend-only
+  scope and pre-existing dirty files, sequenced the service/queue/test/review
+  gates, and consolidated completion evidence.
+- **ui-developer:** implemented the `lib/audio` service/config boundary,
+  Battle Screen and ordered-queue integration, scoped keyboard/pointer cues,
+  and architecture/style guidance. Its final reporting turn was interrupted
+  after its implementation was present; the resulting code was independently
+  validated and reviewed.
+- **test-automator:** added the deterministic manager, mapping, interaction,
+  and queue-boundary coverage, including file-provider shape, SSR/lazy/failure
+  safety, adjacent events, load silence, hover dedupe, and Enter/Space
+  single-cue activation.
+- **reviewer:** independently identified and verified fixes for the initial
+  `battleStarted` test mismatch and potential keyboard double-click cue;
+  confirmed final queue-only, SSR, scope, and direct-import boundaries.
+- **game-engine-developer:** intentionally omitted because the approved work
+  consumes the published frontend event stream and makes no engine, adapter,
+  API, or event-contract change.
+
+**Files Changed:**
+
+- `web-ui/package.json`, `web-ui/package-lock.json`
+- `web-ui/lib/audio/jsfxr.d.ts`
+- `web-ui/lib/audio/soundDefinitions.ts`
+- `web-ui/lib/audio/AudioManager.ts`
+- `web-ui/lib/audio/battleAudio.ts`
+- `web-ui/lib/battle/usePresentationQueue.ts`
+- `web-ui/components/battle/BattleScreen.tsx`
+- `web-ui/components/battle/SkillCard.tsx`
+- `web-ui/tests/audio-manager.test.ts`
+- `web-ui/tests/battle-audio.test.ts`
+- `web-ui/tests/battle-audio-interactions.test.tsx`
+- `web-ui/tests/presentation-audio-boundary.test.tsx`
+- `docs/web-ui/WEB_UI_ARCHITECTURE.md`
+- `docs/web-ui/Style_Guide.md`
+- `docs/Codex/Current_Task.md`
+- `docs/Codex/Completed.md`
+
+**Validation:**
+
+- `cd web-ui && npm test -- --run tests/audio-manager.test.ts tests/battle-audio.test.ts tests/battle-audio-interactions.test.tsx tests/presentation-audio-boundary.test.tsx` — passed: 21 tests across 4 files.
+- `cd web-ui && npm run typecheck` — passed.
+- `cd web-ui && npm run lint` — passed with 0 errors and one pre-existing
+  unused-parameter warning in `tests/battle-transparency-preview.test.tsx`.
+- `cd web-ui && npm run build` — passed. Vinext reported its existing
+  informational dynamic-route-classification notice only.
+- `git diff --check` — passed.
+- Installed-package runtime inspection confirmed `jsfxr@1.4.1` exposes
+  `sfxr.generate` and `sfxr.play`, matching the lazy boundary.
+- Ego browser at 1613x838 loaded `/debug` after the normal local dev startup
+  without initial-page audio interaction or browser errors. The isolated
+  browser's scripted Team Builder hero-assignment control did not persist its
+  click, so a manual 1v1/2v2/3v3 audible walkthrough could not be completed
+  in that environment; queue and interaction behavior is covered by the
+  deterministic frontend suite instead.
+
+**Browser limitations / follow-up:**
+
+- Browser autoplay policy can suppress the first cue until a trusted
+  interaction (or sticky `navigator.userActivation`) is available. Unsupported
+  audio and provider failures intentionally remain silent.
+- Real-device listening checks across 1v1, 2v2, and 3v3 are still recommended
+  before replacing these restrained pre-alpha procedural placeholders with
+  final assets.
+- The owner-controlled `docs/web-ui/screenshots_debug/UI_Review_Human.md` was
+  already modified before AUDIO-001 and was deliberately left untouched.
+
+---
+
+## 2026-09-14 — AUDIO-002: Shared UI Sound Feedback Across Player-Facing Scenes
+
+**Summary:**
+
+All player-facing routes now share one client-only application-root
+`UiAudioBoundary`. It reuses the AUDIO-001 singleton `AudioManager` and its
+existing `ui.hover` / `ui.click` IDs—there are no new presets, managers, or
+browser-global listeners. Enabled native buttons, links, form controls, and
+their associated labels are eligible by semantic convention; accessible custom
+controls use `data-audio-feedback="interactive"`. Disabled, `aria-disabled`,
+hidden, inert, decorative, inactive, and noninteractive content is silent.
+
+The boundary covers the current Startup save flow; Stage Map title/debug routes
+and enabled hotspots; standard, structured, and Arena Team Builder controls;
+Arena hub/squad/run/confirmation/completion controls; Battle UI controls;
+Debug setup; and the Asset Registry return link. Inactive Stage Map artwork,
+fixed/random display cards, locked controls, static progress and registry
+content remain silent. Seed field pointer/focus/click feedback is eligible;
+typing and value changes produce no additional audio.
+
+Battle Screen no longer owns a second UI capture path, so it emits one UI cue
+per ordinary interaction through the shared boundary. Its `battle.event`,
+`battle.skill`, `battle.damage`, `battle.evade`, `battle.buff`,
+`battle.debuff`, and `battle.defeated` sounds remain solely driven by the
+ordered active-event step in `usePresentationQueue`.
+
+**Role contributions:**
+
+- **project-manager:** inventoried the actual control surfaces, sequenced the
+  shared-boundary and test/review gates, protected pre-existing dirty owner
+  files, and documented the intentional engine-role omission.
+- **ui-developer:** created the reusable `useUiAudioFeedback` hook and
+  `UiAudioBoundary`, mounted it once in the App Router layout, separated generic
+  UI feedback from queue-only battle semantics, added label/control and touch
+  deduplication, and updated architecture/style guidance.
+- **test-automator:** added boundary, touch, and real route-family coverage for
+  Startup, Stage Map, Team Builder, Arena Run, Battle, Debug, and Asset
+  Registry while preserving actions and AUDIO-001 queue regressions.
+- **reviewer:** identified the missing real-component route tests and a touch
+  hover-plus-click risk; both were fixed and independently re-reviewed as
+  approved.
+- **game-engine-developer:** intentionally omitted because the task consumes
+  existing frontend UI events and makes no engine/API/contract change.
+
+**Files Changed:**
+
+- `web-ui/components/audio/UiAudioBoundary.tsx`
+- `web-ui/lib/audio/uiAudio.ts`
+- `web-ui/app/layout.tsx`
+- `web-ui/lib/audio/battleAudio.ts`
+- `web-ui/components/battle/BattleScreen.tsx`
+- `web-ui/tests/ui-audio-boundary.test.tsx`
+- `web-ui/tests/ui-011-startup-routes.test.tsx`
+- `web-ui/tests/ui-012-stage-selection.test.tsx`
+- `web-ui/tests/ui-023-arena-debug.test.tsx`
+- `web-ui/tests/battle-audio-interactions.test.tsx`
+- `docs/web-ui/WEB_UI_ARCHITECTURE.md`
+- `docs/web-ui/Style_Guide.md`
+- `docs/Codex/Current_Task.md`
+- `docs/Codex/Completed.md`
+
+**Validation:**
+
+- Focused shared-boundary, AUDIO-001, Battle, and Stage Map run — passed:
+  37 tests across 6 files.
+- Independent reviewer focused route/audio regression run — passed: 52 tests
+  across 8 files, including Startup, Stage Map, Team Builder, Arena Run,
+  Battle, Debug, and Asset Registry coverage.
+- `cd web-ui && npm run typecheck` — passed.
+- `cd web-ui && npm run lint` — 0 errors; one pre-existing unused-parameter
+  warning in `tests/battle-transparency-preview.test.tsx`.
+- `cd web-ui && npm run build` — passed; Vinext printed only its existing
+  informational dynamic-route-classification notice.
+- `git diff --check` — passed.
+- Ego browser at 1613x838 confirmed one shared boundary on `/`, `/stages`,
+  `/debug`, and `/assets`. A normal Startup click opened its dialog and loaded
+  jsfxr lazily, without initial-page autoplay or a browser error.
+
+**Known limitations / follow-up:**
+
+- Automated and local-browser checks do not prove perceived loudness or each
+  device's autoplay policy. A real-device listening walkthrough through all
+  route families and live 1v1/2v2/3v3 battles remains advisable.
+- The owner-controlled `docs/web-ui/screenshots_debug/UI_Review_Human.md` and
+  unrelated owner study file were already dirty before AUDIO-002 and were
+  intentionally preserved without modification.

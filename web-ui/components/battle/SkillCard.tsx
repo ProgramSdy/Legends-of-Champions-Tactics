@@ -6,7 +6,7 @@ export function SkillCard({ skill, selected, legal, disabled, onSelect }: { skil
   const passive = Boolean(skill.isPassive);
   const unavailable = passive || disabled || !legal || !skill.available;
   return (
-    <button className={`skill-card ${visual.tone} ${passive ? "passive" : ""} ${selected ? "selected" : ""}`} disabled={unavailable} onClick={onSelect} aria-pressed={selected} aria-describedby={`${skill.id}-detail`}>
+    <button className={`skill-card ${visual.tone} ${passive ? "passive" : ""} ${selected ? "selected" : ""}`} data-audio-feedback="interactive" disabled={unavailable} onClick={onSelect} aria-pressed={selected} aria-describedby={`${skill.id}-detail`}>
       <span className="skill-glyph" aria-hidden="true">{visual.glyph}</span>
       <span className="skill-copy"><strong>{skill.displayName}</strong><span id={`${skill.id}-detail`}>{skill.description || visual.description || "Presentation details unavailable."}</span><em>{visual.targetStyle ?? skill.targetMode.replace(/([A-Z])/g, " $1")}</em></span>
       <span className="skill-ornament" aria-hidden="true"><i /><i /><i /></span>

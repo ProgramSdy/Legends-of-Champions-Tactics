@@ -6,6 +6,8 @@ import StagesPage from "@/app/stages/page";
 import { StageSelectionScreen } from "@/components/stages/StageSelectionScreen";
 import { STAGE_DEFINITIONS } from "@/components/stages/stage-config";
 import { readFileSync } from "node:fs";
+import { UiAudioBoundary } from "@/components/audio/UiAudioBoundary";
+import { audioManager } from "@/lib/audio/AudioManager";
 
 const push = vi.fn();
 
@@ -82,6 +84,21 @@ describe("UI-012 stage-selection flow", () => {
     expect(label).toHaveTextContent("Arena");
     expect(arena).toHaveClass("is-active");
     fireEvent.blur(arena);
+  });
+
+  it("routes an enabled Stage Map hotspot through the shared UI audio boundary", () => {
+    const play = vi.spyOn(audioManager, "play").mockImplementation(() => undefined);
+    const unlock = vi.spyOn(audioManager, "unlock").mockImplementation(() => undefined);
+    render(<UiAudioBoundary><StageSelectionScreen /></UiAudioBoundary>);
+    const arena = screen.getByRole("button", { name: "Enter Arena" });
+
+    fireEvent.pointerOver(arena, { relatedTarget: null });
+    fireEvent.click(arena);
+
+    expect(play).toHaveBeenCalledWith("ui.hover");
+    expect(play).toHaveBeenCalledWith("ui.click");
+    expect(unlock).toHaveBeenCalled();
+    expect(push).toHaveBeenCalledWith("/game?stage=arena");
   });
 
   it("activates the Team Builder route with click and keyboard", async () => {

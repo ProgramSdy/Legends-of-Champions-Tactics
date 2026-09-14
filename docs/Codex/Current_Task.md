@@ -1,172 +1,206 @@
 # Current Task
 
 **Status:** Completed
-**Task ID:** BATTLE-TRANSPARENCY-001
-**Title:** Battle Information Transparency MVP — Mage and Rogue Damage Skills
-**Prepared:** 2026-09-11
+
+**Task:** AUDIO-002 — Extend Shared UI Sound Feedback to All Player-Facing Scenes
+
+**Owner request date:** 2026-09-14
 
 ## Objective
 
-Implement the first safe version of **Battle Information Transparency**. When a player selects an in-scope damage skill and hovers or keyboard-focuses a legal target before confirming the action, show a compact, authoritative preview of the immediate decision-relevant result.
-
-The MVP applies only to:
-
-| Hero | Included skills |
-|---|---|
-| Mage Comprehensiveness | Fireball, Arcane Missiles, Frost Bolt |
-| Rogue Comprehensiveness | Sharp Blade, Poisoned Dagger |
-
-Rogue Shadow Evasion is a self/targetless buff and is explicitly not part of this target-preview MVP. Healing, other heroes, chained effects, and future damage-over-time totals are deferred.
-
-## Owner Decisions Incorporated
-
-- Start with Mage and Rogue only; all three Mage skills are direct-damage skills and Rogue’s two targetable damage skills are in scope.
-- The direct **Hit Chance** field applies only to the skill’s immediate direct damage. It must not include Bleed or Poison application chance.
-- A separate effect row may state a conditional material effect, such as `Bleed: 50% chance` or `Poison: 85% chance`.
-- Do not show, estimate, or imply future Bleed/Poison tick damage in this MVP.
-- Complex/chained skill presentation is deferred; do not add generic “additional effects may occur” behaviour to cover out-of-scope heroes.
+Extend the completed AUDIO-001 centralized frontend audio system beyond the
+Battle Screen. Apply its existing `ui.click` and `ui.hover` feedback across all
+current player-facing web scenes, using one reusable application-level or
+scene-level integration pattern. Do not duplicate jsfxr/audio-manager logic in
+individual components and do not change the established battle-event sounds.
 
 ## Background
 
-The approved `STUDY-001` report established that React must not calculate combat outcomes and that existing mutating skill execution must not be dry-run for hover previews. Current resolution can consume seeded RNG and mutate HP, statuses, cooldowns, logs, turn state, and secondary targets.
+AUDIO-001 created `web-ui/lib/audio/` with the browser-safe `AudioManager`,
+typed sound definitions, and battle-specific event mapper. Testing confirms
+that its effects currently appear only in the Battle Screen because
+`useBattleAudio` is attached there. The owner has now requested audio feedback
+in all scenes.
 
-This MVP must therefore use an engine-owned, non-mutating evaluator for a small audited skill allowlist and an additive, revision-bound adapter contract. The UI displays only supplied preview facts. It does not parse descriptions, reconstruct formulas, infer status rules, or calculate damage/hit chance itself.
+This is an extension of the existing pre-alpha sound language, not a new sound
+system. Existing sound IDs, lazy trusted-interaction unlock, quiet failure,
+cooldowns, and battle presentation queue ownership must remain authoritative.
 
-## Required Player Experience
+## Requirements
 
-### Compact target preview
+### 1. One shared UI-feedback integration
 
-After a player selects an in-scope skill and hovers/focuses a legal target, show a compact panel associated with that target. Use plain, decision-focused labels, for example:
+- Reuse `AudioManager` and the existing `ui.click` / `ui.hover` IDs. Do not
+  import `jsfxr` outside `web-ui/lib/audio/` and do not create a second audio
+  manager, per-screen audio instances, document-global browser listeners, or
+  per-component preset definitions.
+- Extract or adapt the generic UI part of the existing Battle Screen audio hook
+  into a clearly named reusable client boundary/hook. It must be safe for
+  Next.js SSR/hydration and use the same singleton manager and central
+  cooldown/deduplication behaviour.
+- Scope delegated pointer/focus/keyboard handling to an explicit application
+  or scene root, using a deliberate marker/convention for eligible controls.
+  It must not add sound to decorative, disabled, inaccessible, hidden, or
+  noninteractive elements.
+- A normal pointer, keyboard, or touch interaction must unlock audio safely.
+  Hover/focus use the quiet `ui.hover` cue once on entry; a real activation
+  uses `ui.click` once. Enter/Space must not produce an extra click on top of
+  the browser’s normal follow-up click event.
+- Audio failures, unsupported browser APIs, and autoplay restrictions must
+  remain silent and never prevent navigation, form submission, stage selection,
+  save actions, battle creation, or any other normal UI action.
 
-```text
-FIREBALL → Venombane
-Damage:      18–29
-Hit Chance:     85%
-Target HP:    21 / 85
-```
+### 2. Required scene coverage
 
-For Rogue effects, show a separate material-effect row only when it is meaningful:
+Apply the shared UI feedback convention to all existing player-facing routes
+and their interactive dialogs/overlays. Cover the currently shipped controls
+that are eligible at runtime, including:
 
-```text
-SHARP BLADE → Venombane
-Damage:      12–19
-Hit Chance:     85%
-Target HP:    21 / 85
-Bleed:          50% chance
-```
+| Scene/route | Required eligible controls |
+| --- | --- |
+| Startup `/` | START GAME, New/Load/Retry/Cancel, save-slot choices, overwrite/confirmation actions. |
+| Stage Map `/stages` | Enabled stage hotspots, title route, and Engineering/Test-Debugging route. Inactive artwork remains silent and noninteractive. |
+| Team Builder / standard battle entry | Back route, Battle Rules inputs, formation selectors, player/enemy hero slots, Hero Selection Matrix/cards, pagination/filter controls, random/enemy controls, seed input where interactive, and ENTER BATTLE. |
+| Arena Run | Hub/squad-builder choices, hero selection, node/run actions, back/return controls, give-up confirmation, and completion acknowledgement. |
+| Battle Scene | Preserve AUDIO-001 battle event sounds and current marked controls. Refactor only as needed so it uses the shared UI feedback boundary without duplicate click/hover sounds. |
+| Debug and Battle Asset Registry | Their available navigation, setup, retry, and normal action controls. Development routes remain functional but do not gain battle-event sound inference. |
 
-```text
-POISONED DAGGER → Venombane
-Damage:       6–10
-Hit Chance:     85%
-Target HP:    21 / 85
-Poison:         85% chance
-```
+- Inspect actual routes/components before editing. If a named control is not
+  present in the current product, document that fact rather than inventing UI.
+- Use `ui.hover` only for interactive pointer-entry and keyboard-focus feedback.
+  Avoid scroll/drag/input-change noise, focus loops, repeated pointer movement,
+  and sound on disabled controls. Text typing and passive form state changes
+  must not create click/hover spam.
+- Existing battle semantic sounds (`battle.event`, `battle.skill`,
+  `battle.damage`, `battle.evade`, `battle.buff`, `battle.debuff`, and
+  `battle.defeated`) remain triggered only through the ordered presentation
+  queue. Do not map page navigation or ordinary UI actions to battle sound IDs.
 
-- Damage must be the authoritative immediate target-specific range for the live current battle state, including only the same direct-damage adjustments that the audited live path applies. It must not include future DoT, chained, shared, or speculative effects.
-- `Hit Chance` means the authoritative probability that the direct damage is not evaded for this target under the current direct-damage resolution rule. It must never include random damage variation, Bleed/Poison chance, or a future unimplemented Accuracy system.
-- If the selected direct attack is deterministically prevented/immune under the current target state, show a clear blocked/prevented outcome and `Damage: 0`; do not present a misleading positive damage range or fold prevention into Hit Chance.
-- If a fact cannot be supported truthfully for an in-scope situation, show a concise `Preview unavailable` state rather than invented precision. It must not block a legal action.
-- Retain current target highlights and selection behaviour. The preview is information only; it does not select, lock, or submit a target.
+### 3. Accessibility and visual behaviour
 
-### Skill-specific content rules
+- Sound is supplementary only. Keep all existing labels, focus indicators,
+  tooltips, visual state, native control semantics, keyboard operation, and
+  error/confirmation text unchanged.
+- Do not change visual design, screen flow, stage availability, save/progression
+  logic, battle rules, route behavior, or backend/API contracts merely to add
+  feedback.
+- Keep the current restrained pre-alpha volume and cooldown character. Do not
+  implement background music, sound settings, volume controls, new production
+  files, ambient sound, voice-over, or scene-specific sound designs in this
+  task.
 
-- **Fireball:** immediate direct fire-damage range and direct Hit Chance only.
-- **Arcane Missiles:** immediate per-target arcane-damage range and direct Hit Chance only. Do not show aggregate total damage or pretend each target’s random result is independent when the current implementation shares variation.
-  - While selecting targets, clearly indicate required target count and show a hovered target’s individual preview only when it can be evaluated truthfully.
-  - Once two legal targets are selected, evaluate the complete selected pair for the command-consistent preview; show per-target facts, not a fabricated aggregate.
-- **Frost Bolt:** immediate direct frost-damage range and direct Hit Chance. If Cold is not active and can be applied by a successful direct hit, show a concise material consequence such as `On hit: Applies Cold`; if Cold is already active, accurately omit or state that no new Cold application occurs according to the actual rule.
-- **Sharp Blade:** immediate direct physical-damage range and direct Hit Chance. Show `Bleed: 50% chance` only when the target can meaningfully receive the Bleed under current status/cap rules; do not show future Bleed damage.
-- **Poisoned Dagger:** immediate direct physical-damage range and direct Hit Chance. Show `Poison: 85% chance` only when the target can meaningfully receive/add Poison under current status/stack-cap rules; when the cap/current state prevents a new material Poison effect, do not imply an additional stack or future damage.
+### 4. Documentation and tests
 
-### Interaction, accessibility, and responsive rules
-
-- Pointer hover and keyboard focus on the same legal target must request/display the same preview. The target remains the interactive control; the preview must use `pointer-events: none` and must not obstruct target hit areas.
-- Clear or ignore a preview when the actor, selected skill, target set, legal actions, or battle revision changes; when playback/auto battle disables commands; or when the skill is unavailable, passive, targetless, or out of scope.
-- Use cancellation/debouncing and revision/actor/skill/target matching so rapid target movement cannot display stale information. A stale/error response must be discarded and must not affect command state.
-- For touch and compact landscape layouts, use a stable pinned/reserved presentation after a legal target interaction rather than an overlapping popover that hides combatants. Preserve the existing portrait-orientation guard and UI-024 responsive presentation boundaries.
-- Provide an accessible association from the focused target to the preview without repeated noisy announcements while a pointer moves. Keep keyboard target selection and Enter/Space behaviour unchanged.
-
-## Engine and Contract Requirements
-
-### 1. Authoritative non-mutating evaluator
-
-- Do not execute existing mutating skill callbacks as a preview and do not clone/restore a live battle to simulate one.
-- Introduce a small engine-owned preview/evaluation boundary for only the five approved skills. It must use audited pure outcome/range primitives shared with, or demonstrably equivalent to, the live direct-damage calculation path.
-- The evaluator must not call or consume `random.randint`, `random.random`, `choice`, `sample`, or `shuffle`; it must not mutate any hero/game/session field, status, stack, duration, cooldown, log, event cursor, command result, turn state, adapter revision, or RNG state.
-- Preserve current live game mechanics exactly. If a skill’s live path has a legacy metadata/formation behaviour, the preview must represent the live outcome rather than silently “correcting” balance. Any discovered inconsistency requiring a rules change must be documented and escalated, not changed inside this task.
-- Calculate evasion/direct Hit Chance from the same current authoritative direct-damage rule. Do not implement or infer a global Accuracy stat/model.
-
-### 2. Revision-bound adapter operation
-
-- Add one minimal additive adapter/API operation for previewing a requested action against a live battle revision. It must validate battle existence, expected revision, active actor, selected available in-scope skill, legal target side/IDs, target count, duplicate targets, and complete multi-target selection where required.
-- The operation must take the same session-lock/authority boundary as a command but leave the session unchanged. It must never enqueue combat events or advance a turn.
-- The typed response must include the echoed revision, actor, skill, requested/selected target IDs, coverage/availability state, per-target current/max HP, immediate primary range or prevented state, direct Hit Chance/reliability fact where authoritative, and material consequences with separate chance/certainty.
-- Keep the contract additive and document it in Python and TypeScript. No current battle endpoint, command schema, snapshot, event ordering, or existing caller may break.
-- Do not include raw hidden formula inputs or arbitrary internal status names in player-facing data. Use stable typed IDs/fields and map final player copy in an approved presentation layer.
-
-### 3. Frontend integration
-
-- Add a provider/client method that requests the authoritative preview only for the selected in-scope skill and legal hovered/focused target state.
-- Render the supplied facts in Battle Screen presentation only. TypeScript must not calculate range, direct Hit Chance, effect chance, cap, resistance, prevention, or target legality.
-- Preserve all current player command submission, auto battle, target selection, formation/depth, HUD, presentation queue, and 1920×1080 baseline behaviour outside the new compact preview.
+- Update the Web UI architecture document to explain the shared UI audio
+  boundary, eligible-control convention, and the separate ordered battle-event
+  audio boundary. Update the Style Guide with the all-scene interaction rules
+  and anti-spam/accessibility guidance.
+- Add focused automated tests for every route family above. Verify eligible
+  controls unlock/play through the shared path, disabled/decorative controls do
+  not play, hover/focus is deduplicated, keyboard Enter/Space yields one click
+  cue, and normal navigation/actions still happen.
+- Retain AUDIO-001 manager, battle event queue, interaction, target-selection,
+  save, stage, Team Builder, Arena, Debug, and Asset Registry regressions.
+- Record exact scenes/controls integrated, implementation files, validation,
+  reviewer findings, and any skipped control with reason in `Completed.md`.
 
 ## Out of Scope
 
-- Healing previews, Shadow Evasion, all non-Mage/Rogue skills, all other faculties, future DoT totals, chains, spreads, summons, multi-stage resolution totals, and non-approved status outcomes.
-- Adding/changing Accuracy, Evasion, damage, healing, status, immunity, cooldown, targeting, formation, or balance rules.
-- A broad skill-system rewrite, full combat simulator, client-side formula copy, prediction from the next seeded random roll, or revealing all internal math.
-- Changes to current battle commands, event stream/order, random determinism, stage/Arena progression, or player save data.
+- Any backend, adapter, engine, event schema/order, combat, save/progression,
+  stage availability, routing, or API change.
+- New sounds, sound redesign, music, global settings/volume controls, audio
+  assets, voice, ambient audio, or per-skill/per-scene bespoke sounds.
+- Marking a static/decorative/inactive item interactive just to give it sound.
+- Modifying owner-controlled `docs/web-ui/screenshots_debug/UI_Review_Human.md`.
 
 ## Relevant Files
 
-- `heroes/mage.py` and `heroes/rogue.py` — audit the five in-scope skill formulas/effects and share pure direct-outcome primitives with live paths where safe.
-- `heroes/hero.py` and `skills/skill.py` — authoritative direct-damage, evasion, immunity/prevention, formation, and mutation boundaries; preserve existing rules.
-- `battle_api/adapter.py`, `battle_api/app.py`, and applicable API models — revision-bound preview validation and additive transport.
-- `web-ui/lib/battle/types.ts`, provider/API client modules, and `web-ui/components/battle/BattleScreen.tsx` — typed preview consumption, request lifecycle, hover/focus/pinned interaction, and rendering.
-- `web-ui/app/globals.css` and `docs/web-ui/Style_Guide.md` — compact visual/accessibility/responsive treatment.
-- `docs/web-ui/BATTLE_DATA_CONTRACT_V1.md`, `docs/web-ui/PYTHON_ADAPTER_API.md`, and `docs/Technical/Architecture.md` — authoritative preview contract/architecture documentation.
-- Existing adapter, skill, hero, Battle Screen, quick-targeting, formation, and responsive test suites; add focused preview tests in clear backend/frontend test modules.
-- `docs/Codex/Analysis/2026-09-11_Battle_Information_Transparency_Feasibility_Study.md` — approved research basis and scope guardrail.
-- `docs/Codex/Completed.md` — completion evidence and actual role contributions.
+- `web-ui/lib/audio/AudioManager.ts` and `soundDefinitions.ts` — existing sole
+  audio playback/configuration boundary; preserve it.
+- `web-ui/lib/audio/battleAudio.ts` — separate the reusable UI interaction
+  scope from battle-specific event mapping where appropriate; preserve event
+  semantics and no-duplicate guarantees.
+- `web-ui/app/layout.tsx` and/or a new small client-only shared UI audio
+  boundary — evaluate the safest common integration root without SSR/browser
+  misuse.
+- `web-ui/components/startup/StartupScreen.tsx` — startup/save-dialog controls.
+- `web-ui/components/stages/StageSelectionScreen.tsx` — routes and enabled
+  stage hotspots only.
+- `web-ui/components/battle/TeamBuilder.tsx`, `BattleExperience.tsx`,
+  `ArenaRunExperience.tsx`, `DebugBattleExperience.tsx`, `BattleScreen.tsx`,
+  and `web-ui/app/assets/page.tsx` — current player-facing controls.
+- Existing audio tests plus route-specific frontend suites under `web-ui/tests/`;
+  add focused shared-boundary/route coverage only where needed.
+- `docs/web-ui/WEB_UI_ARCHITECTURE.md`, `docs/web-ui/Style_Guide.md`, and
+  `docs/Codex/Completed.md` — stable guidance and evidence.
 
 ## Acceptance Criteria
 
-1. Hovering/focusing a legal target with each in-scope selected skill shows an authoritative compact target preview before command confirmation.
-2. Fireball, Arcane Missiles, Frost Bolt, Sharp Blade, and Poisoned Dagger show only truthful immediate direct-damage information for the current target/state.
-3. `Hit Chance` applies only to direct damage and is separate from random damage range and status-proc chance.
-4. Sharp Blade shows a separate 50% Bleed chance only when meaningful; Poisoned Dagger shows a separate 85% Poison chance only when a material application/addition is possible. Neither shows future DoT damage.
-5. Frost Bolt accurately communicates its immediate Cold consequence only when the current rule supports it; Arcane Missiles handles two-target selection without a fake aggregate total.
-6. Preview requests/responses make no combat, UI command-state, session, event, revision, or RNG mutation. A command after preview remains identical in seeded outcome to the same command without preview.
-7. The backend rejects invalid/stale/out-of-scope preview requests safely and without mutation; the UI clears/discards stale data without blocking a legal command.
-8. The UI is usable by pointer, keyboard, and compact/touch layout without blocking target hit areas or changing existing target selection/highlight behaviour.
-9. Existing commands, combat results, API consumers, UI-024 responsive presentation, and 1920×1080 baseline remain unchanged outside the compact preview.
-10. Contract, architecture, style guidance, and completion documentation describe the actual approved MVP scope and do not imply unsupported full-roster coverage.
+1. All current player-facing route families use one centralized UI feedback
+   integration and eligible controls provide the existing click/hover cues.
+2. jsfxr remains isolated inside `web-ui/lib/audio/`; no component creates a
+   competing manager or preset configuration.
+3. Battle Screen retains exactly one UI cue per interaction and its battle
+   semantic sounds remain ordered/once-only through `usePresentationQueue`.
+4. Disabled, static, decorative, inactive, or noninteractive elements remain
+   silent; typing, scrolling, pointer movement, and focus changes do not spam.
+5. Pointer, keyboard, and touch activation are safe; Enter/Space produces one
+   click cue, and browser autoplay/unsupported audio never blocks an action.
+6. Existing UI behavior, routes, game mechanics, contracts, and visual/accessibility
+   treatment are unchanged except for additive sound feedback.
+7. Relevant automated tests, typecheck, lint, production build, and diff check
+   pass. Completion records exact coverage and honest manual-test limitations.
 
 ## Validation Required
 
-- Add backend unit/integration tests for each in-scope skill across minimum/maximum direct range, direct Hit Chance/evasion, deterministic prevention/immune state, current status/stack boundaries, and exact Arcane Missiles pair behaviour.
-- Prove preview has no state or RNG impact: deep-compare relevant game/session/snapshot data and random/session RNG state before/after preview; patch all random helpers to fail during preview; prove the later same-seed command result matches an untouched control.
-- Test stale revision, inactive actor, unavailable/out-of-scope skill, wrong side, dead target, duplicate target, insufficient/extra Arcane target selection, and rapid request cancellation/error behaviour.
-- Add frontend tests for pointer hover, keyboard focus, target selection, stale/error clearing, in-scope/out-of-scope visibility, separate effect-proc wording, prevented state, Arcane multi-target presentation, responsive/touch pinned state, and no client formula duplication.
-- Run relevant Python, API, frontend, typecheck, lint/build as applicable, and `git diff --check`.
-- Manually validate 1v1, 2v2, and 3v3 with Mage/Rogue player turns, including formations with screened melee targets, evasion/prevention state, Rogue status stack boundaries, and compact responsive viewport.
-- Record exact validation commands/results, any unsupported edge cases, and actual agent contributions in `Completed.md`.
+- Add shared-boundary unit/integration tests proving singleton reuse, lazy
+  browser unlock, pointer/focus/click/keyboard behavior, no keyboard double
+  cue, and disabled/decorative silence.
+- Test Startup, Stage Map, Team Builder, Arena Run, Battle, Debug, and Asset
+  Registry route families with their available controls. Assert a sound cue is
+  requested without requiring an audio device and that the original action
+  still completes.
+- Re-run AUDIO-001 manager, event-mapping, queue-boundary, and Battle Screen
+  tests to prove battle sounds are not duplicated or moved to snapshots/logs.
+- Run affected existing save, stage, Team Builder, Arena, Battle, Debug, and
+  Asset Registry suites, then `npm run typecheck`, `npm run lint`, production
+  build, and `git diff --check`.
+- Manually click through each available route after a normal user interaction.
+  Confirm feedback is audible but restrained, no initial autoplay occurs, and
+  there is no repeated sound. Record unavailable/development-only route limits.
 
-## Agent Selection and Dispatch Gate
+## Agent Assignments
 
-**Complexity/risk assessment:** High cross-system implementation. It adds a new authoritative game-information capability spanning legacy stateful combat calculation, RNG guarantees, adapter/API contract validation, asynchronous frontend interaction, responsive/accessibility presentation, and misleading-information risk. All five roles are required.
+**Complexity/risk assessment:** Medium. The work remains frontend-only but
+crosses all interactive route families, SSR/client boundaries, delegated event
+handling, navigation/overlay behavior, and existing battle audio deduplication.
 
-**Selected roles — must be concretely dispatched before implementation:**
+**Selected roles — dispatch before implementation:**
 
-- **project-manager:** coordinate the study-to-build handoff, phased dependency order, agent dispatch, scope guardrails, documentation, and evidence.
-- **game-engine-developer:** own audited pure evaluator/primitives, no-mutation/RNG guarantees, adapter/API validation, and additive typed contract.
-- **ui-developer:** own provider request lifecycle, Battle Screen target-preview presentation, accessibility, and responsive compact/touch behaviour.
-- **test-automator:** own deterministic backend/frontend contract, no-mutation/no-RNG, stale/legality, interaction, and regression coverage.
-- **reviewer:** independently assess range/hit/proc truthfulness, authority boundaries, random determinism, UI clarity, contract compatibility, and scope compliance.
+- **project-manager:** own cross-route inventory, scope control, phased
+  dispatch, owner-file protection, documentation, and completion evidence.
+- **ui-developer:** own reusable UI-feedback integration, control marking,
+  route integration, SSR/accessibility behavior, and frontend documentation.
+- **test-automator:** own deterministic cross-route interaction/deduplication
+  coverage, non-blocking action regressions, and validation evidence.
+- **reviewer:** independently assess all-scene coverage, duplicate cue risk,
+  direct-jsfxr isolation, browser safety, accessibility, and scope compliance.
+
+**Not selected:**
+
+- **game-engine-developer:** deliberately omitted: the task must use the
+  existing frontend audio service and published UI events without changing
+  engine, adapter, API, game state, or event contracts. Escalate rather than
+  expanding scope if an engine change appears necessary.
 
 ## Completion Notes
 
-Implemented and independently reviewed on 2026-09-11. The authoritative
-completion evidence, dispatch contributions, validation, and deferred scope are
-recorded in `docs/Codex/Completed.md`.
+Completed 2026-09-14. AUDIO-002 adds one application-root UI feedback boundary
+using the existing AUDIO-001 singleton and `ui.click` / `ui.hover` IDs across
+all current player-facing route families. Battle semantic sounds remain
+exclusively ordered-presentation-queue feedback. The game-engine-developer was
+intentionally omitted because no engine, adapter, API, game-state, or event
+contract change was required or made. The owner-controlled
+`docs/web-ui/screenshots_debug/UI_Review_Human.md` was preserved without an
+AUDIO-002 edit. Exact control coverage, validation, role contributions,
+reviewer approval, and manual-device limitations are in `docs/Codex/Completed.md`.

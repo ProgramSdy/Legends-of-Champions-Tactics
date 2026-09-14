@@ -12,7 +12,12 @@ const isVisibleLogEvent = (event: BattleEvent) => event.visibleInLog !== false;
 const isHpHudEvent = (event: BattleEvent) => event.type === "damageApplied"
   || event.type === "healingApplied";
 
-export function usePresentationQueue(provider: BattleProvider) {
+export interface PresentationQueueOptions {
+  /** Called once at the ordered boundary where an event becomes active. */
+  onActiveEvent?: (event: BattleEvent) => void;
+}
+
+export function usePresentationQueue(provider: BattleProvider, options: PresentationQueueOptions = {}) {
   const [visibleSnapshot, setVisibleSnapshot] = useState<BattleSnapshot | null>(null);
   const [revision, setRevision] = useState(0);
   const [activeEvent, setActiveEvent] = useState<BattleEvent | null>(null);
@@ -31,6 +36,11 @@ export function usePresentationQueue(provider: BattleProvider) {
   const pending = useRef<PresentationScript | null>(null);
   const pendingOpening = useRef<PresentationScript | null>(null);
   const pendingLogEvents = useRef<BattleEvent[]>([]);
+  const onActiveEvent = useRef(options.onActiveEvent);
+
+  useEffect(() => {
+    onActiveEvent.current = options.onActiveEvent;
+  }, [options.onActiveEvent]);
 
   const [loadAttempt, setLoadAttempt] = useState(0);
   useEffect(() => {
@@ -189,6 +199,14 @@ export function usePresentationQueue(provider: BattleProvider) {
           setActiveHpEvent(event);
           await new Promise((resolve) => window.setTimeout(resolve, HP_HUD_LEAD_MS));
           if (generation.current !== token) return;
+        }
+        // This is the sole ordered active-event boundary for additive battle
+        // feedback such as sound. A consumer failure must never interrupt
+        // authoritative presentation or command resolution.
+        try {
+          onActiveEvent.current?.(event);
+        } catch {
+          // Audio and other supplementary presentation are best-effort only.
         }
         setActiveEvent(event);
         applyEvent(event);

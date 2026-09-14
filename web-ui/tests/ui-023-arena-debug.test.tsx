@@ -7,6 +7,8 @@ import { DebugBattleExperience } from "@/components/battle/DebugBattleExperience
 import { StageSelectionScreen } from "@/components/stages/StageSelectionScreen";
 import { createFormatFixture } from "@/lib/battle/fixture";
 import type { ArenaStateResponse, HeroDefinitionSummary, PlayerProgressionResponse } from "@/lib/battle/types";
+import { UiAudioBoundary } from "@/components/audio/UiAudioBoundary";
+import { audioManager } from "@/lib/audio/AudioManager";
 
 const routerReplace = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: routerReplace }) }));
@@ -96,13 +98,16 @@ describe("UI-023 Stage Map and debug boundary", () => {
 
   it("loads only the full roster and keeps a clear Stage Map return route", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(json({ contractVersion: "1.0", heroes: roster }));
-    render(<DebugBattleExperience />);
+    const play = vi.spyOn(audioManager, "play").mockImplementation(() => undefined);
+    render(<UiAudioBoundary><DebugBattleExperience /></UiAudioBoundary>);
     expect(await screen.findByRole("heading", { name: "Engineering Test & Debugging" })).toBeVisible();
     expect(screen.getByText("TOTAL HERO: 10")).toBeVisible();
     expect(screen.getByRole("link", { name: /back to stage map/i })).toHaveAttribute("href", "/stages");
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(String(fetchMock.mock.calls[0][0])).toMatch(/\/api\/v1\/heroes$/);
     expect(fetchMock.mock.calls.some(([input]) => /progression|save-slots|arena/.test(String(input)))).toBe(false);
+    await userEvent.setup().click(screen.getByRole("button", { name: /select your hero 1/i }));
+    expect(play).toHaveBeenCalledWith("ui.click");
   });
 
   it("creates a test battle only through the debug endpoint", async () => {
@@ -155,11 +160,14 @@ describe("UI-023 Arena Run frontend authority", () => {
       requestBody = body;
       return arenaState({ run: activeRun() });
     });
-    render(<ArenaRunExperience />);
+    const play = vi.spyOn(audioManager, "play").mockImplementation(() => undefined);
+    render(<UiAudioBoundary><ArenaRunExperience /></UiAudioBoundary>);
     const user = userEvent.setup();
     const choices = await screen.findAllByRole("button", { name: /add to arena squad/i });
     expect(choices).toHaveLength(6);
-    for (const choice of choices) await user.click(choice);
+    await user.click(choices[0]);
+    expect(play).toHaveBeenCalledWith("ui.click");
+    for (const choice of choices.slice(1)) await user.click(choice);
     await user.click(screen.getByRole("button", { name: "LOCK SQUAD & START RUN" }));
     await waitFor(() => expect(document.querySelectorAll("[data-node-index]")).toHaveLength(12));
     expect(requestBody).toEqual({ squadDefinitionIds: unlockedIds });

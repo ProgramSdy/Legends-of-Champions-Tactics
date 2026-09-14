@@ -12,6 +12,7 @@ import { BATTLE_BACKGROUND } from "@/lib/battle/battleBackgrounds";
 import { heroFigureScaleFor } from "@/lib/battle/assets";
 import { useBattlePresentationConfig } from "@/lib/battle/presentationConfig";
 import { isAuditedPreviewSkill, useBattlePreview } from "@/lib/battle/useBattlePreview";
+import { useBattleAudio } from "@/lib/audio/battleAudio";
 
 const logGlyph: Record<BattleEventType, string> = {
   battleStarted: "◆", roundStarted: "◎", turnStarted: "▶", skillStarted: "✦",
@@ -154,7 +155,7 @@ function BattlefieldFigure({ hero, active, event, hpEvent, healingCasterEvent, e
           <Meter value={hero.hp.current} maximum={hero.hp.maximum} kind="hp" label={`${hero.displayName} health`} />
         </div>
       </div>}
-      <button className={`battle-target-control target-cursor-${targetCursorIntent} ${targetSelectionPending ? "target-selection-pending" : ""}`} data-battle-layer="world-ui" type="button" disabled={!selectable} onClick={onSelect}
+      <button className={`battle-target-control target-cursor-${targetCursorIntent} ${targetSelectionPending ? "target-selection-pending" : ""}`} data-battle-layer="world-ui" data-audio-feedback="interactive" type="button" disabled={!selectable} onClick={onSelect}
         onMouseEnter={() => { if (selectable) onTargetHover(hero.id); }}
         onMouseLeave={() => onTargetHover(null)}
         onFocus={(event) => { if (selectable) onTargetFocus(hero.id, event.currentTarget.matches(":focus-visible")); }}
@@ -162,7 +163,9 @@ function BattlefieldFigure({ hero, active, event, hpEvent, healingCasterEvent, e
         onKeyDown={(event) => {
           if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
-            onSelect();
+            // Keep the target's established keydown activation while routing
+            // the resulting click through the shared Battle Screen feedback.
+            event.currentTarget.click();
           }
         }}
         aria-label={`${hero.displayName}${selectable ? ", selectable target" : ""}`}
@@ -204,7 +207,8 @@ type EntryCountdown = 3 | 2 | 1 | "start" | null;
 export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundImage, entryCountdownStepMs, onBattleComplete, completionActionLabel, onReturnToBuilder, onResign }: BattleScreenProps) {
   const mountedBackground = backgroundImage ?? BATTLE_BACKGROUND;
   const presentationConfig = useBattlePresentationConfig();
-  const { snapshot, revision, activeEvent, activeHpEvent, activeHealingCasterEvent, log, setLog, speed, setSpeed, isPlaying, isOpening, hasPendingOpening, canSkip, error, errorKind, present, playOpening, skip, retry } = usePresentationQueue(provider);
+  const battleAudio = useBattleAudio();
+  const { snapshot, revision, activeEvent, activeHpEvent, activeHealingCasterEvent, log, setLog, speed, setSpeed, isPlaying, isOpening, hasPendingOpening, canSkip, error, errorKind, present, playOpening, skip, retry } = usePresentationQueue(provider, { onActiveEvent: battleAudio.onActiveEvent });
   const [entryCountdown, setEntryCountdown] = useState<EntryCountdown>(entryCountdownStepMs === undefined ? null : 3);
   const [selectedSkill, setSelectedSkill] = useState<string | null>(null);
   const [selectedTargets, setSelectedTargets] = useState<string[]>([]);
@@ -386,11 +390,11 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
       style={{ "--browser-size-rate": presentationConfig.browserSizeRate } as CSSProperties}
     >
       <header className="battle-header">
-        <div className="header-tools"><button aria-label="Open menu">☰</button><button aria-label="Settings">⚙</button></div>
+        <div className="header-tools"><button data-audio-feedback="interactive" aria-label="Open menu">☰</button><button data-audio-feedback="interactive" aria-label="Settings">⚙</button></div>
         <div className="side-banner friendly"><span className="crest">L</span><strong>YOUR TEAM</strong><i>READY</i></div>
         <div className="round"><strong>ROUND {snapshot.round}</strong><span>TURN {snapshot.turn.index} / {snapshot.turn.total}</span></div>
         <div className="side-banner enemy"><strong>ENEMY TEAM</strong><i>HOSTILE</i><span className="crest">☠</span></div>
-        <div className="header-tools right"><Link href="/assets" aria-label="Open asset gallery">◆</Link><button aria-label="Toggle fullscreen" onClick={() => void toggleFullscreen()}>⛶</button></div>
+        <div className="header-tools right"><Link data-audio-feedback="interactive" href="/assets" aria-label="Open asset gallery">◆</Link><button data-audio-feedback="interactive" aria-label="Toggle fullscreen" onClick={() => void toggleFullscreen()}>⛶</button></div>
         <nav className="turn-order" aria-label="Turn order">
           {snapshot.turnOrder.map((turn, index) => {
             const hero = combatants[turn.combatantId];
@@ -501,7 +505,7 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
           ))}
         </div>
         <div className="battle-log">
-          <header><strong>BATTLE LOG</strong><button disabled={entryLocked} onClick={() => setLog([])}>Clear</button></header>
+          <header><strong>BATTLE LOG</strong><button data-audio-feedback="interactive" disabled={entryLocked} onClick={() => setLog([])}>Clear</button></header>
           <ol ref={logListRef} aria-live="polite" aria-label="Battle events">
             {log.map((item, index) => <li className={item.type} key={`${item.id}.${index}`}><span>{logGlyph[item.type]}</span>{item.message}</li>)}
           </ol>
@@ -509,13 +513,13 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
       </section>
 
       <footer className="battle-controls">
-        <div className="speed"><span>SPEED</span>{[1, 1.5, 2].map((value) => <button className={speed === value ? "selected" : ""} disabled={entryLocked} key={value} onClick={() => setSpeed(value)}>×{value}</button>)}</div>
+        <div className="speed"><span>SPEED</span>{[1, 1.5, 2].map((value) => <button data-audio-feedback="interactive" className={speed === value ? "selected" : ""} disabled={entryLocked} key={value} onClick={() => setSpeed(value)}>×{value}</button>)}</div>
         {mockDemos && <div className="demo-controls" aria-label="Mock presentation demos">
-          <span>MOCK EVENT DEMOS</span>{mockDemos.map((demo) => <button key={demo.id} disabled={isPlaying || entryLocked} onClick={() => void present(demo.run)}>{demo.label}</button>)}
+          <span>MOCK EVENT DEMOS</span>{mockDemos.map((demo) => <button data-audio-feedback="interactive" key={demo.id} disabled={isPlaying || entryLocked} onClick={() => void present(demo.run)}>{demo.label}</button>)}
         </div>}
-        <label className="toggle">AUTO BATTLE <input type="checkbox" checked={autoBattle} disabled={entryLocked || isPlaying} onChange={(event) => { setAutoBattle(event.target.checked); setHoveredTargetId(null); setFocusedTargetId(null); setTargetInputMode(null); }} /><span /></label>
-        {!active ? <button className="end-turn" disabled>BATTLE ENDED</button> : isPlaying ? <button className="end-turn" onClick={skip} disabled={!canSkip || isOpening}>{isOpening ? "OPENING BATTLE…" : canSkip ? "SKIP EFFECT" : "RESOLVING…"}</button> : !acceptsCommands ? <button className="end-turn" disabled>{entryLocked ? "BATTLE OPENING" : "AUTOMATIC TURN"}</button> : <button className="end-turn" onClick={triggerSkill} disabled={!selectedSkill || !legal || selectedTargets.length < legal.minimumTargets || selectedTargets.length > legal.maximumTargets}>{selectedSkill ? "CAST SKILL" : "SELECT SKILL"}</button>}
-        {onResign ? <button type="button" className="resign-battle" onClick={() => setResignConfirmationOpen(true)}>RESIGN</button> : null}
+        <label className="toggle" data-audio-feedback="interactive" aria-disabled={entryLocked || isPlaying}>AUTO BATTLE <input type="checkbox" checked={autoBattle} disabled={entryLocked || isPlaying} onChange={(event) => { setAutoBattle(event.target.checked); setHoveredTargetId(null); setFocusedTargetId(null); setTargetInputMode(null); }} /><span /></label>
+        {!active ? <button className="end-turn" disabled>BATTLE ENDED</button> : isPlaying ? <button data-audio-feedback="interactive" className="end-turn" onClick={skip} disabled={!canSkip || isOpening}>{isOpening ? "OPENING BATTLE…" : canSkip ? "SKIP EFFECT" : "RESOLVING…"}</button> : !acceptsCommands ? <button className="end-turn" disabled>{entryLocked ? "BATTLE OPENING" : "AUTOMATIC TURN"}</button> : <button data-audio-feedback="interactive" className="end-turn" onClick={triggerSkill} disabled={!selectedSkill || !legal || selectedTargets.length < legal.minimumTargets || selectedTargets.length > legal.maximumTargets}>{selectedSkill ? "CAST SKILL" : "SELECT SKILL"}</button>}
+        {onResign ? <button data-audio-feedback="interactive" type="button" className="resign-battle" onClick={() => setResignConfirmationOpen(true)}>RESIGN</button> : null}
       </footer>
       {(error || fullscreenError) && <div className={`ui-error ${errorKind ?? ""}`} role="alert"><strong>{errorKind === "stale" ? "STATE RECONCILED" : errorKind === "rejected" ? "COMMAND REJECTED" : "BATTLE NOTICE"}</strong><span>{error ?? fullscreenError}</span></div>}
       {entryCountdown !== null && (
@@ -546,7 +550,7 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
             <h2 id="battle-result-title">{outcomeLabel}</h2>
             <p>The Python battle engine has declared the final result.</p>
             {completionError ? <p className="completion-error" role="alert">{completionError}</p> : null}
-            <button ref={completionButtonRef} type="button" onClick={() => void completeBattle()} disabled={completionPending}>
+            <button data-audio-feedback="interactive" ref={completionButtonRef} type="button" onClick={() => void completeBattle()} disabled={completionPending}>
               {completionPending ? "SAVING PROGRESS…" : completionError ? "RETRY SAVE" : completionLabel}
             </button>
           </section>
@@ -559,8 +563,8 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
             <h2 id="battle-resign-heading">Give up this battle?</h2>
             <p>You will return to the Team Builder. This battle will not count as a victory.</p>
             <div>
-              <button type="button" onClick={onResign}>YES</button>
-              <button type="button" onClick={() => setResignConfirmationOpen(false)}>NO</button>
+              <button data-audio-feedback="interactive" type="button" onClick={onResign}>YES</button>
+              <button data-audio-feedback="interactive" type="button" onClick={() => setResignConfirmationOpen(false)}>NO</button>
             </div>
           </section>
         </div>

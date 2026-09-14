@@ -1086,3 +1086,131 @@ Conceptually:
 - **1v1** should feel shorter and more duel-like.
 - **2v2** introduces stronger hero-combination and Interlock play.
 - **3v3** is the fullest tactical expression and may require more time for formation, combinations, and evolving battle states.
+
+# Date
+
+2026-09-12
+
+### Screenshot name
+
+N/A
+
+### Task List
+
+Implement the first pre-alpha sound-effect system for Legends of Champions Tactics using the already-installed jsfxr 1.4.1.
+
+Goal
+
+Create a centralized frontend audio system using jsfxr for procedural game sound effects.
+
+Initial sound categories:
+
+* UI click
+* UI hover
+* Menu/game events
+* Skill attack
+* Damage/hit
+* Evade
+* Buff
+* Debuff
+* Defeated
+
+Architecture
+
+Create a centralized AudioManager or equivalent audio service.
+
+Game/UI components should NOT call jsfxr directly.
+
+They should use a simple interface such as:
+
+audio.play("ui.click");
+audio.play("ui.hover");
+audio.play("battle.skill");
+audio.play("battle.damage");
+audio.play("battle.evade");
+audio.play("battle.buff");
+audio.play("battle.debuff");
+audio.play("battle.defeated");
+
+Keep all jsfxr presets/parameters in a separate sound-definition/config file so sounds can be tuned without modifying gameplay components.
+
+Design the architecture so individual sounds can later be changed from:
+
+type: "jsfxr"
+
+to:
+
+type: "file"
+
+for WAV/OGG production assets without changing the components that trigger them.
+
+Initial sound design
+
+Create clearly distinguishable temporary pre-alpha sounds:
+
+UI Click
+Short, clean, subtle mechanical click.
+
+UI Hover
+Very short and quiet high-frequency tick. Less prominent than click.
+
+Menu/Game Event
+Clear notification/chime suitable for events such as turn changes or confirmations.
+
+Skill Attack
+Stronger, energetic attack sound. Use layering or multiple jsfxr sounds if useful.
+
+Damage
+Short, punchy impact/hit sound.
+
+Evade
+Fast upward/air-like movement sound suggesting an attack narrowly missing.
+
+Buff
+Positive rising magical tone.
+
+Debuff
+Darker descending/distorted tone.
+
+Defeated
+Heavier descending impact/failure sound with a slightly longer decay.
+
+These are pre-alpha placeholders. Prioritize clear gameplay feedback over realistic/cinematic quality.
+
+Integration
+
+Connect the sounds only where matching events already clearly exist in the current frontend/game flow.
+
+Do not change battle mechanics or backend logic just to support audio.
+
+Avoid excessive hover audio: prevent overlapping/retrigger spam where necessary.
+
+Browser autoplay restrictions must be handled safely. Audio should begin only after normal user interaction.
+
+Extensibility
+
+Prepare the system so we can later add IDs such as:
+
+audio.play("warrior.fatalStrike");
+audio.play("mage.fireball");
+audio.play("rogue.backstab");
+
+and potentially layer multiple procedural sounds for one skill.
+
+Also leave the architecture ready for background music using normal OGG/WAV audio files later. Do NOT implement background music in this task.
+
+Verification
+
+After implementation:
+
+1. Run existing frontend tests.
+2. Run lint/typecheck.
+3. Run production build.
+4. Confirm no existing functionality is broken.
+5. Report:
+    * files created/modified
+    * sound IDs implemented
+    * where each sound is currently triggered
+    * any jsfxr/TypeScript/browser issues encountered
+
+Do not redesign unrelated code or UI.

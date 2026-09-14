@@ -1,8 +1,10 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import StartupPage from "@/app/page";
 import GamePage from "@/app/game/page";
 import AssetRegistryPage from "@/app/assets/page";
+import { UiAudioBoundary } from "@/components/audio/UiAudioBoundary";
+import { audioManager } from "@/lib/audio/AudioManager";
 
 // Route tests should verify the route boundary without starting the live API-backed
 // battle provider. Existing BattleExperience tests cover that component directly.
@@ -29,6 +31,15 @@ describe("UI-011 startup and route boundaries", () => {
     expect(start).toBeVisible();
   });
 
+  it("routes Startup START GAME through the shared UI audio boundary", () => {
+    const play = vi.spyOn(audioManager, "play").mockImplementation(() => undefined);
+    render(<UiAudioBoundary><StartupPage /></UiAudioBoundary>);
+    const start = screen.getByRole("button", { name: /start game/i });
+    fireEvent.pointerOver(start, { relatedTarget: null });
+    fireEvent.click(start);
+    expect(play).toHaveBeenCalledWith("ui.click");
+  });
+
   it("keeps /game pointed at the existing team-builder experience", async () => {
     render(await GamePage({ searchParams: Promise.resolve({}) }));
 
@@ -37,8 +48,13 @@ describe("UI-011 startup and route boundaries", () => {
   });
 
   it("returns from the Asset Registry to /game rather than the startup route", () => {
-    render(<AssetRegistryPage />);
+    const play = vi.spyOn(audioManager, "play").mockImplementation(() => undefined);
+    render(<UiAudioBoundary><AssetRegistryPage /></UiAudioBoundary>);
 
-    expect(screen.getByRole("link", { name: /return to battle/i })).toHaveAttribute("href", "/game");
+    const returnLink = screen.getByRole("link", { name: /return to battle/i });
+    expect(returnLink).toHaveAttribute("href", "/game");
+    fireEvent.pointerOver(returnLink, { relatedTarget: null });
+    fireEvent.click(returnLink);
+    expect(play).toHaveBeenCalledWith("ui.click");
   });
 });
