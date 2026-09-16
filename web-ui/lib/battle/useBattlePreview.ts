@@ -15,6 +15,15 @@ const AUDITED_PREVIEW_SKILL_IDS = new Set([
   "skill.paladin.hammer_of_anger",
   "skill.paladin.crusader_strike",
   "skill.paladin.flash_of_light",
+  "skill.warrior.devastate",
+  "skill.warrior.shield_bash",
+  "skill.warrior.thunder_pot",
+  "skill.warrior.fatal_strike",
+  "skill.warrior.armor_crush",
+  "skill.warrior.antivenom_potion",
+  "skill.warrior.moon_slash",
+  "skill.warrior.warlust",
+  "skill.warrior.strike_of_meteorite",
 ]);
 
 type PreviewPhase = "idle" | "loading" | "ready" | "unavailable";
@@ -55,12 +64,15 @@ export function useBattlePreview(
   const expectedRevision = request?.expectedRevision;
   const actorId = request?.actorId;
   const skillId = request?.skillId;
-  const targetIdsKey = request?.targetIds.join("\u0000") ?? "";
+  const hasRequest = request !== null;
+  // JSON keeps an intentional empty target list distinct from no request.
+  // Antivenom Potion and Warlust are authoritative targetless self actions.
+  const targetIdsKey = request ? JSON.stringify(request.targetIds) : "";
 
   useEffect(() => {
     sequence.current += 1;
     const requestSequence = sequence.current;
-    if (expectedRevision === undefined || !actorId || !skillId || !targetIdsKey
+    if (!hasRequest || expectedRevision === undefined || !actorId || !skillId
       || !provider.previewAction || !isAuditedPreviewSkill(skillId)) {
       return;
     }
@@ -68,7 +80,7 @@ export function useBattlePreview(
       expectedRevision,
       actorId,
       skillId,
-      targetIds: targetIdsKey.split("\u0000"),
+      targetIds: JSON.parse(targetIdsKey) as string[],
     };
 
     const controller = new AbortController();
@@ -100,7 +112,7 @@ export function useBattlePreview(
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [actorId, debounceMs, expectedRevision, key, provider, skillId, targetIdsKey]);
+  }, [actorId, debounceMs, expectedRevision, hasRequest, key, provider, skillId, targetIdsKey]);
 
   return state.key === key ? { phase: state.phase, preview: state.preview } : IDLE_PREVIEW;
 }

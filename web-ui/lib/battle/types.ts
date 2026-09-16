@@ -346,6 +346,7 @@ export type BattlePreviewConsequence =
     kind: "bleed" | "poison" | "cold";
     certainty: "conditional" | "onHit";
     chancePercent?: number | null;
+    outcome?: "firstApplication" | "durationRefresh";
   }
   | {
     kind: "shadowWordPain";
@@ -353,7 +354,7 @@ export type BattlePreviewConsequence =
   }
   | {
     kind: "secondaryHealing";
-    certainty: "always";
+    certainty: "always" | "onHit";
     recipientId: string;
     amountRange: { min: number; max: number };
   }
@@ -375,7 +376,87 @@ export type BattlePreviewConsequence =
     recipientId: string;
     stacks: number;
     outcome: "firstApplication" | "nextStack" | "durationRefresh";
+  }
+  | {
+    kind: "armorBreaker";
+    certainty: "onHit";
+    resultingStacks: number;
+    outcome: "firstApplication" | "nextStack" | "durationRefresh";
+  }
+  | {
+    kind: "stun";
+    certainty: "onHit";
+    resultingDuration: number;
+    outcome: "firstApplication" | "durationExtension";
+  }
+  | {
+    kind: "castingInterrupted";
+    certainty: "onHit";
+  }
+  | {
+    kind: "scoff";
+    certainty: "onHit";
+    outcome: "firstApplication" | "durationRefresh" | "sourceReplacement";
+  }
+  | {
+    kind: "healingReduction";
+    certainty: "onHit";
+    percent: 70;
+    outcome: "firstApplication" | "alreadyActive";
+  }
+  | {
+    kind: "wound";
+    certainty: "onHit";
+    agilityReduction: number;
+    outcome: "firstApplication";
+  }
+  | {
+    kind: "resistanceBoost";
+    certainty: "always" | "onHit";
+    recipientId: string;
+    resistances: Array<"fire" | "frost" | "death" | "nature" | "poison">;
+    amount: 45;
+    duration: 2;
+    outcome: "firstApplication" | "additionalApplication";
+  }
+  | {
+    kind: "controlImmunity";
+    certainty: "always";
+    recipientId: string;
+    duration: 2;
+    outcome: "firstApplication" | "durationRefresh";
+  }
+  | {
+    kind: "damageIncrease";
+    certainty: "always";
+    recipientId: string;
+    amount: number;
+    outcome: "firstApplication" | "additionalApplication";
+  }
+  | {
+    kind: "statusRemoval";
+    certainty: "always";
+    recipientId: string;
+    statusIds: string[];
+  }
+  | {
+    kind: "cooldown";
+    certainty: "always";
+    recipientId: string;
+    rounds: 3;
   };
+
+export interface BattlePreviewSelf {
+  recipientId: string;
+  currentHp: number;
+  maxHp: number;
+  primary: {
+    kind: "healing";
+    amountRange: { min: number; max: number };
+    reasonId?: string | null;
+  } | null;
+  consequences: BattlePreviewConsequence[];
+}
 
 export interface BattlePreviewTarget {
   targetId: string;
@@ -400,6 +481,7 @@ export interface BattlePreview {
   coverage: "authoritative" | "unavailable";
   reasonId?: string | null;
   targets: BattlePreviewTarget[];
+  selfPreview?: BattlePreviewSelf | null;
 }
 
 export interface BattleState {

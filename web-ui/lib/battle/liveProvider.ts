@@ -150,6 +150,9 @@ function isBattlePreviewConsequence(value: unknown): boolean {
   if (!isRecord(value) || typeof value.kind !== "string" || typeof value.certainty !== "string") return false;
   if (value.kind === "bleed" || value.kind === "poison" || value.kind === "cold") {
     return (value.certainty === "conditional" || value.certainty === "onHit")
+      && (value.outcome === undefined
+        || value.outcome === "firstApplication"
+        || value.outcome === "durationRefresh")
       && (value.chancePercent === undefined
         || value.chancePercent === null
         || (Number.isFinite(value.chancePercent)
@@ -158,7 +161,7 @@ function isBattlePreviewConsequence(value: unknown): boolean {
   }
   if (value.kind === "shadowWordPain") return value.certainty === "onHit";
   if (value.kind === "secondaryHealing") {
-    return value.certainty === "always"
+    return (value.certainty === "always" || value.certainty === "onHit")
       && typeof value.recipientId === "string"
       && isPreviewAmountRange(value.amountRange);
   }
@@ -167,14 +170,99 @@ function isBattlePreviewConsequence(value: unknown): boolean {
       && (value.stacks === 1 || value.stacks === 2)
       && isPreviewAmountRange(value.amountRange);
   }
-  return value.kind === "wrathOfCrusader"
+  if (value.kind === "wrathOfCrusader") {
+    return value.certainty === "always"
+      && typeof value.recipientId === "string"
+      && Number.isInteger(value.stacks)
+      && Number(value.stacks) >= 0
+      && (value.outcome === "firstApplication"
+        || value.outcome === "nextStack"
+        || value.outcome === "durationRefresh");
+  }
+  if (value.kind === "armorBreaker") {
+    return value.certainty === "onHit"
+      && Number.isInteger(value.resultingStacks)
+      && Number(value.resultingStacks) >= 0
+      && Number(value.resultingStacks) <= 3
+      && (value.outcome === "firstApplication"
+        || value.outcome === "nextStack"
+        || value.outcome === "durationRefresh");
+  }
+  if (value.kind === "stun") {
+    return value.certainty === "onHit"
+      && Number.isInteger(value.resultingDuration)
+      && Number(value.resultingDuration) >= 1
+      && (value.outcome === "firstApplication" || value.outcome === "durationExtension");
+  }
+  if (value.kind === "castingInterrupted") return value.certainty === "onHit";
+  if (value.kind === "scoff") {
+    return value.certainty === "onHit"
+      && (value.outcome === "firstApplication"
+        || value.outcome === "durationRefresh"
+        || value.outcome === "sourceReplacement");
+  }
+  if (value.kind === "healingReduction") {
+    return value.certainty === "onHit"
+      && value.percent === 70
+      && (value.outcome === "firstApplication" || value.outcome === "alreadyActive");
+  }
+  if (value.kind === "wound") {
+    return value.certainty === "onHit"
+      && Number.isFinite(value.agilityReduction)
+      && Number(value.agilityReduction) >= 0
+      && value.outcome === "firstApplication";
+  }
+  if (value.kind === "resistanceBoost") {
+    const allowedResistances = new Set(["fire", "frost", "death", "nature", "poison"]);
+    return (value.certainty === "always" || value.certainty === "onHit")
+      && typeof value.recipientId === "string"
+      && Array.isArray(value.resistances)
+      && value.resistances.length > 0
+      && value.resistances.every((resistance) => typeof resistance === "string" && allowedResistances.has(resistance))
+      && value.amount === 45
+      && value.duration === 2
+      && (value.outcome === "firstApplication" || value.outcome === "additionalApplication");
+  }
+  if (value.kind === "controlImmunity") {
+    return value.certainty === "always"
+      && typeof value.recipientId === "string"
+      && value.duration === 2
+      && (value.outcome === "firstApplication" || value.outcome === "durationRefresh");
+  }
+  if (value.kind === "damageIncrease") {
+    return value.certainty === "always"
+      && typeof value.recipientId === "string"
+      && Number.isFinite(value.amount)
+      && Number(value.amount) >= 0
+      && (value.outcome === "firstApplication" || value.outcome === "additionalApplication");
+  }
+  if (value.kind === "statusRemoval") {
+    return value.certainty === "always"
+      && typeof value.recipientId === "string"
+      && Array.isArray(value.statusIds)
+      && value.statusIds.every((statusId) => typeof statusId === "string");
+  }
+  return value.kind === "cooldown"
     && value.certainty === "always"
     && typeof value.recipientId === "string"
-    && Number.isInteger(value.stacks)
-    && Number(value.stacks) >= 0
-    && (value.outcome === "firstApplication"
-      || value.outcome === "nextStack"
-      || value.outcome === "durationRefresh");
+    && value.rounds === 3;
+}
+
+function isBattlePreviewSelf(value: unknown): boolean {
+  if (!isRecord(value)
+    || typeof value.recipientId !== "string"
+    || !Number.isFinite(value.currentHp)
+    || !Number.isFinite(value.maxHp)
+    || Number(value.currentHp) < 0
+    || Number(value.maxHp) < 1
+    || !Array.isArray(value.consequences)
+    || !value.consequences.every(isBattlePreviewConsequence)) return false;
+
+  if (value.primary === null) return true;
+  return isRecord(value.primary)
+    && value.primary.kind === "healing"
+    && isPreviewAmountRange(value.primary.amountRange)
+    && (value.primary.reasonId === undefined || isNullableString(value.primary.reasonId));
 }
 
 function isBattlePreview(value: unknown): value is BattlePreview {
@@ -188,6 +276,9 @@ function isBattlePreview(value: unknown): value is BattlePreview {
     || !value.selectedTargetIds.every((id) => typeof id === "string")
     || (value.coverage !== "authoritative" && value.coverage !== "unavailable")
     || !(value.reasonId === undefined || isNullableString(value.reasonId))
+    || !(value.selfPreview === undefined
+      || value.selfPreview === null
+      || isBattlePreviewSelf(value.selfPreview))
     || !Array.isArray(value.targets)) return false;
 
   return value.targets.every((target) => {

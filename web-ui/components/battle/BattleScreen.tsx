@@ -3,13 +3,13 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { usePresentationQueue } from "@/lib/battle/usePresentationQueue";
-import type { BattleEvent, BattleEventType, BattleOutcome, BattlePreviewTarget, BattleProvider, CombatantState, LegalAction, PresentationScript, SideId } from "@/lib/battle/types";
+import type { BattleEvent, BattleEventType, BattleOutcome, BattlePreviewSelf, BattlePreviewTarget, BattleProvider, CombatantState, LegalAction, PresentationScript, SideId } from "@/lib/battle/types";
 import { AssetImage } from "./AssetImage";
 import { HeroCard, Meter } from "./HeroCard";
 import { NoFourthSkillCard, SkillCard } from "./SkillCard";
 import { formationFor, getBattleFormat } from "@/lib/battle/formations";
 import { BATTLE_BACKGROUND } from "@/lib/battle/battleBackgrounds";
-import { heroFigureScaleFor } from "@/lib/battle/assets";
+import { heroFigureScaleFor, statusRegistry } from "@/lib/battle/assets";
 import { useBattlePresentationConfig } from "@/lib/battle/presentationConfig";
 import { isAuditedPreviewSkill, useBattlePreview } from "@/lib/battle/useBattlePreview";
 import { useBattleAudio } from "@/lib/audio/battleAudio";
@@ -85,6 +85,12 @@ function previewConsequenceCopy(
   if (consequence.kind === "cold") return { label: "On hit", value: "Applies Cold" };
   if (consequence.kind === "shadowWordPain") return { label: "Shadow Debuff", value: "100% chance" };
   if (consequence.kind === "bleed" || consequence.kind === "poison") {
+    if (consequence.outcome) {
+      return {
+        label: consequence.kind === "bleed" ? "Bleeding" : "Poison",
+        value: consequence.outcome === "durationRefresh" ? "Refreshes on hit" : "Applies on hit",
+      };
+    }
     return {
       label: consequence.kind === "bleed" ? "Bleed" : "Poison",
       value: consequence.chancePercent === null || consequence.chancePercent === undefined
@@ -98,7 +104,46 @@ function previewConsequenceCopy(
   if (consequence.kind === "wrathOfCrusader") {
     return { label: "Buff Self", value: "Wrath of Crusader" };
   }
+  if (consequence.kind === "secondaryHealing") {
+    return { label: "Self Healing", value: `${consequence.amountRange.min}–${consequence.amountRange.max}` };
+  }
+  if (consequence.kind === "armorBreaker") {
+    const action = consequence.outcome === "durationRefresh" ? "Refreshes" : consequence.outcome === "nextStack" ? "Increases to" : "Applies";
+    return { label: "Armor Breaker", value: `${action} ${consequence.resultingStacks} stack${consequence.resultingStacks === 1 ? "" : "s"}` };
+  }
+  if (consequence.kind === "stun") {
+    return { label: "Stun", value: `${consequence.outcome === "durationExtension" ? "Extends to" : "Applies"} ${consequence.resultingDuration} round${consequence.resultingDuration === 1 ? "" : "s"}` };
+  }
+  if (consequence.kind === "castingInterrupted") return { label: "Casting", value: "Interrupted on hit" };
+  if (consequence.kind === "scoff") {
+    const value = consequence.outcome === "durationRefresh" ? "Refreshes on hit" : consequence.outcome === "sourceReplacement" ? "Replaces source on hit" : "Applies on hit";
+    return { label: "Scoff", value };
+  }
+  if (consequence.kind === "healingReduction") {
+    return { label: "Healing Reduction", value: consequence.outcome === "alreadyActive" ? `Already active · ${consequence.percent}%` : `${consequence.percent}% on hit` };
+  }
+  if (consequence.kind === "wound") return { label: "Wound", value: `−${consequence.agilityReduction} Agility on hit` };
+  if (consequence.kind === "resistanceBoost") {
+    const resistances = consequence.resistances.map((item) => `${item[0].toUpperCase()}${item.slice(1)}`).join(" / ");
+    return { label: `${resistances} Resistance`, value: `+${consequence.amount} · ${consequence.duration} rounds` };
+  }
+  if (consequence.kind === "controlImmunity") {
+    return { label: "Control Immunity", value: `${consequence.outcome === "durationRefresh" ? "Refreshes · " : ""}${consequence.duration} rounds` };
+  }
+  if (consequence.kind === "damageIncrease") return { label: "Damage Increase", value: `+${consequence.amount}` };
+  if (consequence.kind === "statusRemoval") {
+    const names = consequence.statusIds.map((statusId) => statusRegistry[statusId]?.name ?? "Status effect");
+    return { label: "Removes", value: names.join(" / ") };
+  }
+  if (consequence.kind === "cooldown") return { label: "Cooldown", value: `${consequence.rounds} rounds` };
   return { label: "Effect", value: "Applied" };
+}
+
+function PreviewConsequenceRows({ consequences, omitSecondaryHealing = false }: { consequences: BattlePreviewTarget["consequences"]; omitSecondaryHealing?: boolean }) {
+  return consequences.filter((consequence) => !omitSecondaryHealing || consequence.kind !== "secondaryHealing").map((consequence, index) => {
+    const copy = previewConsequenceCopy(consequence);
+    return <div className="preview-consequence" key={`${consequence.kind}.${index}`}><dt>{copy.label}</dt><dd>{copy.value}</dd></div>;
+  });
 }
 
 function TargetPreviewCard({ id, phase, targetName, target }: {
@@ -115,12 +160,28 @@ function TargetPreviewCard({ id, phase, targetName, target }: {
           <div><dt>{target.primary.kind === "healing" ? "Healing" : "Damage"}</dt><dd>{target.primary.kind === "prevented" ? "0 · Blocked" : `${target.primary.amountRange.min}–${target.primary.amountRange.max}`}</dd></div>
           {target.primary.kind === "damage" && target.directHitChancePercent !== null ? <div><dt>Hit Chance</dt><dd>{target.directHitChancePercent}%</dd></div> : null}
           <div><dt>Target HP</dt><dd>{target.currentHp} / {target.maxHp}</dd></div>
-          {target.consequences.filter((consequence) => consequence.kind !== "secondaryHealing").map((consequence, index) => {
-            const copy = previewConsequenceCopy(consequence);
-            return <div className="preview-consequence" key={`${consequence.kind}.${index}`}><dt>{copy.label}</dt><dd>{copy.value}</dd></div>;
-          })}
+          <PreviewConsequenceRows consequences={target.consequences} omitSecondaryHealing />
         </dl>}
   </section>;
+}
+
+function SelfPreviewCard({ id, phase, recipientName, skillName, preview }: {
+  id: string;
+  phase: TargetPreviewPhase;
+  recipientName: string;
+  skillName: string;
+  preview: BattlePreviewSelf | null;
+}) {
+  return <aside className={`self-preview-card ${phase}`} id={id} role="status" aria-live="polite">
+    <header><small>{skillName}</small><strong>SELF <span aria-hidden="true">→</span> {recipientName}</strong></header>
+    {phase === "loading" ? <p>Checking outcome…</p>
+      : phase === "unavailable" || !preview ? <p>Preview unavailable</p>
+        : <dl>
+          {preview.primary ? <div><dt>Healing</dt><dd>{preview.primary.amountRange.min}–{preview.primary.amountRange.max}</dd></div> : null}
+          <div><dt>Current HP</dt><dd>{preview.currentHp} / {preview.maxHp}</dd></div>
+          <PreviewConsequenceRows consequences={preview.consequences} />
+        </dl>}
+  </aside>;
 }
 
 function previewTargetsForAnchor(legal: LegalAction | undefined, selected: readonly string[], anchorId: string | null): string[] {
@@ -290,12 +351,18 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
   // button focused. Keyboard focus remains an accessible non-pointer fallback.
   const previewAnchorId = hoveredTargetId ?? (targetInputMode === "keyboard" ? focusedTargetId : null);
   const previewTargetIds = previewTargetsForAnchor(legal, selectedTargets, previewAnchorId);
+  const targetlessSelfPreview = Boolean(
+    legal
+    && legal.minimumTargets === 0
+    && legal.maximumTargets === 0
+    && (selectedSkillState?.targetMode === "none" || selectedSkillState?.targetMode === "self"),
+  );
   const previewRequest = acceptsCommands
     && !autoBattle
     && snapshot?.activeCombatantId
     && selectedSkill
     && isAuditedPreviewSkill(selectedSkill)
-    && previewTargetIds.length > 0
+    && (previewTargetIds.length > 0 || targetlessSelfPreview)
     ? {
         expectedRevision: revision,
         actorId: snapshot.activeCombatantId,
@@ -304,6 +371,10 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
       }
     : null;
   const { phase: previewPhase, preview } = useBattlePreview(provider, previewRequest);
+  const selfPreviewPhase: TargetPreviewPhase = targetlessSelfPreview
+    ? previewPhase
+    : previewPhase === "ready" && preview?.selfPreview ? "ready" : "idle";
+  const selfPreviewDescriptionId = selfPreviewPhase === "idle" ? undefined : "battle-self-preview";
   const compactPreview = presentationConfig.mode === "pad"
     || presentationConfig.mode === "pad-mini"
     || presentationConfig.mode === "phone";
@@ -488,7 +559,7 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
 
       <section className="command-deck">
         {active
-          ? <div className="acting-card"><AssetImage request={{ kind: "figure", key: active.definitionId, name: active.displayName, className: active.faculty }} className="portrait" /><div><small>ACTING HERO</small><h2>{active.displayName}</h2><p>{active.faculty} · {active.specialization}</p><span className="turn-intent">{
+          ? <div className={`acting-card ${selfPreviewPhase !== "idle" ? "showing-self-preview" : ""}`}><AssetImage request={{ kind: "figure", key: active.definitionId, name: active.displayName, className: active.faculty }} className="portrait" /><div><small>ACTING HERO</small><h2>{active.displayName}</h2><p>{active.faculty} · {active.specialization}</p><span className="turn-intent">{
             snapshot.turnControl.disposition === "skip"
               ? "ACTION RESTRICTED · TURN SKIPPED"
               : isPlaying && activeEvent
@@ -500,7 +571,13 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
                 : snapshot.turnControl.disposition === "automaticAction"
                     ? "ACTION RESOLVING AUTOMATICALLY"
                     : "PLAYER COMMANDS UNAVAILABLE"
-          }</span></div></div>
+          }</span></div>{selfPreviewDescriptionId ? <SelfPreviewCard
+            id={selfPreviewDescriptionId}
+            phase={selfPreviewPhase}
+            recipientName={preview?.selfPreview ? combatants[preview.selfPreview.recipientId]?.displayName ?? active.displayName : active.displayName}
+            skillName={selectedSkillState?.displayName ?? "Selected skill"}
+            preview={preview?.selfPreview ?? null}
+          /> : null}</div>
           : <div className="acting-card battle-ended" role="status"><div className="ended-crest">◇</div><div><small>BATTLE COMPLETE</small><h2>{outcomeLabel}</h2><p>The final board reflects the authoritative Python result.</p><span className="turn-intent">NO FURTHER COMMANDS ARE LEGAL</span></div></div>}
         <div className="skills" aria-label="Skills">
           {orderedActiveSkills.map((item) => (
@@ -527,7 +604,7 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
           <span>MOCK EVENT DEMOS</span>{mockDemos.map((demo) => <button data-audio-feedback="interactive" key={demo.id} disabled={isPlaying || entryLocked} onClick={() => void present(demo.run)}>{demo.label}</button>)}
         </div>}
         <label className="toggle" data-audio-feedback="interactive" aria-disabled={entryLocked || isPlaying}>AUTO BATTLE <input type="checkbox" checked={autoBattle} disabled={entryLocked || isPlaying} onChange={(event) => { setAutoBattle(event.target.checked); setHoveredTargetId(null); setFocusedTargetId(null); setTargetInputMode(null); }} /><span /></label>
-        {!active ? <button className="end-turn" disabled>BATTLE ENDED</button> : isPlaying ? <button data-audio-feedback="interactive" className="end-turn" onClick={skip} disabled={!canSkip || isOpening}>{isOpening ? "OPENING BATTLE…" : canSkip ? "SKIP EFFECT" : "RESOLVING…"}</button> : !acceptsCommands ? <button className="end-turn" disabled>{entryLocked ? "BATTLE OPENING" : "AUTOMATIC TURN"}</button> : <button data-audio-feedback="interactive" className="end-turn" onClick={triggerSkill} disabled={!selectedSkill || !legal || selectedTargets.length < legal.minimumTargets || selectedTargets.length > legal.maximumTargets}>{selectedSkill ? "CAST SKILL" : "SELECT SKILL"}</button>}
+        {!active ? <button className="end-turn" disabled>BATTLE ENDED</button> : isPlaying ? <button data-audio-feedback="interactive" className="end-turn" onClick={skip} disabled={!canSkip || isOpening}>{isOpening ? "OPENING BATTLE…" : canSkip ? "SKIP EFFECT" : "RESOLVING…"}</button> : !acceptsCommands ? <button className="end-turn" disabled>{entryLocked ? "BATTLE OPENING" : "AUTOMATIC TURN"}</button> : <button data-audio-feedback="interactive" className="end-turn" aria-describedby={selfPreviewDescriptionId} onClick={triggerSkill} disabled={!selectedSkill || !legal || selectedTargets.length < legal.minimumTargets || selectedTargets.length > legal.maximumTargets}>{selectedSkill ? "CAST SKILL" : "SELECT SKILL"}</button>}
         {onResign ? <button data-audio-feedback="interactive" type="button" className="resign-battle" onClick={() => setResignConfirmationOpen(true)}>RESIGN</button> : null}
       </footer>
       {(error || fullscreenError) && <div className={`ui-error ${errorKind ?? ""}`} role="alert"><strong>{errorKind === "stale" ? "STATE RECONCILED" : errorKind === "rejected" ? "COMMAND REJECTED" : "BATTLE NOTICE"}</strong><span>{error ?? fullscreenError}</span></div>}

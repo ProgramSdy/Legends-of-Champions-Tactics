@@ -719,6 +719,12 @@ class BattleAdapter:
             if isinstance(actor, Priest_Comprehensiveness)
             else {"Hammer of Anger", "Crusader Strike", "Flash of Light"}
             if isinstance(actor, Paladin_Retribution)
+            else {"Devastate", "Shield Bash", "Thunder Pot"}
+            if isinstance(actor, Warrior_Defence)
+            else {"Fatal Strike", "Armor Crush", "Antivenom Potion"}
+            if isinstance(actor, Warrior_Weapon_Master)
+            else {"Moon Slash", "Warlust", "Strike of Meteorite"}
+            if isinstance(actor, Warrior_Berserker)
             else set()
         )
         if skill.name not in approved_skills:
@@ -744,11 +750,17 @@ class BattleAdapter:
                 "illegalSkill", "The skill is not a published legal action."
             )
         maximum_targets = published_action["maximumTargets"]
-        if skill.name == "Arcane Missiles":
+        if skill.target_qty == 0:
+            if target_ids:
+                raise BattleAdapterError(
+                    "illegalTargets",
+                    "A targetless self preview requires an empty target list.",
+                )
+        elif skill.name in {"Arcane Missiles", "Thunder Pot", "Moon Slash"}:
             if not 1 <= len(target_ids) <= maximum_targets:
                 raise BattleAdapterError(
                     "illegalTargets",
-                    "The Arcane Missiles preview requires one draft target or "
+                    f"The {skill.name} preview requires one draft target or "
                     f"the complete set of {maximum_targets} target(s).",
                 )
         elif len(target_ids) != maximum_targets:
@@ -832,6 +844,166 @@ class BattleAdapter:
             for raw_healing in range(raw_range[0], raw_range[1] + 1)
         ]
         return min(received), max(received)
+
+    def _unavailable_preview(self, session, request) -> dict[str, Any]:
+        return {
+            "revision": session.revision,
+            "actorId": request["actorId"],
+            "skillId": request["skillId"],
+            "requestedTargetIds": list(request["targetIds"]),
+            "selectedTargetIds": list(request["targetIds"]),
+            "coverage": "unavailable",
+            "reasonId": "preview.unauditedState",
+            "targets": [],
+            "selfPreview": None,
+        }
+
+    @staticmethod
+    def _armor_breaker_preview(target, *, cap: int) -> dict[str, Any]:
+        active = target.status.get("armor_breaker", False)
+        stacks = target.armor_breaker_stacks
+        if not active:
+            outcome = "firstApplication"
+            resulting_stacks = 1
+        elif stacks < cap:
+            outcome = "nextStack"
+            resulting_stacks = stacks + 1
+        else:
+            outcome = "durationRefresh"
+            resulting_stacks = stacks
+        return {
+            "kind": "armorBreaker",
+            "certainty": "onHit",
+            "resultingStacks": resulting_stacks,
+            "outcome": outcome,
+        }
+
+    def _warrior_target_consequences(
+        self,
+        session,
+        actor,
+        skill,
+        target,
+        *,
+        prevented: bool,
+    ) -> list[dict[str, Any]]:
+        if prevented:
+            return []
+        consequences: list[dict[str, Any]] = []
+        if isinstance(actor, Warrior_Defence):
+            if skill.name == "Devastate":
+                consequences.append(self._armor_breaker_preview(target, cap=2))
+            elif skill.name == "Shield Bash":
+                consequences.append(
+                    {
+                        "kind": "stun",
+                        "certainty": "onHit",
+                        "resultingDuration": target.stun_duration + 1,
+                        "outcome": (
+                            "durationExtension"
+                            if target.status.get("stunned", False)
+                            else "firstApplication"
+                        ),
+                    }
+                )
+                if target.status.get("magic_casting", False):
+                    consequences.append(
+                        {"kind": "castingInterrupted", "certainty": "onHit"}
+                    )
+            elif skill.name == "Thunder Pot":
+                scoff = next(
+                    (item for item in target.debuffs if item.name == "Scoff"),
+                    None,
+                )
+                if scoff is None:
+                    outcome = "firstApplication"
+                elif scoff.initiator is actor:
+                    outcome = "durationRefresh"
+                else:
+                    outcome = "sourceReplacement"
+                consequences.append(
+                    {"kind": "scoff", "certainty": "onHit", "outcome": outcome}
+                )
+                if target.status.get("magic_casting", False):
+                    consequences.append(
+                        {"kind": "castingInterrupted", "certainty": "onHit"}
+                    )
+        elif isinstance(actor, Warrior_Weapon_Master):
+            if skill.name == "Fatal Strike":
+                consequences.append(
+                    {
+                        "kind": "healingReduction",
+                        "certainty": "onHit",
+                        "percent": 70,
+                        "outcome": (
+                            "alreadyActive"
+                            if target.status.get("fatal_strike", False)
+                            else "firstApplication"
+                        ),
+                    }
+                )
+            elif skill.name == "Armor Crush":
+                active = target.status.get("armor_breaker", False)
+                stacks = target.armor_breaker_stacks
+                consequences.append(self._armor_breaker_preview(target, cap=3))
+                if active and stacks == 1:
+                    consequences.append(
+                        {
+                            "kind": "wound",
+                            "certainty": "onHit",
+                            "agilityReduction": int(target.agility * 0.2),
+                            "outcome": "firstApplication",
+                        }
+                    )
+                elif active and stacks == 2:
+                    consequences.append(
+                        {
+                            "kind": "bleed",
+                            "certainty": "onHit",
+                            "outcome": (
+                                "durationRefresh"
+                                if target.status.get("bleeding_armor_crush", False)
+                                else "firstApplication"
+                            ),
+                        }
+                    )
+        elif isinstance(actor, Warrior_Berserker):
+            if skill.name == "Moon Slash" and target.status.get(
+                "armor_breaker", False
+            ):
+                consequences.append(
+                    {
+                        "kind": "bleed",
+                        "certainty": "onHit",
+                        "outcome": (
+                            "durationRefresh"
+                            if target.status.get("bleeding_moon_slash", False)
+                            else "firstApplication"
+                        ),
+                    }
+                )
+            elif skill.name == "Strike of Meteorite":
+                consequences.append(self._armor_breaker_preview(target, cap=3))
+                if target.status.get("magic_casting", False):
+                    consequences.append(
+                        {"kind": "castingInterrupted", "certainty": "onHit"}
+                    )
+            drain_range = actor.audited_blood_frenzy_healing_range(
+                skill.name, target
+            )
+            if drain_range is not None:
+                minimum, maximum = self._audited_healing_receipt_range(
+                    actor, drain_range
+                )
+                consequences.append(
+                    {
+                        "kind": "secondaryHealing",
+                        "certainty": "onHit",
+                        "recipientId": self._combatant_id(session, actor),
+                        "amountRange": {"min": minimum, "max": maximum},
+                    }
+                )
+        return consequences
 
     def _preview_consequences(
         self,
@@ -953,9 +1125,186 @@ class BattleAdapter:
                         "outcome": outcome,
                     }
                 ]
+        if isinstance(
+            actor, (Warrior_Defence, Warrior_Weapon_Master, Warrior_Berserker)
+        ):
+            return self._warrior_target_consequences(
+                session, actor, skill, target, prevented=prevented
+            )
         return []
 
+    def _warrior_self_preview(self, session, actor, skill, targets):
+        actor_id = self._combatant_id(session, actor)
+        consequences: list[dict[str, Any]] = []
+        primary = None
+
+        if skill.name in {"Shield Bash", "Thunder Pot", "Antivenom Potion", "Warlust"}:
+            consequences.append(
+                {
+                    "kind": "cooldown",
+                    "certainty": "always",
+                    "recipientId": actor_id,
+                    "rounds": 3,
+                }
+            )
+
+        if isinstance(actor, Warrior_Defence) and skill.name == "Thunder Pot":
+            has_possible_hit = any(
+                self._deterministic_prevention(skill, target) is None
+                for target in targets
+            )
+            if has_possible_hit:
+                consequences.insert(
+                    0,
+                    {
+                        "kind": "resistanceBoost",
+                        "certainty": "onHit",
+                        "recipientId": actor_id,
+                        "resistances": ["fire", "frost", "death", "nature"],
+                        "amount": 45,
+                        "duration": 2,
+                        "outcome": (
+                            "additionalApplication"
+                            if actor.status.get("shield_lash", False)
+                            else "firstApplication"
+                        ),
+                    },
+                )
+
+        elif (
+            isinstance(actor, Warrior_Weapon_Master)
+            and skill.name == "Antivenom Potion"
+        ):
+            raw_range = actor.audited_healing_range(skill.name)
+            minimum, maximum = self._audited_healing_receipt_range(actor, raw_range)
+            primary = {
+                "kind": "healing",
+                "amountRange": {"min": minimum, "max": maximum},
+                "reasonId": None,
+            }
+            consequences.insert(
+                0,
+                {
+                    "kind": "resistanceBoost",
+                    "certainty": "always",
+                    "recipientId": actor_id,
+                    "resistances": ["poison"],
+                    "amount": 45,
+                    "duration": 2,
+                    "outcome": (
+                        "additionalApplication"
+                        if actor.status.get("antivenom_potion", False)
+                        else "firstApplication"
+                    ),
+                },
+            )
+            removable = (
+                "poisoned_dagger",
+                "bleeding_moon_slash",
+                "bleeding_sharp_blade",
+                "bleeding_crimson_cleave",
+                "wound_backstab",
+                "paralyze_blade",
+                "mixed_venom",
+                "acid_bomb",
+                "bleeding_armor_crush",
+            )
+            status_ids = [
+                f"status.{status}"
+                for status in removable
+                if actor.status.get(status, False)
+            ]
+            if status_ids:
+                consequences.insert(
+                    1,
+                    {
+                        "kind": "statusRemoval",
+                        "certainty": "always",
+                        "recipientId": actor_id,
+                        "statusIds": status_ids,
+                    },
+                )
+
+        elif isinstance(actor, Warrior_Berserker) and skill.name == "Warlust":
+            consequences[0:0] = [
+                {
+                    "kind": "controlImmunity",
+                    "certainty": "always",
+                    "recipientId": actor_id,
+                    "duration": 2,
+                    "outcome": (
+                        "durationRefresh"
+                        if actor.status.get("warlust", False)
+                        else "firstApplication"
+                    ),
+                },
+                {
+                    "kind": "damageIncrease",
+                    "certainty": "always",
+                    "recipientId": actor_id,
+                    "amount": round(actor.original_damage / 3),
+                    "outcome": (
+                        "additionalApplication"
+                        if actor.status.get("warlust", False)
+                        else "firstApplication"
+                    ),
+                },
+            ]
+            removable = ("shadow_word_insanity", "fear", "scoff", "paralyzed")
+            status_ids = [
+                f"status.{status}"
+                for status in removable
+                if actor.status.get(status, False)
+            ]
+            if status_ids:
+                consequences.insert(
+                    2,
+                    {
+                        "kind": "statusRemoval",
+                        "certainty": "always",
+                        "recipientId": actor_id,
+                        "statusIds": status_ids,
+                    },
+                )
+
+        if primary is None and not consequences:
+            return None
+        return {
+            "recipientId": actor_id,
+            "currentHp": actor.hp,
+            "maxHp": actor.hp_max,
+            "primary": primary,
+            "consequences": consequences,
+        }
+
     def _evaluate_preview(self, session, actor, skill, targets, request):
+        if (
+            isinstance(actor, Warrior_Weapon_Master)
+            and skill.name == "Antivenom Potion"
+            and actor.status.get("unstable_compound", False)
+        ):
+            return self._unavailable_preview(session, request)
+        if (
+            isinstance(actor, Warrior_Defence)
+            and skill.name == "Thunder Pot"
+            and any(
+                any(
+                    target.status.get(state, False)
+                    for state in skill.immunity_condition_control
+                )
+                for target in targets
+            )
+        ):
+            return self._unavailable_preview(session, request)
+
+        self_preview = (
+            self._warrior_self_preview(session, actor, skill, targets)
+            if isinstance(
+                actor,
+                (Warrior_Defence, Warrior_Weapon_Master, Warrior_Berserker),
+            )
+            else None
+        )
         target_results = []
         for target in targets:
             target_id = self._combatant_id(session, target)
@@ -969,16 +1318,7 @@ class BattleAdapter:
             if is_healing:
                 raw_range = actor.audited_healing_range(skill.name)
                 if raw_range is None:
-                    return {
-                        "revision": session.revision,
-                        "actorId": request["actorId"],
-                        "skillId": request["skillId"],
-                        "requestedTargetIds": list(request["targetIds"]),
-                        "selectedTargetIds": list(request["targetIds"]),
-                        "coverage": "unavailable",
-                        "reasonId": "preview.unauditedState",
-                        "targets": [],
-                    }
+                    return self._unavailable_preview(session, request)
                 minimum, maximum = self._audited_healing_receipt_range(
                     target, raw_range
                 )
@@ -1016,16 +1356,7 @@ class BattleAdapter:
             else:
                 raw_range = actor.audited_direct_damage_range(skill.name, target)
                 if raw_range is None:
-                    return {
-                        "revision": session.revision,
-                        "actorId": request["actorId"],
-                        "skillId": request["skillId"],
-                        "requestedTargetIds": list(request["targetIds"]),
-                        "selectedTargetIds": list(request["targetIds"]),
-                        "coverage": "unavailable",
-                        "reasonId": "preview.unauditedState",
-                        "targets": [],
-                    }
+                    return self._unavailable_preview(session, request)
                 received = []
                 absorption_reasons = []
                 for raw_damage in raw_range:
@@ -1069,6 +1400,7 @@ class BattleAdapter:
             "coverage": "authoritative",
             "reasonId": None,
             "targets": target_results,
+            "selfPreview": self_preview,
         }
 
     def _validate(self, session: BattleSession, command: dict[str, Any]) -> None:

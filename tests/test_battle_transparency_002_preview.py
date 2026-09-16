@@ -554,12 +554,15 @@ def test_api_preview_validation_failure_and_stale_failure_are_nonmutating():
     )
     assert stale.status_code == 409
     assert stale.json()["detail"]["code"] == "staleRevision"
-    invalid_pydantic = client.post(
+    invalid_target_shape = client.post(
         f"/api/v1/battles/{battle_id}/preview",
         json={**request, "targetIds": []},
     )
-    assert invalid_pydantic.status_code == 422
-    assert invalid_pydantic.json()["detail"][0]["loc"] == ["body", "targetIds"]
+    # The transport now accepts an empty list so the two audited targetless
+    # Warrior skills can use it.  A targeted Paladin skill remains rejected by
+    # the adapter's legal target-shape validation.
+    assert invalid_target_shape.status_code == 422
+    assert invalid_target_shape.json()["detail"]["code"] == "illegalTargets"
     assert registry.adapter.snapshot(session) == snapshot
     assert _hero_mutable_state(session.game.player_heroes[0]) == before_state
     assert session.rng_state == before_rng
@@ -613,7 +616,7 @@ def test_all_six_skills_preview_through_live_size_scoped_formation_authority(
         assert isinstance(fact["directHitChancePercent"], int)
 
 
-def test_damage_immunity_uses_live_unclassified_nature_not_magic_theme():
+def test_damage_immunity_uses_the_live_skill_damage_nature():
     adapter, session = _session(
         ["hero.priest.comprehensiveness"], ["hero.rogue.comprehensiveness"]
     )
@@ -624,7 +627,11 @@ def test_damage_immunity_uses_live_unclassified_nature_not_magic_theme():
         session,
         _request(adapter, session, "skill.priest.holy_smite", target_id),
     )["targets"][0]
-    assert smite["primary"]["kind"] == "damage"
+    assert smite["primary"] == {
+        "kind": "prevented",
+        "amountRange": {"min": 0, "max": 0},
+        "reasonId": "prevention.magicalDamage",
+    }
 
     target.status["glacier"] = True
     pain = adapter.preview(

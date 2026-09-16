@@ -228,6 +228,25 @@ class Warrior_Defence(Warrior):
             self.add_skill(Skill(self, "Shield Bash", self.shield_bash, target_type = "single", skill_type= "damage", attack_type = "melee", capable_interrupt_magic_casting = True))
             self.add_skill(Skill(self, "Thunder Pot", self.thunder_pot, target_type = "multi", skill_type= "damage", target_qty=2, attack_type = "ranged_projectile", is_control_skill = True, independent_effect_action=self.independent_shield_lash))
 
+    def audited_direct_damage_range(self, skill_name, target):
+        """Return the finite pre-formation range used by the live action."""
+        if skill_name == "Devastate":
+            values = [
+                max(math.ceil((self.damage + variation - target.defense) * 0.75), 1)
+                for variation in range(-1, 2)
+            ]
+        elif skill_name == "Shield Bash":
+            values = [
+                max(int((self.damage + variation - target.defense) / 4), 1)
+                for variation in range(-2, 3)
+            ]
+        elif skill_name == "Thunder Pot":
+            basic_damage = round((self.damage - target.defense) / 3)
+            values = [max(1, basic_damage + variation) for variation in range(-1, 2)]
+        else:
+            return None
+        return min(values), max(values)
+
     def shield_bash(self, other_hero, attack_type="NA"):
         if other_hero.status['magic_casting'] == True:
           interrupt_magic_result = self.interrupt_magic_casting(other_hero)
@@ -529,6 +548,37 @@ class Warrior_Weapon_Master(Warrior):
             self.add_skill(Skill(self, "Fatal Strike", self.fatal_strike, target_type = "single", skill_type= "damage",attack_type = "melee"))
             self.add_skill(Skill(self, "Armor Crush", self.armor_crush, target_type = "single", skill_type= "damage", attack_type = "melee"))
             self.add_skill(Skill(self, "Antivenom Potion", self.antivenom_potion, target_type = "single", skill_type= "buffs", target_qty= 0))
+
+    def audited_direct_damage_range(self, skill_name, target):
+        """Return the finite pre-formation range used by the live action."""
+        if skill_name == "Fatal Strike":
+            values = [
+                max(self.damage + variation - target.defense, 1)
+                for variation in range(-3, 4)
+            ]
+        elif skill_name == "Armor Crush":
+            if target.status.get("armor_breaker", False):
+                multiplier = 0.65 if target.armor_breaker_stacks == 1 else 0.75
+            else:
+                multiplier = 0.55
+            values = [
+                max(
+                    math.ceil(
+                        (self.damage + variation - target.defense) * multiplier
+                    ),
+                    1,
+                )
+                for variation in range(-3, 4)
+            ]
+        else:
+            return None
+        return min(values), max(values)
+
+    @staticmethod
+    def audited_healing_range(skill_name):
+        if skill_name == "Antivenom Potion":
+            return 18, 20
+        return None
 
     def fatal_strike(self, other_hero, attack_type="NA"):
       variation = random.randint(-3, 3)
@@ -865,6 +915,35 @@ class Warrior_Berserker(Warrior):
         self.add_skill(Skill(self, "Moon Slash", self.moon_slash, target_type="multi", skill_type="damage", target_qty=2, attack_type = "ranged_instant"))
         self.add_skill(Skill(self, "Warlust", self.warlust, target_type="single", skill_type="buffs", target_qty=0))
         self.add_skill(Skill(self, "Strike of Meteorite", self.strike_of_meteorite, target_type="single", skill_type="damage", attack_type = "melee", capable_interrupt_magic_casting=True))
+
+    def audited_direct_damage_range(self, skill_name, target):
+        """Return the finite pre-formation range used by the live action."""
+        if skill_name == "Moon Slash":
+            values = [
+                max(
+                    math.ceil(
+                        (self.damage + variation - target.defense) * (2 / 3)
+                    ),
+                    1,
+                )
+                for variation in range(-3, 4)
+            ]
+        elif skill_name == "Strike of Meteorite":
+            values = [
+                max(self.damage + variation - target.defense, 0)
+                for variation in range(-3, 4)
+            ]
+        else:
+            return None
+        return min(values), max(values)
+
+    def audited_blood_frenzy_healing_range(self, skill_name, target):
+        if not self.status.get("blood_frenzy", False):
+            return None
+        damage_range = self.audited_direct_damage_range(skill_name, target)
+        if damage_range is None:
+            return None
+        return int(damage_range[0] * 0.3), int(damage_range[1] * 0.3)
 
     # ========== 特殊状态：Blood Frenzy ==========
     def trigger_blood_frenzy(self):

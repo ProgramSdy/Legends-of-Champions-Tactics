@@ -182,7 +182,7 @@ class BattlePreviewRequest(StrictApiModel):
     expected_revision: int = Field(alias="expectedRevision", ge=0)
     actor_id: str = Field(alias="actorId", min_length=1)
     skill_id: str = Field(alias="skillId", min_length=1)
-    target_ids: list[str] = Field(alias="targetIds", min_length=1, max_length=2)
+    target_ids: list[str] = Field(alias="targetIds", min_length=0, max_length=2)
 
 
 class DamageAmountRange(ApiModel):
@@ -202,6 +202,7 @@ class DamagePreviewConsequence(ApiModel):
     chance_percent: int | None = Field(
         default=None, alias="chancePercent", ge=0, le=100
     )
+    outcome: Literal["firstApplication", "durationRefresh"] | None = None
 
 
 class ShadowWordPainPreviewConsequence(StrictApiModel):
@@ -211,7 +212,7 @@ class ShadowWordPainPreviewConsequence(StrictApiModel):
 
 class SecondaryHealingPreviewConsequence(StrictApiModel):
     kind: Literal["secondaryHealing"]
-    certainty: Literal["always"]
+    certainty: Literal["always", "onHit"]
     recipient_id: str = Field(alias="recipientId", min_length=1)
     amount_range: DamageAmountRange = Field(alias="amountRange")
 
@@ -238,13 +239,103 @@ class WrathOfCrusaderPreviewConsequence(StrictApiModel):
     outcome: Literal["firstApplication", "nextStack", "durationRefresh"]
 
 
+class ArmorBreakerPreviewConsequence(StrictApiModel):
+    kind: Literal["armorBreaker"]
+    certainty: Literal["onHit"]
+    resulting_stacks: int = Field(alias="resultingStacks", ge=0, le=3)
+    outcome: Literal["firstApplication", "nextStack", "durationRefresh"]
+
+
+class StunPreviewConsequence(StrictApiModel):
+    kind: Literal["stun"]
+    certainty: Literal["onHit"]
+    resulting_duration: int = Field(alias="resultingDuration", ge=1)
+    outcome: Literal["firstApplication", "durationExtension"]
+
+
+class CastingInterruptedPreviewConsequence(StrictApiModel):
+    kind: Literal["castingInterrupted"]
+    certainty: Literal["onHit"]
+
+
+class ScoffPreviewConsequence(StrictApiModel):
+    kind: Literal["scoff"]
+    certainty: Literal["onHit"]
+    outcome: Literal["firstApplication", "durationRefresh", "sourceReplacement"]
+
+
+class HealingReductionPreviewConsequence(StrictApiModel):
+    kind: Literal["healingReduction"]
+    certainty: Literal["onHit"]
+    percent: Literal[70]
+    outcome: Literal["firstApplication", "alreadyActive"]
+
+
+class WoundPreviewConsequence(StrictApiModel):
+    kind: Literal["wound"]
+    certainty: Literal["onHit"]
+    agility_reduction: int = Field(alias="agilityReduction", ge=0)
+    outcome: Literal["firstApplication"]
+
+
+class ResistanceBoostPreviewConsequence(StrictApiModel):
+    kind: Literal["resistanceBoost"]
+    certainty: Literal["always", "onHit"]
+    recipient_id: str = Field(alias="recipientId", min_length=1)
+    resistances: list[Literal["fire", "frost", "death", "nature", "poison"]]
+    amount: Literal[45]
+    duration: Literal[2]
+    outcome: Literal["firstApplication", "additionalApplication"]
+
+
+class ControlImmunityPreviewConsequence(StrictApiModel):
+    kind: Literal["controlImmunity"]
+    certainty: Literal["always"]
+    recipient_id: str = Field(alias="recipientId", min_length=1)
+    duration: Literal[2]
+    outcome: Literal["firstApplication", "durationRefresh"]
+
+
+class DamageIncreasePreviewConsequence(StrictApiModel):
+    kind: Literal["damageIncrease"]
+    certainty: Literal["always"]
+    recipient_id: str = Field(alias="recipientId", min_length=1)
+    amount: int = Field(ge=0)
+    outcome: Literal["firstApplication", "additionalApplication"]
+
+
+class StatusRemovalPreviewConsequence(StrictApiModel):
+    kind: Literal["statusRemoval"]
+    certainty: Literal["always"]
+    recipient_id: str = Field(alias="recipientId", min_length=1)
+    status_ids: list[str] = Field(alias="statusIds")
+
+
+class CooldownPreviewConsequence(StrictApiModel):
+    kind: Literal["cooldown"]
+    certainty: Literal["always"]
+    recipient_id: str = Field(alias="recipientId", min_length=1)
+    rounds: Literal[3]
+
+
 BattlePreviewConsequence = Annotated[
     DamagePreviewConsequence
     | ShadowWordPainPreviewConsequence
     | SecondaryHealingPreviewConsequence
     | WrathDamageBonusPreviewConsequence
     | WrathHealingBonusPreviewConsequence
-    | WrathOfCrusaderPreviewConsequence,
+    | WrathOfCrusaderPreviewConsequence
+    | ArmorBreakerPreviewConsequence
+    | StunPreviewConsequence
+    | CastingInterruptedPreviewConsequence
+    | ScoffPreviewConsequence
+    | HealingReductionPreviewConsequence
+    | WoundPreviewConsequence
+    | ResistanceBoostPreviewConsequence
+    | ControlImmunityPreviewConsequence
+    | DamageIncreasePreviewConsequence
+    | StatusRemovalPreviewConsequence
+    | CooldownPreviewConsequence,
     Field(discriminator="kind"),
 ]
 
@@ -269,6 +360,14 @@ class DamagePreviewTarget(ApiModel):
         return self
 
 
+class BattleSelfPreview(ApiModel):
+    recipient_id: str = Field(alias="recipientId", min_length=1)
+    current_hp: int = Field(alias="currentHp", ge=0)
+    max_hp: int = Field(alias="maxHp", ge=1)
+    primary: DamagePreviewPrimary | None = None
+    consequences: list[BattlePreviewConsequence]
+
+
 class BattlePreviewData(ApiModel):
     revision: int = Field(ge=0)
     actor_id: str = Field(alias="actorId")
@@ -278,6 +377,7 @@ class BattlePreviewData(ApiModel):
     coverage: Literal["authoritative", "unavailable"]
     reason_id: str | None = Field(default=None, alias="reasonId")
     targets: list[DamagePreviewTarget]
+    self_preview: BattleSelfPreview | None = Field(default=None, alias="selfPreview")
 
 
 class BattlePreviewResponse(ApiModel):

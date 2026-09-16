@@ -1,253 +1,215 @@
 # Current Task
 
-**Status:** Completed
+**Status:** Ready for Core Team
 
-**Task:** BATTLE-TRANSPARENCY-002 — Priest Comprehensiveness and Paladin Retribution
+**Task:** BATTLE-TRANSPARENCY-003 — Complete Published Warrior Roster
 
-**Owner request date:** 2026-09-15
+**Owner request date:** 2026-09-16
 
 ## Objective
 
-Extend Battle Information Transparency from the current Mage and Rogue scope to
-Priest Comprehensiveness and Paladin Retribution. Before confirming an action,
-players must see truthful, compact information for each selected target,
-including immediate healing or damage range, direct hit chance only where it
-applies, target HP, and a concise material effect when it changes the decision.
+Extend Battle Information Transparency to every active skill of every Warrior
+specialization in the current published roster:
+
+| Definition | Specialization | Active skills |
+| --- | --- | --- |
+| `hero.warrior.defence` | Defence | Devastate, Shield Bash, Thunder Pot |
+| `hero.warrior.weapon_master` | Weapon Master | Fatal Strike, Armor Crush, Antivenom Potion |
+| `hero.warrior.berserker` | Berserker | Moon Slash, Warlust, Strike of Meteorite |
+
+Before the player confirms a Warrior action, provide truthful, compact,
+authoritative information about immediate damage/healing and the material
+status/control effects that can change the decision. This includes targetless
+self actions through an appropriate self-preview; it must not leave Antivenom
+Potion or Warlust without Battle Information Transparency.
 
 ## Background
 
-BATTLE-TRANSPARENCY-001 established an engine-owned, non-mutating, RNG-free,
-revision-bound preview operation. The Battle Screen displays the returned facts
-for Mage and Rogue only. Its client code currently assumes every preview is
-damage and labels its primary value `Damage`.
+BATTLE-TRANSPARENCY-001 and -002 created a finite, engine-owned,
+non-mutating, revision-bound preview contract for Mage, Rogue, Priest
+Comprehensiveness, and Paladin Retribution. It already supports typed primary
+facts for `damage`, `healing`, and `prevented`, with separately typed material
+consequences.
 
-Priest Comprehensiveness has Holy Smite, Shadow Word Pain, and Binding Heal.
-Paladin Retribution has Hammer of Anger, Crusader Strike, and Flash of Light.
-Their direct damage, healing, status state, secondary healing, and Wrath of
-Crusader interactions must be audited from live code before the preview
-contract or player copy is extended. Do not derive formulae or status meaning
-in React.
+Warrior skills introduce front-row melee legality, multi-target actions,
+cooldowns, stack/refresh boundaries, damage reductions, healing reduction,
+self healing/buffs, control immunity, and possible later DoT effects. The
+implementation must audit current live code before exposing each fact. React
+must only display server-authored facts; it must not reconstruct Warrior rules.
 
-## Required Player Experience
+`Warrior_Comprehensiveness` is a legacy Python class but is not one of the
+published, adapter-supported Warrior definitions in `docs/GDD/Hero_System.md`.
+It is not part of this task.
 
-### General rules
+## Player Experience
 
-- Apply the existing target hover and keyboard-focus preview interaction to all
-  six approved skills when they are selected and a legal target is highlighted.
-- For direct damage, show `Damage`, `Hit Chance`, and `Target HP`, using the
-  same direct-evasion meaning of Hit Chance established by BATTLE-TRANSPARENCY-001.
-- For healing, show `Healing` and `Target HP`; do not show a Hit Chance because
-  the current healing action has no direct-evasion chance.
-- Healing information shows the authoritative post-modifier skill power before
-  the live maximum-HP cap. It accounts for deterministic healing
-  reductions/prevention but does not reduce the displayed range to missing HP;
-  actual battle HP remains capped at maximum.
-- A material effect belongs on a separate concise row. Do not combine it with
-  damage, healing, or Hit Chance and do not expose internal formula inputs.
-- If an edge case cannot be supported truthfully, show `Preview unavailable`.
-  It must never block a legal command.
+### General presentation
 
-### Priest Comprehensiveness
+- Targeted skills use the established selected-skill plus legal-target
+  hover/focus preview. Damage shows `Damage`, direct-evasion `Hit Chance`, and
+  `Target HP`; healing shows `Healing` and `Target HP`, without Hit Chance.
+- Multi-target skills may show a one-target draft preview while the player is
+  choosing required targets, then authoritative per-target facts for the full,
+  distinct legal set. Do not show an aggregate total or relax actual command
+  cardinality.
+- Targetless self actions must expose a compact self-preview on the selected
+  skill/acting-hero area before confirmation. It must not require fake target
+  selection or cover battlefield figures. Use the same revision, availability,
+  stale-clear, keyboard, touch, and compact-layout safeguards as target preview.
+- Show a separate short effect row only for a material current-state outcome.
+  Do not expose raw formula inputs, calculate future DoT totals, or imply a
+  refresh, stack, control, dispel, or status application that live code does
+  not perform.
+- `Preview unavailable` is preferable to invented precision and never blocks a
+  legal command.
 
-| Skill | Preview requirements |
+### Required Warrior facts
+
+The engine audit must confirm the exact range and live effect semantics before
+the final player wording. The following defines the required decision-relevant
+coverage, not permission to alter mechanics.
+
+| Hero / skill | Required preview facts |
 | --- | --- |
-| Holy Smite | Immediate direct holy-damage range, direct Hit Chance, and target HP. Use the actual live rule, including its resistance/defence treatment. |
-| Shadow Word Pain | Immediate direct-damage range, direct Hit Chance, target HP, and a concise material Shadow Word Pain consequence only when the current live rule can newly apply it. Do not show or estimate future DoT tick damage; do not imply refresh/strengthening when live code does neither. |
-| Binding Heal | Immediate selected-target healing range and target HP. When a non-self ally is selected, truthfully show the Priest’s separate material self-healing consequence only if it can change HP; do not pretend it is a second heal on the selected target. For a self target, show only the applicable self-heal result. |
-
-### Paladin Retribution
-
-| Skill | Preview requirements |
-| --- | --- |
-| Hammer of Anger | Immediate direct-damage range, direct Hit Chance, target HP, and the live Wrath of Crusader stack contribution where it materially changes the direct range. Do not present a fabricated fixed damage value. |
-| Crusader Strike | Immediate direct-damage range, direct Hit Chance, and target HP. Show the material Wrath of Crusader outcome using clear player language: first application, increase to the next valid stack, or duration refresh, exactly as live action semantics permit. |
-| Flash of Light | Immediate selected-target healing range and target HP. The range must use the live current Wrath of Crusader state, including its stack-specific bonus/healing behaviour, missing-HP cap, and any applicable deterministic receipt rule. Do not show a Hit Chance. |
+| Defence — Devastate | Immediate direct damage, Hit Chance, target HP, and the current Armor Breaker application/stack/refresh outcome when material. |
+| Defence — Shield Bash | Immediate direct damage, Hit Chance, target HP, Stun/control outcome and its current cooldown consequence where applicable. Handle casting interruption/control immunity only as live code supports; do not claim a guaranteed result where a rule prevents it. |
+| Defence — Thunder Pot | Per-target immediate direct damage, Hit Chance, target HP, and material Scoff/control result per selected opponent; self-side Shield Lash/resistance and cooldown facts when current live execution makes them material. Never aggregate pair damage. |
+| Weapon Master — Fatal Strike | Immediate direct damage, Hit Chance, target HP, and the current Healing Reduction application/refresh/active boundary with its player-facing percentage only when live state makes it material. |
+| Weapon Master — Armor Crush | Immediate direct damage, Hit Chance, target HP, Armor Breaker stack/refresh result, and material Wound/Bleeding status outcome. Do not show later bleeding damage. |
+| Weapon Master — Antivenom Potion | Targetless self-preview with authoritative immediate Healing and meaningful current self outcomes such as supported poison/bleed removal, poison-resistance effect, and cooldown. Do not fabricate a target or promise removal of statuses the live action cannot remove. |
+| Berserker — Moon Slash | Draft/full per-target immediate direct damage, Hit Chance, target HP, and material Bleeding Moon Slash application boundary. Do not show future bleed damage or total multi-target damage. |
+| Berserker — Warlust | Targetless self-preview with the live Warlust state/stack/refresh effect, any immediately material self consequence, and cooldown if live action creates one. Exclude conditional later Blood Frenzy outcomes unless the current action makes an exact immediate fact truthful. |
+| Berserker — Strike of Meteorite | Immediate direct damage, Hit Chance, target HP, and material interrupt/control/status outcome only as supported by the audited live path. |
 
 ## Engine and Contract Requirements
 
-- Keep the preview engine-owned, read-only, deterministic, and free of all
-  random consumption. It must not execute mutating callbacks, clone/restore a
-  live battle, alter HP/status/stack/duration/cooldown/log/events/turn/revision,
-  or consume session/global RNG.
-- Audit the six live skill paths first. Add narrowly scoped pure range/outcome
-  primitives only where they can be shared with, or demonstrably mirror, the
-  existing live calculation. Preserve current mechanics, including legacy
-  behaviour. Escalate a discovered rules inconsistency rather than correcting
-  it inside preview work.
-- Extend the additive typed preview contract so a target’s primary fact can be
-  unambiguously `damage`, `healing`, or deterministic `prevented`. Include the
-  truthful immediate range after current-state constraints and separately typed
-  material consequences. Do not overload a damage-only field for healing.
-- Preserve compatibility for the current Mage/Rogue consumers and all existing
-  preview requests/responses. Do not alter commands, snapshots, event order,
-  current skill execution, or save/progression data.
-- Validate actor, active revision, available approved skill, legal target side,
-  cardinality, liveness, duplicate IDs, and complete multi-target selection at
-  the existing session lock. Out-of-scope/stale/invalid requests must fail
-  safely with no mutation.
+- Audit all nine live skill paths, their independent effects, target rules,
+  cooldown lifecycle, status manager interactions, control/immunity paths, and
+  adapter event/serialization support before implementation. Record the audit
+  and unresolved legacy-rule ambiguities in a dated analysis document.
+- Retain the engine-owned, read-only preview boundary. It must not call
+  `Skill.execute`, dry-run/clones, install/consume session/global RNG, mutate
+  hero/game/status/stack/duration/cooldown/HP/events/log/turn/revision, or
+  create command results.
+- Add small audited pure outcome primitives only where they share or
+  demonstrably mirror the live path. Preserve current live rules exactly. If
+  the audit finds a discrepancy between formula, status lifecycle, adapter
+  event, and player-facing rule, record and escalate it rather than silently
+  correcting it in preview code.
+- Extend the additive preview contract as needed for typed self previews and
+  finite Warrior-specific material consequences. Keep existing Mage/Rogue/
+  Priest/Paladin preview consumers compatible. Do not add generic arbitrary
+  status serialization or full-roster fallback.
+- Validate the active revision, actor, available audited skill, legal target
+  side/IDs/liveness, exact target cardinality, duplicates, self-action target
+  shape, and session lock. Draft selection is permitted only for audited
+  multi-target Warrior skills and must not change command requirements.
 
 ## Frontend Requirements
 
-- Extend the allowlist and typed provider/client handling for exactly these six
-  skills. The frontend must not calculate damage, healing, Wrath stacks,
-  secondary healing, status eligibility, prevention, hit chance, or legality.
-- Update the preview card and compact dock to render the authoritative primary
-  label/value. It must show `Healing` with no Hit Chance for a healing primary,
-  while retaining current damage treatment for existing skills.
-- Render secondary Binding Heal and status/Wrath facts only from typed server
-  consequences. Copy must identify a separate recipient where relevant.
-- Preserve pointer, keyboard, touch, multi-target, target highlighting,
-  compact-layout, loading/unavailable, stale-response, command, auto-battle,
-  formation, and accessibility behaviour from BATTLE-TRANSPARENCY-001.
+- Extend the finite audited skill allowlist for exactly these nine skills and
+  consume all Warrior facts through typed provider data only.
+- Render current primary damage/healing/prevention and typed effect rows in the
+  existing target card and compact dock. Add a restrained acting-hero/skill
+  self-preview treatment for Antivenom Potion and Warlust, with no fake target
+  cursor, extra battle target control, or visual redesign.
+- Clearly identify which combatant receives any non-target effect. Preserve
+  existing labels, pointer/keyboard/touch target selection, multi-target
+  selection state, stale cancellation, preview accessibility association,
+  formation, responsive constraints, command submission, and AUDIO-002 cues.
+- Do not calculate range, status/cap/cooldown/stack/control/immunity, legality,
+  or Hit Chance in TypeScript.
 
 ## Out of Scope
 
-- Priest Discipline, other Paladins, all remaining heroes, targetless skills,
-  general healing preview fallback, future DoT totals, chains, spreads,
-  summons, generic proc simulation, and unapproved status effects.
-- Changes to game formulas, healing reduction, Wrath of Crusader, status
-  durations/stacks, targeting, cooldowns, Accuracy/Evasion, battle rules, API
-  commands, save data, or player progression.
-- Client-side formula copies, previewing the next random roll, raw formula
-  explanations, aggregate multi-target totals, or UI redesign.
+- `Warrior_Comprehensiveness`, every other faculty, future general self-preview
+  fallback, full status encyclopedia, later DoT/bleed totals, chained effects,
+  summons, generic proc simulation, and any unapproved skill.
+- Changes to damage/healing/status/control/immunity/cooldown/formation rules,
+  available roster, target rules, game balance, battle events/order, API
+  commands, save data, or progression.
+- Client-side formula copying, next-RNG-roll prediction, aggregate multi-target
+  totals, raw internal formula displays, unrelated UI redesign, or sound work.
 
 ## Relevant Files
 
-- `heroes/priest.py` and `heroes/paladin.py` — audit six live skills and add
-  safe shared pure preview primitives only when justified.
-- `battle_api/adapter.py`, `battle_api/app.py`, and `battle_api/models.py` —
-  authoritative evaluation, validation, and additive response transport.
+- `heroes/warrior.py`, `skills/skill.py`, `heroes/hero.py`, and
+  `game/status_effect_manager.py` — live rules, targeting, receipts, status,
+  cooldown, and lifecycle audit.
+- `battle_api/adapter.py`, `battle_api/models.py`, and `battle_api/app.py` —
+  authoritative preview validation/evaluation and additive transport.
 - `web-ui/lib/battle/types.ts`, `liveProvider.ts`, and `useBattlePreview.ts` —
-  typed contract and six-skill allowlist.
-- `web-ui/components/battle/BattleScreen.tsx` and `web-ui/app/globals.css` —
-  authoritative damage/healing presentation, compact dock, and accessibility.
-- `tests/test_battle_transparency_preview.py`, relevant adapter/API tests, and
-  `web-ui/tests/battle-transparency*.test.tsx` — focused no-mutation, truth,
-  interaction, and regression coverage.
-- `docs/web-ui/BATTLE_DATA_CONTRACT_V1.md`, `PYTHON_ADAPTER_API.md`,
+  typed client and finite allowlist.
+- `web-ui/components/battle/BattleScreen.tsx`, supporting skill components,
+  and `web-ui/app/globals.css` — target and targetless self-preview treatment.
+- `tests/test_battle_transparency_preview.py`,
+  `tests/test_battle_transparency_002_preview.py`, new Warrior preview tests,
+  and `web-ui/tests/battle-transparency*.test.tsx` — deterministic engine/API/
+  UI and regression evidence.
+- `docs/GDD/Hero_System.md`, `docs/GDD/Combat_System.md`,
+  `docs/web-ui/BATTLE_DATA_CONTRACT_V1.md`, `PYTHON_ADAPTER_API.md`,
   `WEB_UI_ARCHITECTURE.md`, `Style_Guide.md`, `docs/Technical/Architecture.md`,
-  and `docs/Codex/Completed.md` — contract, architecture, player presentation,
-  and completion evidence.
+  `docs/Codex/Analysis/`, and `docs/Codex/Completed.md`.
 
 ## Acceptance Criteria
 
-1. Priest Comprehensiveness and Paladin Retribution can request authoritative
-   hover/focus previews for all their legal targetable skills.
-2. Damage previews retain precise immediate ranges, direct Hit Chance, target
-   HP, prevention truthfulness, and separate material effects.
-3. Binding Heal and Flash of Light display truthful immediate healing values
-   without a Hit Chance and never imply health above the target maximum.
-4. Binding Heal’s separate caster heal and Shadow Word Pain/Wrath outcomes are
-   presented only when current live state makes them material and truthful.
-5. Existing Mage/Rogue preview data, UI, commands, combat results, event order,
-   RNG determinism, formation, and responsive behaviour remain unchanged.
-6. Preview consumes no RNG and mutates no engine/session/UI command state;
-   matching later seeded actions have the same result with or without preview.
-7. Invalid/stale/unavailable requests remain safe, and the UI clears stale data
-   without blocking a legal command.
-8. Contract, architecture, style, API, and completion documents describe the
-   expanded audited scope without claiming full healing/full-roster support.
+1. All nine active skills of the three published Warrior specializations have
+   truthful pre-confirmation Transparency coverage.
+2. Targeted Warrior skills show authoritative per-target facts; Antivenom
+   Potion and Warlust show a useful, non-targeted self-preview.
+3. Material Warrior statuses, control, stacks, refreshes, cooldowns, and
+   self-side effects appear only when the current audited live state supports
+   them. Future DoT/bleed totals and fabricated guarantees do not appear.
+4. Multi-target Warrior previews support lawful draft/full selection without
+   aggregate totals or changed real command cardinality.
+5. Existing preview scope and frontend behavior remain compatible, including
+   Mage/Rogue/Priest/Paladin skills, command flow, event ordering, audio,
+   formations, responsive layout, and accessibility.
+6. Preview is demonstrably non-mutating and RNG-free, and a same-seed command
+   after preview matches an untouched control.
+7. Contract, API, architecture, style, GDD/technical documentation where
+   applicable, analysis, and completion evidence accurately describe the
+   audited Warrior scope and any deferred/ambiguous rule.
 
 ## Validation Required
 
-- Add direct engine/adapter/API tests for all six skills covering minimum and
-  maximum range, live resistance/defence treatment, evasion/direct Hit Chance,
-  healing missing-HP caps, reduction/prevention, self versus ally Binding Heal,
-  Priest secondary healing, Wrath absent/one/two stacks/refresh, and status
-  new-versus-already-active boundaries.
-- Deep-compare snapshot/session/RNG before and after preview; patch random
-  helpers to fail during preview; prove later same-seed commands equal an
-  untouched control.
-- Test stale actor/revision, unavailable/out-of-scope skills, wrong side,
-  dead targets, duplicate/invalid target IDs, and existing Mage/Rogue contract
-  compatibility.
-- Add frontend tests for `Healing` versus `Damage`, Hit Chance visibility,
-  post-modifier healing power/prevented states, target-only Binding Heal copy,
-  Wrath/Shadow Word copy,
-  hover/focus/touch/compact behavior, stale clearing, and no client formula
-  duplication.
-- Run focused backend/frontend suites, typecheck, lint, production build,
-  py_compile where relevant, and `git diff --check`. Manually test 1v1, 2v2,
-  and 3v3 with Priest and Paladin player turns, including injured/full targets,
-  Wrath states, and a status boundary. Record exact results and any browser
-  limitation honestly.
+- Add focused engine/adapter/API tests for each Warrior skill across direct
+  range, evasion, prevention, resistance/defence, target legality, targetless
+  shape, cooldown, stack/refresh boundaries, control immunity, self effects,
+  multi-target draft/full selection, and later-effect exclusion.
+- Prove no state/RNG mutation by deep comparison and failing random helpers;
+  prove a same-seed command outcome remains equal to an untouched control.
+- Test stale revision/actor, unavailable/out-of-scope skill, dead/wrong-side/
+  duplicate target, insufficient/extra multi-target selections, and compatibility
+  for every prior Transparency skill/contract.
+- Add frontend tests for all primary labels, target/self preview modes, typed
+  consequence wording, draft/full multi-target behavior, keyboard/pointer/
+  touch, stale/error/compact presentation, no client formula duplication, and
+  unchanged command/target/audio behavior.
+- Run focused backend/frontend suites, broader relevant adapter/Warrior/status
+  regressions, typecheck, lint, production build, py_compile, and diff check.
+  Manually validate 1v1, 2v2, and 3v3 Warrior turns including front/rear
+  screening, a multi-target pair, targetless actions, status boundaries, and
+  control immunity. Record exact results and browser limitations honestly.
 
 ## Agent Assignments
 
-**Complexity/risk assessment:** High. This extends a live authoritative
-information feature across stateful healing, secondary recipients, status and
-stack interactions, existing compatibility requirements, an additive contract,
-and responsive/accessibility UI. All five roles are required.
+**Complexity/risk assessment:** High. This expands a live engine-owned
+information feature across nine legacy, status-heavy Warrior actions with
+multi-target and targetless paths, control/immunity rules, cooldowns, and a
+new self-preview UI boundary. All five roles are required.
 
-- **project-manager:** own study-before-build sequencing, cross-boundary scope,
-  agent dispatch, documentation, and evidence.
-- **game-engine-developer:** own live-skill audit, pure preview primitives,
-  no-mutation/RNG guarantees, adapter/API contract, and backend tests.
-- **ui-developer:** own typed client consumption, healer-aware presentation,
-  hover/focus/compact accessibility, and frontend documentation.
-- **test-automator:** own deterministic engine/API/UI truth, non-mutation,
-  stale/legality, interaction, and regression coverage.
-- **reviewer:** independently assess formula/receipt/status truthfulness,
-  scope, compatibility, RNG guarantees, UI clarity, documentation, and tests.
+- **project-manager:** own audit-to-build sequencing, roster/scope guardrails,
+  role dispatch, cross-boundary decisions, documents, and completion evidence.
+- **game-engine-developer:** own live-rule audit, pure range/outcome primitives,
+  no-mutation/RNG guarantees, adapter/API contract, and backend regression tests.
+- **ui-developer:** own typed target/self presentation, accessibility,
+  responsive/compact behavior, and frontend documentation.
+- **test-automator:** own deterministic Warrior state matrix, contract,
+  no-mutation/RNG, interaction, compatibility, and regression coverage.
+- **reviewer:** independently assess all rule/status/control truth, scope,
+  contract compatibility, UI clarity, validation, and documentation.
 
 ## Completion Notes
 
-Completed 2026-09-15. Battle Information Transparency now has one finite,
-engine-owned audited scope: the original Mage/Rogue skills plus Priest
-Comprehensiveness Holy Smite, Shadow Word Pain, Binding Heal and Paladin
-Retribution Hammer of Anger, Crusader Strike, Flash of Light. No generic
-healing or full-roster preview fallback was added.
-
-**Agent contributions:**
-
-- **project-manager:** completed the mandatory pre-build audit, fixed the
-  cross-boundary scope, and recorded the live-rule/receipt truth table.
-- **game-engine-developer:** added pure audited primitives, typed adapter/model
-  transport, no-mutation/no-RNG tests, API coverage, and the dated engine audit.
-- **ui-developer:** completed the frontend contract/presentation study; the
-  agreed typed-client and Battle Screen integration was applied in the shared
-  worktree without client-side combat calculations.
-- **test-automator:** added the initial focused Priest/Paladin presentation
-  coverage and supplied the deterministic backend/adapter test matrix; final
-  keyboard, compact, and touch assertions were expanded in the shared suite.
-- **reviewer:** independently reviewed formulas, receipt/cap behavior, scope,
-  contract compatibility, documentation, and the final tests; result approved.
-
-**Files changed:**
-
-- `heroes/priest.py`
-- `heroes/paladin.py`
-- `battle_api/adapter.py`
-- `battle_api/models.py`
-- `tests/test_battle_transparency_002_preview.py`
-- `docs/Codex/Analysis/2026-09-15_BATTLE-TRANSPARENCY-002_Engine_Audit.md`
-- `web-ui/lib/battle/types.ts`
-- `web-ui/lib/battle/liveProvider.ts`
-- `web-ui/lib/battle/useBattlePreview.ts`
-- `web-ui/components/battle/BattleScreen.tsx`
-- `web-ui/tests/battle-transparency-002.test.tsx`
-- `docs/web-ui/BATTLE_DATA_CONTRACT_V1.md`
-- `docs/web-ui/PYTHON_ADAPTER_API.md`
-- `docs/web-ui/WEB_UI_ARCHITECTURE.md`
-- `docs/web-ui/Style_Guide.md`
-- `docs/Technical/Architecture.md`
-- `docs/Codex/Current_Task.md`
-- `docs/Codex/Completed.md`
-
-**Validation:**
-
-- `./.venv/bin/python -m pytest -q tests/test_battle_transparency_preview.py tests/test_battle_transparency_002_preview.py` — 79 passed; one existing Starlette/httpx deprecation warning.
-- `cd web-ui && npm test -- --run tests/battle-transparency-preview.test.tsx tests/battle-transparency-002.test.tsx` — 18 passed.
-- `cd web-ui && npm run typecheck` — passed.
-- `cd web-ui && npm run lint` — 0 errors; one existing unused `_signal` warning in `tests/battle-transparency-preview.test.tsx`.
-- `cd web-ui && npm run build` — passed; Vinext emitted only its existing dynamic-route-classification notice.
-- `./.venv/bin/python -m py_compile battle_api/adapter.py battle_api/models.py heroes/priest.py heroes/paladin.py` and `git diff --check` — passed.
-- Isolated Ego browser smoke on `/debug`: 1v1 Holy Smite showed an authoritative Damage/Hit Chance card; the later owner follow-up changed full-health healing presentation from `0–0` to post-modifier skill power without Hit Chance; 2v2 Shadow Word Pain showed its distinct effect row; 3v3 loaded all six combatants without layout or runtime error.
-
-**Remaining manual limitation:**
-
-The deterministic test suites cover injured/full recipients, Wrath states,
-status boundaries, and 1v1/2v2/3v3 contracts. The isolated live 3v3 smoke
-opened on a Mage turn, so an additional release-playtest should exercise a
-live Priest/Paladin 3v3 turn with the desired seeded turn order for visual
-polish; this is not a correctness or contract blocker.
+Pending implementation, validation, and independent review.
