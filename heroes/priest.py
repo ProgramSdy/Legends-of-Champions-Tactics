@@ -26,8 +26,8 @@ class Priest_Comprehensiveness(Priest):
     def __init__(self, sys_init, name, group, is_player_controlled, position="front"):
             super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major, position=position)
             self.preset_target = None
-            self.add_skill(Skill(self, "Holy Smite", self.holy_smite, target_type = "single", skill_type= "damage", attack_type = "ranged_instant"))
-            self.add_skill(Skill(self, "Shadow Word Pain", self.shadow_word_pain, target_type = "single", skill_type= "damage",attack_type = "ranged_instant"))
+            self.add_skill(Skill(self, "Holy Smite", self.holy_smite, target_type = "single", skill_type= "damage", attack_type = "ranged_instant", damage_nature = "magical", damage_type = "holy"))
+            self.add_skill(Skill(self, "Shadow Word Pain", self.shadow_word_pain, target_type = "single", skill_type= "damage",attack_type = "ranged_instant", damage_nature = "magical", damage_type = "shadow"))
             self.add_skill(Skill(self, "Binding Heal", self.binding_heal, "single", skill_type= "healing"))
 
     @staticmethod
