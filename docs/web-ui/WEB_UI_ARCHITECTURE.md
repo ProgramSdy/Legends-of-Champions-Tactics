@@ -91,9 +91,14 @@ the thin Python adapter. Python remains the sole gameplay authority.
   enemies use the full static roster. Structured mode renders fixed
   format/enemy data without editable counterpart controls. It contains no hero
   construction, random composition, combat, AI, or targeting rules. Its
-  scrollable grid uses content-sized implicit rows so its team panels, Matrix,
-  and launch footer remain in normal vertical document flow when viewport
-  height is constrained.
+  matrix assignment advances within the active side only when the selected
+  slot was empty: it searches forward for another enabled empty slot, wraps
+  once, and otherwise retains the just-filled slot. Replacements and completed
+  teams keep the current slot, while focus remains on the activated Matrix card.
+  The separate six-hero Arena Squad Builder remains an ordered toggle flow.
+  Team Builder's scrollable grid uses content-sized implicit rows so its team
+  panels, Matrix, and launch footer remain in normal vertical document flow
+  when viewport height is constrained.
 - `components/battle/BattleScreen.tsx` and its child components are generic.
   They contain no API, hero-name, damage, healing, legality, cooldown, status
   duration, turn, summon, or victory rules.
@@ -179,7 +184,7 @@ The client displays `battleLog` prose but never parses it for state, legality,
 identity, or animation decisions.
 
 The pre-alpha audio projection follows the same ordered event boundary.
-`battleStarted`, `skillStarted`, `damageApplied`, `attackEvaded`, and
+`battleStarted`, a lunge `characterMoved`, `damageApplied`, `attackEvaded`, and
 `characterDefeated` map respectively to `battle.event`, `battle.skill`,
 `battle.damage`, `battle.evade`, and `battle.defeated`. `statusApplied` maps to
 `battle.buff` or `battle.debuff` only when its authoritative
@@ -312,6 +317,24 @@ The Team Builder and `/assets` registry are finite, keyboard-focusable desktop
 scroll regions with a stable scrollbar gutter when their content overflows.
 Their mobile layouts retain normal document scrolling.
 
+## Battle Information Transparency
+
+`useBattlePreview` is the revision-bound lifecycle boundary for the audited
+preview allowlist. It debounces, aborts superseded requests, validates echoed
+actor/skill/target identity, and clears stale responses. `LiveBattleProvider`
+decodes the additive `damage`/`healing`/`prevented` primary and discriminated
+material consequences; `BattleScreen` only presents that data in the anchored
+card or compact dock. Healing never displays Hit Chance. Binding's secondary
+recipient, Shadow Word Pain, and Paladin Wrath copy are all selected from the
+server-authored consequence kind, without client formulas or state inference.
+
+The current scope is explicitly finite: the original Mage/Rogue skills plus
+Priest Comprehensiveness Holy Smite/Shadow Word Pain/Binding Heal and Paladin
+Retribution Hammer of Anger/Crusader Strike/Flash of Light. Hover, focus, and
+target-button touch activation retain the same non-blocking selection path;
+the pointer-transparent presentation clears on departure, abort, stale state,
+unavailable result, automatic turn, targetless skill, or unsupported skill.
+
 ## Runtime Caveat
 
 The browser adapter defaults to `http://localhost:8001`; override it with
@@ -327,6 +350,11 @@ deployment boundary.
 
 ## Change Log
 
+- 2026-09-15 — Expanded Battle Information Transparency through the typed
+  engine/adapter contract to the approved Priest Comprehensiveness and Paladin
+  Retribution skills, including healing, Binding's separate recipient, Shadow
+  Word Pain, and current Wrath facts; no generic healing/full-roster fallback
+  was introduced.
 - 2026-07-29 — Added UI-002 Team Builder, roster discovery, configurable live
   1v1/2v2/3v3 lifecycle, computer-turn boundary, and completion reset.
 - 2026-07-30 — Added presentation-only random battle backgrounds selected once

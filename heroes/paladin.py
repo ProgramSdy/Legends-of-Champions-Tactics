@@ -108,11 +108,96 @@ class Paladin_Retribution(Paladin):
             self.add_skill(Skill(self, "Crusader Strike", self.crusader_strike, target_type = "single", skill_type= "damage", attack_type = "melee", independent_effect_action=self.independent_crusader_strike))
             self.add_skill(Skill(self, "Flash of Light", self.flash_of_light, "single", skill_type= "healing"))
 
+    @staticmethod
+    def _hammer_of_anger_base_damage(damage, defense, variation):
+        """Pure pre-Wrath damage shared by execution and audited preview."""
+        return max(damage + variation - defense, 0)
+
+    @staticmethod
+    def _crusader_strike_direct_damage(variation):
+        """Pure defence-ignoring damage shared by execution and preview."""
+        return 20 + variation
+
+    @staticmethod
+    def _flash_of_light_base_healing(
+        ordinary_variation, *, wrath_stacks=0, wrath_variation=None
+    ):
+        """Pure live healing amount before the recipient's receipt modifier."""
+        if wrath_stacks in {1, 2} and wrath_variation is not None:
+            return 19 + wrath_variation
+        return 19 + ordinary_variation
+
+    def audited_wrath_damage_bonus_range(self, skill_name):
+        """Return Hammer's currently active Wrath contribution, if any."""
+        if skill_name != "Hammer of Anger" or not self.status["wrath_of_crusader"]:
+            return None
+        if self.wrath_of_crusader_stacks == 1:
+            return 3, 5
+        if self.wrath_of_crusader_stacks == 2:
+            return 6, 8
+        return None
+
+    def audited_wrath_healing_bonus_range(self, skill_name):
+        """Return Flash of Light's current live Wrath bonus without RNG."""
+        if skill_name != "Flash of Light" or not self.status["wrath_of_crusader"]:
+            return None
+        if self.wrath_of_crusader_stacks == 1:
+            return 5, 7
+        if self.wrath_of_crusader_stacks == 2:
+            return 11, 13
+        return None
+
+    def audited_hammer_base_damage_values(self, target):
+        """Enumerate Hammer's five possible pre-Wrath direct damage rolls."""
+        return tuple(
+            self._hammer_of_anger_base_damage(
+                self.damage, target.defense, variation
+            )
+            for variation in range(-2, 3)
+        )
+
+    def audited_direct_damage_range(self, skill_name, target):
+        """Return RNG-free immediate damage boundaries for approved skills."""
+        if skill_name == "Hammer of Anger":
+            base_values = self.audited_hammer_base_damage_values(target)
+            bonus_range = self.audited_wrath_damage_bonus_range(skill_name)
+            bonus_values = bonus_range or (0, 0)
+            values = [
+                min(base_values) + bonus_values[0],
+                max(base_values) + bonus_values[1],
+            ]
+        elif skill_name == "Crusader Strike":
+            values = [self._crusader_strike_direct_damage(value) for value in (-2, 2)]
+        else:
+            return None
+        return min(values), max(values)
+
+    def audited_healing_range(self, skill_name):
+        """Return Flash of Light's current-state range without consuming RNG."""
+        if skill_name != "Flash of Light":
+            return None
+        wrath_stacks = (
+            self.wrath_of_crusader_stacks
+            if self.status["wrath_of_crusader"]
+            else 0
+        )
+        bonus_range = self.audited_wrath_healing_bonus_range(skill_name)
+        if wrath_stacks in {1, 2} and bonus_range is not None:
+            values = [
+                self._flash_of_light_base_healing(
+                    0, wrath_stacks=wrath_stacks, wrath_variation=value
+                )
+                for value in bonus_range
+            ]
+        else:
+            values = [self._flash_of_light_base_healing(value) for value in (0, 2)]
+        return min(values), max(values)
+
     def hammer_of_anger(self, other_hero, attack_type="NA"):
         variation = random.randint(-2, 2)
-        actual_damage = self.damage + variation
-        damage_dealt = actual_damage - other_hero.defense
-        damage_dealt = max(damage_dealt, 0)
+        damage_dealt = self._hammer_of_anger_base_damage(
+            self.damage, other_hero.defense, variation
+        )
         if self.status['wrath_of_crusader'] == True and self.wrath_of_crusader_stacks == 1:
           extra_holy_damage = random.randint(3, 5)
           damage_dealt += extra_holy_damage
@@ -152,22 +237,24 @@ class Paladin_Retribution(Paladin):
               self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Crusader Strike. Wrath of Crusader buff duration refreshed.")
         else:
             self.game.display_battle_info(f"{self.name} attacks {other_hero.name} with Crusader Strike.")
-        basic_damage = 20
         variation = random.randint(-2, 2)
-        damage_dealt = basic_damage + variation
+        damage_dealt = self._crusader_strike_direct_damage(variation)
         return other_hero.take_damage(damage_dealt, attack_type, self)
 
     def flash_of_light(self, other_hero):
         variation = random.randint(0, 2)
-        healing_amount_base = 19
-        healing_amount = healing_amount_base + variation
+        healing_amount = self._flash_of_light_base_healing(variation)
         if self.status['wrath_of_crusader'] == True and self.wrath_of_crusader_stacks == 1:
           extra_healing = random.randint(5, 7)
-          healing_amount = healing_amount_base + extra_healing
+          healing_amount = self._flash_of_light_base_healing(
+              variation, wrath_stacks=1, wrath_variation=extra_healing
+          )
           self.game.display_battle_info(f"{self.name} casts Flash of Light on {other_hero.name}, due to Wrath of Crusader, this spell gains an additional {extra_healing} healing.")
         elif self.status['wrath_of_crusader'] == True and self.wrath_of_crusader_stacks == 2:
           extra_healing = random.randint(11, 13)
-          healing_amount = healing_amount_base + extra_healing
+          healing_amount = self._flash_of_light_base_healing(
+              variation, wrath_stacks=2, wrath_variation=extra_healing
+          )
           self.game.display_battle_info(f"{self.name} casts Flash of Light on {other_hero.name}, due to Wrath of Crusader, this spell gains an additional {extra_healing} healing.")
         else:
           self.game.display_battle_info(f"{self.name} casts Flash of Light on {other_hero.name}.")

@@ -4266,7 +4266,7 @@ provider shape; Battle/UI callers use only stable sound IDs.
 
 Battle audio enters exclusively at the ordered active-event step of
 `usePresentationQueue`, never from snapshots, raw provider responses, or log
-rendering. `battleStarted` maps to `battle.event`; `skillStarted`,
+rendering. `battleStarted` maps to `battle.event`; a lunge `characterMoved`,
 `damageApplied`, `attackEvaded`, and `characterDefeated` map respectively to
 skill, damage, evade, and defeated cues. `statusApplied` produces buff/debuff
 audio only from its authoritative `statusPresentation`; neutral and unknown
@@ -4437,3 +4437,218 @@ ordered active-event step in `usePresentationQueue`.
 - The owner-controlled `docs/web-ui/screenshots_debug/UI_Review_Human.md` and
   unrelated owner study file were already dirty before AUDIO-002 and were
   intentionally preserved without modification.
+
+---
+
+## 2026-09-14 — UI-026: Automatic Hero-Slot Advance in Battle Team Selection
+
+**Summary:**
+
+Hero Selection Matrix assignment now advances from a formerly empty active
+slot to the next enabled empty slot on the same side. It searches forward and
+wraps once, retains the active slot when that side is complete or when a hero
+is explicitly replaced, and leaves the active side unchanged. The rule applies
+to standard player setup, standard specified-enemy setup, structured setup,
+and Arena battles that use `TeamBuilder`.
+
+Random and predefined enemies remain non-selectable, and the independent
+six-hero Arena Squad Builder remains its existing ordered toggle flow. Existing
+payload ordering, duplicate policies, keyboard/touch behavior, card focus, and
+the delegated AUDIO-002 single cue are preserved.
+
+**Role contributions:**
+
+- **project-manager:** mapped the exact boundaries and all shared-TeamBuilder
+  modes; recorded the active-side, replacement, completed-team, and one-wrap
+  semantics.
+- **ui-developer:** implemented the small side-local forward-search helper and
+  assignment-state update; updated stable UI architecture/style guidance.
+- **test-automator:** added focused deterministic player/enemy, mode,
+  replacement/completion, pointer/keyboard/touch, focus, and audio coverage.
+- **reviewer:** independently inspected the semantics and regressions; result
+  approved.
+- **game-engine-developer:** intentionally omitted because no engine, adapter,
+  API, or contract behavior is in scope.
+
+**Files Changed:**
+
+- `web-ui/components/battle/TeamBuilder.tsx`
+- `web-ui/tests/ui-026-auto-slot-advance.test.tsx`
+- `docs/web-ui/WEB_UI_ARCHITECTURE.md`
+- `docs/web-ui/Style_Guide.md`
+- `docs/Codex/Current_Task.md`
+- `docs/Codex/Completed.md`
+
+**Validation:**
+
+- Root affected-suite run: 86 tests across 8 files passed.
+- Test-automator expanded suite: 99 tests across 8 files passed.
+- Independent reviewer suite: 81 tests across UI-026, Team Builder,
+  formation, Arena/debug, and AUDIO boundary tests passed.
+- `cd web-ui && npm run typecheck` — passed.
+- `cd web-ui && npm run lint` — 0 errors; one pre-existing unused `_signal`
+  warning in `tests/battle-transparency-preview.test.tsx`.
+- `cd web-ui && npm run build` — passed; Vinext emitted only its existing
+  informational dynamic-route-classification notice.
+- `git diff --check` — passed.
+- Ego browser manual check at `/debug`: selecting 2v2 then assigning the first
+  player hero advanced the matrix card label/focus from `your Hero 1` to
+  `your Hero 2`, without navigation or a second programmatic interaction.
+
+**Known limitation:**
+
+Automated coverage verifies the full scenario matrix. The local browser
+walkthrough verified the shared 2v2 player flow; a real-device end-to-end
+walkthrough of every structured and Arena configuration remains advisable
+before a release, especially because Arena duplicate reservation can disable a
+card after assignment while the task deliberately preserves that policy.
+
+---
+
+## 2026-09-15 — AUDIO-003: Owner-Supplied General Skill Attack Sound
+
+**Summary:**
+
+The owner's finished WAV is now the sole provider for the stable
+`battle.skill` cue. The existing authoritative ordered-event mapping remains
+`characterMoved(lunge) → battle.skill`; no new IDs, filtering, classification,
+playback manager, combat behavior, API, or event-contract changes were made.
+All other audio entries, including `battle.damage`, remain unchanged.
+
+The shipped asset is an unmodified copy of
+`/Users/daoyu/Downloads/skill_attack.wav` at
+`web-ui/public/game-audio/skill_attack.wav`. `battle.skill` retains its
+`battle` category and zero cooldown, with a restrained volume of `0.12`.
+
+**Role contributions:**
+
+- **project-manager:** verified source provenance/destination absence,
+  established the narrow scope and validation sequence, and documented the
+  proportionate role selection.
+- **ui-developer:** copied the file unchanged, made the single catalogue
+  provider replacement, corrected procedural-only style guidance, and ran
+  focused checks.
+- **reviewer:** independently verified checksum, asset format/path, stable
+  mapping/manager behavior, untouched cues, and limited scope; result approved.
+- **test-automator:** intentionally omitted because existing file-provider and
+  queue-mapping coverage directly covers this reversible configuration swap.
+- **game-engine-developer:** intentionally omitted because no engine, API, or
+  battle contract is affected.
+
+**Files Changed:**
+
+- `web-ui/public/game-audio/skill_attack.wav`
+- `web-ui/lib/audio/soundDefinitions.ts`
+- `docs/web-ui/Style_Guide.md`
+- `docs/Codex/Current_Task.md`
+- `docs/Codex/Completed.md`
+
+**Verification and validation:**
+
+- Source and shipped asset SHA-256:
+  `8bdbf0bf147e06ab34254215e0bfc21174552ba769a232e6f89441db544aa4a5`.
+- Asset format: 15,900-byte RIFF/WAVE PCM, 16-bit mono, 44,100 Hz.
+- Temporary local Vinext verification of `/game-audio/skill_attack.wav`:
+  `200 OK`, `Content-Type: audio/wav`, `Content-Length: 15900`, and matching
+  response checksum.
+- `cd web-ui && npm test -- --run tests/audio-manager.test.ts
+  tests/battle-audio.test.ts tests/battle-audio-interactions.test.tsx
+  tests/presentation-audio-boundary.test.tsx` — 21 tests across 4 files passed.
+- `cd web-ui && npm run typecheck` — passed.
+- `git diff --check` — passed.
+- Independent review: approved with no blocking findings.
+
+**Known limitation:**
+
+The file and serving path are verified. Actual perceived playback remains
+dependent on a browser's trusted-interaction/autoplay policy and the device's
+audio configuration, so no subjective listening result is claimed here.
+
+**Follow-up timing adjustment:** The owner moved `battle.skill` from the
+intent-only `skillStarted` event to an ordered `characterMoved` event whose
+`movement` is `lunge`. The WAV therefore starts at the same active-presentation
+boundary as the 0.5-second visible lunge, without a timer; intent-only and
+return movement remain silent.
+
+---
+
+## 2026-09-15 — BATTLE-TRANSPARENCY-002: Priest Comprehensiveness and Paladin Retribution
+
+**Summary:**
+
+The read-only, revision-bound Battle Information Transparency path now covers
+the existing Mage/Rogue scope plus exactly six newly audited skills: Priest
+Comprehensiveness Holy Smite, Shadow Word Pain, Binding Heal and Paladin
+Retribution Hammer of Anger, Crusader Strike, Flash of Light. The adapter owns
+the immediate range, healing modifiers, direct-evasion chance, prevention,
+status boundary, and current Wrath facts. React only validates and displays the
+typed response.
+
+The additive primary contract is now `damage`, `healing`, or `prevented`.
+Healing has a null Hit Chance and is shown as `Healing`; direct damage retains
+the existing evasion-only Hit Chance. Separate material rows identify a newly
+applicable Shadow Word Pain, Binding Heal's independent Priest recipient,
+Hammer's effective immediate Wrath contribution after live receipt, and the
+current Crusader Wrath apply/increase/refresh outcome. Future DoT totals,
+generic healer previews, and a full-roster fallback remain explicitly out of
+scope.
+
+**Agent contributions:**
+
+- **project-manager:** performed the required study-before-build audit and
+  maintained the finite implementation boundary.
+- **game-engine-developer:** implemented pure audited helpers, typed
+  adapter/model transport, no-mutation/no-RNG safeguards, and deterministic
+  engine/API coverage; recorded the dated audit.
+- **ui-developer:** supplied the frontend contract/presentation study; the
+  agreed shared-worktree typed-client and card/dock presentation was completed
+  without any browser-side combat formula.
+- **test-automator:** added focused Priest/Paladin coverage and the
+  deterministic integration matrix; final Shadow Word Pain, compact Wrath,
+  keyboard, and touch checks were retained in the shared suite.
+- **reviewer:** independently audited formula/receipt truth, compatibility,
+  documentation, and final coverage; result approved.
+
+**Files changed:**
+
+- `heroes/priest.py`, `heroes/paladin.py`
+- `battle_api/adapter.py`, `battle_api/models.py`
+- `tests/test_battle_transparency_002_preview.py`
+- `docs/Codex/Analysis/2026-09-15_BATTLE-TRANSPARENCY-002_Engine_Audit.md`
+- `web-ui/lib/battle/types.ts`, `web-ui/lib/battle/liveProvider.ts`,
+  `web-ui/lib/battle/useBattlePreview.ts`
+- `web-ui/components/battle/BattleScreen.tsx`
+- `web-ui/tests/battle-transparency-002.test.tsx`
+- `docs/web-ui/BATTLE_DATA_CONTRACT_V1.md`,
+  `docs/web-ui/PYTHON_ADAPTER_API.md`,
+  `docs/web-ui/WEB_UI_ARCHITECTURE.md`, `docs/web-ui/Style_Guide.md`,
+  `docs/Technical/Architecture.md`, `docs/Codex/Current_Task.md`,
+  `docs/Codex/Completed.md`
+
+**Validation:**
+
+- Focused Python preview/API suites — 79 passed; one existing Starlette/httpx
+  deprecation warning.
+- Focused frontend preview suites — 18 passed.
+- Typecheck and production build — passed.
+- ESLint — 0 errors; one existing unused `_signal` warning in the prior
+  BATTLE-TRANSPARENCY-001 test.
+- Python compilation and `git diff --check` — passed.
+- Isolated browser validation at `/debug` verified 1v1 Holy Smite,
+  full-health Binding Heal `0–0` without Hit Chance, 2v2 Shadow Word Pain's
+  separate on-hit row, and a six-combatant 3v3 load without runtime/layout
+  error.
+
+**Remaining manual limitation:**
+
+Automated coverage includes the fixed 1v1/2v2/3v3 state matrix. The isolated
+live 3v3 session opened on a Mage turn, so a release playtest should still
+exercise an intentionally seeded Priest/Paladin 3v3 turn for subjective visual
+polish. This is not a correctness, contract, or scope blocker.
+
+**Owner follow-up — healing power presentation:** Full-health targets no longer
+show `Healing 0–0`. The preview now displays the authoritative post-modifier
+skill power, such as Binding Heal `22–28`, without reducing it to missing HP.
+The battle engine remains the sole owner of the actual maximum-HP cap. Binding
+Heal's separate Priest self-heal remains outside the popup, which presents only
+the selected target's healing range.

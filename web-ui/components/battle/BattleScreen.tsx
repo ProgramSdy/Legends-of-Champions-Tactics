@@ -79,35 +79,46 @@ function targetEffectFor(event: BattleEvent | null, combatantId: string, isPries
 type TargetPreviewPhase = "idle" | "loading" | "ready" | "unavailable";
 type TargetCursorIntent = "damage" | "healing";
 
-const consequenceLabels: Record<BattlePreviewTarget["consequences"][number]["kind"], string> = {
-  bleed: "Bleed",
-  poison: "Poison",
-  cold: "On hit",
-};
+function previewConsequenceCopy(
+  consequence: BattlePreviewTarget["consequences"][number],
+): { label: string; value: string } {
+  if (consequence.kind === "cold") return { label: "On hit", value: "Applies Cold" };
+  if (consequence.kind === "shadowWordPain") return { label: "Shadow Debuff", value: "100% chance" };
+  if (consequence.kind === "bleed" || consequence.kind === "poison") {
+    return {
+      label: consequence.kind === "bleed" ? "Bleed" : "Poison",
+      value: consequence.chancePercent === null || consequence.chancePercent === undefined
+        ? consequence.certainty === "onHit" ? "On hit" : "Conditional"
+        : `${consequence.chancePercent}% chance`,
+    };
+  }
+  if (consequence.kind === "wrathDamageBonus" || consequence.kind === "wrathHealingBonus") {
+    return { label: "Wrath bonus", value: `${consequence.amountRange.min}–${consequence.amountRange.max} · ${consequence.stacks} stack${consequence.stacks === 1 ? "" : "s"}` };
+  }
+  if (consequence.kind === "wrathOfCrusader") {
+    return { label: "Buff Self", value: "Wrath of Crusader" };
+  }
+  return { label: "Effect", value: "Applied" };
+}
 
-function TargetPreviewCard({ id, phase, skillName, targetName, target }: {
+function TargetPreviewCard({ id, phase, targetName, target }: {
   id: string;
   phase: TargetPreviewPhase;
-  skillName: string;
   targetName: string;
   target: BattlePreviewTarget | null;
 }) {
   return <section className={`target-preview-card ${phase}`} id={id} data-battle-layer="world-ui">
-    <strong>{skillName.toUpperCase()} <span aria-hidden="true">→</span> {targetName}</strong>
+    <strong><span className="target-preview-arrow" aria-hidden="true">→</span> {targetName}</strong>
     {phase === "loading" ? <p>Checking outcome…</p>
       : phase === "unavailable" || !target ? <p>Preview unavailable</p>
         : <dl>
-          <div><dt>Damage</dt><dd>{target.primary.kind === "prevented" ? "0 · Blocked" : `${target.primary.amountRange.min}–${target.primary.amountRange.max}`}</dd></div>
-          {target.primary.kind !== "prevented" ? <div><dt>Hit Chance</dt><dd>{target.directHitChancePercent}%</dd></div> : null}
+          <div><dt>{target.primary.kind === "healing" ? "Healing" : "Damage"}</dt><dd>{target.primary.kind === "prevented" ? "0 · Blocked" : `${target.primary.amountRange.min}–${target.primary.amountRange.max}`}</dd></div>
+          {target.primary.kind === "damage" && target.directHitChancePercent !== null ? <div><dt>Hit Chance</dt><dd>{target.directHitChancePercent}%</dd></div> : null}
           <div><dt>Target HP</dt><dd>{target.currentHp} / {target.maxHp}</dd></div>
-          {target.consequences.map((consequence) => <div className="preview-consequence" key={`${consequence.kind}.${consequence.certainty}`}>
-            <dt>{consequenceLabels[consequence.kind]}</dt>
-            <dd>{consequence.kind === "cold"
-              ? "Applies Cold"
-              : consequence.chancePercent === null || consequence.chancePercent === undefined
-                ? consequence.certainty === "onHit" ? "On hit" : "Conditional"
-                : `${consequence.chancePercent}% chance`}</dd>
-          </div>)}
+          {target.consequences.filter((consequence) => consequence.kind !== "secondaryHealing").map((consequence, index) => {
+            const copy = previewConsequenceCopy(consequence);
+            return <div className="preview-consequence" key={`${consequence.kind}.${index}`}><dt>{copy.label}</dt><dd>{copy.value}</dd></div>;
+          })}
         </dl>}
   </section>;
 }
@@ -121,12 +132,12 @@ function previewTargetsForAnchor(legal: LegalAction | undefined, selected: reado
   return selected.includes(anchorId) ? [...selected] : [...selected, anchorId];
 }
 
-function BattlefieldFigure({ hero, active, event, hpEvent, healingCasterEvent, eventSourceSide, eventSourceIsPriest, eventSourceIsPaladin, selectable, targetSelectionPending, targetCursorIntent, selected, onSelect, onTargetHover, onTargetFocus, formationScale, previewPhase, previewTarget, previewSkillName, previewDescriptionId }: {
+function BattlefieldFigure({ hero, active, event, hpEvent, healingCasterEvent, eventSourceSide, eventSourceIsPriest, eventSourceIsPaladin, selectable, targetSelectionPending, targetCursorIntent, selected, onSelect, onTargetHover, onTargetFocus, formationScale, previewPhase, previewTarget, previewDescriptionId }: {
   hero: CombatantState; active: boolean; event: BattleEvent | null; eventSourceSide: SideId | null;
   hpEvent: BattleEvent | null;
   healingCasterEvent: BattleEvent | null; eventSourceIsPriest: boolean; eventSourceIsPaladin: boolean;
   selectable: boolean; targetSelectionPending: boolean; targetCursorIntent: TargetCursorIntent; selected: boolean; onSelect: () => void; onTargetHover: (combatantId: string | null) => void; onTargetFocus: (combatantId: string | null, fromKeyboard?: boolean) => void; formationScale: number;
-  previewPhase: TargetPreviewPhase; previewTarget: BattlePreviewTarget | null; previewSkillName: string; previewDescriptionId?: string;
+  previewPhase: TargetPreviewPhase; previewTarget: BattlePreviewTarget | null; previewDescriptionId?: string;
 }) {
   const [figureFrameHeight, setFigureFrameHeight] = useState(FALLBACK_FIGURE_FRAME_HEIGHT);
   const eventTarget = event?.targetId === hero.id;
@@ -184,7 +195,7 @@ function BattlefieldFigure({ hero, active, event, hpEvent, healingCasterEvent, e
         {effect === "attackEvaded" && <span className="combat-text evade">EVADE</span>}
       </button>
       {previewPhase !== "idle" && previewDescriptionId
-        ? <TargetPreviewCard id={previewDescriptionId} phase={previewPhase} skillName={previewSkillName} targetName={hero.displayName} target={previewTarget} />
+        ? <TargetPreviewCard id={previewDescriptionId} phase={previewPhase} targetName={hero.displayName} target={previewTarget} />
         : null}
     </div>
   );
@@ -293,7 +304,6 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
       }
     : null;
   const { phase: previewPhase, preview } = useBattlePreview(provider, previewRequest);
-  const previewSkillName = active?.skills.find((skill) => skill.id === selectedSkill)?.displayName ?? "Selected skill";
   const compactPreview = presentationConfig.mode === "pad"
     || presentationConfig.mode === "pad-mini"
     || presentationConfig.mode === "phone";
@@ -446,7 +456,6 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
               formationScale={position.scale}
               previewPhase={compactPreview ? "idle" : figurePreviewPhase}
               previewTarget={targetPreview}
-              previewSkillName={previewSkillName}
               previewDescriptionId={previewDescriptionId}
               onSelect={() => toggleTarget(hero.id)}
               onTargetHover={(targetId) => { setTargetInputMode("pointer"); setHoveredTargetId(targetId); }}
@@ -464,9 +473,9 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
               ? (() => {
                   const target = preview.targets.find((item) => item.targetId === previewAnchorId) ?? null;
                   const hero = combatants[previewAnchorId];
-                  return <TargetPreviewCard id={`target-preview-dock-${previewAnchorId.replaceAll(".", "-")}`} phase={target ? "ready" : "unavailable"} skillName={previewSkillName} targetName={hero?.displayName ?? "Target"} target={target} />;
+                  return <TargetPreviewCard id={`target-preview-dock-${previewAnchorId.replaceAll(".", "-")}`} phase={target ? "ready" : "unavailable"} targetName={hero?.displayName ?? "Target"} target={target} />;
                 })()
-              : <TargetPreviewCard id="target-preview-dock-status" phase={previewPhase} skillName={previewSkillName} targetName={combatants[previewAnchorId]?.displayName ?? "Target"} target={null} />}
+              : <TargetPreviewCard id="target-preview-dock-status" phase={previewPhase} targetName={combatants[previewAnchorId]?.displayName ?? "Target"} target={null} />}
           </aside> : null}
           <div className="battlefield-caption"><span>THE FALLEN CITADEL</span><small>{getBattleFormat(snapshot).toUpperCase()} FORMATION</small></div>
         </section>

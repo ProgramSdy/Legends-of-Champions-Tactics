@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -191,7 +191,7 @@ class DamageAmountRange(ApiModel):
 
 
 class DamagePreviewPrimary(ApiModel):
-    kind: Literal["damage", "prevented"]
+    kind: Literal["damage", "healing", "prevented"]
     amount_range: DamageAmountRange = Field(alias="amountRange")
     reason_id: str | None = Field(default=None, alias="reasonId")
 
@@ -204,15 +204,69 @@ class DamagePreviewConsequence(ApiModel):
     )
 
 
+class ShadowWordPainPreviewConsequence(StrictApiModel):
+    kind: Literal["shadowWordPain"]
+    certainty: Literal["onHit"]
+
+
+class SecondaryHealingPreviewConsequence(StrictApiModel):
+    kind: Literal["secondaryHealing"]
+    certainty: Literal["always"]
+    recipient_id: str = Field(alias="recipientId", min_length=1)
+    amount_range: DamageAmountRange = Field(alias="amountRange")
+
+
+class WrathDamageBonusPreviewConsequence(StrictApiModel):
+    kind: Literal["wrathDamageBonus"]
+    certainty: Literal["always"]
+    stacks: Literal[1, 2]
+    amount_range: DamageAmountRange = Field(alias="amountRange")
+
+
+class WrathHealingBonusPreviewConsequence(StrictApiModel):
+    kind: Literal["wrathHealingBonus"]
+    certainty: Literal["always"]
+    stacks: Literal[1, 2]
+    amount_range: DamageAmountRange = Field(alias="amountRange")
+
+
+class WrathOfCrusaderPreviewConsequence(StrictApiModel):
+    kind: Literal["wrathOfCrusader"]
+    certainty: Literal["always"]
+    recipient_id: str = Field(alias="recipientId", min_length=1)
+    stacks: int = Field(ge=0)
+    outcome: Literal["firstApplication", "nextStack", "durationRefresh"]
+
+
+BattlePreviewConsequence = Annotated[
+    DamagePreviewConsequence
+    | ShadowWordPainPreviewConsequence
+    | SecondaryHealingPreviewConsequence
+    | WrathDamageBonusPreviewConsequence
+    | WrathHealingBonusPreviewConsequence
+    | WrathOfCrusaderPreviewConsequence,
+    Field(discriminator="kind"),
+]
+
+
 class DamagePreviewTarget(ApiModel):
     target_id: str = Field(alias="targetId")
     current_hp: int = Field(alias="currentHp", ge=0)
     max_hp: int = Field(alias="maxHp", ge=1)
     primary: DamagePreviewPrimary
-    direct_hit_chance_percent: int = Field(
-        alias="directHitChancePercent", ge=0, le=100
+    direct_hit_chance_percent: int | None = Field(
+        default=None, alias="directHitChancePercent", ge=0, le=100
     )
-    consequences: list[DamagePreviewConsequence]
+    consequences: list[BattlePreviewConsequence]
+
+    @model_validator(mode="after")
+    def validate_hit_chance_for_primary(self):
+        if self.primary.kind == "healing":
+            if self.direct_hit_chance_percent is not None:
+                raise ValueError("healing preview cannot include direct Hit Chance")
+        elif self.direct_hit_chance_percent is None:
+            raise ValueError("damage preview requires direct Hit Chance")
+        return self
 
 
 class BattlePreviewData(ApiModel):

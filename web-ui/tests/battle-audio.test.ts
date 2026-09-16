@@ -11,11 +11,16 @@ const event = (type: BattleEvent["type"], extra: Partial<BattleEvent> = {}) => (
 
 describe("ordered battle audio mapping", () => {
   it.each([
-    ["battleStarted", "battle.event"], ["skillStarted", "battle.skill"],
+    ["battleStarted", "battle.event"], ["characterMoved", "battle.skill"],
     ["damageApplied", "battle.damage"], ["attackEvaded", "battle.evade"],
     ["characterDefeated", "battle.defeated"],
   ] as const)("maps %s to %s", (type, soundId) => {
-    expect(soundIdForBattleEvent(event(type))).toBe(soundId);
+    expect(soundIdForBattleEvent(event(type, type === "characterMoved" ? { movement: "lunge" } : {}))).toBe(soundId);
+  });
+
+  it("keeps intent-only and return movement events silent so the attack cue aligns with the lunge", () => {
+    expect(soundIdForBattleEvent(event("skillStarted"))).toBeNull();
+    expect(soundIdForBattleEvent(event("characterMoved", { movement: "return" }))).toBeNull();
   });
 
   it("uses only authoritative status presentation and leaves neutral status silent", () => {

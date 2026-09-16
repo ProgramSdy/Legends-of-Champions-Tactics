@@ -140,6 +140,43 @@ function isNullableString(value: unknown): value is string | null {
   return value === null || typeof value === "string";
 }
 
+function isPreviewAmountRange(value: unknown): value is { min: number; max: number } {
+  return isRecord(value)
+    && Number.isFinite(value.min)
+    && Number.isFinite(value.max);
+}
+
+function isBattlePreviewConsequence(value: unknown): boolean {
+  if (!isRecord(value) || typeof value.kind !== "string" || typeof value.certainty !== "string") return false;
+  if (value.kind === "bleed" || value.kind === "poison" || value.kind === "cold") {
+    return (value.certainty === "conditional" || value.certainty === "onHit")
+      && (value.chancePercent === undefined
+        || value.chancePercent === null
+        || (Number.isFinite(value.chancePercent)
+          && Number(value.chancePercent) >= 0
+          && Number(value.chancePercent) <= 100));
+  }
+  if (value.kind === "shadowWordPain") return value.certainty === "onHit";
+  if (value.kind === "secondaryHealing") {
+    return value.certainty === "always"
+      && typeof value.recipientId === "string"
+      && isPreviewAmountRange(value.amountRange);
+  }
+  if (value.kind === "wrathDamageBonus" || value.kind === "wrathHealingBonus") {
+    return value.certainty === "always"
+      && (value.stacks === 1 || value.stacks === 2)
+      && isPreviewAmountRange(value.amountRange);
+  }
+  return value.kind === "wrathOfCrusader"
+    && value.certainty === "always"
+    && typeof value.recipientId === "string"
+    && Number.isInteger(value.stacks)
+    && Number(value.stacks) >= 0
+    && (value.outcome === "firstApplication"
+      || value.outcome === "nextStack"
+      || value.outcome === "durationRefresh");
+}
+
 function isBattlePreview(value: unknown): value is BattlePreview {
   if (!isRecord(value)
     || !Number.isInteger(value.revision)
@@ -159,24 +196,18 @@ function isBattlePreview(value: unknown): value is BattlePreview {
       || !Number.isFinite(target.currentHp)
       || !Number.isFinite(target.maxHp)
       || !isRecord(target.primary)
-      || (target.primary.kind !== "damage" && target.primary.kind !== "prevented")
-      || !isRecord(target.primary.amountRange)
-      || !Number.isFinite(target.primary.amountRange.min)
-      || !Number.isFinite(target.primary.amountRange.max)
+      || (target.primary.kind !== "damage" && target.primary.kind !== "healing" && target.primary.kind !== "prevented")
+      || !isPreviewAmountRange(target.primary.amountRange)
       || !(target.primary.reasonId === undefined || isNullableString(target.primary.reasonId))
-      || !Number.isFinite(target.directHitChancePercent)
-      || Number(target.directHitChancePercent) < 0
-      || Number(target.directHitChancePercent) > 100
+      || !(target.directHitChancePercent === null
+        || (Number.isFinite(target.directHitChancePercent)
+          && Number(target.directHitChancePercent) >= 0
+          && Number(target.directHitChancePercent) <= 100))
+      || (target.primary.kind === "healing" && target.directHitChancePercent !== null)
+      || (target.primary.kind === "damage" && !Number.isFinite(target.directHitChancePercent))
       || !Array.isArray(target.consequences)) return false;
 
-    return target.consequences.every((consequence) => isRecord(consequence)
-      && (consequence.kind === "bleed" || consequence.kind === "poison" || consequence.kind === "cold")
-      && (consequence.certainty === "conditional" || consequence.certainty === "onHit")
-      && (consequence.chancePercent === undefined
-        || consequence.chancePercent === null
-        || (Number.isFinite(consequence.chancePercent)
-          && Number(consequence.chancePercent) >= 0
-          && Number(consequence.chancePercent) <= 100)));
+    return target.consequences.every(isBattlePreviewConsequence);
   });
 }
 

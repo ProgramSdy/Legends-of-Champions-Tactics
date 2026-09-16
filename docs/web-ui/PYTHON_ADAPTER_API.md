@@ -306,25 +306,40 @@ applicable.
 
 ## Source and rule mapping
 
-## BATTLE-TRANSPARENCY-001 additive preview operation
+## BATTLE-TRANSPARENCY additive preview operation
 
 `POST /api/v1/battles/{battleId}/preview` is an additive, revision-bound
-information operation for the audited MVP allowlist only: Mage
-Comprehensiveness Fireball, Arcane Missiles, and Frost Bolt; Rogue
-Comprehensiveness Sharp Blade and Poisoned Dagger. It accepts
+information operation for the audited allowlist only: Mage Comprehensiveness
+Fireball, Arcane Missiles, and Frost Bolt; Rogue Comprehensiveness Sharp Blade
+and Poisoned Dagger; Priest Comprehensiveness Holy Smite, Shadow Word Pain,
+and Binding Heal; and Paladin Retribution Hammer of Anger, Crusader Strike,
+and Flash of Light. It accepts
 `expectedRevision`, `actorId`, `skillId`, and `targetIds` and validates the
 active actor, available skill, exact legal IDs/cardinality, and duplicate IDs
 under the battle session lock. It does not execute a skill, enqueue events,
 advance a turn or revision, mutate battle state, or consume the session/global
 RNG.
 
-Each target response supplies current/max HP, either an immediate direct damage
-range or deterministic prevented state (`Damage 0`), direct-damage Hit Chance
-(evasion only), and separately typed material consequences. There is no DoT or
-chain total, full-roster fallback, hidden formula input, or combined hit/proc
-percentage. Arcane accepts a one-target draft preview or its complete distinct
-legal pair, returning per-target facts only; there is no aggregate total. This
-preview-only subset rule never changes the target count required by `useSkill`.
+Each target response supplies current/max HP and an immediate `damage`,
+`healing`, or deterministic `prevented` primary. Direct damage/prevention
+retains the evasion-only Hit Chance; healing uses a null Hit Chance and shows
+post-modifier skill power before the live maximum-HP cap. Typed
+material consequences can report a newly applicable Shadow Word Pain,
+Binding Heal's separate post-modifier Priest heal (intentionally omitted from
+the popup), Hammer's effective immediate Wrath damage contribution, Flash of
+Light's stack-specific pre-receipt Wrath healing-power contribution, or Crusader
+Strike's current live Wrath application, increase, or refresh. There is no DoT
+or chain total, full-roster fallback, hidden formula input, or combined
+hit/proc percentage. Arcane accepts a
+one-target draft preview or its complete distinct legal pair, returning
+per-target facts only; there is no aggregate total. This preview-only subset
+rule never changes the target count required by `useSkill`.
+
+The evaluator uses audited pure range/receipt helpers under the existing
+session lock. It never calls a mutable skill callback, mutates a battle clone,
+or consumes session/global RNG. Existing Mage/Rogue response shapes remain
+compatible; the only OpenAPI additions are the `healing` primary enum, nullable
+healing Hit Chance, and discriminated material-consequence variants.
 
 | Contract definition | Exact Python source | Constructor / engine skills |
 |---|---|---|

@@ -2,205 +2,252 @@
 
 **Status:** Completed
 
-**Task:** AUDIO-002 — Extend Shared UI Sound Feedback to All Player-Facing Scenes
+**Task:** BATTLE-TRANSPARENCY-002 — Priest Comprehensiveness and Paladin Retribution
 
-**Owner request date:** 2026-09-14
+**Owner request date:** 2026-09-15
 
 ## Objective
 
-Extend the completed AUDIO-001 centralized frontend audio system beyond the
-Battle Screen. Apply its existing `ui.click` and `ui.hover` feedback across all
-current player-facing web scenes, using one reusable application-level or
-scene-level integration pattern. Do not duplicate jsfxr/audio-manager logic in
-individual components and do not change the established battle-event sounds.
+Extend Battle Information Transparency from the current Mage and Rogue scope to
+Priest Comprehensiveness and Paladin Retribution. Before confirming an action,
+players must see truthful, compact information for each selected target,
+including immediate healing or damage range, direct hit chance only where it
+applies, target HP, and a concise material effect when it changes the decision.
 
 ## Background
 
-AUDIO-001 created `web-ui/lib/audio/` with the browser-safe `AudioManager`,
-typed sound definitions, and battle-specific event mapper. Testing confirms
-that its effects currently appear only in the Battle Screen because
-`useBattleAudio` is attached there. The owner has now requested audio feedback
-in all scenes.
+BATTLE-TRANSPARENCY-001 established an engine-owned, non-mutating, RNG-free,
+revision-bound preview operation. The Battle Screen displays the returned facts
+for Mage and Rogue only. Its client code currently assumes every preview is
+damage and labels its primary value `Damage`.
 
-This is an extension of the existing pre-alpha sound language, not a new sound
-system. Existing sound IDs, lazy trusted-interaction unlock, quiet failure,
-cooldowns, and battle presentation queue ownership must remain authoritative.
+Priest Comprehensiveness has Holy Smite, Shadow Word Pain, and Binding Heal.
+Paladin Retribution has Hammer of Anger, Crusader Strike, and Flash of Light.
+Their direct damage, healing, status state, secondary healing, and Wrath of
+Crusader interactions must be audited from live code before the preview
+contract or player copy is extended. Do not derive formulae or status meaning
+in React.
 
-## Requirements
+## Required Player Experience
 
-### 1. One shared UI-feedback integration
+### General rules
 
-- Reuse `AudioManager` and the existing `ui.click` / `ui.hover` IDs. Do not
-  import `jsfxr` outside `web-ui/lib/audio/` and do not create a second audio
-  manager, per-screen audio instances, document-global browser listeners, or
-  per-component preset definitions.
-- Extract or adapt the generic UI part of the existing Battle Screen audio hook
-  into a clearly named reusable client boundary/hook. It must be safe for
-  Next.js SSR/hydration and use the same singleton manager and central
-  cooldown/deduplication behaviour.
-- Scope delegated pointer/focus/keyboard handling to an explicit application
-  or scene root, using a deliberate marker/convention for eligible controls.
-  It must not add sound to decorative, disabled, inaccessible, hidden, or
-  noninteractive elements.
-- A normal pointer, keyboard, or touch interaction must unlock audio safely.
-  Hover/focus use the quiet `ui.hover` cue once on entry; a real activation
-  uses `ui.click` once. Enter/Space must not produce an extra click on top of
-  the browser’s normal follow-up click event.
-- Audio failures, unsupported browser APIs, and autoplay restrictions must
-  remain silent and never prevent navigation, form submission, stage selection,
-  save actions, battle creation, or any other normal UI action.
+- Apply the existing target hover and keyboard-focus preview interaction to all
+  six approved skills when they are selected and a legal target is highlighted.
+- For direct damage, show `Damage`, `Hit Chance`, and `Target HP`, using the
+  same direct-evasion meaning of Hit Chance established by BATTLE-TRANSPARENCY-001.
+- For healing, show `Healing` and `Target HP`; do not show a Hit Chance because
+  the current healing action has no direct-evasion chance.
+- Healing information shows the authoritative post-modifier skill power before
+  the live maximum-HP cap. It accounts for deterministic healing
+  reductions/prevention but does not reduce the displayed range to missing HP;
+  actual battle HP remains capped at maximum.
+- A material effect belongs on a separate concise row. Do not combine it with
+  damage, healing, or Hit Chance and do not expose internal formula inputs.
+- If an edge case cannot be supported truthfully, show `Preview unavailable`.
+  It must never block a legal command.
 
-### 2. Required scene coverage
+### Priest Comprehensiveness
 
-Apply the shared UI feedback convention to all existing player-facing routes
-and their interactive dialogs/overlays. Cover the currently shipped controls
-that are eligible at runtime, including:
-
-| Scene/route | Required eligible controls |
+| Skill | Preview requirements |
 | --- | --- |
-| Startup `/` | START GAME, New/Load/Retry/Cancel, save-slot choices, overwrite/confirmation actions. |
-| Stage Map `/stages` | Enabled stage hotspots, title route, and Engineering/Test-Debugging route. Inactive artwork remains silent and noninteractive. |
-| Team Builder / standard battle entry | Back route, Battle Rules inputs, formation selectors, player/enemy hero slots, Hero Selection Matrix/cards, pagination/filter controls, random/enemy controls, seed input where interactive, and ENTER BATTLE. |
-| Arena Run | Hub/squad-builder choices, hero selection, node/run actions, back/return controls, give-up confirmation, and completion acknowledgement. |
-| Battle Scene | Preserve AUDIO-001 battle event sounds and current marked controls. Refactor only as needed so it uses the shared UI feedback boundary without duplicate click/hover sounds. |
-| Debug and Battle Asset Registry | Their available navigation, setup, retry, and normal action controls. Development routes remain functional but do not gain battle-event sound inference. |
+| Holy Smite | Immediate direct holy-damage range, direct Hit Chance, and target HP. Use the actual live rule, including its resistance/defence treatment. |
+| Shadow Word Pain | Immediate direct-damage range, direct Hit Chance, target HP, and a concise material Shadow Word Pain consequence only when the current live rule can newly apply it. Do not show or estimate future DoT tick damage; do not imply refresh/strengthening when live code does neither. |
+| Binding Heal | Immediate selected-target healing range and target HP. When a non-self ally is selected, truthfully show the Priest’s separate material self-healing consequence only if it can change HP; do not pretend it is a second heal on the selected target. For a self target, show only the applicable self-heal result. |
 
-- Inspect actual routes/components before editing. If a named control is not
-  present in the current product, document that fact rather than inventing UI.
-- Use `ui.hover` only for interactive pointer-entry and keyboard-focus feedback.
-  Avoid scroll/drag/input-change noise, focus loops, repeated pointer movement,
-  and sound on disabled controls. Text typing and passive form state changes
-  must not create click/hover spam.
-- Existing battle semantic sounds (`battle.event`, `battle.skill`,
-  `battle.damage`, `battle.evade`, `battle.buff`, `battle.debuff`, and
-  `battle.defeated`) remain triggered only through the ordered presentation
-  queue. Do not map page navigation or ordinary UI actions to battle sound IDs.
+### Paladin Retribution
 
-### 3. Accessibility and visual behaviour
+| Skill | Preview requirements |
+| --- | --- |
+| Hammer of Anger | Immediate direct-damage range, direct Hit Chance, target HP, and the live Wrath of Crusader stack contribution where it materially changes the direct range. Do not present a fabricated fixed damage value. |
+| Crusader Strike | Immediate direct-damage range, direct Hit Chance, and target HP. Show the material Wrath of Crusader outcome using clear player language: first application, increase to the next valid stack, or duration refresh, exactly as live action semantics permit. |
+| Flash of Light | Immediate selected-target healing range and target HP. The range must use the live current Wrath of Crusader state, including its stack-specific bonus/healing behaviour, missing-HP cap, and any applicable deterministic receipt rule. Do not show a Hit Chance. |
 
-- Sound is supplementary only. Keep all existing labels, focus indicators,
-  tooltips, visual state, native control semantics, keyboard operation, and
-  error/confirmation text unchanged.
-- Do not change visual design, screen flow, stage availability, save/progression
-  logic, battle rules, route behavior, or backend/API contracts merely to add
-  feedback.
-- Keep the current restrained pre-alpha volume and cooldown character. Do not
-  implement background music, sound settings, volume controls, new production
-  files, ambient sound, voice-over, or scene-specific sound designs in this
-  task.
+## Engine and Contract Requirements
 
-### 4. Documentation and tests
+- Keep the preview engine-owned, read-only, deterministic, and free of all
+  random consumption. It must not execute mutating callbacks, clone/restore a
+  live battle, alter HP/status/stack/duration/cooldown/log/events/turn/revision,
+  or consume session/global RNG.
+- Audit the six live skill paths first. Add narrowly scoped pure range/outcome
+  primitives only where they can be shared with, or demonstrably mirror, the
+  existing live calculation. Preserve current mechanics, including legacy
+  behaviour. Escalate a discovered rules inconsistency rather than correcting
+  it inside preview work.
+- Extend the additive typed preview contract so a target’s primary fact can be
+  unambiguously `damage`, `healing`, or deterministic `prevented`. Include the
+  truthful immediate range after current-state constraints and separately typed
+  material consequences. Do not overload a damage-only field for healing.
+- Preserve compatibility for the current Mage/Rogue consumers and all existing
+  preview requests/responses. Do not alter commands, snapshots, event order,
+  current skill execution, or save/progression data.
+- Validate actor, active revision, available approved skill, legal target side,
+  cardinality, liveness, duplicate IDs, and complete multi-target selection at
+  the existing session lock. Out-of-scope/stale/invalid requests must fail
+  safely with no mutation.
 
-- Update the Web UI architecture document to explain the shared UI audio
-  boundary, eligible-control convention, and the separate ordered battle-event
-  audio boundary. Update the Style Guide with the all-scene interaction rules
-  and anti-spam/accessibility guidance.
-- Add focused automated tests for every route family above. Verify eligible
-  controls unlock/play through the shared path, disabled/decorative controls do
-  not play, hover/focus is deduplicated, keyboard Enter/Space yields one click
-  cue, and normal navigation/actions still happen.
-- Retain AUDIO-001 manager, battle event queue, interaction, target-selection,
-  save, stage, Team Builder, Arena, Debug, and Asset Registry regressions.
-- Record exact scenes/controls integrated, implementation files, validation,
-  reviewer findings, and any skipped control with reason in `Completed.md`.
+## Frontend Requirements
+
+- Extend the allowlist and typed provider/client handling for exactly these six
+  skills. The frontend must not calculate damage, healing, Wrath stacks,
+  secondary healing, status eligibility, prevention, hit chance, or legality.
+- Update the preview card and compact dock to render the authoritative primary
+  label/value. It must show `Healing` with no Hit Chance for a healing primary,
+  while retaining current damage treatment for existing skills.
+- Render secondary Binding Heal and status/Wrath facts only from typed server
+  consequences. Copy must identify a separate recipient where relevant.
+- Preserve pointer, keyboard, touch, multi-target, target highlighting,
+  compact-layout, loading/unavailable, stale-response, command, auto-battle,
+  formation, and accessibility behaviour from BATTLE-TRANSPARENCY-001.
 
 ## Out of Scope
 
-- Any backend, adapter, engine, event schema/order, combat, save/progression,
-  stage availability, routing, or API change.
-- New sounds, sound redesign, music, global settings/volume controls, audio
-  assets, voice, ambient audio, or per-skill/per-scene bespoke sounds.
-- Marking a static/decorative/inactive item interactive just to give it sound.
-- Modifying owner-controlled `docs/web-ui/screenshots_debug/UI_Review_Human.md`.
+- Priest Discipline, other Paladins, all remaining heroes, targetless skills,
+  general healing preview fallback, future DoT totals, chains, spreads,
+  summons, generic proc simulation, and unapproved status effects.
+- Changes to game formulas, healing reduction, Wrath of Crusader, status
+  durations/stacks, targeting, cooldowns, Accuracy/Evasion, battle rules, API
+  commands, save data, or player progression.
+- Client-side formula copies, previewing the next random roll, raw formula
+  explanations, aggregate multi-target totals, or UI redesign.
 
 ## Relevant Files
 
-- `web-ui/lib/audio/AudioManager.ts` and `soundDefinitions.ts` — existing sole
-  audio playback/configuration boundary; preserve it.
-- `web-ui/lib/audio/battleAudio.ts` — separate the reusable UI interaction
-  scope from battle-specific event mapping where appropriate; preserve event
-  semantics and no-duplicate guarantees.
-- `web-ui/app/layout.tsx` and/or a new small client-only shared UI audio
-  boundary — evaluate the safest common integration root without SSR/browser
-  misuse.
-- `web-ui/components/startup/StartupScreen.tsx` — startup/save-dialog controls.
-- `web-ui/components/stages/StageSelectionScreen.tsx` — routes and enabled
-  stage hotspots only.
-- `web-ui/components/battle/TeamBuilder.tsx`, `BattleExperience.tsx`,
-  `ArenaRunExperience.tsx`, `DebugBattleExperience.tsx`, `BattleScreen.tsx`,
-  and `web-ui/app/assets/page.tsx` — current player-facing controls.
-- Existing audio tests plus route-specific frontend suites under `web-ui/tests/`;
-  add focused shared-boundary/route coverage only where needed.
-- `docs/web-ui/WEB_UI_ARCHITECTURE.md`, `docs/web-ui/Style_Guide.md`, and
-  `docs/Codex/Completed.md` — stable guidance and evidence.
+- `heroes/priest.py` and `heroes/paladin.py` — audit six live skills and add
+  safe shared pure preview primitives only when justified.
+- `battle_api/adapter.py`, `battle_api/app.py`, and `battle_api/models.py` —
+  authoritative evaluation, validation, and additive response transport.
+- `web-ui/lib/battle/types.ts`, `liveProvider.ts`, and `useBattlePreview.ts` —
+  typed contract and six-skill allowlist.
+- `web-ui/components/battle/BattleScreen.tsx` and `web-ui/app/globals.css` —
+  authoritative damage/healing presentation, compact dock, and accessibility.
+- `tests/test_battle_transparency_preview.py`, relevant adapter/API tests, and
+  `web-ui/tests/battle-transparency*.test.tsx` — focused no-mutation, truth,
+  interaction, and regression coverage.
+- `docs/web-ui/BATTLE_DATA_CONTRACT_V1.md`, `PYTHON_ADAPTER_API.md`,
+  `WEB_UI_ARCHITECTURE.md`, `Style_Guide.md`, `docs/Technical/Architecture.md`,
+  and `docs/Codex/Completed.md` — contract, architecture, player presentation,
+  and completion evidence.
 
 ## Acceptance Criteria
 
-1. All current player-facing route families use one centralized UI feedback
-   integration and eligible controls provide the existing click/hover cues.
-2. jsfxr remains isolated inside `web-ui/lib/audio/`; no component creates a
-   competing manager or preset configuration.
-3. Battle Screen retains exactly one UI cue per interaction and its battle
-   semantic sounds remain ordered/once-only through `usePresentationQueue`.
-4. Disabled, static, decorative, inactive, or noninteractive elements remain
-   silent; typing, scrolling, pointer movement, and focus changes do not spam.
-5. Pointer, keyboard, and touch activation are safe; Enter/Space produces one
-   click cue, and browser autoplay/unsupported audio never blocks an action.
-6. Existing UI behavior, routes, game mechanics, contracts, and visual/accessibility
-   treatment are unchanged except for additive sound feedback.
-7. Relevant automated tests, typecheck, lint, production build, and diff check
-   pass. Completion records exact coverage and honest manual-test limitations.
+1. Priest Comprehensiveness and Paladin Retribution can request authoritative
+   hover/focus previews for all their legal targetable skills.
+2. Damage previews retain precise immediate ranges, direct Hit Chance, target
+   HP, prevention truthfulness, and separate material effects.
+3. Binding Heal and Flash of Light display truthful immediate healing values
+   without a Hit Chance and never imply health above the target maximum.
+4. Binding Heal’s separate caster heal and Shadow Word Pain/Wrath outcomes are
+   presented only when current live state makes them material and truthful.
+5. Existing Mage/Rogue preview data, UI, commands, combat results, event order,
+   RNG determinism, formation, and responsive behaviour remain unchanged.
+6. Preview consumes no RNG and mutates no engine/session/UI command state;
+   matching later seeded actions have the same result with or without preview.
+7. Invalid/stale/unavailable requests remain safe, and the UI clears stale data
+   without blocking a legal command.
+8. Contract, architecture, style, API, and completion documents describe the
+   expanded audited scope without claiming full healing/full-roster support.
 
 ## Validation Required
 
-- Add shared-boundary unit/integration tests proving singleton reuse, lazy
-  browser unlock, pointer/focus/click/keyboard behavior, no keyboard double
-  cue, and disabled/decorative silence.
-- Test Startup, Stage Map, Team Builder, Arena Run, Battle, Debug, and Asset
-  Registry route families with their available controls. Assert a sound cue is
-  requested without requiring an audio device and that the original action
-  still completes.
-- Re-run AUDIO-001 manager, event-mapping, queue-boundary, and Battle Screen
-  tests to prove battle sounds are not duplicated or moved to snapshots/logs.
-- Run affected existing save, stage, Team Builder, Arena, Battle, Debug, and
-  Asset Registry suites, then `npm run typecheck`, `npm run lint`, production
-  build, and `git diff --check`.
-- Manually click through each available route after a normal user interaction.
-  Confirm feedback is audible but restrained, no initial autoplay occurs, and
-  there is no repeated sound. Record unavailable/development-only route limits.
+- Add direct engine/adapter/API tests for all six skills covering minimum and
+  maximum range, live resistance/defence treatment, evasion/direct Hit Chance,
+  healing missing-HP caps, reduction/prevention, self versus ally Binding Heal,
+  Priest secondary healing, Wrath absent/one/two stacks/refresh, and status
+  new-versus-already-active boundaries.
+- Deep-compare snapshot/session/RNG before and after preview; patch random
+  helpers to fail during preview; prove later same-seed commands equal an
+  untouched control.
+- Test stale actor/revision, unavailable/out-of-scope skills, wrong side,
+  dead targets, duplicate/invalid target IDs, and existing Mage/Rogue contract
+  compatibility.
+- Add frontend tests for `Healing` versus `Damage`, Hit Chance visibility,
+  post-modifier healing power/prevented states, target-only Binding Heal copy,
+  Wrath/Shadow Word copy,
+  hover/focus/touch/compact behavior, stale clearing, and no client formula
+  duplication.
+- Run focused backend/frontend suites, typecheck, lint, production build,
+  py_compile where relevant, and `git diff --check`. Manually test 1v1, 2v2,
+  and 3v3 with Priest and Paladin player turns, including injured/full targets,
+  Wrath states, and a status boundary. Record exact results and any browser
+  limitation honestly.
 
 ## Agent Assignments
 
-**Complexity/risk assessment:** Medium. The work remains frontend-only but
-crosses all interactive route families, SSR/client boundaries, delegated event
-handling, navigation/overlay behavior, and existing battle audio deduplication.
+**Complexity/risk assessment:** High. This extends a live authoritative
+information feature across stateful healing, secondary recipients, status and
+stack interactions, existing compatibility requirements, an additive contract,
+and responsive/accessibility UI. All five roles are required.
 
-**Selected roles — dispatch before implementation:**
-
-- **project-manager:** own cross-route inventory, scope control, phased
-  dispatch, owner-file protection, documentation, and completion evidence.
-- **ui-developer:** own reusable UI-feedback integration, control marking,
-  route integration, SSR/accessibility behavior, and frontend documentation.
-- **test-automator:** own deterministic cross-route interaction/deduplication
-  coverage, non-blocking action regressions, and validation evidence.
-- **reviewer:** independently assess all-scene coverage, duplicate cue risk,
-  direct-jsfxr isolation, browser safety, accessibility, and scope compliance.
-
-**Not selected:**
-
-- **game-engine-developer:** deliberately omitted: the task must use the
-  existing frontend audio service and published UI events without changing
-  engine, adapter, API, game state, or event contracts. Escalate rather than
-  expanding scope if an engine change appears necessary.
+- **project-manager:** own study-before-build sequencing, cross-boundary scope,
+  agent dispatch, documentation, and evidence.
+- **game-engine-developer:** own live-skill audit, pure preview primitives,
+  no-mutation/RNG guarantees, adapter/API contract, and backend tests.
+- **ui-developer:** own typed client consumption, healer-aware presentation,
+  hover/focus/compact accessibility, and frontend documentation.
+- **test-automator:** own deterministic engine/API/UI truth, non-mutation,
+  stale/legality, interaction, and regression coverage.
+- **reviewer:** independently assess formula/receipt/status truthfulness,
+  scope, compatibility, RNG guarantees, UI clarity, documentation, and tests.
 
 ## Completion Notes
 
-Completed 2026-09-14. AUDIO-002 adds one application-root UI feedback boundary
-using the existing AUDIO-001 singleton and `ui.click` / `ui.hover` IDs across
-all current player-facing route families. Battle semantic sounds remain
-exclusively ordered-presentation-queue feedback. The game-engine-developer was
-intentionally omitted because no engine, adapter, API, game-state, or event
-contract change was required or made. The owner-controlled
-`docs/web-ui/screenshots_debug/UI_Review_Human.md` was preserved without an
-AUDIO-002 edit. Exact control coverage, validation, role contributions,
-reviewer approval, and manual-device limitations are in `docs/Codex/Completed.md`.
+Completed 2026-09-15. Battle Information Transparency now has one finite,
+engine-owned audited scope: the original Mage/Rogue skills plus Priest
+Comprehensiveness Holy Smite, Shadow Word Pain, Binding Heal and Paladin
+Retribution Hammer of Anger, Crusader Strike, Flash of Light. No generic
+healing or full-roster preview fallback was added.
+
+**Agent contributions:**
+
+- **project-manager:** completed the mandatory pre-build audit, fixed the
+  cross-boundary scope, and recorded the live-rule/receipt truth table.
+- **game-engine-developer:** added pure audited primitives, typed adapter/model
+  transport, no-mutation/no-RNG tests, API coverage, and the dated engine audit.
+- **ui-developer:** completed the frontend contract/presentation study; the
+  agreed typed-client and Battle Screen integration was applied in the shared
+  worktree without client-side combat calculations.
+- **test-automator:** added the initial focused Priest/Paladin presentation
+  coverage and supplied the deterministic backend/adapter test matrix; final
+  keyboard, compact, and touch assertions were expanded in the shared suite.
+- **reviewer:** independently reviewed formulas, receipt/cap behavior, scope,
+  contract compatibility, documentation, and the final tests; result approved.
+
+**Files changed:**
+
+- `heroes/priest.py`
+- `heroes/paladin.py`
+- `battle_api/adapter.py`
+- `battle_api/models.py`
+- `tests/test_battle_transparency_002_preview.py`
+- `docs/Codex/Analysis/2026-09-15_BATTLE-TRANSPARENCY-002_Engine_Audit.md`
+- `web-ui/lib/battle/types.ts`
+- `web-ui/lib/battle/liveProvider.ts`
+- `web-ui/lib/battle/useBattlePreview.ts`
+- `web-ui/components/battle/BattleScreen.tsx`
+- `web-ui/tests/battle-transparency-002.test.tsx`
+- `docs/web-ui/BATTLE_DATA_CONTRACT_V1.md`
+- `docs/web-ui/PYTHON_ADAPTER_API.md`
+- `docs/web-ui/WEB_UI_ARCHITECTURE.md`
+- `docs/web-ui/Style_Guide.md`
+- `docs/Technical/Architecture.md`
+- `docs/Codex/Current_Task.md`
+- `docs/Codex/Completed.md`
+
+**Validation:**
+
+- `./.venv/bin/python -m pytest -q tests/test_battle_transparency_preview.py tests/test_battle_transparency_002_preview.py` — 79 passed; one existing Starlette/httpx deprecation warning.
+- `cd web-ui && npm test -- --run tests/battle-transparency-preview.test.tsx tests/battle-transparency-002.test.tsx` — 18 passed.
+- `cd web-ui && npm run typecheck` — passed.
+- `cd web-ui && npm run lint` — 0 errors; one existing unused `_signal` warning in `tests/battle-transparency-preview.test.tsx`.
+- `cd web-ui && npm run build` — passed; Vinext emitted only its existing dynamic-route-classification notice.
+- `./.venv/bin/python -m py_compile battle_api/adapter.py battle_api/models.py heroes/priest.py heroes/paladin.py` and `git diff --check` — passed.
+- Isolated Ego browser smoke on `/debug`: 1v1 Holy Smite showed an authoritative Damage/Hit Chance card; the later owner follow-up changed full-health healing presentation from `0–0` to post-modifier skill power without Hit Chance; 2v2 Shadow Word Pain showed its distinct effect row; 3v3 loaded all six combatants without layout or runtime error.
+
+**Remaining manual limitation:**
+
+The deterministic test suites cover injured/full recipients, Wrath states,
+status boundaries, and 1v1/2v2/3v3 contracts. The isolated live 3v3 smoke
+opened on a Mage turn, so an additional release-playtest should exercise a
+live Priest/Paladin 3v3 turn with the desired seeded turn order for visual
+polish; this is not a correctness or contract blocker.

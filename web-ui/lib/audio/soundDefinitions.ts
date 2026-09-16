@@ -84,10 +84,9 @@ export const soundDefinitions = {
     category: "battle",
     cooldownMs: 0,
     provider: {
-      type: "jsfxr",
-      preset: "laserShoot",
+      type: "file",
+      src: "/game-audio/skill_attack.wav",
       volume: 0.12,
-      overrides: { p_base_freq: 0.48, p_freq_ramp: -0.22, p_env_sustain: 0.12, p_env_decay: 0.12 },
     },
   },
   "battle.damage": {

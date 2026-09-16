@@ -341,22 +341,53 @@ export interface BattlePreviewRequest {
   targetIds: string[];
 }
 
-export type BattlePreviewConsequence = {
-  kind: "bleed" | "poison" | "cold";
-  certainty: "conditional" | "onHit";
-  chancePercent?: number | null;
-};
+export type BattlePreviewConsequence =
+  | {
+    kind: "bleed" | "poison" | "cold";
+    certainty: "conditional" | "onHit";
+    chancePercent?: number | null;
+  }
+  | {
+    kind: "shadowWordPain";
+    certainty: "onHit";
+  }
+  | {
+    kind: "secondaryHealing";
+    certainty: "always";
+    recipientId: string;
+    amountRange: { min: number; max: number };
+  }
+  | {
+    kind: "wrathDamageBonus";
+    certainty: "always";
+    stacks: 1 | 2;
+    amountRange: { min: number; max: number };
+  }
+  | {
+    kind: "wrathHealingBonus";
+    certainty: "always";
+    stacks: 1 | 2;
+    amountRange: { min: number; max: number };
+  }
+  | {
+    kind: "wrathOfCrusader";
+    certainty: "always";
+    recipientId: string;
+    stacks: number;
+    outcome: "firstApplication" | "nextStack" | "durationRefresh";
+  };
 
 export interface BattlePreviewTarget {
   targetId: string;
   currentHp: number;
   maxHp: number;
   primary: {
-    kind: "damage" | "prevented";
+    kind: "damage" | "healing" | "prevented";
     amountRange: { min: number; max: number };
     reasonId?: string | null;
   };
-  directHitChancePercent: number;
+  /** Server-authoritative direct-evasion chance; null for healing. */
+  directHitChancePercent: number | null;
   consequences: BattlePreviewConsequence[];
 }
 

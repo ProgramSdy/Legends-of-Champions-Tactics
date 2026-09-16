@@ -715,6 +715,10 @@ class BattleAdapter:
             if isinstance(actor, Mage_Comprehensiveness)
             else {"Sharp Blade", "Poisoned Dagger"}
             if isinstance(actor, Rogue_Comprehensiveness)
+            else {"Holy Smite", "Shadow Word Pain", "Binding Heal"}
+            if isinstance(actor, Priest_Comprehensiveness)
+            else {"Hammer of Anger", "Crusader Strike", "Flash of Light"}
+            if isinstance(actor, Paladin_Retribution)
             else set()
         )
         if skill.name not in approved_skills:
@@ -807,8 +811,40 @@ class BattleAdapter:
             damage -= round(damage * linked_buff.effect)
         return max(0, damage), None
 
-    def _preview_consequences(self, actor, skill, target) -> list[dict[str, Any]]:
+    @staticmethod
+    def _apply_audited_healing_receipt(target, healing: int) -> int:
+        """Mirror the live modified, rounded healing power without mutation.
+
+        Preview communicates the skill's healing power before the live HP cap;
+        battle execution still caps the recipient's actual HP at ``hp_max``.
+        """
+        total_boost = sum(target.healing_boost_effects.values())
+        total_reduction = min(sum(target.healing_reduction_effects.values()), 1)
+        net_modifier = max(0, 1 + total_boost - total_reduction)
+        modified = max(0, round(healing * net_modifier))
+        return modified
+
+    @classmethod
+    def _audited_healing_receipt_range(cls, target, raw_range) -> tuple[int, int]:
+        """Enumerate every discrete live base roll before modifier rounding."""
+        received = [
+            cls._apply_audited_healing_receipt(target, raw_healing)
+            for raw_healing in range(raw_range[0], raw_range[1] + 1)
+        ]
+        return min(received), max(received)
+
+    def _preview_consequences(
+        self,
+        session,
+        actor,
+        skill,
+        target,
+        *,
+        prevented: bool = False,
+    ) -> list[dict[str, Any]]:
         if isinstance(actor, Rogue_Comprehensiveness):
+            if prevented:
+                return []
             if skill.name == "Sharp Blade" and not target.status.get(
                 "bleeding_sharp_blade", False
             ):
@@ -834,22 +870,149 @@ class BattleAdapter:
             isinstance(actor, Mage_Comprehensiveness)
             and skill.name == "Frost Bolt"
             and not target.status.get("cold", False)
+            and not prevented
         ):
             return [{"kind": "cold", "certainty": "onHit"}]
+        if isinstance(actor, Priest_Comprehensiveness):
+            if (
+                skill.name == "Shadow Word Pain"
+                and not target.status.get("shadow_word_pain", False)
+                and not prevented
+            ):
+                return [{"kind": "shadowWordPain", "certainty": "onHit"}]
+            return []
+        if isinstance(actor, Paladin_Retribution):
+            if skill.name == "Hammer of Anger" and not prevented:
+                bonus_range = actor.audited_wrath_damage_bonus_range(skill.name)
+                if bonus_range is not None:
+                    effective_bonus_values = []
+                    for base_damage in actor.audited_hammer_base_damage_values(target):
+                        base_formed = target.take_damage_calculation(
+                            base_damage, skill.attack_type, actor
+                        )
+                        base_received, _ = self._apply_audited_damage_receipt(
+                            target, base_formed
+                        )
+                        for bonus_damage in range(
+                            bonus_range[0], bonus_range[1] + 1
+                        ):
+                            boosted_formed = target.take_damage_calculation(
+                                base_damage + bonus_damage,
+                                skill.attack_type,
+                                actor,
+                            )
+                            boosted_received, _ = self._apply_audited_damage_receipt(
+                                target, boosted_formed
+                            )
+                            effective_bonus_values.append(
+                                max(0, boosted_received - base_received)
+                            )
+                    if max(effective_bonus_values) == 0:
+                        return []
+                    return [
+                        {
+                            "kind": "wrathDamageBonus",
+                            "certainty": "always",
+                            "stacks": actor.wrath_of_crusader_stacks,
+                            "amountRange": {
+                                "min": min(effective_bonus_values),
+                                "max": max(effective_bonus_values),
+                            },
+                        }
+                    ]
+            if skill.name == "Flash of Light":
+                bonus_range = actor.audited_wrath_healing_bonus_range(skill.name)
+                if bonus_range is not None:
+                    return [
+                        {
+                            "kind": "wrathHealingBonus",
+                            "certainty": "always",
+                            "stacks": actor.wrath_of_crusader_stacks,
+                            "amountRange": {
+                                "min": bonus_range[0],
+                                "max": bonus_range[1],
+                            },
+                        }
+                    ]
+            if skill.name == "Crusader Strike":
+                if not actor.status.get("wrath_of_crusader", False):
+                    outcome = "firstApplication"
+                    resulting_stacks = actor.wrath_of_crusader_stacks + 1
+                elif actor.wrath_of_crusader_stacks < 2:
+                    outcome = "nextStack"
+                    resulting_stacks = actor.wrath_of_crusader_stacks + 1
+                else:
+                    outcome = "durationRefresh"
+                    resulting_stacks = actor.wrath_of_crusader_stacks
+                return [
+                    {
+                        "kind": "wrathOfCrusader",
+                        "certainty": "always",
+                        "recipientId": self._combatant_id(session, actor),
+                        "stacks": resulting_stacks,
+                        "outcome": outcome,
+                    }
+                ]
         return []
 
     def _evaluate_preview(self, session, actor, skill, targets, request):
         target_results = []
         for target in targets:
             target_id = self._combatant_id(session, target)
-            prevention = self._deterministic_prevention(skill, target)
-            consequences = [] if prevention else self._preview_consequences(
-                actor, skill, target
+            is_healing = skill.skill_type == "healing"
+            prevention = (
+                None if is_healing else self._deterministic_prevention(skill, target)
             )
-            if prevention:
+            consequences = self._preview_consequences(
+                session, actor, skill, target, prevented=prevention is not None
+            )
+            if is_healing:
+                raw_range = actor.audited_healing_range(skill.name)
+                if raw_range is None:
+                    return {
+                        "revision": session.revision,
+                        "actorId": request["actorId"],
+                        "skillId": request["skillId"],
+                        "requestedTargetIds": list(request["targetIds"]),
+                        "selectedTargetIds": list(request["targetIds"]),
+                        "coverage": "unavailable",
+                        "reasonId": "preview.unauditedState",
+                        "targets": [],
+                    }
+                minimum, maximum = self._audited_healing_receipt_range(
+                    target, raw_range
+                )
+                primary_kind = "healing"
+                primary_reason = None
+                direct_hit_chance = None
+                if (
+                    isinstance(actor, Priest_Comprehensiveness)
+                    and skill.name == "Binding Heal"
+                    and target is not actor
+                ):
+                    caster_range = actor.audited_healing_range(
+                        skill.name, caster_secondary=True
+                    )
+                    caster_minimum, caster_maximum = (
+                        self._audited_healing_receipt_range(actor, caster_range)
+                    )
+                    if actor.hp < actor.hp_max and caster_maximum > 0:
+                        consequences.append(
+                            {
+                                "kind": "secondaryHealing",
+                                "certainty": "always",
+                                "recipientId": self._combatant_id(session, actor),
+                                "amountRange": {
+                                    "min": caster_minimum,
+                                    "max": caster_maximum,
+                                },
+                            }
+                        )
+            elif prevention:
                 minimum = maximum = 0
                 primary_kind = "prevented"
                 primary_reason = prevention
+                direct_hit_chance = self._direct_hit_chance_percent(target)
             else:
                 raw_range = actor.audited_direct_damage_range(skill.name, target)
                 if raw_range is None:
@@ -866,7 +1029,7 @@ class BattleAdapter:
                 received = []
                 absorption_reasons = []
                 for raw_damage in raw_range:
-                    if isinstance(actor, Mage_Comprehensiveness):
+                    if not isinstance(actor, Rogue_Comprehensiveness):
                         raw_damage = target.take_damage_calculation(
                             raw_damage, skill.attack_type, actor
                         )
@@ -882,6 +1045,7 @@ class BattleAdapter:
                 else:
                     primary_kind = "damage"
                     primary_reason = None
+                direct_hit_chance = self._direct_hit_chance_percent(target)
             target_results.append(
                 {
                     "targetId": target_id,
@@ -892,7 +1056,7 @@ class BattleAdapter:
                         "amountRange": {"min": minimum, "max": maximum},
                         "reasonId": primary_reason,
                     },
-                    "directHitChancePercent": self._direct_hit_chance_percent(target),
+                    "directHitChancePercent": direct_hit_chance,
                     "consequences": consequences,
                 }
             )

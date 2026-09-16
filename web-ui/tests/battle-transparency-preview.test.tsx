@@ -130,7 +130,9 @@ describe("BATTLE-TRANSPARENCY-001 target preview", () => {
     const target = screen.getByRole("button", { name: "Sashein, selectable target" });
 
     fireEvent.focus(target);
-    expect(await screen.findByText(/FIREBALL/)).toBeVisible();
+    await waitFor(() => expect(document.querySelector(".target-preview-card strong"))
+      .toHaveTextContent("→ Sashein"));
+    expect(document.querySelector(".target-preview-card strong")).not.toHaveTextContent("Fireball");
     fireEvent.keyDown(target, { key: "Enter" });
     expect(target).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: "CAST SKILL" })).toBeEnabled();

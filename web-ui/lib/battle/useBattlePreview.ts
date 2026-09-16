@@ -9,6 +9,12 @@ const AUDITED_PREVIEW_SKILL_IDS = new Set([
   "skill.mage.frost_bolt",
   "skill.rogue.sharp_blade",
   "skill.rogue.poisoned_dagger",
+  "skill.priest.holy_smite",
+  "skill.priest.shadow_word_pain",
+  "skill.priest.binding_heal",
+  "skill.paladin.hammer_of_anger",
+  "skill.paladin.crusader_strike",
+  "skill.paladin.flash_of_light",
 ]);
 
 type PreviewPhase = "idle" | "loading" | "ready" | "unavailable";

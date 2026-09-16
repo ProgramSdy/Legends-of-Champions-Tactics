@@ -248,10 +248,12 @@ _To be documented._
   failure are silent failures and must never block interaction or presentation.
   A browser without sticky user-activation reporting may omit opening sounds
   until the first eligible pointer, touch, or keyboard activation.
-- Pre-alpha procedural sounds stay low/moderate in volume and distinct by
+- Pre-alpha sounds stay low/moderate in volume and distinct by
   function: restrained mechanical UI click, quieter high tick for hover,
   notification chime for the battle-start event, energetic skill cue, short impact,
   upward evade, rising buff, descending debuff, and heavier defeated impact.
+  The general attack-lunge cue uses the owner-supplied
+  `/game-audio/skill_attack.wav`; the other current cues remain procedural.
 - Ordered battle sounds follow authoritative active presentation events. Never
   infer sound from HP/status snapshots, log prose, rerenders, or client-side
   classification. Neutral/unknown status presentation remains silent.
@@ -269,6 +271,11 @@ _To be documented._
 - Use blue player-slot treatment and red enemy-slot treatment. The active
   player or specified-enemy slot has a visible side-appropriate selected state;
   Hero Selection Matrix cards visibly indicate the hero assigned to that slot.
+- Assigning through the Hero Selection Matrix advances the same side's active
+  highlight only when the prior active slot was empty. Use forward display
+  order with one wrap to the earliest enabled empty slot; keep the current slot
+  for replacements and completed teams, and leave keyboard focus on the
+  activated Matrix card.
 - Current Stage previews use the supplied Stage Map image in a clipped,
   `object-fit: cover` frame. Preview focus/scale/offset comes from explicit
   enabled-stage metadata separate from hotspot geometry; source artwork must
@@ -298,6 +305,14 @@ _To be documented._
 
 ## Change Log
 
+- 2026-09-15 — Expanded the compact Battle Information Transparency treatment
+  for the approved Priest Comprehensiveness and Paladin Retribution skills:
+  healing is labelled `Healing` with no Hit Chance, while server-authored
+  Binding recipient, Shadow Word Pain, and Wrath facts remain separate concise
+  rows. A caster-owned positive status uses `Buff Self · [Status Name]`,
+  omitting recipient, stack, and refresh mechanics unless the owner requests
+  them; future server-authored caster-buff effects follow this presentation
+  pattern. This is not a generic healing or full-roster preview style.
 - 2026-09-14 — Extended the centralized `ui.click` / `ui.hover` language to
   every current player-facing route through one SSR-safe application-root
   boundary, with semantic eligibility, custom-control opt-in, label/control

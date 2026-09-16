@@ -5,7 +5,9 @@ import type { SoundId } from "./soundDefinitions";
 
 export function soundIdForBattleEvent(event: BattleEvent): SoundId | null {
   if (event.type === "battleStarted") return "battle.event";
-  if (event.type === "skillStarted") return "battle.skill";
+  // The attack WAV must align with the visible lunge rather than the earlier
+  // intent-only skillStarted event. Non-lunge skills intentionally stay silent.
+  if (event.type === "characterMoved" && event.movement === "lunge") return "battle.skill";
   if (event.type === "damageApplied") return "battle.damage";
   if (event.type === "attackEvaded") return "battle.evade";
   if (event.type === "characterDefeated") return "battle.defeated";

@@ -30,13 +30,51 @@ class Priest_Comprehensiveness(Priest):
             self.add_skill(Skill(self, "Shadow Word Pain", self.shadow_word_pain, target_type = "single", skill_type= "damage",attack_type = "ranged_instant"))
             self.add_skill(Skill(self, "Binding Heal", self.binding_heal, "single", skill_type= "healing"))
 
+    @staticmethod
+    def _holy_smite_direct_damage(variation):
+        """Pure direct damage shared by execution and audited preview."""
+        return max(19 + variation, 0)
+
+    @staticmethod
+    def _shadow_word_pain_direct_damage(damage, shadow_resistance, variation):
+        """Pure immediate damage; the later random DoT is intentionally separate."""
+        return round((damage + variation - shadow_resistance) * (1 / 2))
+
+    @staticmethod
+    def _binding_heal_base_amount(variation, *, caster_secondary=False):
+        """Pure base healing shared by both Binding Heal recipients."""
+        return (20 if caster_secondary else 25) + variation
+
+    def audited_direct_damage_range(self, skill_name, target):
+        """Return RNG-free immediate damage boundaries for approved skills."""
+        if skill_name == "Holy Smite":
+            values = [self._holy_smite_direct_damage(value) for value in (-3, 3)]
+        elif skill_name == "Shadow Word Pain":
+            values = [
+                self._shadow_word_pain_direct_damage(
+                    self.damage, target.shadow_resistance, value
+                )
+                for value in (0, 5)
+            ]
+        else:
+            return None
+        return min(values), max(values)
+
+    def audited_healing_range(self, skill_name, *, caster_secondary=False):
+        """Return Binding Heal's base range without consuming either live roll."""
+        if skill_name != "Binding Heal":
+            return None
+        values = [
+            self._binding_heal_base_amount(
+                value, caster_secondary=caster_secondary
+            )
+            for value in (-3, 3)
+        ]
+        return min(values), max(values)
+
     def holy_smite(self, other_hero, attack_type="NA"):
-        basic_damage = 19
         variation = random.randint(-3, 3)
-        actual_damage = basic_damage + variation
-        damage_dealt = actual_damage # holy damage ignore's opponents magic resistance
-        # Ensure damage dealt is at least 0
-        damage_dealt = max(damage_dealt, 0)
+        damage_dealt = self._holy_smite_direct_damage(variation)
         # Apply damage to the other hero's HP
         self.game.display_battle_info(f"{self.name} casts Holy Smite at {other_hero.name}.")
         return other_hero.take_damage(damage_dealt, attack_type, self)
@@ -44,7 +82,9 @@ class Priest_Comprehensiveness(Priest):
     def shadow_word_pain(self, other_hero, attack_type="NA"):
         variation = random.randint(0, 5)
         actual_damage = self.damage + variation
-        damage_dealt = round((actual_damage - other_hero.shadow_resistance)*(1/2))
+        damage_dealt = self._shadow_word_pain_direct_damage(
+            self.damage, other_hero.shadow_resistance, variation
+        )
         if other_hero.status['shadow_word_pain'] == False:
             other_hero.status['shadow_word_pain'] = True
             other_hero.shadow_word_pain_debuff_duration = 5  # Effect lasts for 4 rounds
@@ -60,10 +100,10 @@ class Priest_Comprehensiveness(Priest):
     def binding_heal(self, other_hero):
         variation_1 = random.randint(-3, 3)
         variation_2 = random.randint(-3, 3)
-        healing_amount_base_1 = 25
-        healing_amount_base_2 = 20
-        healing_amount_1 = healing_amount_base_1 + variation_1
-        healing_amount_2 = healing_amount_base_2 + variation_2
+        healing_amount_1 = self._binding_heal_base_amount(variation_1)
+        healing_amount_2 = self._binding_heal_base_amount(
+            variation_2, caster_secondary=True
+        )
         results = []
         if other_hero == self:
           self.game.display_battle_info(f"{self.name} casts Binding Heal on {other_hero.name}.")

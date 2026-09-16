@@ -102,6 +102,14 @@ function portraitRequest(hero: HeroDefinitionSummary) {
   };
 }
 
+function nextEmptySlotAfter(team: readonly string[], filledSlot: number, size: BattleSize) {
+  for (let offset = 1; offset < size; offset += 1) {
+    const candidate = (filledSlot + offset) % size;
+    if (!team[candidate]) return candidate;
+  }
+  return null;
+}
+
 function FormationSelector<T extends BattleFormationId>({
   side,
   choices,
@@ -238,6 +246,27 @@ export function TeamBuilder(props: TeamBuilderProps) {
 
   const updateSlot = (team: string[], index: number, value: string) =>
     team.map((current, slot) => slot === index ? value : current);
+
+  const assignMatrixHero = (definitionId: string) => {
+    if (activeTeamSide === "player") {
+      const filledSlot = activePlayerSlot;
+      const wasEmpty = !playerTeam[filledSlot];
+      const nextTeam = updateSlot(playerTeam, filledSlot, definitionId);
+      setPlayerTeam(nextTeam);
+      if (wasEmpty) {
+        setActivePlayerSlot(nextEmptySlotAfter(nextTeam, filledSlot, battleSize) ?? filledSlot);
+      }
+      return;
+    }
+
+    const filledSlot = activeEnemySlot;
+    const wasEmpty = !enemyTeam[filledSlot];
+    const nextTeam = updateSlot(enemyTeam, filledSlot, definitionId);
+    setEnemyTeam(nextTeam);
+    if (wasEmpty) {
+      setActiveEnemySlot(nextEmptySlotAfter(nextTeam, filledSlot, battleSize) ?? filledSlot);
+    }
+  };
 
   const launch = () => {
     if (validation) return;
@@ -584,9 +613,7 @@ export function TeamBuilder(props: TeamBuilderProps) {
                 aria-label={`Assign ${professionLabel(hero)} to ${activeTeamSide === "player" ? "your" : "enemy"} Hero ${(activeTeamSide === "player" ? activePlayerSlot : activeEnemySlot) + 1}`}
                 aria-pressed={assigned}
                 disabled={reservedByAnotherArenaSlot}
-                onClick={() => activeTeamSide === "player"
-                  ? setPlayerTeam((team) => updateSlot(team, activePlayerSlot, hero.definitionId))
-                  : setEnemyTeam((team) => updateSlot(team, activeEnemySlot, hero.definitionId))}
+                onClick={() => assignMatrixHero(hero.definitionId)}
               >
                 <span className="builder-hero-media">
                   <AssetImage request={portraitRequest(hero)} className="builder-hero-image" />

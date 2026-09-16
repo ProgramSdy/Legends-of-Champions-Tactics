@@ -549,15 +549,24 @@ idempotency do not depend on the selected display name.
 
 ## UI-002 additive creation contract
 
-## BATTLE-TRANSPARENCY-001 additive preview contract
+## BATTLE-TRANSPARENCY additive preview contract
 
-Preview is separate from snapshots, commands, and events. The MVP allowlist is
-Mage Fireball/Arcane Missiles/Frost Bolt and Rogue Sharp Blade/Poisoned Dagger.
-Each target supplies authoritative current/max HP, immediate direct damage
-range or prevented zero, evasion-only direct Hit Chance, and optional separate
-material-effect facts. Bleed and Poison chance never become Hit Chance; future
-ticks, chains, and aggregate Arcane total are intentionally absent. The web UI
-renders supplied facts and never derives combat numbers or legality.
+Preview is separate from snapshots, commands, and events. The audited allowlist
+is Mage Fireball/Arcane Missiles/Frost Bolt; Rogue Sharp Blade/Poisoned Dagger;
+Priest Comprehensiveness Holy Smite/Shadow Word Pain/Binding Heal; and Paladin
+Retribution Hammer of Anger/Crusader Strike/Flash of Light. It is deliberately
+not a generic roster or healing-preview fallback.
+
+Each target supplies authoritative current/max HP and one immediate primary
+fact: direct `damage`, `healing`, or deterministic `prevented`. Damage carries
+the existing evasion-only direct Hit Chance; healing carries `null` because it
+has no direct-evasion check. A healing range is post-modifier skill power before
+the live maximum-HP cap, so a full-health target still shows the heal it would
+receive; actual battle HP remains capped. Material effects are separate typed facts. Bleed
+and Poison chance never become Hit Chance; future DoT ticks, chains, aggregate
+Arcane totals, and raw formula inputs remain absent. The web UI renders supplied
+facts and never derives combat numbers, caps, stacks, status eligibility, or
+legality.
 
 ```ts
 type BattlePreviewRequest = {
@@ -584,15 +593,42 @@ type BattlePreviewResponse = {
       currentHp: number;
       maxHp: number;
       primary: {
-        kind: "damage" | "prevented";
+        kind: "damage" | "healing" | "prevented";
         amountRange: { min: number; max: number };
         reasonId?: string;
       };
-      directHitChancePercent: number;
+      // Numeric for damage/prevented; null for healing.
+      directHitChancePercent: number | null;
       consequences: Array<{
         kind: "bleed" | "poison" | "cold";
         certainty: "conditional" | "onHit";
-        chancePercent?: number;
+        chancePercent?: number | null;
+      } | {
+        kind: "shadowWordPain";
+        certainty: "onHit";
+      } | {
+        kind: "secondaryHealing";
+        certainty: "always";
+        recipientId: string;
+        amountRange: { min: number; max: number };
+      } | {
+        // Effective immediate target-damage contribution after live receipt.
+        kind: "wrathDamageBonus";
+        certainty: "always";
+        stacks: 1 | 2;
+        amountRange: { min: number; max: number };
+      } | {
+        // Flash of Light's stack-specific, pre-receipt healing-power bonus.
+        kind: "wrathHealingBonus";
+        certainty: "always";
+        stacks: 1 | 2;
+        amountRange: { min: number; max: number };
+      } | {
+        kind: "wrathOfCrusader";
+        certainty: "always";
+        recipientId: string;
+        stacks: number;
+        outcome: "firstApplication" | "nextStack" | "durationRefresh";
       }>;
     }>;
   };
@@ -605,6 +641,18 @@ non-empty distinct legal subset up to the published action maximum: a one-target
 draft preview in 1v1/while choosing a pair, or its complete pair. This does not
 relax the real command's required target cardinality. Rejection produces the
 existing error envelope and has no battle/RNG mutation.
+
+For the expanded audited scope, Binding Heal evaluates the selected recipient
+and may separately transport the Priest's own post-modifier heal for a
+non-self target, but the popup intentionally displays target healing only.
+Shadow Word Pain reports its status only when the live state can newly apply it,
+never its later ticks. Hammer reports a
+material Wrath contribution only when it changes immediate post-receipt target
+damage. Crusader Strike reports its independent current live Wrath outcome even
+when direct damage is prevented. Flash of Light reports its stack-specific
+pre-receipt Wrath healing-power contribution separately while its primary range
+uses the current live recipient receipt rule. These are server-authored facts,
+not client rules.
 
 Contract version `1.0` remains the snapshot, command, event, and envelope
 version. UI-002 additively extends session creation and adds roster discovery:

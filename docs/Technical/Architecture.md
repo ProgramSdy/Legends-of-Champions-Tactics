@@ -2,14 +2,29 @@
 
 ## Structured Computer Battle Strategies
 
-## Battle Information Transparency MVP
+## Battle Information Transparency
 
 Battle previews are engine-owned, non-mutating audited facts transported by the
 adapter at a specific revision. The UI requests and renders them only for the
-approved Mage/Rogue damage-skill allowlist; it neither runs skill callbacks nor
-copies combat formulas. Preview evaluation cannot consume RNG, mutate
-heroes/session/events/turns, or predict the next seeded roll. Unsupported
-skills/outcomes are omitted rather than approximated.
+approved Mage/Rogue damage skills plus Priest Comprehensiveness Holy Smite,
+Shadow Word Pain, Binding Heal and Paladin Retribution Hammer of Anger,
+Crusader Strike, Flash of Light. It is not a generic preview system. The
+adapter returns typed immediate `damage`, `healing`, or `prevented` primary
+facts and typed material consequences; React renders those facts and neither
+runs skill callbacks nor copies combat formulas, caps, Wrath state, status
+eligibility, or target legality.
+
+Healing preview ranges deliberately communicate post-modifier skill power,
+including for a full-health target. The live engine alone caps applied HP at
+the recipient maximum.
+
+Preview evaluation uses audited pure range/receipt primitives under the current
+revision/session lock. It cannot consume RNG, mutate heroes/session/events/
+turns, call `Skill.execute`, or predict a seeded roll. Unsupported skills and
+unprovable outcomes remain unavailable rather than approximated. The existing
+Mage/Rogue contract stays compatible while healing introduces a null direct Hit
+Chance and the expanded scope adds discriminated status, secondary-recipient,
+and Wrath facts, including Flash of Light's typed stack-specific healing bonus.
 
 New specialization-owned computer strategies follow the authoritative
 study-first Part A / Part B / Part C standard in
