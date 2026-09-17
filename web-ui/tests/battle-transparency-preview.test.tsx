@@ -70,15 +70,18 @@ afterEach(() => {
 });
 
 describe("BATTLE-TRANSPARENCY-001 target preview", () => {
-  it("posts the revision-bound request through LiveBattleProvider and validates the echoed result", async () => {
-    const snapshot = await mageSnapshot();
+  it("accepts Frost Bolt's nullable Cold outcome through LiveBattleProvider", async () => {
+    const snapshot = await mageSnapshot("skill.mage.frost_bolt", "Frost Bolt", ["enemy.sashein"]);
     const request: BattlePreviewRequest = {
       expectedRevision: 1,
       actorId: "friendly.arthas",
-      skillId: "skill.mage.fireball",
+      skillId: "skill.mage.frost_bolt",
       targetIds: ["enemy.sashein"],
     };
     const preview = responseFor(request);
+    preview.targets[0].consequences = [{
+      kind: "cold", certainty: "onHit", chancePercent: null, outcome: null,
+    }];
     const fetchMock = vi.spyOn(globalThis, "fetch")
       .mockResolvedValueOnce(new Response(JSON.stringify({
         contractVersion: "1.0", battleId: "battle.preview", revision: 1, data: { events: [], snapshot },
@@ -152,7 +155,7 @@ describe("BATTLE-TRANSPARENCY-001 target preview", () => {
 
   it.each([
     ["skill.rogue.poisoned_dagger", "Poisoned Dagger", { kind: "poison" as const, certainty: "conditional" as const, chancePercent: 85 }, "Poison85% chance"],
-    ["skill.mage.frost_bolt", "Frost Bolt", { kind: "cold" as const, certainty: "onHit" as const }, "On hitApplies Cold"],
+    ["skill.mage.frost_bolt", "Frost Bolt", { kind: "cold" as const, certainty: "onHit" as const, chancePercent: null, outcome: null }, "Debuff ApplyCold"],
   ])("renders the separate server-authored consequence for %s", async (skillId, displayName, consequence, expected) => {
     const provider = new PreviewProvider(await mageSnapshot(skillId, displayName));
     provider.previewAction.mockImplementation(async (request) => responseFor(request, [targetFact(request.targetIds[0], {

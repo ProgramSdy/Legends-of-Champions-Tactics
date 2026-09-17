@@ -226,7 +226,7 @@ class Warrior_Defence(Warrior):
             self.preset_target = None
             self.add_skill(Skill(self, "Devastate", self.devastate, target_type = "single", skill_type= "damage",attack_type = "melee"))
             self.add_skill(Skill(self, "Shield Bash", self.shield_bash, target_type = "single", skill_type= "damage", attack_type = "melee", capable_interrupt_magic_casting = True))
-            self.add_skill(Skill(self, "Thunder Pot", self.thunder_pot, target_type = "multi", skill_type= "damage", target_qty=2, attack_type = "ranged_projectile", is_control_skill = True, independent_effect_action=self.independent_shield_lash))
+            self.add_skill(Skill(self, "Thunder Pot", self.thunder_pot, target_type = "multi", skill_type= "damage", target_qty=2, attack_type = "ranged_projectile", is_control_skill = True, independent_effect_action=self.independent_shield_defence))
 
     def audited_direct_damage_range(self, skill_name, target):
         """Return the finite pre-formation range used by the live action."""
@@ -299,16 +299,16 @@ class Warrior_Defence(Warrior):
         return other_hero.take_damage(damage_dealt, attack_type, self)
 
     def thunder_pot(self, other_heroes, attack_type="NA"):
-        self.status['shield_lash'] = True
-        self.fire_resistance_boost_amount['shield_lash'] = 45
-        self.frost_resistance_boost_amount['shield_lash'] = 45
-        self.death_resistance_boost_amount['shield_lash'] = 45
-        self.nature_resistance_boost_amount['shield_lash'] = 45
+        self.status['shield_defence'] = True
+        self.fire_resistance_boost_amount['shield_defence'] = 45
+        self.frost_resistance_boost_amount['shield_defence'] = 45
+        self.death_resistance_boost_amount['shield_defence'] = 45
+        self.nature_resistance_boost_amount['shield_defence'] = 45
 
-        self.fire_resistance = self.fire_resistance + self.fire_resistance_boost_amount['shield_lash']
-        self.frost_resistance = self.frost_resistance + self.frost_resistance_boost_amount['shield_lash']
-        self.death_resistance = self.death_resistance + self.death_resistance_boost_amount['shield_lash']
-        self.nature_resistance = self.nature_resistance + self.nature_resistance_boost_amount['shield_lash']
+        self.fire_resistance = self.fire_resistance + self.fire_resistance_boost_amount['shield_defence']
+        self.frost_resistance = self.frost_resistance + self.frost_resistance_boost_amount['shield_defence']
+        self.death_resistance = self.death_resistance + self.death_resistance_boost_amount['shield_defence']
+        self.nature_resistance = self.nature_resistance + self.nature_resistance_boost_amount['shield_defence']
         for skill in self.skills:
             if skill.name == "Thunder Pot":
                 skill.if_cooldown = True
@@ -353,14 +353,14 @@ class Warrior_Defence(Warrior):
                     opponent.add_debuff(debuff)
 
                 for buff in self.buffs_debuffs_recycle_pool:
-                        if buff.name == "Shield Lash" and buff.initiator == self:
+                        if buff.name == "Shield Defence" and buff.initiator == self:
                             self.buffs_debuffs_recycle_pool.remove(buff)
                             buff.duration = 2
                             self.add_buff(buff)   
                             break
                 else:
                     buff = Buff(
-                        name='Shield Lash',
+                        name='Shield Defence',
                         duration=2,
                         initiator=self,
                         effect=1
@@ -369,11 +369,11 @@ class Warrior_Defence(Warrior):
 
                 if opponent.status['magic_casting'] == True:
                     interrupt_magic_result = self.interrupt_magic_casting(opponent)
-                    opponent.scoff_shield_lash_duration = 2
+                    opponent.scoff_shield_defence_duration = 2
                     self.game.display_battle_info(f"{self.name} casts Thunder Pot on {opponent.name}. {interrupt_magic_result}. {self.name}'s magical resistance is boost. {opponent.name} developed a deep hatred toward {self.name}.")
                     results.append(opponent.take_damage(actual_damage, attack_type, self))
                 else:
-                    opponent.scoff_shield_lash_duration = 2
+                    opponent.scoff_shield_defence_duration = 2
                     self.game.display_battle_info(f"{self.name} casts Thunder Pot on {opponent.name}. {self.name}'s magical resistance is boost. {opponent.name} developed a deep hatred toward {self.name}.")
                     results.append(opponent.take_damage(actual_damage, attack_type, self))
 

@@ -113,7 +113,7 @@ class Hero:
         'bless_of_frost': False,
         'anti_magic_shield': False,
         'scorchbrand': False,
-        'shield_lash': False,
+        'shield_defence': False,
         'fatal_strike': False,
         'bleeding_armor_crush': False,
         'wound_armor_crush': False,
@@ -972,12 +972,12 @@ class Hero:
       skill.cooldown = 3
       return f"Holy light showers {self.name}. {self.take_healing(healing)}."
 
-    def independent_shield_lash(self, skill):
+    def independent_shield_defence(self, skill):
       for resistance in ("fire", "frost", "death", "nature"):
         boosts = getattr(self, f"{resistance}_resistance_boost_amount")
-        boosts['shield_lash'] = 45
+        boosts['shield_defence'] = 45
         setattr(self, f"{resistance}_resistance", getattr(self, f"{resistance}_resistance") + 45)
-      self._independent_buff(skill, "Shield Lash", "shield_lash", 1)
+      self._independent_buff(skill, "Shield Defence", "shield_defence", 1)
       return f"{self.name}'s magical resistance is boost."
 
     def add_skill(self, skill):

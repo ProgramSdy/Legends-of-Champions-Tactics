@@ -266,9 +266,15 @@ export interface BattleSnapshot {
   formations: Record<SideId, BattleFormationId | null>;
   sides: Array<{ id: SideId; combatantIds: string[]; maxSlots: number }>;
   combatants: Record<string, CombatantState>;
-  turnOrder: Array<{ combatantId: string; hasActed: boolean; isCurrent: boolean }>;
+  turnOrder: TurnOrderEntry[];
   turnControl: TurnControl;
   legalActions: LegalAction[];
+}
+
+export interface TurnOrderEntry {
+  combatantId: string;
+  hasActed: boolean;
+  isCurrent: boolean;
 }
 
 export type BattleEventType =
@@ -298,6 +304,8 @@ export interface BattleEventBase {
   reasonId?: string | null;
   channel?: "battleInfo" | "statusUpdate";
   visibleInLog?: boolean;
+  /** Authoritative order for the active round, supplied on turn start. */
+  turnOrder?: TurnOrderEntry[];
   message: string;
 }
 

@@ -48,7 +48,7 @@ def _submit_named_skill(adapter, session, actor, target, skill_name):
             "expectedRevision": session.revision,
             "actorId": action["actorId"],
             "skillId": action["skillId"],
-            "targetIds": [adapter._combatant_id(session, target)],
+            "targetIds": action["validTargetIds"][: action["maximumTargets"]],
         },
     )
 
@@ -100,7 +100,6 @@ def test_actual_shield_bash_skips_restricted_target_for_either_control_mode(
 @pytest.mark.parametrize(
     ("source_definition", "skill_name"),
     [
-        ("hero.warrior.defence", "Shield Lash"),
         ("hero.paladin.protection", "Heroric Charge"),
     ],
 )

@@ -228,6 +228,10 @@ class Skill:
                 result_message += f"{self.initiator.name} tries to use {self.name} on {target_names}, but {target_names} immuned to control effect. \n"
               
               # Special Condition Cool down skills
+              if self.independent_effect_action is not None:
+                effect_message = self.independent_effect_action(self)
+                if effect_message:
+                  result_message += f" {effect_message}"
               if self.name == "Thunder Pot":
                 self.if_cooldown = True
                 self.cooldown = 3

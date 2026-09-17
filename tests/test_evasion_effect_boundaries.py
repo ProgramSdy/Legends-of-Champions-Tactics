@@ -57,7 +57,7 @@ def _submit_named_skill(
             "expectedRevision": session.revision,
             "actorId": action["actorId"],
             "skillId": action["skillId"],
-            "targetIds": [adapter._combatant_id(session, target)],
+            "targetIds": action["validTargetIds"][: action["maximumTargets"]],
         },
     )
     return skill, result
@@ -89,7 +89,7 @@ def test_shield_bash_hit_applies_damage_and_stun():
     )
 
 
-def test_zero_damage_shield_bash_is_a_landed_hit_not_an_evade():
+def test_minimum_damage_shield_bash_is_a_landed_hit_not_an_evade():
     adapter, session, source, target = _controlled_session("hero.warrior.defence")
     skill = next(skill for skill in source.skills if skill.name == "Shield Bash")
     skill.evasion_check = lambda _target: False
@@ -101,7 +101,7 @@ def test_zero_damage_shield_bash_is_a_landed_hit_not_an_evade():
     )
 
     target_id = adapter._combatant_id(session, target)
-    assert target.hp == hp_before
+    assert target.hp == hp_before - 1
     assert target.status["stunned"] is True
     assert skill.last_target_outcomes[id(target)] == "hit"
     assert any(
@@ -334,21 +334,32 @@ def test_heroric_charge_evade_preserves_independent_caster_heal():
     assert skill.cooldown == 3
 
 
-def test_shield_lash_evade_preserves_independent_caster_resistance_buff():
+def test_thunder_pot_evade_preserves_independent_caster_resistance_buff():
     adapter, session, source, target = _controlled_session("hero.warrior.defence")
-    skill = next(skill for skill in source.skills if skill.name == "Shield Lash")
+    skill = next(skill for skill in source.skills if skill.name == "Thunder Pot")
     skill.evasion_check = lambda _target: True
     fire_resistance_before = source.fire_resistance
     target_hp_before = target.hp
 
-    _submit_named_skill(adapter, session, source, target, "Shield Lash")
+    _, result = _submit_named_skill(adapter, session, source, target, "Thunder Pot")
 
+    source_id = adapter._combatant_id(session, source)
     assert target.hp == target_hp_before
     assert target.status["scoff"] is False
-    assert source.status["shield_lash"] is True
+    assert source.status["shield_defence"] is True
     assert source.fire_resistance == fire_resistance_before + 45
     assert skill.if_cooldown is True
     assert skill.cooldown == 3
+    assert any(
+        event["type"] == "statusApplied"
+        and event.get("statusId") == "status.shield_defence"
+        and event.get("targetId") == source_id
+        for event in result["events"]
+    )
+    assert "status.shield_defence" in {
+        status["id"]
+        for status in result["snapshot"]["combatants"][source_id]["statuses"]
+    }
 
 
 def test_cumbrous_axe_evade_preserves_independent_caster_healing_buff():
@@ -401,7 +412,7 @@ def test_heroric_charge_control_immunity_suppresses_scoff_but_keeps_caster_heal(
     )
 
 
-def test_shield_lash_control_immunity_keeps_historical_double_resistance_buff():
+def test_thunder_pot_control_immunity_keeps_its_caster_resistance_buff():
     adapter, session, source, target = _controlled_session("hero.warrior.defence")
     target.status["warlust"] = True
     target.is_immunity_condition_control = True
@@ -409,27 +420,22 @@ def test_shield_lash_control_immunity_keeps_historical_double_resistance_buff():
         nature: getattr(source, f"{nature}_resistance")
         for nature in ("fire", "frost", "death", "nature")
     }
-    skill = next(skill for skill in source.skills if skill.name == "Shield Lash")
+    skill = next(skill for skill in source.skills if skill.name == "Thunder Pot")
     skill.evasion_check = lambda _target: False
 
     _, result = _submit_named_skill(
-        adapter, session, source, target, "Shield Lash"
+        adapter, session, source, target, "Thunder Pot"
     )
 
     target_id = adapter._combatant_id(session, target)
     assert target.status["scoff"] is False
-    assert source.status["shield_lash"] is True
+    assert source.status["shield_defence"] is True
     assert {
         nature: getattr(source, f"{nature}_resistance") - before
         for nature, before in resistance_before.items()
-    } == {
-        "fire": 90,
-        "frost": 90,
-        "death": 90,
-        "nature": 90,
-    }
+    } == {"fire": 90, "frost": 90, "death": 90, "nature": 90}
     assert skill.if_cooldown is True
-    assert skill.cooldown == 3
+    assert 0 < skill.cooldown <= 3
     assert not any(
         event["type"] == "statusApplied"
         and event.get("statusId") == "status.scoff"

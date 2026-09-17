@@ -245,14 +245,14 @@ def test_3v3_projectile_and_ranged_instant_keep_all_living_targets_legal():
     defence = session.game.player_heroes[1]
     berserker = session.game.player_heroes[2]
     enemies = session.game.opponent_heroes
-    shield_lash = next(skill for skill in defence.skills if skill.name == "Shield Lash")
+    thunder_pot = next(skill for skill in defence.skills if skill.name == "Thunder Pot")
     moon_slash = next(skill for skill in berserker.skills if skill.name == "Moon Slash")
     enemy_ids = [adapter._combatant_id(session, enemy) for enemy in enemies]
 
     assert defence.position == berserker.position == "rear"
-    assert adapter._valid_target_ids(session, defence, shield_lash) == enemy_ids
+    assert adapter._valid_target_ids(session, defence, thunder_pot) == enemy_ids
     assert adapter._valid_target_ids(session, berserker, moon_slash) == enemy_ids
-    assert enemies[2].take_damage_calculation(100, "ranged_projectile", defence) == 75
+    assert enemies[2].take_damage_calculation(100, "ranged_projectile", defence) == 60
     assert enemies[2].take_damage_calculation(100, "ranged_instant", berserker) == 100
 
 

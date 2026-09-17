@@ -106,10 +106,12 @@ export function usePresentationQueue(provider: BattleProvider, options: Presenta
           forcedTargetIds: [],
         };
         next.legalActions = [];
-        next.turnOrder = next.turnOrder.map((turn) => ({
-          ...turn,
-          isCurrent: turn.combatantId === event.sourceId,
-        }));
+        next.turnOrder = event.turnOrder
+          ? structuredClone(event.turnOrder)
+          : next.turnOrder.map((turn) => ({
+              ...turn,
+              isCurrent: turn.combatantId === event.sourceId,
+            }));
       }
       if (event.type === "turnEnded" && event.sourceId) {
         next.turnOrder = next.turnOrder.map((turn) => turn.combatantId === event.sourceId

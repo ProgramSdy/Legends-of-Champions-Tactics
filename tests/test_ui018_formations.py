@@ -293,7 +293,7 @@ def test_skill_dispatcher_only_passes_attack_type_to_opted_in_actions():
         ("hero.warrior.weapon_master", "Armor Crush", "melee"),
         ("hero.warrior.defence", "Devastate", "melee"),
         ("hero.warrior.defence", "Shield Bash", "melee"),
-        ("hero.warrior.defence", "Shield Lash", "ranged_projectile"),
+        ("hero.warrior.defence", "Thunder Pot", "ranged_projectile"),
         ("hero.warrior.berserker", "Moon Slash", "ranged_instant"),
         ("hero.warrior.berserker", "Strike of Meteorite", "melee"),
     ],

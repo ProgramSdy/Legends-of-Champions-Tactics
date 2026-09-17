@@ -110,7 +110,7 @@ export const statusRegistry: Record<string, { glyph: string; name: string; descr
   "status.wrath_of_crusader": { glyph: "⚔", name: "Wrath of Crusader", description: "Crusader wrath modifies authoritative combat strength.", harmful: false },
   "status.hammer_of_revenge": { glyph: "◆", name: "Hammer of Revenge", description: "Affected by the authoritative Hammer of Revenge effect.", harmful: true },
   "status.shield_of_righteous": { glyph: "⬡", name: "Shield of Righteous", description: "Protected by an authoritative righteous shield.", harmful: false },
-  "status.shield_lash": { glyph: "⌁", name: "Shield Lash", description: "Empowered by the authoritative Shield Lash effect.", harmful: false },
+  "status.shield_defence": { glyph: "⌁", name: "Shield Defence", description: "Empowered by the authoritative Shield Defence effect.", harmful: false },
   "status.scoff": { glyph: "!", name: "Scoff", description: "Forced to direct hostility toward the status source.", harmful: true },
   "status.purify_healing": { glyph: "✚", name: "Purify Healing", description: "Removes an eligible bleeding, disease, or toxic effect while this healing buff persists.", harmful: false },
   "status.shield_of_protection": { glyph: "⬡", name: "Shield of Protection", description: "Prevents all incoming damage while this holy protection persists.", harmful: false },

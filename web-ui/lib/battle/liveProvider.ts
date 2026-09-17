@@ -151,6 +151,7 @@ function isBattlePreviewConsequence(value: unknown): boolean {
   if (value.kind === "bleed" || value.kind === "poison" || value.kind === "cold") {
     return (value.certainty === "conditional" || value.certainty === "onHit")
       && (value.outcome === undefined
+        || value.outcome === null
         || value.outcome === "firstApplication"
         || value.outcome === "durationRefresh")
       && (value.chancePercent === undefined

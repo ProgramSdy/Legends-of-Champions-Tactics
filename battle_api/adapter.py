@@ -137,7 +137,7 @@ STATUS_KINDS = {
     "wrath_of_crusader": "buff",
     "hammer_of_revenge": "debuff",
     "shield_of_righteous": "buff",
-    "shield_lash": "buff",
+    "shield_defence": "buff",
     "purify_healing": "buff",
     "shield_of_protection": "buff",
     "warlust": "buff",
@@ -164,7 +164,7 @@ STATUS_DURATIONS = {
     "wrath_of_crusader": "wrath_of_crusader_duration",
     "hammer_of_revenge": "hammer_of_revenge_duration",
     "shield_of_righteous": "shield_of_righteous_duration",
-    "shield_lash": None,
+    "shield_defence": None,
     "purify_healing": None,  # duration is held on the matching Buff
     "shield_of_protection": "shield_of_protection_duration",
     "warlust": "warlust_duration",
@@ -179,7 +179,7 @@ STATUS_ENGINE_NAMES = {
     "scoff": "Scoff",
     "holy_word_redemption": "Holy Word Redemption",
     "holy_word_punishment": "Holy Word Punishment",
-    "shield_lash": "Shield Lash",
+    "shield_defence": "Shield Defence",
     "purify_healing": "Purify Healing",
     "bleeding_moon_slash": "Moon Slash",
     "holy_aura": "Holy Aura",
@@ -573,10 +573,9 @@ class BattleAdapter:
         ended = self._is_ended(game)
         active = None if ended else self._current_actor(game)
         active_id = self._combatant_id(session, active) if active else None
-        living = [hero for hero in game.heroes if hero.hp > 0]
-        ordered = sorted(living, key=lambda hero: hero.agility, reverse=True)
-        total = len(ordered)
-        acted = sum(bool(hero.actioned) for hero in ordered)
+        turn_order = self._turn_order(session, active=active)
+        total = len(turn_order)
+        acted = sum(entry["hasActed"] for entry in turn_order)
         outcome = self._outcome(game) if ended else None
         return {
             "phase": "ended" if ended else "awaitingCommand",
@@ -604,14 +603,7 @@ class BattleAdapter:
                 self._combatant_id(session, hero): self._serialize_combatant(session, hero)
                 for hero in game.player_heroes + game.opponent_heroes
             },
-            "turnOrder": [
-                {
-                    "combatantId": self._combatant_id(session, hero),
-                    "hasActed": bool(hero.actioned),
-                    "isCurrent": hero is active,
-                }
-                for hero in ordered
-            ],
+            "turnOrder": turn_order,
             "legalActions": self._legal_actions(session, active) if active else [],
         }
 
@@ -1165,7 +1157,7 @@ class BattleAdapter:
                         "duration": 2,
                         "outcome": (
                             "additionalApplication"
-                            if actor.status.get("shield_lash", False)
+                            if actor.status.get("shield_defence", False)
                             else "firstApplication"
                         ),
                     },
@@ -1542,6 +1534,7 @@ class BattleAdapter:
             game.unactioned_sorted_heroes = [
                 hero for hero in game.unactioned_sorted_heroes if hero is not actor
             ]
+        self._reschedule_remaining_turns(game)
         game.update_allies_opponents_list()
         events.append(
             self._event(
@@ -2439,6 +2432,26 @@ class BattleAdapter:
         return next((hero for hero in game.unactioned_sorted_heroes if hero.hp > 0), None)
 
     @staticmethod
+    def _reschedule_remaining_turns(game: Game) -> None:
+        """Keep the unfinished portion of this round ordered by live agility.
+
+        Effects such as Frost Bolt can change agility after the round has
+        already started.  Heroes who have acted remain finished, while every
+        living, unacted combatant is re-ranked before the next turn is chosen.
+        The resulting order is the same authoritative order serialized to the
+        battle HUD's turn cards.
+        """
+        game.unactioned_sorted_heroes = sorted(
+            (
+                hero
+                for hero in game.unactioned_sorted_heroes
+                if hero.hp > 0 and not hero.actioned
+            ),
+            key=lambda hero: hero.agility,
+            reverse=True,
+        )
+
+    @staticmethod
     def _is_ended(game: Game) -> bool:
         return game.game_state == "game_over" or len(game.check_groups_status()) <= 1
 
@@ -2482,8 +2495,37 @@ class BattleAdapter:
             session,
             "turnStarted",
             sourceId=self._combatant_id(session, actor),
+            turnOrder=self._turn_order(session, active=actor),
             message=f"{actor.name}'s turn started.",
         )
+
+    def _turn_order(self, session: BattleSession, *, active=None) -> list[dict[str, Any]]:
+        """Serialize the authoritative completed-plus-pending round sequence."""
+        game = session.game
+        active = self._current_actor(game) if active is None else active
+        living = [hero for hero in game.heroes if hero.hp > 0]
+        acted = [
+            hero for hero in game.sorted_heroes
+            if hero.hp > 0 and hero.actioned
+        ]
+        pending = [
+            hero for hero in game.unactioned_sorted_heroes
+            if hero.hp > 0 and not hero.actioned
+        ]
+        known = set(acted + pending)
+        # Summons or legacy extensions can introduce a living combatant that
+        # was not present at round start. Keep it visible after the scheduled
+        # sequence rather than silently dropping its card.
+        extra = [hero for hero in living if hero not in known]
+        ordered = acted + pending + sorted(extra, key=lambda hero: hero.agility, reverse=True)
+        return [
+            {
+                "combatantId": self._combatant_id(session, hero),
+                "hasActed": bool(hero.actioned),
+                "isCurrent": hero is active,
+            }
+            for hero in ordered
+        ]
 
     @staticmethod
     def _outcome(game: Game) -> dict[str, Any]:

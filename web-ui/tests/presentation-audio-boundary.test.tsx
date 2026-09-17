@@ -42,4 +42,45 @@ describe("presentation queue audio boundary", () => {
       vi.useRealTimers();
     }
   });
+
+  it("adopts the authoritative reordered turn cards as the next turn starts", async () => {
+    vi.useFakeTimers();
+    try {
+      const snapshot = createFormatFixture(2);
+      const [first, second, third, fourth] = snapshot.turnOrder;
+      const reordered = [
+        { ...first, hasActed: true, isCurrent: false },
+        { ...third, hasActed: false, isCurrent: true },
+        { ...fourth, hasActed: false, isCurrent: false },
+        { ...second, hasActed: false, isCurrent: false },
+      ];
+      const provider: BattleProvider = {
+        getState: vi.fn(async () => ({ revision: 4, snapshot: structuredClone(snapshot), events: [] })),
+        submitCommand: vi.fn(),
+      };
+      const script: PresentationScript = {
+        id: "turn-order-reordered",
+        label: "Turn order changed",
+        eventType: "magic",
+        revision: 5,
+        snapshot: structuredClone(snapshot),
+        events: [
+          { id: "turn-ended", sequence: 1, type: "turnEnded", sourceId: first.combatantId, message: "First turn ended." },
+          { id: "turn-started", sequence: 2, type: "turnStarted", sourceId: third.combatantId, turnOrder: reordered, message: "Next turn started." },
+        ],
+      };
+      const { result } = renderHook(() => usePresentationQueue(provider));
+      await act(async () => { await Promise.resolve(); });
+
+      await act(async () => {
+        result.current.present(async () => script);
+        await Promise.resolve();
+        await vi.advanceTimersByTimeAsync(700);
+      });
+
+      expect(result.current.snapshot?.turnOrder).toEqual(reordered);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

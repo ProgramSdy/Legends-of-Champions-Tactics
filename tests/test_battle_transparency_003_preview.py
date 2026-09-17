@@ -171,6 +171,41 @@ def test_warrior_multi_target_preview_accepts_draft_and_full_legal_sets(
         adapter.preview(session, _request(adapter, session, skill_id, [target_ids[0], target_ids[0]]))
 
 
+def test_thunder_pot_exports_renamed_shield_defence_to_events_and_snapshot():
+    adapter, session = _session("hero.warrior.defence", size=2, seed=709)
+    actor = session.game.player_heroes[0]
+    action = next(
+        action
+        for action in adapter._legal_actions(session, actor)
+        if action["skillId"] == "skill.warrior.thunder_pot"
+    )
+
+    result = adapter.submit(
+        session,
+        {
+            "type": "useSkill",
+            "commandId": "cmd.preview-003.shield-defence",
+            "expectedRevision": session.revision,
+            "actorId": action["actorId"],
+            "skillId": action["skillId"],
+            "targetIds": action["validTargetIds"][:2],
+        },
+    )
+
+    assert result["accepted"] is True
+    assert actor.status["shield_defence"] is True
+    assert any(
+        event["type"] == "statusApplied"
+        and event.get("statusId") == "status.shield_defence"
+        and event.get("targetId") == action["actorId"]
+        for event in result["events"]
+    )
+    assert "status.shield_defence" in {
+        status["id"]
+        for status in result["snapshot"]["combatants"][action["actorId"]]["statuses"]
+    }
+
+
 def test_moon_slash_only_reports_bleeding_for_an_armor_broken_target():
     adapter, session = _session("hero.warrior.berserker")
     target = session.game.opponent_heroes[0]
