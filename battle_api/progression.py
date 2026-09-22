@@ -23,6 +23,10 @@ ARENA_REQUIRED_HERO_COUNT = 6
 SAVE_SLOT_IDS = (1, 2, 3, 4, 5)
 ITEM_CARD_REWARD_ID = "reward.item-card.basic"
 StageId = Literal["paladins-altar", "warriors-barrack"]
+STAGE_DISPLAY_NAMES: dict[StageId, str] = {
+    "paladins-altar": "Paladin's Altar",
+    "warriors-barrack": "Warrior's Barrack",
+}
 
 INITIAL_UNLOCKED_HERO_IDS: tuple[str, ...] = (
     "hero.priest.comprehensiveness",
@@ -160,6 +164,32 @@ STAGE_BATTLES: dict[StageId, tuple[StageBattle, ...]] = {
         )),
     ),
 }
+
+
+def hero_unlock_sources() -> dict[str, dict[str, Any]]:
+    """Describe starter access and only currently implemented unlock rewards."""
+    sources: dict[str, dict[str, Any]] = {
+        definition_id: {"kind": "starter"}
+        for definition_id in INITIAL_UNLOCKED_HERO_IDS
+    }
+    for stage_id, battles in STAGE_BATTLES.items():
+        for battle in battles:
+            reward = battle.reward
+            if reward is None or reward.kind != "heroUnlock":
+                continue
+            if reward.hero_definition_id is None:
+                raise RuntimeError("A hero-unlock reward is missing its definition ID.")
+            if reward.hero_definition_id in sources:
+                raise RuntimeError(
+                    f"Duplicate hero unlock source for {reward.hero_definition_id}."
+                )
+            sources[reward.hero_definition_id] = {
+                "kind": "stageReward",
+                "stageId": stage_id,
+                "stageDisplayName": STAGE_DISPLAY_NAMES[stage_id],
+                "battleIndex": battle.battle_index,
+            }
+    return sources
 
 
 class ProgressionStoreError(RuntimeError):
@@ -1410,10 +1440,7 @@ def stages_response(progression: dict[str, Any]) -> dict[str, Any]:
         stage_progress = progress_by_stage[stage_id]
         stages.append({
             "stageId": stage_id,
-            "displayName": (
-                "Paladin's Altar" if stage_id == "paladins-altar"
-                else "Warrior's Barrack"
-            ),
+            "displayName": STAGE_DISPLAY_NAMES[stage_id],
             "progress": stage_progress,
             "battles": [
                 {

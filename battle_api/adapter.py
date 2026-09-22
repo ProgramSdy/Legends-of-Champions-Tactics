@@ -119,6 +119,77 @@ HERO_DEFINITIONS = {
     for definition_id, definition in HERO_ROSTER.items()
 }
 
+HERO_SKILL_INVENTORY: dict[str, tuple[tuple[str, str, bool], ...]] = {
+    "hero.priest.comprehensiveness": (
+        ("skill.priest.holy_smite", "Holy Smite", False),
+        ("skill.priest.shadow_word_pain", "Shadow Word Pain", False),
+        ("skill.priest.binding_heal", "Binding Heal", False),
+    ),
+    "hero.priest.discipline": (
+        ("skill.priest.penance", "Penance", False),
+        ("skill.priest.holy_word_redemption", "Holy Word Redemption", False),
+        ("skill.priest.holy_word_punishment", "Holy Word Punishment", False),
+    ),
+    "hero.paladin.retribution": (
+        ("skill.paladin.hammer_of_anger", "Hammer of Anger", False),
+        ("skill.paladin.crusader_strike", "Crusader Strike", False),
+        ("skill.paladin.flash_of_light", "Flash of Light", False),
+    ),
+    "hero.paladin.protection": (
+        ("skill.paladin.hammer_of_revenge", "Hammer of Revenge", False),
+        ("skill.paladin.shield_of_righteous", "Shield of Righteous", False),
+        ("skill.paladin.heroric_charge", "Heroric Charge", False),
+        ("skill.paladin.holy_aura", "Holy Aura", True),
+    ),
+    "hero.paladin.holy": (
+        ("skill.paladin.purify_healing", "Purify Healing", False),
+        ("skill.paladin.holy_blast", "Holy Blast", False),
+        ("skill.paladin.shield_of_protection", "Shield of Protection", False),
+    ),
+    "hero.mage.comprehensiveness": (
+        ("skill.mage.fireball", "Fireball", False),
+        ("skill.mage.arcane_missiles", "Arcane Missiles", False),
+        ("skill.mage.frost_bolt", "Frost Bolt", False),
+    ),
+    "hero.warrior.defence": (
+        ("skill.warrior.devastate", "Devastate", False),
+        ("skill.warrior.shield_bash", "Shield Bash", False),
+        ("skill.warrior.thunder_pot", "Thunder Pot", False),
+    ),
+    "hero.warrior.weapon_master": (
+        ("skill.warrior.fatal_strike", "Fatal Strike", False),
+        ("skill.warrior.armor_crush", "Armor Crush", False),
+        ("skill.warrior.antivenom_potion", "Antivenom Potion", False),
+    ),
+    "hero.warrior.berserker": (
+        ("skill.warrior.moon_slash", "Moon Slash", False),
+        ("skill.warrior.warlust", "Warlust", False),
+        ("skill.warrior.strike_of_meteorite", "Strike of Meteorite", False),
+    ),
+    "hero.rogue.comprehensiveness": (
+        ("skill.rogue.sharp_blade", "Sharp Blade", False),
+        ("skill.rogue.poisoned_dagger", "Poisoned Dagger", False),
+        ("skill.rogue.shadow_evasion", "Shadow Evasion", False),
+    ),
+}
+
+STARTING_STAT_RANGE_ROWS = (
+    ("hp", "HP", "Hp_Min", "Hp_Max"),
+    ("damage", "Damage", "Damage_Min", "Damage_Max"),
+    ("defence", "Defence", "Defense_Min", "Defense_Max"),
+    ("agility", "Agility", "Agility_Min", "Agility_Max"),
+)
+
+STARTING_RESISTANCE_RANGE_ROWS = tuple(
+    (
+        resistance_id,
+        resistance_id.title(),
+        f"{resistance_id.title()}_resistance_Min",
+        f"{resistance_id.title()}_resistance_Max",
+    )
+    for resistance_id in ("fire", "frost", "arcane", "shadow", "death", "poison", "nature")
+)
+
 STATUS_KINDS = {
     "cold": "debuff",
     "stunned": "control",
@@ -428,14 +499,56 @@ class BattleAdapter:
             finally:
                 random.setstate(global_state)
 
-    @staticmethod
-    def roster() -> list[dict[str, str]]:
+    def roster(
+        self,
+        unlock_sources: dict[str, dict[str, Any]] | None = None,
+    ) -> list[dict[str, Any]]:
+        """Return static Gallery facts without constructing a hero or using RNG."""
+        basic = self.engine_data.df_hero_basic_property
+        resistance = self.engine_data.df_hero_resistance
+        unlock_sources = unlock_sources or {}
+
+        def configured_ranges(
+            frame,
+            profession: str,
+            rows: tuple[tuple[str, str, str, str], ...],
+        ) -> list[dict[str, str | int]]:
+            return [
+                {
+                    "id": range_id,
+                    "label": label,
+                    "minimum": int(frame.loc[minimum_row, profession]),
+                    "maximum": int(frame.loc[maximum_row, profession]),
+                }
+                for range_id, label, minimum_row, maximum_row in rows
+            ]
+
         return [
             {
                 "definitionId": definition_id,
                 "displayName": definition["displayName"],
                 "faculty": definition["faculty"],
                 "specialization": definition["specialization"],
+                "startingStatRanges": configured_ranges(
+                    basic,
+                    definition["class"].__name__,
+                    STARTING_STAT_RANGE_ROWS,
+                ),
+                "startingResistanceRanges": configured_ranges(
+                    resistance,
+                    definition["class"].__name__,
+                    STARTING_RESISTANCE_RANGE_ROWS,
+                ),
+                "skills": [
+                    {
+                        "skillId": skill_id,
+                        "displayName": display_name,
+                        "isPassive": is_passive,
+                    }
+                    for skill_id, display_name, is_passive
+                    in HERO_SKILL_INVENTORY[definition_id]
+                ],
+                "unlockSource": unlock_sources.get(definition_id),
             }
             for definition_id, definition in HERO_ROSTER.items()
         ]
@@ -711,6 +824,10 @@ class BattleAdapter:
             if isinstance(actor, Priest_Comprehensiveness)
             else {"Hammer of Anger", "Crusader Strike", "Flash of Light"}
             if isinstance(actor, Paladin_Retribution)
+            else {"Hammer of Revenge", "Shield of Righteous", "Heroric Charge"}
+            if isinstance(actor, Paladin_Protection)
+            else {"Purify Healing", "Holy Blast", "Shield of Protection"}
+            if isinstance(actor, Paladin_Holy)
             else {"Devastate", "Shield Bash", "Thunder Pot"}
             if isinstance(actor, Warrior_Defence)
             else {"Fatal Strike", "Armor Crush", "Antivenom Potion"}
@@ -748,7 +865,12 @@ class BattleAdapter:
                     "illegalTargets",
                     "A targetless self preview requires an empty target list.",
                 )
-        elif skill.name in {"Arcane Missiles", "Thunder Pot", "Moon Slash"}:
+        elif skill.name in {
+            "Arcane Missiles",
+            "Thunder Pot",
+            "Moon Slash",
+            "Holy Blast",
+        }:
             if not 1 <= len(target_ids) <= maximum_targets:
                 raise BattleAdapterError(
                     "illegalTargets",
@@ -849,6 +971,155 @@ class BattleAdapter:
             "targets": [],
             "selfPreview": None,
         }
+
+    @staticmethod
+    def _paladin_revenge_debuff_count(actor) -> int:
+        """Mirror Hammer's live, intentionally legacy, status categories."""
+        revenge_statuses = (
+            set(actor.list_status_debuff_magic)
+            | set(actor.list_status_debuff_bleeding)
+            | set(actor.list_status_debuff_disease)
+            | set(actor.list_status_debuff_physical)
+        )
+        return sum(bool(actor.status.get(status, False)) for status in revenge_statuses)
+
+    @classmethod
+    def _paladin_revenge_bonus_range(cls, actor) -> tuple[int, int]:
+        count = cls._paladin_revenge_debuff_count(actor)
+        if count == 0:
+            return 0, 0
+        if count == 1:
+            return 3, 5
+        if count == 2:
+            return 6, 8
+        return 9, 11
+
+    def _paladin_direct_damage_values(
+        self,
+        actor,
+        skill,
+        target,
+        *,
+        target_index: int,
+        targets,
+    ) -> tuple[int, ...] | None:
+        """Return every immediate Paladin raw roll without touching RNG."""
+        if isinstance(actor, Paladin_Protection):
+            if skill.name == "Hammer of Revenge":
+                bonus_minimum, bonus_maximum = self._paladin_revenge_bonus_range(actor)
+                return tuple(
+                    sorted(
+                        {
+                            max(actor.damage + variation - target.defense, 0) + bonus
+                            for variation in range(-4, 0)
+                            for bonus in range(bonus_minimum, bonus_maximum + 1)
+                        }
+                    )
+                )
+            if skill.name == "Shield of Righteous":
+                return tuple(range(18, 23))
+            if skill.name == "Heroric Charge":
+                base_damage = round(actor.damage - target.defense)
+                return tuple(
+                    sorted({max(1, base_damage + variation) for variation in range(-1, 2)})
+                )
+            return None
+
+        if not isinstance(actor, Paladin_Holy) or skill.name != "Holy Blast":
+            return None
+
+        # Holy Blast indexes the post-resolution hit list. A later selected
+        # target may therefore become the first executing hit when every
+        # preceding target is evaded or deterministically prevented.
+        possible_multipliers = {(3, 3)}
+        if target_index > 0:
+            preceding = targets[:target_index]
+            preceding_can_hit = False
+            preceding_can_miss = False
+            for earlier in preceding:
+                if self._deterministic_prevention(skill, earlier) is not None:
+                    preceding_can_miss = True
+                    continue
+                hit_chance = self._direct_hit_chance_percent(earlier)
+                preceding_can_hit = preceding_can_hit or hit_chance > 0
+                preceding_can_miss = preceding_can_miss or hit_chance < 100
+            possible_multipliers = set()
+            if preceding_can_miss:
+                possible_multipliers.add((3, 3))
+            if preceding_can_hit:
+                possible_multipliers.add((2, 3))
+
+        values = {
+            math.ceil(base_damage * numerator / denominator)
+            for base_damage in range(20, 26)
+            for numerator, denominator in possible_multipliers
+        }
+        return tuple(sorted(values))
+
+    @staticmethod
+    def _paladin_healing_range(skill_name: str) -> tuple[int, int] | None:
+        if skill_name == "Purify Healing":
+            return 23, 27
+        return None
+
+    @staticmethod
+    def _dispeller_will_clear(hero, status: str) -> bool:
+        """Read-only mirror of StatusDispell branches that clear a status."""
+        unconditional = {
+            "cold",
+            "shadow_word_pain",
+            "poisoned_dagger",
+            "curse_of_agony",
+            "bleeding_moon_slash",
+            "bleeding_sharp_blade",
+            "shadow_bolt",
+            "corrosion",
+            "bleeding_crimson_cleave",
+            "scoff",
+            "hammer_of_revenge",
+            "wound_backstab",
+            "paralyze_blade",
+            "mixed_venom",
+            "paralyzed",
+            "acid_bomb",
+            "unstable_compound",
+            "bleeding_armor_crush",
+        }
+        if status in unconditional:
+            return True
+        record_requirements = {
+            "holy_word_punishment": ("debuffs", "Holy Word Punishment"),
+            "unholy_frenzy": ("buffs", "Unholy Frenzy"),
+            "fear": ("debuffs", "Curse of Fear"),
+            "soul_siphon": ("debuffs", "Soul Siphon"),
+            "immolate": ("debuffs", "Immolate"),
+            "frost_fever": ("debuffs", "Frost Fever"),
+            "icy_squall": ("debuffs", "Icy Squall"),
+            "necrotic_decay": ("debuffs", "Necrotic Decay"),
+            "virulent_infection": ("debuffs", "Virulent Infection"),
+            "blood_plague": ("debuffs", "Blood Plague"),
+        }
+        requirement = record_requirements.get(status)
+        if requirement is None:
+            return False
+        collection_name, record_name = requirement
+        return any(
+            record.name == record_name
+            for record in getattr(hero, collection_name)
+        )
+
+    @staticmethod
+    def _active_statuses_in_categories(actor, *categories: str) -> list[str]:
+        ordered_statuses = dict.fromkeys(
+            status
+            for category in categories
+            for status in getattr(actor, category)
+        )
+        return [
+            status
+            for status in ordered_statuses
+            if actor.status.get(status, False)
+        ]
 
     @staticmethod
     def _armor_breaker_preview(target, *, cap: int) -> dict[str, Any]:
@@ -997,6 +1268,173 @@ class BattleAdapter:
                 )
         return consequences
 
+    def _paladin_target_consequences(
+        self,
+        session,
+        actor,
+        skill,
+        target,
+        *,
+        prevented: bool,
+    ) -> list[dict[str, Any]]:
+        target_id = self._combatant_id(session, target)
+        consequences: list[dict[str, Any]] = []
+
+        if isinstance(actor, Paladin_Protection):
+            if skill.name == "Hammer of Revenge" and not prevented:
+                debuff_count = self._paladin_revenge_debuff_count(actor)
+                if debuff_count:
+                    bonus_minimum, bonus_maximum = self._paladin_revenge_bonus_range(
+                        actor
+                    )
+                    effective_bonus_values = []
+                    for variation in range(-4, 0):
+                        base_damage = max(
+                            actor.damage + variation - target.defense, 0
+                        )
+                        base_formed = target.take_damage_calculation(
+                            base_damage, skill.attack_type, actor
+                        )
+                        base_received, _ = self._apply_audited_damage_receipt(
+                            target, base_formed
+                        )
+                        for bonus in range(bonus_minimum, bonus_maximum + 1):
+                            boosted_formed = target.take_damage_calculation(
+                                base_damage + bonus, skill.attack_type, actor
+                            )
+                            boosted_received, _ = self._apply_audited_damage_receipt(
+                                target, boosted_formed
+                            )
+                            effective_bonus_values.append(
+                                max(0, boosted_received - base_received)
+                            )
+                    if max(effective_bonus_values) > 0:
+                        consequences.append(
+                            {
+                                "kind": "revengeDamageBonus",
+                                "certainty": "always",
+                                "debuffCount": debuff_count,
+                                "amountRange": {
+                                    "min": min(effective_bonus_values),
+                                    "max": max(effective_bonus_values),
+                                },
+                            }
+                        )
+                if (
+                    actor.status.get("shield_of_righteous", False)
+                    and not target.status.get("hammer_of_revenge", False)
+                ):
+                    consequences.append(
+                        {
+                            "kind": "damageReduction",
+                            "certainty": "onHit",
+                            "recipientId": target_id,
+                            "percent": 20,
+                            "amount": round(target.original_damage * 0.2),
+                            "duration": 3,
+                            "outcome": "firstApplication",
+                        }
+                    )
+
+            elif skill.name == "Heroric Charge" and not prevented:
+                control_prevented = bool(target.is_immunity_condition_control)
+                if control_prevented and target.status.get("warlust", False):
+                    consequences.append(
+                        {
+                            "kind": "controlPrevented",
+                            "certainty": "onHit",
+                            "recipientId": target_id,
+                            "reasonId": "status.warlust",
+                        }
+                    )
+                else:
+                    scoff = next(
+                        (item for item in target.debuffs if item.name == "Scoff"),
+                        None,
+                    )
+                    if scoff is None:
+                        outcome = "firstApplication"
+                    elif scoff.initiator is actor:
+                        # Live code both reuses the record and creates a
+                        # duplicate. Omit a clean refresh claim rather than
+                        # normalising that legacy defect in preview.
+                        outcome = None
+                    else:
+                        outcome = "sourceReplacement"
+                    if outcome is not None:
+                        consequences.append(
+                            {
+                                "kind": "scoff",
+                                "certainty": "onHit",
+                                "outcome": outcome,
+                            }
+                        )
+                if target.status.get("magic_casting", False):
+                    consequences.append(
+                        {"kind": "castingInterrupted", "certainty": "onHit"}
+                    )
+
+        elif isinstance(actor, Paladin_Holy) and skill.name == "Purify Healing":
+            matching_buff = next(
+                (
+                    buff
+                    for buff in target.buffs
+                    if buff.name == "Purify Healing" and buff.initiator is actor
+                ),
+                None,
+            )
+            if not target.status.get("purify_healing", False):
+                buff_outcome = "firstApplication"
+            elif matching_buff is not None:
+                buff_outcome = "durationRefresh"
+            else:
+                buff_outcome = "alreadyActive"
+            consequences.append(
+                {
+                    "kind": "purifyHealing",
+                    "certainty": "always",
+                    "recipientId": target_id,
+                    "duration": 2,
+                    "outcome": buff_outcome,
+                }
+            )
+
+            candidates = self._active_statuses_in_categories(
+                target,
+                "list_status_debuff_bleeding",
+                "list_status_debuff_disease",
+                "list_status_debuff_toxic",
+            )
+            removable = [
+                status
+                for status in candidates
+                if self._dispeller_will_clear(target, status)
+            ]
+            if len(candidates) == 1 and removable:
+                consequences.append(
+                    {
+                        "kind": "statusRemoval",
+                        "certainty": "always",
+                        "recipientId": target_id,
+                        "statusIds": [f"status.{removable[0]}"],
+                    }
+                )
+            elif len(candidates) > 1 and removable:
+                consequences.append(
+                    {
+                        "kind": "randomStatusRemoval",
+                        "certainty": "always",
+                        "recipientId": target_id,
+                        "candidateStatusIds": [
+                            f"status.{status}" for status in removable
+                        ],
+                        "maximumRemovals": 1,
+                        "mayRemoveNone": len(removable) < len(candidates),
+                    }
+                )
+
+        return consequences
+
     def _preview_consequences(
         self,
         session,
@@ -1117,6 +1555,10 @@ class BattleAdapter:
                         "outcome": outcome,
                     }
                 ]
+        if isinstance(actor, (Paladin_Protection, Paladin_Holy)):
+            return self._paladin_target_consequences(
+                session, actor, skill, target, prevented=prevented
+            )
         if isinstance(
             actor, (Warrior_Defence, Warrior_Weapon_Master, Warrior_Berserker)
         ):
@@ -1269,6 +1711,126 @@ class BattleAdapter:
             "consequences": consequences,
         }
 
+    def _paladin_self_preview(self, session, actor, skill, targets):
+        actor_id = self._combatant_id(session, actor)
+        consequences: list[dict[str, Any]] = []
+
+        if isinstance(actor, Paladin_Protection):
+            if skill.name == "Shield of Righteous":
+                amount = math.ceil(actor.original_defense * 0.15)
+                if not actor.status.get("shield_of_righteous", False):
+                    outcome = "firstApplication"
+                    resulting_stacks = 1
+                elif actor.shield_of_righteous_stacks < 2:
+                    outcome = "nextStack"
+                    resulting_stacks = actor.shield_of_righteous_stacks + 1
+                else:
+                    outcome = "durationRefresh"
+                    resulting_stacks = actor.shield_of_righteous_stacks
+                    amount = 0
+                consequences.append(
+                    {
+                        "kind": "defenceIncrease",
+                        "certainty": "always",
+                        "recipientId": actor_id,
+                        "amount": amount,
+                        "resultingStacks": resulting_stacks,
+                        "duration": 3,
+                        "outcome": outcome,
+                    }
+                )
+            elif skill.name == "Heroric Charge":
+                target = targets[0]
+                prevented = self._deterministic_prevention(skill, target) is not None
+                control_prevented = bool(target.is_immunity_condition_control)
+                # A manually inconsistent legacy state (the boolean without
+                # Warlust) reaches the hit action's early return and therefore
+                # produces neither heal nor cooldown. Engine-authored Warlust
+                # always keeps the two fields aligned.
+                if control_prevented and not target.status.get("warlust", False):
+                    return None
+                hit_chance = self._direct_hit_chance_percent(target)
+                if prevented or control_prevented:
+                    raw_healing_range = (20, 24)
+                elif hit_chance == 100:
+                    raw_healing_range = (28, 32)
+                else:
+                    raw_healing_range = (20, 32)
+                minimum, maximum = self._audited_healing_receipt_range(
+                    actor, raw_healing_range
+                )
+                consequences.extend(
+                    [
+                        {
+                            "kind": "secondaryHealing",
+                            "certainty": "always",
+                            "recipientId": actor_id,
+                            "amountRange": {"min": minimum, "max": maximum},
+                        },
+                        {
+                            "kind": "cooldown",
+                            "certainty": "always",
+                            "recipientId": actor_id,
+                            "rounds": 3,
+                        },
+                    ]
+                )
+
+        elif isinstance(actor, Paladin_Holy) and skill.name == "Shield of Protection":
+            removable_statuses = [
+                status
+                for status in self._active_statuses_in_categories(
+                    actor,
+                    "list_status_debuff_magic",
+                    "list_status_debuff_bleeding",
+                    "list_status_debuff_disease",
+                    "list_status_debuff_physical",
+                )
+                if self._dispeller_will_clear(actor, status)
+            ]
+            if removable_statuses:
+                consequences.append(
+                    {
+                        "kind": "statusRemoval",
+                        "certainty": "always",
+                        "recipientId": actor_id,
+                        "statusIds": [
+                            f"status.{status}" for status in removable_statuses
+                        ],
+                    }
+                )
+            consequences.extend(
+                [
+                    {
+                        "kind": "damageImmunity",
+                        "certainty": "always",
+                        "recipientId": actor_id,
+                        "duration": 2,
+                        "outcome": (
+                            "durationRefresh"
+                            if actor.status.get("shield_of_protection", False)
+                            else "firstApplication"
+                        ),
+                    },
+                    {
+                        "kind": "cooldown",
+                        "certainty": "always",
+                        "recipientId": actor_id,
+                        "rounds": 3,
+                    },
+                ]
+            )
+
+        if not consequences:
+            return None
+        return {
+            "recipientId": actor_id,
+            "currentHp": actor.hp,
+            "maxHp": actor.hp_max,
+            "primary": None,
+            "consequences": consequences,
+        }
+
     def _evaluate_preview(self, session, actor, skill, targets, request):
         if (
             isinstance(actor, Warrior_Weapon_Master)
@@ -1289,16 +1851,41 @@ class BattleAdapter:
         ):
             return self._unavailable_preview(session, request)
 
+        if isinstance(actor, Paladin_Protection):
+            if (
+                skill.name == "Shield of Righteous"
+                and (
+                    actor.shield_of_righteous_stacks < 0
+                    or actor.shield_of_righteous_stacks > 2
+                )
+            ):
+                return self._unavailable_preview(session, request)
+            if skill.name == "Heroric Charge" and targets:
+                target = targets[0]
+                if bool(target.status.get("warlust", False)) != bool(
+                    target.is_immunity_condition_control
+                ):
+                    return self._unavailable_preview(session, request)
+        if (
+            isinstance(actor, Paladin_Holy)
+            and skill.name == "Purify Healing"
+            and targets
+            and targets[0].status.get("unstable_compound", False)
+        ):
+            return self._unavailable_preview(session, request)
+
         self_preview = (
             self._warrior_self_preview(session, actor, skill, targets)
             if isinstance(
                 actor,
                 (Warrior_Defence, Warrior_Weapon_Master, Warrior_Berserker),
             )
+            else self._paladin_self_preview(session, actor, skill, targets)
+            if isinstance(actor, (Paladin_Protection, Paladin_Holy))
             else None
         )
         target_results = []
-        for target in targets:
+        for target_index, target in enumerate(targets):
             target_id = self._combatant_id(session, target)
             is_healing = skill.skill_type == "healing"
             prevention = (
@@ -1308,7 +1895,11 @@ class BattleAdapter:
                 session, actor, skill, target, prevented=prevention is not None
             )
             if is_healing:
-                raw_range = actor.audited_healing_range(skill.name)
+                raw_range = (
+                    self._paladin_healing_range(skill.name)
+                    if isinstance(actor, Paladin_Holy)
+                    else actor.audited_healing_range(skill.name)
+                )
                 if raw_range is None:
                     return self._unavailable_preview(session, request)
                 minimum, maximum = self._audited_healing_receipt_range(
@@ -1346,7 +1937,17 @@ class BattleAdapter:
                 primary_reason = prevention
                 direct_hit_chance = self._direct_hit_chance_percent(target)
             else:
-                raw_range = actor.audited_direct_damage_range(skill.name, target)
+                raw_range = (
+                    self._paladin_direct_damage_values(
+                        actor,
+                        skill,
+                        target,
+                        target_index=target_index,
+                        targets=targets,
+                    )
+                    if isinstance(actor, (Paladin_Protection, Paladin_Holy))
+                    else actor.audited_direct_damage_range(skill.name, target)
+                )
                 if raw_range is None:
                     return self._unavailable_preview(session, request)
                 received = []

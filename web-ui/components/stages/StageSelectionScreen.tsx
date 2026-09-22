@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, type CSSProperties, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ManualDialog } from "@/components/manual/ManualDialog";
 import {
   STAGE_DEFINITIONS,
   isEnabledStage,
@@ -34,8 +35,19 @@ function hotspotStyle(geometry: PercentageGeometry): HotspotStyle {
 
 export function StageSelectionScreen({ debugHotspots = false }: StageSelectionScreenProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [activeStageId, setActiveStageId] = useState<string | null>(null);
+  const [manualOpen, setManualOpen] = useState(() => searchParams.get("manual") === "open");
+  const manualTriggerRef = useRef<HTMLButtonElement>(null);
   const enabledStages = STAGE_DEFINITIONS.filter(isEnabledStage);
+
+  useEffect(() => {
+    if (searchParams.get("manual") !== "open") return;
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("manual");
+    const query = params.toString();
+    router.replace(query ? `/stages?${query}` : "/stages", { scroll: false });
+  }, [router, searchParams]);
 
   function activateStage(stageId: string, destination: string) {
     router.push(`${destination}?stage=${encodeURIComponent(stageId)}`);
@@ -64,15 +76,26 @@ export function StageSelectionScreen({ debugHotspots = false }: StageSelectionSc
             <span aria-hidden="true">⌂</span>
             <strong>Game Start</strong>
           </Link>
-          <Link
-            className="stage-map-route debug-route"
-            href="/debug"
-            aria-label="Open Engineering Test and Debugging"
+          <button
+            className="stage-map-route manual-route"
+            type="button"
+            ref={manualTriggerRef}
+            onClick={() => setManualOpen(true)}
+            aria-label="Open Game Manual"
           >
-            <strong>Engineering Test &amp; Debugging</strong>
-            <span aria-hidden="true">⚒</span>
-          </Link>
+            <span aria-hidden="true">⚙</span>
+            <strong>Manual</strong>
+          </button>
         </nav>
+        <Link
+          className="stage-map-route debug-route"
+          href="/debug"
+          aria-label="Open Engineering Test and Debugging"
+        >
+          <strong>Engineering Test &amp; Debugging</strong>
+          <span aria-hidden="true">⚒</span>
+        </Link>
+        <ManualDialog open={manualOpen} onClose={() => setManualOpen(false)} triggerRef={manualTriggerRef} />
         <div className="stage-map-canvas" data-coordinate-system="map-percent">
           <Image
             className="stage-map-image"

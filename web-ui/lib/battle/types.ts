@@ -60,7 +60,35 @@ export interface HeroDefinitionSummary {
   displayName: string;
   faculty: string;
   specialization: string;
+  startingStatRanges?: HeroConfiguredRange[];
+  startingResistanceRanges?: HeroConfiguredRange[];
+  skills?: HeroSkillInventoryItem[];
+  unlockSource?: HeroUnlockSource | null;
 }
+
+export interface HeroConfiguredRange {
+  id: string;
+  label: string;
+  minimum: number;
+  maximum: number;
+}
+
+export interface HeroSkillInventoryItem {
+  skillId: string;
+  displayName: string;
+  isPassive: boolean;
+}
+
+export type HeroUnlockSource =
+  | { kind: "starter" }
+  | { kind: "stageReward"; stageId: StructuredStageId; stageDisplayName: string; battleIndex: number };
+
+export type HeroGalleryDefinition = HeroDefinitionSummary & {
+  startingStatRanges: HeroConfiguredRange[];
+  startingResistanceRanges: HeroConfiguredRange[];
+  skills: HeroSkillInventoryItem[];
+  unlockSource: HeroUnlockSource | null;
+};
 
 export type StructuredStageId = "paladins-altar" | "warriors-barrack";
 
@@ -452,6 +480,58 @@ export type BattlePreviewConsequence =
     certainty: "always";
     recipientId: string;
     rounds: 3;
+  }
+  | {
+    kind: "revengeDamageBonus";
+    certainty: "always";
+    debuffCount: number;
+    amountRange: { min: number; max: number };
+  }
+  | {
+    kind: "damageReduction";
+    certainty: "onHit";
+    recipientId: string;
+    percent: 20;
+    amount: number;
+    duration: 3;
+    outcome: "firstApplication";
+  }
+  | {
+    kind: "defenceIncrease";
+    certainty: "always";
+    recipientId: string;
+    amount: number;
+    resultingStacks: number;
+    duration: 3;
+    outcome: "firstApplication" | "nextStack" | "durationRefresh";
+  }
+  | {
+    kind: "controlPrevented";
+    certainty: "onHit";
+    recipientId: string;
+    reasonId: "status.warlust";
+  }
+  | {
+    kind: "purifyHealing";
+    certainty: "always";
+    recipientId: string;
+    duration: 2;
+    outcome: "firstApplication" | "durationRefresh" | "alreadyActive";
+  }
+  | {
+    kind: "randomStatusRemoval";
+    certainty: "always";
+    recipientId: string;
+    candidateStatusIds: string[];
+    maximumRemovals: 1;
+    mayRemoveNone: boolean;
+  }
+  | {
+    kind: "damageImmunity";
+    certainty: "always";
+    recipientId: string;
+    duration: 2;
+    outcome: "firstApplication" | "durationRefresh";
   };
 
 export interface BattlePreviewSelf {

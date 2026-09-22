@@ -15,8 +15,10 @@ interrupt/control flags, availability, cooldown state/counter, damage nature/
 type, optional independent-effect callback, and last per-target outcome.
 
 Implemented broad types include `damage`, `healing`, `damage_healing`, `summon`,
-and `buffs`. There is no general passive-skill framework; reactive behavior is
-embedded in hero or status code.
+and `buffs`. `Skill.is_passive` explicitly distinguishes engine-triggered
+passives from selectable commands. Holy Aura is the only approved web-roster
+passive currently registered this way; its round-start behavior remains owned
+by the status system rather than by a player command.
 
 ## Activation and Targeting
 
@@ -108,7 +110,8 @@ implemented API command and must not be presented as active gameplay.
 
 ## Known Limitations and Open Questions
 
-- No approved resource economy or passive framework.
+- No approved resource economy or generic passive lifecycle beyond the current
+  explicit `is_passive` marker and Holy Aura's status-owned behavior.
 - No single cooldown, duration, damage, or immunity taxonomy is authoritative.
 - Legacy spellings, notably `Heroric Charge`, require owner approval before
   player-facing renaming.

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { UiAudioBoundary } from "@/components/audio/UiAudioBoundary";
+import { SoundPreferenceProvider } from "@/components/audio/SoundPreferenceProvider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -30,7 +31,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
-        <UiAudioBoundary>{children}</UiAudioBoundary>
+        <SoundPreferenceProvider>
+          <UiAudioBoundary>{children}</UiAudioBoundary>
+        </SoundPreferenceProvider>
       </body>
     </html>
   );

@@ -2,213 +2,219 @@
 
 **Status:** Ready for Core Team
 
-**Task:** BATTLE-TRANSPARENCY-003 — Complete Published Warrior Roster
+**Task:** UI-027 — Game Manual, Hero Gallery, Battle Instruction, and Sound Preference
 
-**Owner request date:** 2026-09-16
+**Owner request date:** 2026-09-21
+
+**Source review:** `docs/web-ui/screenshots_debug/UI_Review_Human.md` —
+2026-09-21 entry (owner-controlled; read only).
 
 ## Objective
 
-Extend Battle Information Transparency to every active skill of every Warrior
-specialization in the current published roster:
+Turn the existing disabled **Manual** control on the Stage Map into a compact,
+accessible Game Manual. Its menu must contain exactly these three options, in
+this order:
 
-| Definition | Specialization | Active skills |
-| --- | --- | --- |
-| `hero.warrior.defence` | Defence | Devastate, Shield Bash, Thunder Pot |
-| `hero.warrior.weapon_master` | Weapon Master | Fatal Strike, Armor Crush, Antivenom Potion |
-| `hero.warrior.berserker` | Berserker | Moon Slash, Warlust, Strike of Meteorite |
+1. Hero Gallery
+2. Battle Instruction
+3. Sound On/Off
 
-Before the player confirms a Warrior action, provide truthful, compact,
-authoritative information about immediate damage/healing and the material
-status/control effects that can change the decision. This includes targetless
-self actions through an appropriate self-preview; it must not leave Antivenom
-Potion or Warlust without Battle Information Transparency.
+Implement a responsive dark-fantasy Hero Gallery and a readable Battle
+Instruction guide, plus a global locally persisted sound preference that
+controls both UI and battle sound effects through the existing central audio
+system.
 
 ## Background
 
-BATTLE-TRANSPARENCY-001 and -002 created a finite, engine-owned,
-non-mutating, revision-bound preview contract for Mage, Rogue, Priest
-Comprehensiveness, and Paladin Retribution. It already supports typed primary
-facts for `damage`, `healing`, and `prevented`, with separately typed material
-consequences.
+`StageSelectionScreen` already contains the disabled Manual button. The
+authoritative `GET /api/v1/heroes` roster provides the ten approved stable
+definition IDs and identity data; `GET /api/v1/progression` provides the active
+save slot's unlocked definition IDs. The existing asset registry and
+`AssetImage` component provide final/fallback hero artwork. The audio singleton
+is `web-ui/lib/audio/AudioManager.ts`; UI sound is delegated at the application
+boundary and battle-event sound is queue-owned.
 
-Warrior skills introduce front-row melee legality, multi-target actions,
-cooldowns, stack/refresh boundaries, damage reductions, healing reduction,
-self healing/buffs, control immunity, and possible later DoT effects. The
-implementation must audit current live code before exposing each fact. React
-must only display server-authored facts; it must not reconstruct Warrior rules.
+Hero starting attributes are deliberately randomized within engine-authorized
+ranges. The Gallery must explain this clearly: displayed range information is
+not a permanent per-specialization stat sheet or a promise of a specific battle
+roll. Python remains authoritative for all live combat and progression state.
 
-`Warrior_Comprehensiveness` is a legacy Python class but is not one of the
-published, adapter-supported Warrior definitions in `docs/GDD/Hero_System.md`.
-It is not part of this task.
+## First Milestone — Plan and Audit Before Editing
 
-## Player Experience
+Before implementation, the project manager must record a short dated plan in
+`docs/Codex/Analysis/` that states:
 
-### General presentation
+- proposed Manual-dialog and Gallery/Instruction routes, including a reliable
+  return path to Stage Map and focus restoration to Manual;
+- page/component structure and loading/error/empty states;
+- the content-source design: a maintainable presentation-content registry
+  keyed by stable definition ID, and which range/skill/ownership facts require
+  an authoritative backend contract rather than React-owned logic;
+- current roster, progression, reward/unlock-route, asset/fallback, audio, and
+  browser-storage findings; and
+- any material data gap or rule ambiguity requiring escalation before it is
+  presented to players.
 
-- Targeted skills use the established selected-skill plus legal-target
-  hover/focus preview. Damage shows `Damage`, direct-evasion `Hit Chance`, and
-  `Target HP`; healing shows `Healing` and `Target HP`, without Hit Chance.
-- Multi-target skills may show a one-target draft preview while the player is
-  choosing required targets, then authoritative per-target facts for the full,
-  distinct legal set. Do not show an aggregate total or relax actual command
-  cardinality.
-- Targetless self actions must expose a compact self-preview on the selected
-  skill/acting-hero area before confirmation. It must not require fake target
-  selection or cover battlefield figures. Use the same revision, availability,
-  stale-clear, keyboard, touch, and compact-layout safeguards as target preview.
-- Show a separate short effect row only for a material current-state outcome.
-  Do not expose raw formula inputs, calculate future DoT totals, or imply a
-  refresh, stack, control, dispel, or status application that live code does
-  not perform.
-- `Preview unavailable` is preferable to invented precision and never blocks a
-  legal command.
+Then implement the approved plan. Do not pause for a trivial implementation
+choice; escalate only if a genuine owner decision or missing game truth blocks
+an accurate result.
 
-### Required Warrior facts
+## Requirements
 
-The engine audit must confirm the exact range and live effect semantics before
-the final player wording. The following defines the required decision-relevant
-coverage, not permission to alter mechanics.
+### Game Manual window
 
-| Hero / skill | Required preview facts |
-| --- | --- |
-| Defence — Devastate | Immediate direct damage, Hit Chance, target HP, and the current Armor Breaker application/stack/refresh outcome when material. |
-| Defence — Shield Bash | Immediate direct damage, Hit Chance, target HP, Stun/control outcome and its current cooldown consequence where applicable. Handle casting interruption/control immunity only as live code supports; do not claim a guaranteed result where a rule prevents it. |
-| Defence — Thunder Pot | Per-target immediate direct damage, Hit Chance, target HP, and material Scoff/control result per selected opponent; self-side Shield Lash/resistance and cooldown facts when current live execution makes them material. Never aggregate pair damage. |
-| Weapon Master — Fatal Strike | Immediate direct damage, Hit Chance, target HP, and the current Healing Reduction application/refresh/active boundary with its player-facing percentage only when live state makes it material. |
-| Weapon Master — Armor Crush | Immediate direct damage, Hit Chance, target HP, Armor Breaker stack/refresh result, and material Wound/Bleeding status outcome. Do not show later bleeding damage. |
-| Weapon Master — Antivenom Potion | Targetless self-preview with authoritative immediate Healing and meaningful current self outcomes such as supported poison/bleed removal, poison-resistance effect, and cooldown. Do not fabricate a target or promise removal of statuses the live action cannot remove. |
-| Berserker — Moon Slash | Draft/full per-target immediate direct damage, Hit Chance, target HP, and material Bleeding Moon Slash application boundary. Do not show future bleed damage or total multi-target damage. |
-| Berserker — Warlust | Targetless self-preview with the live Warlust state/stack/refresh effect, any immediately material self consequence, and cooldown if live action creates one. Exclude conditional later Blood Frenzy outcomes unless the current action makes an exact immediate fact truthful. |
-| Berserker — Strike of Meteorite | Immediate direct damage, Hit Chance, target HP, and material interrupt/control/status outcome only as supported by the audited live path. |
+- Enable the Stage Map Manual button. It opens a compact dark-fantasy modal or
+  dialog with exactly the three menu options listed in the Objective, in that
+  order. A close control is permitted but is not a fourth menu option.
+- It must support mouse, touch, and keyboard activation; trap/manage focus
+  correctly, close by Escape and close control, and return focus to the Manual
+  trigger. Opening/closing and menu actions must retain existing UI-audio
+  behaviour subject to the user's sound preference.
+- Do not disturb existing Stage Map hotspots, title/debug navigation, map
+  coordinate geometry, progression, or route behaviour.
 
-## Engine and Contract Requirements
+### Hero Gallery
 
-- Audit all nine live skill paths, their independent effects, target rules,
-  cooldown lifecycle, status manager interactions, control/immunity paths, and
-  adapter event/serialization support before implementation. Record the audit
-  and unresolved legacy-rule ambiguities in a dated analysis document.
-- Retain the engine-owned, read-only preview boundary. It must not call
-  `Skill.execute`, dry-run/clones, install/consume session/global RNG, mutate
-  hero/game/status/stack/duration/cooldown/HP/events/log/turn/revision, or
-  create command results.
-- Add small audited pure outcome primitives only where they share or
-  demonstrably mirror the live path. Preserve current live rules exactly. If
-  the audit finds a discrepancy between formula, status lifecycle, adapter
-  event, and player-facing rule, record and escalate it rather than silently
-  correcting it in preview code.
-- Extend the additive preview contract as needed for typed self previews and
-  finite Warrior-specific material consequences. Keep existing Mage/Rogue/
-  Priest/Paladin preview consumers compatible. Do not add generic arbitrary
-  status serialization or full-roster fallback.
-- Validate the active revision, actor, available audited skill, legal target
-  side/IDs/liveness, exact target cardinality, duplicates, self-action target
-  shape, and session lock. Draft selection is permitted only for audited
-  multi-target Warrior skills and must not change command requirements.
+- Provide a dedicated, accessible Gallery route/page reachable from Manual and
+  a clear route back to Stage Map/Manual.
+- Show exactly the ten approved web specializations from `Hero_System.md`, with
+  faculty filtering and illustrated cards. Use stable definition IDs for
+  identity and the existing asset resolver/fallback; never show a broken image.
+- Selecting a hero opens a profile containing: large artwork; faculty and
+  specialization; a brief introduction; a plain-language battle-style summary;
+  explained ranges for HP, Damage, Defence, Agility, and every currently
+  supported magic-resistance school; expandable active-skill descriptions; and
+  a clearly separate passive section. Where no passive is designed, show a
+  professional `N/A` state rather than hiding the section.
+- Keep introductions and player-facing skill copy in a maintainable
+  presentation-content registry. Every factual claim must be checked against
+  current hero/skill/Combat documentation and live engine behaviour.
+- Read ownership only from the active save slot's authoritative backend data.
+  Locked heroes remain fully viewable. Show an unlock route only when a real
+  current route/reward exists. In particular, do not imply that Priest
+  Discipline currently has an unlock route.
+- Do not display battle-specific preview numbers as permanent skill values and
+  do not calculate damage, healing, hit chance, target legality, or status
+  outcomes in React.
 
-## Frontend Requirements
+### Battle Instruction
 
-- Extend the finite audited skill allowlist for exactly these nine skills and
-  consume all Warrior facts through typed provider data only.
-- Render current primary damage/healing/prevention and typed effect rows in the
-  existing target card and compact dock. Add a restrained acting-hero/skill
-  self-preview treatment for Antivenom Potion and Warlust, with no fake target
-  cursor, extra battle target control, or visual redesign.
-- Clearly identify which combatant receives any non-target effect. Preserve
-  existing labels, pointer/keyboard/touch target selection, multi-target
-  selection state, stale cancellation, preview accessibility association,
-  formation, responsive constraints, command submission, and AUDIO-002 cues.
-- Do not calculate range, status/cap/cooldown/stack/control/immunity, legality,
-  or Hit Chance in TypeScript.
+- Provide a dedicated, readable guide reachable from Manual with a clear return
+  to Stage Map/Manual.
+- Cover player-facing battle basics, skill and target selection, turn flow,
+  victory conditions, 2v2/3v3 formations, front/rear targeting, statuses, and
+  a small set of clearly labelled practical strategy tips.
+- Check every rules statement against the current engine and project
+  documentation. Explain mechanics plainly without exposing implementation
+  details, treating suggestions as engine rules, or inventing universal combat
+  formulas.
+
+### Sound On/Off
+
+- Implement this only as the third Manual menu control, not a separate page.
+  Clearly show its current state.
+- Connect it to the existing central `AudioManager` so it silences/enables both
+  delegated UI feedback and queue-owned battle-event sound. It must not bypass
+  browser autoplay/trusted-interaction restrictions, reorder events, or create
+  a parallel playback path.
+- Persist the preference locally only when the current architecture supports it
+  safely (SSR-safe storage access and a sensible default). It is not save-slot,
+  progression, or gameplay state. Graceful storage/audio unavailability must
+  stay non-blocking and silent.
+
+### Quality and preservation
+
+- Maintain the established dark-fantasy visual language, responsive layout,
+  readable long content, visible focus, semantic headings/labels, and reduced
+  motion support where relevant.
+- Preserve Startup, Stage Map, Team Builder, Arena, Battle, Debug, Asset
+  Registry, audio event ordering, save-slot behaviour, backend/API contracts,
+  and all existing working functionality except enabling/replacing the Manual
+  placeholder as specified.
 
 ## Out of Scope
 
-- `Warrior_Comprehensiveness`, every other faculty, future general self-preview
-  fallback, full status encyclopedia, later DoT/bleed totals, chained effects,
-  summons, generic proc simulation, and any unapproved skill.
-- Changes to damage/healing/status/control/immunity/cooldown/formation rules,
-  available roster, target rules, game balance, battle events/order, API
-  commands, save data, or progression.
-- Client-side formula copying, next-RNG-roll prediction, aggregate multi-target
-  totals, raw internal formula displays, unrelated UI redesign, or sound work.
+- New hero classes/specializations, unlock rewards/routes, progression rules,
+  player account/cloud saves, levelling/equipment/rarity, changed battle
+  mechanics/balance, client combat simulation, generic hero-wiki tooling,
+  new hero artwork, background music, or a wholesale Stage Map redesign.
+- A false Priest Discipline unlock route; hidden locked heroes; raw formula or
+  Battle Information Transparency detail; arbitrary status serialization; and
+  a save-slot-backed audio preference.
 
 ## Relevant Files
 
-- `heroes/warrior.py`, `skills/skill.py`, `heroes/hero.py`, and
-  `game/status_effect_manager.py` — live rules, targeting, receipts, status,
-  cooldown, and lifecycle audit.
-- `battle_api/adapter.py`, `battle_api/models.py`, and `battle_api/app.py` —
-  authoritative preview validation/evaluation and additive transport.
-- `web-ui/lib/battle/types.ts`, `liveProvider.ts`, and `useBattlePreview.ts` —
-  typed client and finite allowlist.
-- `web-ui/components/battle/BattleScreen.tsx`, supporting skill components,
-  and `web-ui/app/globals.css` — target and targetless self-preview treatment.
-- `tests/test_battle_transparency_preview.py`,
-  `tests/test_battle_transparency_002_preview.py`, new Warrior preview tests,
-  and `web-ui/tests/battle-transparency*.test.tsx` — deterministic engine/API/
-  UI and regression evidence.
-- `docs/GDD/Hero_System.md`, `docs/GDD/Combat_System.md`,
-  `docs/web-ui/BATTLE_DATA_CONTRACT_V1.md`, `PYTHON_ADAPTER_API.md`,
-  `WEB_UI_ARCHITECTURE.md`, `Style_Guide.md`, `docs/Technical/Architecture.md`,
-  `docs/Codex/Analysis/`, and `docs/Codex/Completed.md`.
+- `web-ui/components/stages/StageSelectionScreen.tsx`, `web-ui/app/stages/`,
+  route layout files, `web-ui/app/globals.css`, and Stage Map tests.
+- `web-ui/lib/battle/liveProvider.ts`, `types.ts`, `assets.ts`, and
+  `web-ui/components/battle/AssetImage.tsx` — roster, progression, assets, and
+  fallback presentation.
+- `web-ui/lib/audio/AudioManager.ts`, `soundDefinitions.ts`, `uiAudio.ts`,
+  `web-ui/components/audio/UiAudioBoundary.tsx`, battle audio/queue files, and
+  audio tests.
+- `battle_api/adapter.py`, `battle_api/app.py`, `battle_api/models.py`, and
+  `battle_api/progression.py` if a minimal additive authoritative Gallery-data
+  contract is genuinely needed.
+- `docs/GDD/Hero_System.md`, `Skill_System.md`, `Combat_System.md`,
+  `Game_Design_Document.md`; `docs/Technical/Architecture.md`,
+  `Player_Data_and_Save_System.md`; and web UI architecture, contract, screen
+  flow, and style documents.
 
 ## Acceptance Criteria
 
-1. All nine active skills of the three published Warrior specializations have
-   truthful pre-confirmation Transparency coverage.
-2. Targeted Warrior skills show authoritative per-target facts; Antivenom
-   Potion and Warlust show a useful, non-targeted self-preview.
-3. Material Warrior statuses, control, stacks, refreshes, cooldowns, and
-   self-side effects appear only when the current audited live state supports
-   them. Future DoT/bleed totals and fabricated guarantees do not appear.
-4. Multi-target Warrior previews support lawful draft/full selection without
-   aggregate totals or changed real command cardinality.
-5. Existing preview scope and frontend behavior remain compatible, including
-   Mage/Rogue/Priest/Paladin skills, command flow, event ordering, audio,
-   formations, responsive layout, and accessibility.
-6. Preview is demonstrably non-mutating and RNG-free, and a same-seed command
-   after preview matches an untouched control.
-7. Contract, API, architecture, style, GDD/technical documentation where
-   applicable, analysis, and completion evidence accurately describe the
-   audited Warrior scope and any deferred/ambiguous rule.
+1. Stage Map Manual opens an accessible compact dialog with exactly Hero
+   Gallery, Battle Instruction, and Sound On/Off, in the required order.
+2. The Gallery accurately presents all ten approved definitions, filtering,
+   selection, artwork fallback, profile content, randomized-stat explanation,
+   visible locked states, and only real unlock routes.
+3. Battle Instruction is player-readable and factually aligned with current
+   engine/GDD rules, with suggestions clearly distinguished from rules.
+4. The sound toggle changes and persistently restores the central UI and battle
+   sound preference without weakening autoplay safety or audio ordering.
+5. Navigation, focus restoration, Escape, keyboard, touch, responsive layout,
+   loading/error states, existing map hotspots, save/progression, and battle
+   flow all remain correct.
+6. Documentation distinguishes stable gameplay truth from presentation copy,
+   reflects new routes/audio preference/data contract if any, and records data
+   gaps and limitations honestly.
 
 ## Validation Required
 
-- Add focused engine/adapter/API tests for each Warrior skill across direct
-  range, evasion, prevention, resistance/defence, target legality, targetless
-  shape, cooldown, stack/refresh boundaries, control immunity, self effects,
-  multi-target draft/full selection, and later-effect exclusion.
-- Prove no state/RNG mutation by deep comparison and failing random helpers;
-  prove a same-seed command outcome remains equal to an untouched control.
-- Test stale revision/actor, unavailable/out-of-scope skill, dead/wrong-side/
-  duplicate target, insufficient/extra multi-target selections, and compatibility
-  for every prior Transparency skill/contract.
-- Add frontend tests for all primary labels, target/self preview modes, typed
-  consequence wording, draft/full multi-target behavior, keyboard/pointer/
-  touch, stale/error/compact presentation, no client formula duplication, and
-  unchanged command/target/audio behavior.
-- Run focused backend/frontend suites, broader relevant adapter/Warrior/status
-  regressions, typecheck, lint, production build, py_compile, and diff check.
-  Manually validate 1v1, 2v2, and 3v3 Warrior turns including front/rear
-  screening, a multi-target pair, targetless actions, status boundaries, and
-  control immunity. Record exact results and browser limitations honestly.
+- Add focused tests for Manual ordering, modal focus/Escape/return focus,
+  navigation, all ten roster cards/faculty filters, selected profile/passive
+  `N/A`, final/fallback artwork, active-slot ownership/locked display, real vs
+  absent unlock routes, stat randomization copy, and empty/error/long-content
+  states.
+- Test factual Battle Instruction content against documented rules where
+  practical, and prevent unsupported presentation claims from silently
+  appearing.
+- Test sound default/persistence/storage failure, UI and battle-event silence
+  while off, re-enable behaviour, browser unlock safety, duplicate prevention,
+  and unchanged event ordering.
+- Run relevant backend/API/progression tests if contracts change; focused and
+  broader frontend tests; typecheck, lint, production build, Python compile,
+  and diff check. Manually validate desktop and narrow/touch-like views across
+  navigation, modal focus, Gallery, Instruction, locked/unlocked state, and
+  sound preference. Record exact evidence and limitations.
 
 ## Agent Assignments
 
-**Complexity/risk assessment:** High. This expands a live engine-owned
-information feature across nine legacy, status-heavy Warrior actions with
-multi-target and targetless paths, control/immunity rules, cooldowns, and a
-new self-preview UI boundary. All five roles are required.
+**Complexity/risk:** High. This is a cross-system player-facing navigation,
+presentation-content, authoritative-progression, asset, global-audio, storage,
+accessibility, testing, and documentation task. All five roles are required.
 
-- **project-manager:** own audit-to-build sequencing, roster/scope guardrails,
-  role dispatch, cross-boundary decisions, documents, and completion evidence.
-- **game-engine-developer:** own live-rule audit, pure range/outcome primitives,
-  no-mutation/RNG guarantees, adapter/API contract, and backend regression tests.
-- **ui-developer:** own typed target/self presentation, accessibility,
-  responsive/compact behavior, and frontend documentation.
-- **test-automator:** own deterministic Warrior state matrix, contract,
-  no-mutation/RNG, interaction, compatibility, and regression coverage.
-- **reviewer:** independently assess all rule/status/control truth, scope,
-  contract compatibility, UI clarity, validation, and documentation.
+- **project-manager:** own the first-milestone plan/audit, route/content/data
+  decisions, five-role dispatch, scope, documentation, and completion record.
+- **ui-developer:** own Manual/Gallery/Instruction routes and components,
+  responsive/accessibility/focus handling, content registry, asset fallback,
+  and central audio-preference frontend integration.
+- **game-engine-developer:** audit truth for hero stats/skills/instructions and
+  progression/unlock routes; own only any necessary additive authoritative
+  Gallery contract and its compatibility documentation/tests.
+- **test-automator:** own deterministic route/modal/roster/ownership/audio
+  persistence/accessibility coverage and integrated regression evidence.
+- **reviewer:** independently review content truth, scope, progression/audio
+  safety, accessibility, contracts, and validation evidence.
 
 ## Completion Notes
 

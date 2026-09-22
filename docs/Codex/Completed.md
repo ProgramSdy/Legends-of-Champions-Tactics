@@ -2,6 +2,142 @@
 
 Completed work should be appended in reverse chronological order, with the newest entry first.
 
+## 2026-09-20 — BATTLE-TRANSPARENCY-004: Paladin Holy and Protection
+
+**Summary:**
+
+Completed the finite, authoritative pre-confirmation transparency scope for
+Paladin Protection (Hammer of Revenge, Shield of Righteous, Heroric Charge)
+and Paladin Holy (Purify Healing, Holy Blast, Shield of Protection). Holy Aura
+remains a passive and intentionally has no preview. The adapter evaluates only
+audited read-only facts under the active session/revision lock; it does not
+execute skills, mutate the battle, advance turns/events, or consume RNG.
+
+Protection exposes the live Revenge debuff bonus, Righteous on-hit reduction
+and actor defence state, and Charge control-immunity state. Holy exposes Purify
+healing/application plus non-specific eligible-removal information, per-target
+Holy Blast draft/full facts, and the targetless Shield of Protection immunity
+and cooldown facts. Unsafe/unprovable Purify states and contradictory Charge
+Warlust/immunity state return `Preview unavailable` rather than false
+precision. React renders the typed data only—no formula, random dispel choice,
+or control-state inference was introduced.
+
+**Roles and review:**
+
+- **project manager:** `/root/btt004_pm` supplied sequencing and scope/risk
+  guardrails before implementation.
+- **game engine:** `/root/btt004_engine` audited live code paths, added the
+  pure adapter facts, and corrected the two-direction Charge state mismatch.
+- **UI:** `/root/btt004_ui` extended typed provider/presentation handling while
+  preserving draft/full selection, stale-abort, input, and audio behaviour.
+- **test automation:** `/root/btt004_test` added deterministic Paladin
+  range/legality/state/RNG/command-equivalence coverage and focused UI cases.
+- **independent reviewer:** `/root/btt004_reviewer` found the Charge mismatch
+  and coverage gaps, verified the follow-up tests, then approved the work for
+  implementation/test readiness.
+
+**Documentation:**
+
+- Updated `docs/web-ui/BATTLE_DATA_CONTRACT_V1.md`,
+  `docs/web-ui/PYTHON_ADAPTER_API.md`,
+  `docs/web-ui/WEB_UI_ARCHITECTURE.md`, `docs/web-ui/Style_Guide.md`, and
+  `docs/Technical/Architecture.md` for the finite Paladin contract,
+  targetless/draft rules, and typed uncertainty.
+- The dated audit is
+  `docs/Codex/Analysis/2026-09-18_BATTLE-TRANSPARENCY-004_Paladin_Engine_Audit.md`.
+- `docs/GDD/Hero_System.md` and `docs/GDD/Combat_System.md` intentionally need
+  no change: this task exposes existing state but changes no mechanic, value,
+  formula, lifecycle, or target rule.
+
+**Validation:**
+
+- `./.venv/bin/python -m pytest -q tests/test_battle_transparency_preview.py tests/test_battle_transparency_002_preview.py tests/test_battle_transparency_003_preview.py tests/test_battle_transparency_004_preview.py tests/test_battle_adapter.py tests/test_paladin_strategy.py tests/test_paladin_priest_attack_type_propagation.py tests/test_paladin_protection_holy_aura.py` — **228 passed**, with one existing Starlette/httpx deprecation warning.
+- `cd web-ui && npm test -- --run tests/battle-transparency-preview.test.tsx tests/battle-transparency-002.test.tsx tests/battle-transparency-003.test.tsx tests/battle-transparency-004-presentation.test.tsx` — **37 passed**.
+- `npm run typecheck`, `npm run lint -- --quiet`, `npm run build`, Python
+  compilation for `battle_api/adapter.py`, `battle_api/models.py`, and
+  `heroes/paladin.py`, and `git diff --check` — passed.
+- Manual local Ego `/debug` validation at 1597×766: 1v1 Hammer of Revenge
+  target hover displayed Damage/Hit Chance/HP/Debuff Bonus; Shield of Righteous
+  displayed its actor-side defence card; and targetless Shield of Protection
+  displayed immunity/cooldown. 2v2 displayed lawful selected target controls;
+  3v3 rendered the Paladin team/formation without an alert. The Debug UI cannot
+  deterministically build every Purify candidate/no-op/unsafe state or the
+  contradictory Charge control-immunity state, so those manual cases are
+  deliberately limited to deterministic backend/API coverage.
+
+**Deferred scope:**
+
+- BATTLE-TRANSPARENCY-005 and all non-Paladin/future transparency work remain
+  unstarted.
+
+## 2026-09-18 — BATTLE-TRANSPARENCY-003: Complete Published Warrior Roster
+
+**Summary:**
+
+Completed the finite, authoritative pre-confirmation transparency scope for all
+nine active skills of published Warrior Defence, Weapon Master, and Berserker.
+The engine/adapter evaluates only audited read-only facts under the current
+session lock and never calls mutable skill callbacks, advances a battle, or
+consumes RNG. The typed frontend shows target facts, lawful multi-target
+draft/full facts, targetless Antivenom Potion and Warlust `selfPreview`, and
+Thunder Pot's material actor-side Shield Defence/resistance `selfPreview`.
+
+Warrior status rows now preserve the server-authored result—apply, stack,
+refresh, extend, replace, or already active—instead of falsely presenting every
+material condition as a new application. Armor Crush retains its Armor Breaker
+result together with independently material Wound/Bleeding information. No
+formula, future DoT total, aggregate multi-target damage, arbitrary roster
+fallback, or fabricated target was introduced.
+
+**Final reviewer gate and contributions:**
+
+- **project coordination / closure:** root sequenced the evidence gate,
+  documentation, scope guard, and final validation.
+- **frontend closure:** root restored Warlust's targetless self-preview and
+  made displayed Warrior consequence wording reflect the typed live outcome.
+- **test/validation closure:** root ran the focused preview/presentation and
+  broader backend compatibility suites, plus build and static checks.
+- **independent reviewer:** `/root/btt003_review` was dispatched. Its first
+  review found the suppressed Warlust preview, misleading generic status copy,
+  and stale contract documentation. After the focused fixes, the reviewer found
+  and verified two contract-schema corrections for the full consequence union
+  and targeted Thunder Pot `selfPreview`; final result: **approved**.
+
+**Documentation:**
+
+- Updated `docs/web-ui/BATTLE_DATA_CONTRACT_V1.md`,
+  `docs/web-ui/PYTHON_ADAPTER_API.md`,
+  `docs/web-ui/WEB_UI_ARCHITECTURE.md`, `docs/web-ui/Style_Guide.md`, and
+  `docs/Technical/Architecture.md` for the finite Warrior allowlist,
+  `selfPreview` shapes, draft/full rules, and typed outcome semantics.
+- The dated engine audit remains
+  `docs/Codex/Analysis/2026-09-16_BATTLE-TRANSPARENCY-003_Warrior_Engine_Audit.md`.
+- `docs/GDD/Hero_System.md` and `docs/GDD/Combat_System.md` intentionally need
+  no change: BTT-003 does not alter a skill, hero value, status lifecycle,
+  target rule, or combat formula; it only exposes existing authoritative facts.
+
+**Validation:**
+
+- `./.venv/bin/python -m pytest -q tests/test_battle_transparency_preview.py tests/test_battle_transparency_002_preview.py tests/test_battle_transparency_003_preview.py tests/test_dynamic_turn_order.py tests/test_mage_attack_type_propagation.py tests/test_evasion_effect_boundaries.py tests/test_action_restrictions_integration.py tests/test_battle_adapter.py tests/test_warrior_weapon_master_strategy.py tests/test_warrior_defence_berserker_strategy.py tests/test_ui018_formations.py tests/test_ui019_formations.py` — **262 passed** (one upstream `starlette.testclient` deprecation warning).
+- `cd web-ui && npm test -- --run tests/battle-transparency-003.test.tsx tests/battle-transparency-preview.test.tsx tests/battle-transparency-002.test.tsx tests/presentation-audio-boundary.test.tsx` — **31 passed**.
+- `npm run typecheck`, `npm run build`, Python `py_compile` for the relevant
+  battle/Warrior modules, and `git diff --check` — passed.
+- `npm run lint` — **0 errors**, with one pre-existing unused `_signal` warning
+  in `web-ui/tests/battle-transparency-preview.test.tsx`.
+- Manual Ego browser checks in `/debug` at 1613×838: 1v1 Fatal Strike target
+  preview and Antivenom self-preview; 2v2 Moon Slash one-target draft then
+  two-target command enablement, Warlust self-preview, and front/rear Fatal
+  Strike screening (front enemy selectable, living rear enemy not selectable);
+  3v3 Moon Slash draft/per-target preview and exact distinct two-target command
+  enablement. The Debug UI has no deterministic control for each pre-existing
+  status boundary or a rejected control-immunity scenario, so those two manual
+  cases are explicitly limited to deterministic engine/adapter coverage.
+
+**Deferred scope:**
+
+- BATTLE-TRANSPARENCY-004 (Paladin Holy/Protection) was not started. Its
+  owner-owned brief remains untouched.
+
 ## 2026-09-10 — Paladin Aura Tuning and Computer Strategies
 
 **Summary:**

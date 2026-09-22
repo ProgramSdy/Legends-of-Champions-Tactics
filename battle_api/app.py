@@ -41,6 +41,7 @@ from .progression import (
     ProgressionStoreError,
     SaveSlotAccessError,
     StageAccessError,
+    hero_unlock_sources,
     stages_response,
 )
 
@@ -149,7 +150,9 @@ async def health() -> dict[str, str]:
 async def list_heroes() -> dict:
     return {
         "contractVersion": CONTRACT_VERSION,
-        "heroes": registry.adapter.roster(),
+        "heroes": await asyncio.to_thread(
+            registry.adapter.roster, hero_unlock_sources()
+        ),
     }
 
 

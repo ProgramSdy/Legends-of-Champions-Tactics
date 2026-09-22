@@ -305,6 +305,21 @@ _To be documented._
 
 ## Change Log
 
+- 2026-09-20 — Extended Battle Information Transparency to the six approved
+  active Paladin Protection/Holy skills. Targetless Shield of Protection uses
+  the compact anchored self card; Holy Blast follows the existing per-target
+  draft/full treatment. Protection/Holy facts, including Purify's intentionally
+  non-specific random-removal eligibility, remain server-authored rows. Holy
+  Aura is passive-only and has no preview. The UI must not show a guessed
+  dispelled status, a formula, or a generic Paladin fallback.
+- 2026-09-18 — Extended the compact Battle Information Transparency treatment
+  to the finite nine-skill published Warrior roster. Targeted rows retain the
+  server-authored application, stack, refresh, extension, replacement, or
+  already-active outcome rather than claiming every status is newly applied.
+  Moon Slash and Thunder Pot use the existing per-target draft/full treatment;
+  Antivenom Potion and Warlust use an anchored targetless self-preview. No
+  generic roster fallback, formula display, DoT total, or invented target is
+  permitted.
 - 2026-09-15 — Expanded the compact Battle Information Transparency treatment
   for the approved Priest Comprehensiveness and Paladin Retribution skills:
   healing is labelled `Healing` with no Hit Chance, while server-authored

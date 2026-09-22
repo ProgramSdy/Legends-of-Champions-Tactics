@@ -312,13 +312,25 @@ applicable.
 information operation for the audited allowlist only: Mage Comprehensiveness
 Fireball, Arcane Missiles, and Frost Bolt; Rogue Comprehensiveness Sharp Blade
 and Poisoned Dagger; Priest Comprehensiveness Holy Smite, Shadow Word Pain,
-and Binding Heal; and Paladin Retribution Hammer of Anger, Crusader Strike,
-and Flash of Light. It accepts
+and Binding Heal; Paladin Retribution Hammer of Anger, Crusader Strike, and
+Flash of Light; Paladin Protection Hammer of Revenge, Shield of Righteous, and
+Heroric Charge; Paladin Holy Purify Healing, Holy Blast, and Shield of
+Protection; Warrior Defence Devastate, Shield Bash, and Thunder Pot;
+Warrior Weapon Master Fatal Strike, Armor Crush, and Antivenom Potion; and
+Warrior Berserker Moon Slash, Warlust, and Strike of Meteorite. It accepts
 `expectedRevision`, `actorId`, `skillId`, and `targetIds` and validates the
 active actor, available skill, exact legal IDs/cardinality, and duplicate IDs
 under the battle session lock. It does not execute a skill, enqueue events,
 advance a turn or revision, mutate battle state, or consume the session/global
 RNG.
+
+Holy Aura remains passive-only and is not previewable. Paladin's additional
+facts are produced by audited pure helpers: Revenge's live debuff-count bonus,
+Righteous's on-hit reduction and actor defence state, Charge's live
+control-immunity state, Purify's exact eligible removal ID set (never a chosen
+random status), and Shield of Protection's actor damage-immunity state.
+Unprovable Purify states and contradictory Charge Warlust/immunity state return
+the ordinary unavailable coverage rather than approximating an action.
 
 Each target response supplies current/max HP and an immediate `damage`,
 `healing`, or deterministic `prevented` primary. Direct damage/prevention
@@ -330,10 +342,20 @@ the popup), Hammer's effective immediate Wrath damage contribution, Flash of
 Light's stack-specific pre-receipt Wrath healing-power contribution, or Crusader
 Strike's current live Wrath application, increase, or refresh. There is no DoT
 or chain total, full-roster fallback, hidden formula input, or combined
-hit/proc percentage. Arcane accepts a
-one-target draft preview or its complete distinct legal pair, returning
-per-target facts only; there is no aggregate total. This preview-only subset
-rule never changes the target count required by `useSkill`.
+hit/proc percentage. Arcane, Holy Blast, Moon Slash, and Thunder Pot accept a one-target
+draft preview or their complete distinct legal pair, returning per-target facts
+only; there is no aggregate total. Antivenom Potion and Warlust require an
+empty target list and return typed `selfPreview` facts, rather than a fabricated
+target. Shield of Protection uses the same targetless shape. This preview-only subset rule never changes the target count required
+by `useSkill`.
+
+Warrior preview consequences remain discriminated API data. Armor Breaker
+exposes first/next-stack/refresh plus resulting stacks; Stun exposes
+application/extension; Scoff exposes application/refresh/source replacement;
+Fatal Strike distinguishes application from already active; and the self-preview
+union carries only material Antivenom/Warlust/Paladin self effects such as healing, supported
+removal, resistance, control immunity, damage increase, and cooldown. React
+must render those facts without recreating mechanics.
 
 The evaluator uses audited pure range/receipt helpers under the existing
 session lock. It never calls a mutable skill callback, mutates a battle clone,

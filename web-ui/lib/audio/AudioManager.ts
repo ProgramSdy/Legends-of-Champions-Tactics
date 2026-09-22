@@ -75,6 +75,7 @@ export class AudioManager {
   private readonly generatedJsfxr = new Map<SoundId, Record<string, unknown>>();
   private readonly lastPlayedAt = new Map<SoundId, number>();
   private readonly dedupeHistory = new Set<string>();
+  private enabled = true;
 
   constructor(dependencies: AudioManagerDependencies = {}) {
     this.isBrowser = dependencies.isBrowser ?? defaultIsBrowser;
@@ -90,8 +91,21 @@ export class AudioManager {
     this.unlocked = true;
   }
 
+  /**
+   * Global user preference gate. All UI and queue-owned battle cues reach
+   * this manager, so changing the preference never creates a parallel audio
+   * path or weakens the trusted-interaction unlock requirement.
+   */
+  setEnabled(enabled: boolean): void {
+    this.enabled = enabled;
+  }
+
+  isEnabled(): boolean {
+    return this.enabled;
+  }
+
   play(id: SoundId, options: PlaySoundOptions = {}): void {
-    if (!this.unlocked || !this.isBrowser()) return;
+    if (!this.enabled || !this.unlocked || !this.isBrowser()) return;
     const definition = this.definitions[id];
     if (!definition) return;
 

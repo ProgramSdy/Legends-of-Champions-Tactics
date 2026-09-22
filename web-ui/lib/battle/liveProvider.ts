@@ -12,6 +12,7 @@ import {
   type BattleSnapshot,
   type BattleState,
   type HeroDefinitionSummary,
+  type HeroGalleryDefinition,
   type PlayerProgressionResponse,
   type PresentationScript,
   type SaveSlotActionResponse,
@@ -243,10 +244,66 @@ function isBattlePreviewConsequence(value: unknown): boolean {
       && Array.isArray(value.statusIds)
       && value.statusIds.every((statusId) => typeof statusId === "string");
   }
-  return value.kind === "cooldown"
+  if (value.kind === "cooldown") {
+    return value.certainty === "always"
+      && typeof value.recipientId === "string"
+      && value.rounds === 3;
+  }
+  if (value.kind === "revengeDamageBonus") {
+    return value.certainty === "always"
+      && Number.isInteger(value.debuffCount)
+      && Number(value.debuffCount) >= 1
+      && isPreviewAmountRange(value.amountRange);
+  }
+  if (value.kind === "damageReduction") {
+    return value.certainty === "onHit"
+      && typeof value.recipientId === "string"
+      && value.percent === 20
+      && Number.isInteger(value.amount)
+      && Number(value.amount) >= 0
+      && value.duration === 3
+      && value.outcome === "firstApplication";
+  }
+  if (value.kind === "defenceIncrease") {
+    return value.certainty === "always"
+      && typeof value.recipientId === "string"
+      && Number.isInteger(value.amount)
+      && Number(value.amount) >= 0
+      && Number.isInteger(value.resultingStacks)
+      && Number(value.resultingStacks) >= 1
+      && Number(value.resultingStacks) <= 2
+      && value.duration === 3
+      && (value.outcome === "firstApplication"
+        || value.outcome === "nextStack"
+        || value.outcome === "durationRefresh");
+  }
+  if (value.kind === "controlPrevented") {
+    return value.certainty === "onHit"
+      && typeof value.recipientId === "string"
+      && value.reasonId === "status.warlust";
+  }
+  if (value.kind === "purifyHealing") {
+    return value.certainty === "always"
+      && typeof value.recipientId === "string"
+      && value.duration === 2
+      && (value.outcome === "firstApplication"
+        || value.outcome === "durationRefresh"
+        || value.outcome === "alreadyActive");
+  }
+  if (value.kind === "randomStatusRemoval") {
+    return value.certainty === "always"
+      && typeof value.recipientId === "string"
+      && Array.isArray(value.candidateStatusIds)
+      && value.candidateStatusIds.length >= 1
+      && value.candidateStatusIds.every((statusId) => typeof statusId === "string")
+      && value.maximumRemovals === 1
+      && typeof value.mayRemoveNone === "boolean";
+  }
+  return value.kind === "damageImmunity"
     && value.certainty === "always"
     && typeof value.recipientId === "string"
-    && value.rounds === 3;
+    && value.duration === 2
+    && (value.outcome === "firstApplication" || value.outcome === "durationRefresh");
 }
 
 function isBattlePreviewSelf(value: unknown): boolean {
@@ -487,6 +544,44 @@ export async function fetchHeroRoster(
     throw new BattleProviderError("The battle service returned an unsupported hero roster.", "adapter");
   }
   return body.heroes as HeroDefinitionSummary[];
+}
+
+function isGalleryRange(value: unknown): boolean {
+  return isRecord(value)
+    && typeof value.id === "string"
+    && typeof value.label === "string"
+    && Number.isInteger(value.minimum)
+    && Number.isInteger(value.maximum)
+    && Number(value.minimum) <= Number(value.maximum);
+}
+
+function isGalleryHero(value: HeroDefinitionSummary): value is HeroGalleryDefinition {
+  const source = value.unlockSource;
+  const sourceValid = source === null
+    || source?.kind === "starter"
+    || (source?.kind === "stageReward"
+      && typeof source.stageId === "string"
+      && typeof source.stageDisplayName === "string"
+      && Number.isInteger(source.battleIndex));
+  return Array.isArray(value.startingStatRanges)
+    && value.startingStatRanges.length === 4
+    && value.startingStatRanges.every(isGalleryRange)
+    && Array.isArray(value.startingResistanceRanges)
+    && value.startingResistanceRanges.length === 7
+    && value.startingResistanceRanges.every(isGalleryRange)
+    && Array.isArray(value.skills)
+    && value.skills.length >= 3
+    && value.skills.every((skill) => typeof skill.skillId === "string"
+      && typeof skill.displayName === "string" && typeof skill.isPassive === "boolean")
+    && sourceValid;
+}
+
+export async function fetchHeroGalleryRoster(baseUrl = DEFAULT_BASE_URL): Promise<HeroGalleryDefinition[]> {
+  const heroes = await fetchHeroRoster(baseUrl);
+  if (!heroes.every(isGalleryHero)) {
+    throw new BattleProviderError("The battle service returned incomplete Hero Gallery data.", "adapter");
+  }
+  return heroes;
 }
 
 export async function fetchPlayerProgression(

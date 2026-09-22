@@ -165,8 +165,8 @@ describe("BATTLE-TRANSPARENCY-003 Warrior presentation", () => {
     expect(screen.getByRole("button", { name: "CAST SKILL" })).toHaveAttribute("aria-describedby", "battle-self-preview");
   });
 
-  it("keeps Warlust targetless and free of a preview popup", async () => {
-    const { provider } = await warriorProvider({
+  it("requests and renders Warlust as an explicit targetless self preview", async () => {
+    const { provider, actorId } = await warriorProvider({
       skillId: "skill.warrior.warlust",
       displayName: "Warlust",
       targetMode: "none",
@@ -179,9 +179,22 @@ describe("BATTLE-TRANSPARENCY-003 Warrior presentation", () => {
     render(<BattleScreen provider={provider} mode="live" />);
     fireEvent.click(await screen.findByRole("button", { name: /Warlust/i }));
 
-    expect(provider.previewAction).not.toHaveBeenCalled();
-    expect(document.querySelector(".self-preview-card")).not.toBeInTheDocument();
+    const card = await waitFor(() => {
+      const result = document.querySelector<HTMLElement>(".self-preview-card.ready");
+      expect(result).toBeInTheDocument();
+      return result!;
+    });
+    expect(provider.previewAction).toHaveBeenCalledWith({
+      expectedRevision: 1,
+      actorId,
+      skillId: "skill.warrior.warlust",
+      targetIds: [],
+    }, expect.any(AbortSignal));
+    expect(card).toHaveTextContent("Buff SelfWarlust");
+    expect(card).toHaveTextContent("Damage Increase+12");
+    expect(card).toHaveTextContent("Cooldown3 rounds");
     expect(screen.getByRole("button", { name: "CAST SKILL" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "CAST SKILL" })).toHaveAttribute("aria-describedby", "battle-self-preview");
   });
 
   it("renders finite Warrior target consequences without changing target selection", async () => {
@@ -226,19 +239,19 @@ describe("BATTLE-TRANSPARENCY-003 Warrior presentation", () => {
       expect(result).toBeInTheDocument();
       return result!;
     });
-    expect(card).toHaveTextContent("Debuff ApplyArmor Breaker");
-    expect(card).toHaveTextContent("StunApplies 1 round");
+    expect(card).toHaveTextContent("Debuff StackArmor Breaker · 2 stacks");
+    expect(card).toHaveTextContent("Debuff ApplyStun · 1 round");
     expect(card).toHaveTextContent("CastingInterrupted on hit");
-    expect(card).toHaveTextContent("ScoffReplaces source on hit");
-    expect(card).toHaveTextContent("Healing Reduction70% on hit");
-    expect(card).toHaveTextContent("Wound−8 Agility on hit");
+    expect(card).toHaveTextContent("Debuff ReplaceScoff");
+    expect(card).toHaveTextContent("Debuff ApplyFatal Strike · 70% Healing Reduction");
+    expect(card).toHaveTextContent("Debuff ApplyWound · −8 Agility");
     expect(card).toHaveTextContent("BleedingRefreshes on hit");
     fireEvent.click(target);
     expect(target).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: "CAST SKILL" })).toBeEnabled();
   });
 
-  it("uses concise named debuff copy for Fatal Strike and Armor Crush", async () => {
+  it("renders concise named Warrior status outcomes without hiding stack or refresh state", async () => {
     const { provider: fatalProvider } = await warriorProvider({
       skillId: "skill.warrior.fatal_strike",
       displayName: "Fatal Strike",
@@ -251,7 +264,7 @@ describe("BATTLE-TRANSPARENCY-003 Warrior presentation", () => {
     fireEvent.click(await screen.findByRole("button", { name: /Fatal Strike/i }));
     fireEvent.mouseEnter(screen.getByRole("button", { name: /Sashein, selectable target/ }));
     expect(await screen.findByText("Debuff Apply")).toBeInTheDocument();
-    expect(screen.getByText("Fatal Strike", { selector: "dd" })).toBeInTheDocument();
+    expect(screen.getByText("Fatal Strike · 70% Healing Reduction", { selector: "dd" })).toBeInTheDocument();
     unmount();
 
     const { provider: armorProvider } = await warriorProvider({
@@ -266,8 +279,8 @@ describe("BATTLE-TRANSPARENCY-003 Warrior presentation", () => {
     const { unmount: unmountArmor } = render(<BattleScreen provider={armorProvider} mode="live" />);
     fireEvent.click(await screen.findByRole("button", { name: /Armor Crush/i }));
     fireEvent.mouseEnter(screen.getByRole("button", { name: /Sashein, selectable target/ }));
-    expect(await screen.findByText("Wound", { selector: "dd" })).toBeInTheDocument();
-    expect(screen.queryByText(/Increases to 2 stacks/)).not.toBeInTheDocument();
+    expect(await screen.findByText("Armor Breaker · 2 stacks", { selector: "dd" })).toBeInTheDocument();
+    expect(screen.getByText("Wound · −8 Agility", { selector: "dd" })).toBeInTheDocument();
     unmountArmor();
 
     const { provider: bleedingProvider } = await warriorProvider({
@@ -282,8 +295,8 @@ describe("BATTLE-TRANSPARENCY-003 Warrior presentation", () => {
     const { unmount: unmountBleeding } = render(<BattleScreen provider={bleedingProvider} mode="live" />);
     fireEvent.click(await screen.findByRole("button", { name: /Armor Crush/i }));
     fireEvent.mouseEnter(screen.getByRole("button", { name: /Sashein, selectable target/ }));
-    expect(await screen.findByText("Bleeding", { selector: "dd" })).toBeInTheDocument();
-    expect(screen.queryByText(/Increases to 3 stacks/)).not.toBeInTheDocument();
+    expect(await screen.findByText("Armor Breaker · 3 stacks", { selector: "dd" })).toBeInTheDocument();
+    expect(screen.getByText("Bleeding", { selector: "dd" })).toBeInTheDocument();
     unmountBleeding();
 
     const { provider: moonSlashProvider } = await warriorProvider({
@@ -311,8 +324,30 @@ describe("BATTLE-TRANSPARENCY-003 Warrior presentation", () => {
     render(<BattleScreen provider={meteoriteProvider} mode="live" />);
     fireEvent.click(await screen.findByRole("button", { name: /Strike of Meteorite/i }));
     fireEvent.mouseEnter(screen.getByRole("button", { name: /Sashein, selectable target/ }));
-    expect(await screen.findByText("Armor Breaker", { selector: "dd" })).toBeInTheDocument();
-    expect(screen.queryByText(/1 stack/)).not.toBeInTheDocument();
+    expect(await screen.findByText("Armor Breaker · 1 stack", { selector: "dd" })).toBeInTheDocument();
+  });
+
+  it("distinguishes refresh, extension, replacement, and already-active outcomes from first application", async () => {
+    const assertions = [
+      { skillId: "skill.warrior.fatal_strike", displayName: "Fatal Strike", consequence: { kind: "healingReduction", certainty: "onHit", percent: 70, outcome: "alreadyActive" } as const, label: "Debuff Active", value: "Fatal Strike · 70% Healing Reduction" },
+      { skillId: "skill.warrior.devastate", displayName: "Devastate", consequence: { kind: "armorBreaker", certainty: "onHit", resultingStacks: 2, outcome: "durationRefresh" } as const, label: "Debuff Refresh", value: "Armor Breaker · 2 stacks" },
+      { skillId: "skill.warrior.shield_bash", displayName: "Shield Bash", consequence: { kind: "stun", certainty: "onHit", resultingDuration: 2, outcome: "durationExtension" } as const, label: "Debuff Extend", value: "Stun · 2 rounds" },
+      { skillId: "skill.warrior.thunder_pot", displayName: "Thunder Pot", consequence: { kind: "scoff", certainty: "onHit", outcome: "sourceReplacement" } as const, label: "Debuff Replace", value: "Scoff" },
+    ];
+    for (const item of assertions) {
+      const { provider } = await warriorProvider({
+        skillId: item.skillId,
+        displayName: item.displayName,
+        targetMode: "singleEnemy",
+        preview: (request) => targetResponse(request, [item.consequence]),
+      });
+      const { unmount } = render(<BattleScreen provider={provider} mode="live" />);
+      fireEvent.click(await screen.findByRole("button", { name: new RegExp(item.displayName, "i") }));
+      fireEvent.mouseEnter(screen.getByRole("button", { name: /Sashein, selectable target/ }));
+      expect(await screen.findByText(item.label)).toBeInTheDocument();
+      expect(screen.getByText(item.value, { selector: "dd" })).toBeInTheDocument();
+      unmount();
+    }
   });
 
   it("uses named Defence comments without an extra Shield Bash or Thunder Pot self popup", async () => {
@@ -322,7 +357,7 @@ describe("BATTLE-TRANSPARENCY-003 Warrior presentation", () => {
         displayName: "Shield Bash",
         consequence: { kind: "stun", certainty: "onHit", resultingDuration: 1, outcome: "firstApplication" } as const,
         expectedLabel: "Debuff Apply",
-        expectedValue: "Stun",
+        expectedValue: "Stun · 1 round",
       },
       {
         skillId: "skill.warrior.thunder_pot",

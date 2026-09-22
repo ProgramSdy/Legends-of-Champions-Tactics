@@ -35,10 +35,11 @@ captured.
 
 Each queued living hero receives an engine directive: player command,
 computer action, forced action, automatic casting/vanish action, or a skip.
-Legacy `Game.hero_action` re-sorts the remaining queue after each action;
-the supported web/API adapter removes the acting hero but retains the
-round-start queue order. Agility-changing effects can therefore affect later
-ordering differently between paths. Equal-agility design intent is unconfirmed.
+After each resolved web/API action, the adapter removes the acting hero and
+re-sorts every living, unacted combatant by current agility. Agility-changing
+effects such as Frost Bolt can therefore change the remaining order within the
+same round. Legacy `Game.hero_action` follows the same live-agility principle;
+equal-agility design intent remains unconfirmed.
 
 Computer-controlled Paladin Retribution, Protection, and Holy heroes use
 specialization-owned, ordered strategy rules. The rules select only available

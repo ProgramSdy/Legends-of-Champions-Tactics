@@ -79,6 +79,31 @@ function targetEffectFor(event: BattleEvent | null, combatantId: string, isPries
 type TargetPreviewPhase = "idle" | "loading" | "ready" | "unavailable";
 type TargetCursorIntent = "damage" | "healing";
 
+/**
+ * Presentation only: the server already determined this live-state outcome.
+ * Keep the wording distinct so a refresh, extension, replacement, or an
+ * already-active status is never represented as a new application.
+ */
+function statusOutcomeLabel(outcome: string): string {
+  switch (outcome) {
+    case "nextStack": return "Debuff Stack";
+    case "durationRefresh": return "Debuff Refresh";
+    case "durationExtension": return "Debuff Extend";
+    case "sourceReplacement": return "Debuff Replace";
+    case "alreadyActive": return "Debuff Active";
+    default: return "Debuff Apply";
+  }
+}
+
+function buffOutcomeLabel(outcome: string): string {
+  switch (outcome) {
+    case "nextStack": return "Buff Stack";
+    case "durationRefresh": return "Buff Refresh";
+    case "alreadyActive": return "Buff Active";
+    default: return "Buff Apply";
+  }
+}
+
 function previewConsequenceCopy(
   consequence: BattlePreviewTarget["consequences"][number],
   skillId?: string | null,
@@ -87,7 +112,7 @@ function previewConsequenceCopy(
   if (consequence.kind === "shadowWordPain") return { label: "Shadow Debuff", value: "100% chance" };
   if (consequence.kind === "bleed" || consequence.kind === "poison") {
     if (consequence.kind === "bleed" && ["skill.warrior.armor_crush", "skill.warrior.moon_slash"].includes(skillId ?? "")) {
-      return { label: "Debuff Apply", value: "Bleeding" };
+      return { label: statusOutcomeLabel(consequence.outcome ?? "firstApplication"), value: "Bleeding" };
     }
     if (consequence.outcome) {
       return {
@@ -112,40 +137,29 @@ function previewConsequenceCopy(
     return { label: "Self Healing", value: `${consequence.amountRange.min}–${consequence.amountRange.max}` };
   }
   if (consequence.kind === "armorBreaker") {
-    if ([
-      "skill.warrior.devastate",
-      "skill.warrior.armor_crush",
-      "skill.warrior.strike_of_meteorite",
-    ].includes(skillId ?? "")) {
-      return { label: "Debuff Apply", value: "Armor Breaker" };
-    }
-    const action = consequence.outcome === "durationRefresh" ? "Refreshes" : consequence.outcome === "nextStack" ? "Increases to" : "Applies";
-    return { label: "Armor Breaker", value: `${action} ${consequence.resultingStacks} stack${consequence.resultingStacks === 1 ? "" : "s"}` };
+    return {
+      label: statusOutcomeLabel(consequence.outcome),
+      value: `Armor Breaker · ${consequence.resultingStacks} stack${consequence.resultingStacks === 1 ? "" : "s"}`,
+    };
   }
   if (consequence.kind === "stun") {
-    if (skillId === "skill.warrior.shield_bash") {
-      return { label: "Debuff Apply", value: "Stun" };
-    }
-    return { label: "Stun", value: `${consequence.outcome === "durationExtension" ? "Extends to" : "Applies"} ${consequence.resultingDuration} round${consequence.resultingDuration === 1 ? "" : "s"}` };
+    return {
+      label: statusOutcomeLabel(consequence.outcome),
+      value: `Stun · ${consequence.resultingDuration} round${consequence.resultingDuration === 1 ? "" : "s"}`,
+    };
   }
   if (consequence.kind === "castingInterrupted") return { label: "Casting", value: "Interrupted on hit" };
   if (consequence.kind === "scoff") {
-    if (skillId === "skill.warrior.thunder_pot") {
-      return { label: "Debuff Apply", value: "Scoff" };
-    }
-    const value = consequence.outcome === "durationRefresh" ? "Refreshes on hit" : consequence.outcome === "sourceReplacement" ? "Replaces source on hit" : "Applies on hit";
-    return { label: "Scoff", value };
+    return { label: statusOutcomeLabel(consequence.outcome), value: "Scoff" };
   }
   if (consequence.kind === "healingReduction") {
-    if (skillId === "skill.warrior.fatal_strike") {
-      return { label: "Debuff Apply", value: "Fatal Strike" };
-    }
-    return { label: "Healing Reduction", value: consequence.outcome === "alreadyActive" ? `Already active · ${consequence.percent}%` : `${consequence.percent}% on hit` };
+    return {
+      label: statusOutcomeLabel(consequence.outcome),
+      value: `Fatal Strike · ${consequence.percent}% Healing Reduction`,
+    };
   }
   if (consequence.kind === "wound") {
-    return skillId === "skill.warrior.armor_crush"
-      ? { label: "Debuff Apply", value: "Wound" }
-      : { label: "Wound", value: `−${consequence.agilityReduction} Agility on hit` };
+    return { label: statusOutcomeLabel(consequence.outcome), value: `Wound · −${consequence.agilityReduction} Agility` };
   }
   if (consequence.kind === "resistanceBoost") {
     if (skillId === "skill.warrior.thunder_pot") {
@@ -164,17 +178,55 @@ function previewConsequenceCopy(
     return { label: "Removes", value: names.join(" / ") };
   }
   if (consequence.kind === "cooldown") return { label: "Cooldown", value: `${consequence.rounds} rounds` };
+  if (consequence.kind === "revengeDamageBonus") {
+    return {
+      label: "Debuff Bonus",
+      value: `+${consequence.amountRange.min}–${consequence.amountRange.max} · ${consequence.debuffCount} active debuff${consequence.debuffCount === 1 ? "" : "s"}`,
+    };
+  }
+  if (consequence.kind === "damageReduction") {
+    return {
+      label: "Debuff Apply",
+      value: `Damage −${consequence.percent}% (−${consequence.amount}) · ${consequence.duration} rounds`,
+    };
+  }
+  if (consequence.kind === "defenceIncrease") {
+    return {
+      label: buffOutcomeLabel(consequence.outcome),
+      value: consequence.outcome === "durationRefresh"
+        ? `Shield of Righteous · ${consequence.resultingStacks} stacks · ${consequence.duration} rounds`
+        : `Shield of Righteous · +${consequence.amount} Defence · ${consequence.resultingStacks} stack${consequence.resultingStacks === 1 ? "" : "s"} · ${consequence.duration} rounds`,
+    };
+  }
+  if (consequence.kind === "controlPrevented") {
+    return { label: "Scoff", value: "Blocked by Warlust" };
+  }
+  if (consequence.kind === "purifyHealing") {
+    return {
+      label: buffOutcomeLabel(consequence.outcome),
+      value: `Purify Healing · ${consequence.duration} rounds`,
+    };
+  }
+  if (consequence.kind === "randomStatusRemoval") {
+    return {
+      label: "Removes",
+      value: consequence.mayRemoveNone
+        ? "Up to one eligible status (random)"
+        : "One eligible status (random)",
+    };
+  }
+  if (consequence.kind === "damageImmunity") {
+    return {
+      label: buffOutcomeLabel(consequence.outcome),
+      value: `Damage Immunity · ${consequence.duration} rounds`,
+    };
+  }
   return { label: "Effect", value: "Applied" };
 }
 
 function PreviewConsequenceRows({ consequences, omitSecondaryHealing = false, skillId }: { consequences: BattlePreviewTarget["consequences"]; omitSecondaryHealing?: boolean; skillId?: string | null }) {
-  const armorCrushAppliesFollowUp = skillId === "skill.warrior.armor_crush"
-    && consequences.some((consequence) => consequence.kind === "wound" || consequence.kind === "bleed");
-  const warlustPreview = skillId === "skill.warrior.warlust";
   return consequences
     .filter((consequence) => !omitSecondaryHealing || consequence.kind !== "secondaryHealing")
-    .filter((consequence) => !armorCrushAppliesFollowUp || consequence.kind !== "armorBreaker")
-    .filter((consequence) => !warlustPreview || consequence.kind !== "damageIncrease")
     .map((consequence, index) => {
     const copy = previewConsequenceCopy(consequence, skillId);
     return <div className="preview-consequence" key={`${consequence.kind}.${index}`}><dt>{copy.label}</dt><dd>{copy.value}</dd></div>;
@@ -393,15 +445,18 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
   // button focused. Keyboard focus remains an accessible non-pointer fallback.
   const previewAnchorId = hoveredTargetId ?? (targetInputMode === "keyboard" ? focusedTargetId : null);
   const previewTargetIds = previewTargetsForAnchor(legal, selectedTargets, previewAnchorId);
-  // A self-only buff has no target-selection decision to explain. Keep a
-  // targetless panel only for the audited direct-healing action that needs to
-  // expose its immediate healing result; Warlust casts without a popup.
+  // These audited self actions have no target-selection decision, so their
+  // revision-bound self-preview is anchored at the acting-hero/skill area.
   const targetlessSelfPreview = Boolean(
     legal
     && legal.minimumTargets === 0
     && legal.maximumTargets === 0
     && (selectedSkillState?.targetMode === "none" || selectedSkillState?.targetMode === "self")
-    && selectedSkill === "skill.warrior.antivenom_potion",
+    && [
+      "skill.warrior.antivenom_potion",
+      "skill.warrior.warlust",
+      "skill.paladin.shield_of_protection",
+    ].includes(selectedSkill ?? ""),
   );
   const suppressTargetedSelfPreview = selectedSkill === "skill.warrior.shield_bash"
     || selectedSkill === "skill.warrior.thunder_pot";

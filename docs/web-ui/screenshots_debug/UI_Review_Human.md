@@ -1214,3 +1214,47 @@ After implementation:
     * any jsfxr/TypeScript/browser issues encountered
 
 Do not redesign unrelated code or UI.
+
+
+# Date
+
+2026-09-21
+
+### Screenshot name
+
+N/A
+
+### Task List
+
+Update the Hero Gallery implementation plan for Legends of Champions Tactics. The existing Manual button on the Stage Map is the entry point. Clicking it should open a compact Game Manual window with exactly three options, in this order:
+
+1. Hero Gallery
+2. Battle Instruction
+3. Sound On/Off
+
+Before implementation, read the relevant project rules, current task, Hero System, Skill System, combat documentation, web UI architecture, battle data contract, and style guide. Inspect the existing Manual button, navigation, roster, progression, assets, and audio system. Follow the project’s agent and documentation rules.
+
+1_ Hero Gallery: Design and implement a Hero Gallery page for Legends of Champions Tactics.
+
+Purpose: let players explore the 10 approved web hero specializations across Warrior, Mage, Paladin, Rogue, and Priest. This is an introduction and reference page, separate from Team Builder.
+
+Build a responsive, accessible dark-fantasy gallery with:
+- Faculty filters and illustrated cards for all 10 approved specializations.
+- A selected-hero profile with large artwork, faculty and specialization, a brief introduction, a plain-language battle-style summary, basic properties (range of Hp, Damage, Defence, Agility, all different types of magic resistance), and expandable active-skill descriptions.
+- A clearly separated passive skill section. For heroes so far not design passive skills, keep this section and maked N/A.
+- Owned/Locked state from the active save slot’s authoritative backend data. Locked heroes must remain viewable. Show an unlock route only when one actually exists; do not imply that Priest Discipline currently has one.
+- Navigation into and out of the Gallery that fits the existing startup, stage-map, and game flows.
+
+Use stable definition IDs for identity and the existing asset fallback system. Keep introductions and skill copy in a maintainable presentation-content registry, with each claim checked against current hero and skill behavior. Hero starting stats are randomized: this is a special feature in the game, apply proper explanation on this feature. (Randomization represent a slightly fluctuating in hero situations similar to real life).
+
+The Gallery explains general hero abilities. Do not reuse battle-specific preview numbers as permanent skill values or calculate damage, healing, hit chance, target legality, or status outcomes in React. Python remains the gameplay authority. Preserve existing battle, progression, save-slot, audio, keyboard, touch, and responsive behavior.
+
+Start by proposing the route, page structure, content source, and any data gaps in a short implementation plan. Then implement the page, add focused tests for roster coverage, ownership states, navigation, and accessibility, update relevant documentation, and report the changes and validation results.
+
+2_ Battle Instruction: Open a dedicated, readable guide covering battle basics, skill and target selection, turns, victory conditions, 2v2 and 3v3 formations, front/rear targeting, status effects, and a few clearly labelled practical strategy tips. Check every rules statement against the current engine and documentation. Explain mechanics in player-friendly language without exposing implementation details or claiming that a suggested strategy is an engine rule.
+
+3_ Sound On/Off: This is a toggle inside the Manual window, not a separate page. Display its current state clearly. Connect it to the existing central audio system so it controls both UI and battle sound effects without bypassing browser audio restrictions. Persist the preference locally if the existing audio architecture supports it; do not treat it as save-slot or gameplay state.
+
+The Manual window must match the Stage Map’s dark-fantasy style, support keyboard and touch input, manage focus correctly, close with Escape or its close button, and return focus to Manual. Provide clear navigation back to the Stage Map from both pages. Preserve existing map hotspots, battle behavior, progression, and audio event ordering.
+
+Implement the changes, add focused tests for menu behavior, navigation, hero coverage and ownership, instruction accuracy where practical, sound toggle behavior, and accessibility. Update relevant documentation and report validation results and any remaining limitations.

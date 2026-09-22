@@ -553,9 +553,15 @@ idempotency do not depend on the selected display name.
 
 Preview is separate from snapshots, commands, and events. The audited allowlist
 is Mage Fireball/Arcane Missiles/Frost Bolt; Rogue Sharp Blade/Poisoned Dagger;
-Priest Comprehensiveness Holy Smite/Shadow Word Pain/Binding Heal; and Paladin
-Retribution Hammer of Anger/Crusader Strike/Flash of Light. It is deliberately
-not a generic roster or healing-preview fallback.
+Priest Comprehensiveness Holy Smite/Shadow Word Pain/Binding Heal; Paladin
+Retribution Hammer of Anger/Crusader Strike/Flash of Light; Paladin Protection
+Hammer of Revenge/Shield of Righteous/Heroric Charge; Paladin Holy Purify
+Healing/Holy Blast/Shield of Protection; and every active skill of the three
+published Warrior definitions: Defence Devastate/Shield
+Bash/Thunder Pot, Weapon Master Fatal Strike/Armor Crush/Antivenom Potion, and
+Berserker Moon Slash/Warlust/Strike of Meteorite. It is deliberately not a
+generic roster or healing-preview fallback. Protection's passive Holy Aura is
+explicitly excluded.
 
 Each target supplies authoritative current/max HP and one immediate primary
 fact: direct `damage`, `healing`, or deterministic `prevented`. Damage carries
@@ -629,18 +635,98 @@ type BattlePreviewResponse = {
         recipientId: string;
         stacks: number;
         outcome: "firstApplication" | "nextStack" | "durationRefresh";
+      } | {
+        kind: "armorBreaker";
+        certainty: "onHit";
+        resultingStacks: number;
+        outcome: "firstApplication" | "nextStack" | "durationRefresh";
+      } | {
+        kind: "stun";
+        certainty: "onHit";
+        resultingDuration: number;
+        outcome: "firstApplication" | "durationExtension";
+      } | {
+        kind: "castingInterrupted";
+        certainty: "onHit";
+      } | {
+        kind: "scoff";
+        certainty: "onHit";
+        outcome: "firstApplication" | "durationRefresh" | "sourceReplacement";
+      } | {
+        kind: "healingReduction";
+        certainty: "onHit";
+        percent: 70;
+        outcome: "firstApplication" | "alreadyActive";
+      } | {
+        kind: "wound";
+        certainty: "onHit";
+        agilityReduction: number;
+        outcome: "firstApplication";
+      } | {
+        kind: "resistanceBoost";
+        certainty: "always" | "onHit";
+        recipientId: string;
+        resistances: Array<"fire" | "frost" | "death" | "nature" | "poison">;
+        amount: 45;
+        duration: 2;
+        outcome: "firstApplication" | "additionalApplication";
+      } | {
+        kind: "controlImmunity";
+        certainty: "always";
+        recipientId: string;
+        duration: 2;
+        outcome: "firstApplication" | "durationRefresh";
+      } | {
+        kind: "damageIncrease";
+        certainty: "always";
+        recipientId: string;
+        amount: number;
+        outcome: "firstApplication" | "additionalApplication";
+      } | {
+        kind: "statusRemoval";
+        certainty: "always";
+        recipientId: string;
+        statusIds: string[];
+      } | {
+        kind: "cooldown";
+        certainty: "always";
+        recipientId: string;
+        rounds: 3;
       }>;
     }>;
+// Optional for targetless actions and target actions with a material
+// actor-side fact (including Thunder Pot and Paladin Protection actions).
+    selfPreview: null | {
+      recipientId: string;
+      currentHp: number;
+      maxHp: number;
+      primary: null | {
+        kind: "healing";
+        amountRange: { min: number; max: number };
+        reasonId?: string | null;
+      };
+      consequences: Array<{
+        kind: "resistanceBoost" | "controlImmunity" | "damageIncrease"
+          | "statusRemoval" | "cooldown";
+        // Thunder Pot's actor-side resistance is conditional on the hit;
+        // targetless self effects are always immediate.
+        certainty: "always" | "onHit";
+      }>;
+    };
   };
 };
 ```
 
 The request must match the active battle revision, actor, available audited
-skill, and exact legal target IDs. For preview only, Arcane Missiles accepts a
-non-empty distinct legal subset up to the published action maximum: a one-target
-draft preview in 1v1/while choosing a pair, or its complete pair. This does not
-relax the real command's required target cardinality. Rejection produces the
-existing error envelope and has no battle/RNG mutation.
+skill, and exact legal target IDs. Targetless Antivenom Potion, Warlust, and
+Shield of Protection require the exact empty `targetIds: []` shape and return
+`selfPreview` without inventing a target. Targeted Thunder Pot, Shield of
+Righteous, and Heroric Charge may additionally return `selfPreview` for their
+material actor-side result. For preview only, Arcane Missiles, Holy Blast, and
+Warrior Moon Slash / Thunder Pot accept a non-empty distinct legal subset up to the published action
+maximum: a one-target draft preview while choosing a pair, or its complete
+pair. This does not relax the real command's required target cardinality.
+Rejection produces the existing error envelope and has no battle/RNG mutation.
 
 For the expanded audited scope, Binding Heal evaluates the selected recipient
 and may separately transport the Priest's own post-modifier heal for a
@@ -653,6 +739,33 @@ when direct damage is prevented. Flash of Light reports its stack-specific
 pre-receipt Wrath healing-power contribution separately while its primary range
 uses the current live recipient receipt rule. These are server-authored facts,
 not client rules.
+
+Warrior material consequence rows preserve the server's live-state result:
+Armor Breaker supplies first application, next-stack, or duration-refresh with
+the resulting stack count; Stun supplies first application or duration
+extension; Scoff supplies first application, refresh, or source replacement;
+and Fatal Strike supplies first application or already-active. Armor Crush
+retains both its Armor Breaker row and any independently material Wound or
+Bleeding row. `selfPreview` is populated for audited targetless actions and for
+the one targeted action with a material actor-side outcome (Thunder Pot). It
+carries recipient HP, optional direct healing, and typed material effects such
+as removal, resistance, control immunity, damage increase, and cooldown. The
+UI must not collapse an outcome into a generic "Apply" label or calculate
+status state itself.
+
+Paladin Protection/Holy material rows are likewise discriminated server data:
+`revengeDamageBonus` contains the live debuff count and damage range;
+`damageReduction` records Shield of Righteous's on-hit 20% reduction;
+`defenceIncrease` records its exact actor stack/refresh state;
+`controlPrevented` records Heroric Charge's live Warlust immunity result;
+`purifyHealing` records Purify Healing's first/refresh/already-active state;
+`randomStatusRemoval` exposes only an eligible status-ID set, maximum one
+removal, and whether none may be removed; and `damageImmunity` records Shield
+of Protection's duration/outcome. Purify's random recipient selection is never
+predicted, and an unsafe or unprovable Purify state is unavailable. Holy Blast
+supplies each selected target's direct range after its real ordered evasion
+possibilities rather than pretending that all selected targets have the same
+range.
 
 Contract version `1.0` remains the snapshot, command, event, and envelope
 version. UI-002 additively extends session creation and adds roster discovery:

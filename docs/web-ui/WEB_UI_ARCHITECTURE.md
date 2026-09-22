@@ -329,11 +329,22 @@ recipient, Shadow Word Pain, and Paladin Wrath copy are all selected from the
 server-authored consequence kind, without client formulas or state inference.
 
 The current scope is explicitly finite: the original Mage/Rogue skills plus
-Priest Comprehensiveness Holy Smite/Shadow Word Pain/Binding Heal and Paladin
-Retribution Hammer of Anger/Crusader Strike/Flash of Light. Hover, focus, and
-target-button touch activation retain the same non-blocking selection path;
+Priest Comprehensiveness Holy Smite/Shadow Word Pain/Binding Heal, Paladin
+Retribution Hammer of Anger/Crusader Strike/Flash of Light, Paladin Protection
+Hammer of Revenge/Shield of Righteous/Heroric Charge, Paladin Holy Purify
+Healing/Holy Blast/Shield of Protection, and all nine active published Warrior
+skills. Holy Aura is passive-only and excluded. Moon Slash, Holy Blast, and
+Thunder Pot use the established per-target draft/full path; Antivenom Potion,
+Warlust, and Shield of Protection use the same typed,
+revision-bound `selfPreview` path with no fabricated target. Warrior material
+rows preserve server-authored first/stack/refresh/extension/replacement/already
+active outcomes instead of collapsing them to an "Apply" claim. Paladin
+Protection/Holy status, immunity, actor-side, and Purify-candidate rows are
+rendered only from typed provider facts; no Paladin formula, random status pick,
+or control-state inference exists in the client. Hover, focus,
+and target-button touch activation retain the same non-blocking selection path;
 the pointer-transparent presentation clears on departure, abort, stale state,
-unavailable result, automatic turn, targetless skill, or unsupported skill.
+unavailable result, automatic turn, or unsupported skill.
 
 ## Runtime Caveat
 

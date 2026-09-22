@@ -7,12 +7,21 @@
 Battle previews are engine-owned, non-mutating audited facts transported by the
 adapter at a specific revision. The UI requests and renders them only for the
 approved Mage/Rogue damage skills plus Priest Comprehensiveness Holy Smite,
-Shadow Word Pain, Binding Heal and Paladin Retribution Hammer of Anger,
-Crusader Strike, Flash of Light. It is not a generic preview system. The
+Shadow Word Pain, Binding Heal; Paladin Retribution Hammer of Anger, Crusader
+Strike, Flash of Light; Paladin Protection Hammer of Revenge, Shield of
+Righteous, Heroric Charge; Paladin Holy Purify Healing, Holy Blast, Shield of
+Protection; and the finite nine-skill published Warrior roster. Holy Aura is a
+passive and is intentionally outside the preview allowlist.
+It is not a generic preview system. The
 adapter returns typed immediate `damage`, `healing`, or `prevented` primary
 facts and typed material consequences; React renders those facts and neither
 runs skill callbacks nor copies combat formulas, caps, Wrath state, status
-eligibility, or target legality.
+eligibility, target legality, or Warrior stack/refresh/control state.
+Targetless Antivenom Potion, Warlust, and Shield of Protection use the same
+session-locked contract with an empty target array and a typed `selfPreview`;
+the UI does not invent a target. Paladin status/reduction/removal facts and
+the post-evasion Holy Blast range are supplied as typed engine facts, not
+recomputed in React.
 
 Healing preview ranges deliberately communicate post-modifier skill power,
 including for a full-health target. The live engine alone caps applied HP at

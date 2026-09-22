@@ -48,11 +48,62 @@ class StrictApiModel(ApiModel):
     model_config = ConfigDict(populate_by_name=True, extra="forbid")
 
 
+class HeroConfiguredRange(StrictApiModel):
+    id: str
+    label: str
+    minimum: int
+    maximum: int
+
+    @model_validator(mode="after")
+    def validate_bounds(self) -> "HeroConfiguredRange":
+        if self.minimum > self.maximum:
+            raise ValueError("minimum must be less than or equal to maximum")
+        return self
+
+
+class HeroStartingStatRange(HeroConfiguredRange):
+    id: Literal["hp", "damage", "defence", "agility"]
+
+
+class HeroStartingResistanceRange(HeroConfiguredRange):
+    id: Literal["fire", "frost", "arcane", "shadow", "death", "poison", "nature"]
+
+
+class HeroSkillInventoryItem(StrictApiModel):
+    skill_id: str = Field(alias="skillId", pattern=r"^skill\.[a-z0-9_]+\.[a-z0-9_]+$")
+    display_name: str = Field(alias="displayName")
+    is_passive: bool = Field(alias="isPassive")
+
+
+class HeroStarterUnlockSource(StrictApiModel):
+    kind: Literal["starter"]
+
+
+class HeroStageRewardUnlockSource(StrictApiModel):
+    kind: Literal["stageReward"]
+    stage_id: Literal["paladins-altar", "warriors-barrack"] = Field(
+        alias="stageId"
+    )
+    stage_display_name: str = Field(alias="stageDisplayName")
+    battle_index: int = Field(alias="battleIndex", ge=1, le=9)
+
+
 class HeroDefinition(ApiModel):
     definition_id: HeroDefinitionId = Field(alias="definitionId")
     display_name: str = Field(alias="displayName")
     faculty: str
     specialization: str
+    starting_stat_ranges: list[HeroStartingStatRange] = Field(
+        alias="startingStatRanges", min_length=4, max_length=4
+    )
+    starting_resistance_ranges: list[HeroStartingResistanceRange] = Field(
+        alias="startingResistanceRanges", min_length=7, max_length=7
+    )
+    skills: list[HeroSkillInventoryItem] = Field(min_length=3)
+    unlock_source: Annotated[
+        HeroStarterUnlockSource | HeroStageRewardUnlockSource,
+        Field(discriminator="kind"),
+    ] | None = Field(alias="unlockSource")
 
 
 class HeroRosterResponse(ApiModel):
@@ -318,6 +369,67 @@ class CooldownPreviewConsequence(StrictApiModel):
     rounds: Literal[3]
 
 
+class RevengeDamageBonusPreviewConsequence(StrictApiModel):
+    kind: Literal["revengeDamageBonus"]
+    certainty: Literal["always"]
+    debuff_count: int = Field(alias="debuffCount", ge=1)
+    amount_range: DamageAmountRange = Field(alias="amountRange")
+
+
+class DamageReductionPreviewConsequence(StrictApiModel):
+    kind: Literal["damageReduction"]
+    certainty: Literal["onHit"]
+    recipient_id: str = Field(alias="recipientId", min_length=1)
+    percent: Literal[20]
+    amount: int = Field(ge=0)
+    duration: Literal[3]
+    outcome: Literal["firstApplication"]
+
+
+class DefenceIncreasePreviewConsequence(StrictApiModel):
+    kind: Literal["defenceIncrease"]
+    certainty: Literal["always"]
+    recipient_id: str = Field(alias="recipientId", min_length=1)
+    amount: int = Field(ge=0)
+    resulting_stacks: int = Field(alias="resultingStacks", ge=1, le=2)
+    duration: Literal[3]
+    outcome: Literal["firstApplication", "nextStack", "durationRefresh"]
+
+
+class ControlPreventedPreviewConsequence(StrictApiModel):
+    kind: Literal["controlPrevented"]
+    certainty: Literal["onHit"]
+    recipient_id: str = Field(alias="recipientId", min_length=1)
+    reason_id: Literal["status.warlust"] = Field(alias="reasonId")
+
+
+class PurifyHealingPreviewConsequence(StrictApiModel):
+    kind: Literal["purifyHealing"]
+    certainty: Literal["always"]
+    recipient_id: str = Field(alias="recipientId", min_length=1)
+    duration: Literal[2]
+    outcome: Literal["firstApplication", "durationRefresh", "alreadyActive"]
+
+
+class RandomStatusRemovalPreviewConsequence(StrictApiModel):
+    kind: Literal["randomStatusRemoval"]
+    certainty: Literal["always"]
+    recipient_id: str = Field(alias="recipientId", min_length=1)
+    candidate_status_ids: list[str] = Field(
+        alias="candidateStatusIds", min_length=1
+    )
+    maximum_removals: Literal[1] = Field(alias="maximumRemovals")
+    may_remove_none: bool = Field(alias="mayRemoveNone")
+
+
+class DamageImmunityPreviewConsequence(StrictApiModel):
+    kind: Literal["damageImmunity"]
+    certainty: Literal["always"]
+    recipient_id: str = Field(alias="recipientId", min_length=1)
+    duration: Literal[2]
+    outcome: Literal["firstApplication", "durationRefresh"]
+
+
 BattlePreviewConsequence = Annotated[
     DamagePreviewConsequence
     | ShadowWordPainPreviewConsequence
@@ -335,7 +447,14 @@ BattlePreviewConsequence = Annotated[
     | ControlImmunityPreviewConsequence
     | DamageIncreasePreviewConsequence
     | StatusRemovalPreviewConsequence
-    | CooldownPreviewConsequence,
+    | CooldownPreviewConsequence
+    | RevengeDamageBonusPreviewConsequence
+    | DamageReductionPreviewConsequence
+    | DefenceIncreasePreviewConsequence
+    | ControlPreventedPreviewConsequence
+    | PurifyHealingPreviewConsequence
+    | RandomStatusRemovalPreviewConsequence
+    | DamageImmunityPreviewConsequence,
     Field(discriminator="kind"),
 ]
 

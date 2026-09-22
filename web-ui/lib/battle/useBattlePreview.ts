@@ -24,6 +24,12 @@ const AUDITED_PREVIEW_SKILL_IDS = new Set([
   "skill.warrior.moon_slash",
   "skill.warrior.warlust",
   "skill.warrior.strike_of_meteorite",
+  "skill.paladin.hammer_of_revenge",
+  "skill.paladin.shield_of_righteous",
+  "skill.paladin.heroric_charge",
+  "skill.paladin.purify_healing",
+  "skill.paladin.holy_blast",
+  "skill.paladin.shield_of_protection",
 ]);
 
 type PreviewPhase = "idle" | "loading" | "ready" | "unavailable";
