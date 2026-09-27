@@ -7,7 +7,11 @@
 **Owner request date:** 2026-09-21
 
 **Source review:** `docs/web-ui/screenshots_debug/UI_Review_Human.md` —
-2026-09-21 entry (owner-controlled; read only).
+2026-09-21 and 2026-09-22 entries (owner-controlled; read only).
+
+**Approved visual reference:**
+`docs/web-ui/screenshots_debug/Hero_Gallery_Concept.png` (owner-supplied;
+read-only design target).
 
 ## Objective
 
@@ -23,6 +27,85 @@ Implement a responsive dark-fantasy Hero Gallery and a readable Battle
 Instruction guide, plus a global locally persisted sound preference that
 controls both UI and battle sound effects through the existing central audio
 system.
+
+## 2026-09-22 Amendment — Approved Hero Gallery Visual Direction
+
+This amendment refines the still-active UI-027 Hero Gallery; it does not remove
+or defer the Game Manual, Battle Instruction, or Sound On/Off work. The
+owner-supplied `Hero_Gallery_Concept.png` is the approved visual target. The
+Gallery must follow it as closely as practical while keeping the current
+project's authoritative roster, ownership, skills, navigation, audio, fallback,
+responsive, and accessibility architecture intact. Do not redesign the Gallery
+from scratch or substitute a generic list/detail or SaaS-dashboard design.
+
+### Required visual composition
+
+- At desktop sizes, use the concept's two-region composition: a left browsing
+  gallery and a right selected-hero profile, with large selected artwork
+  visually bridging the composition. The skills area sits beneath the profile
+  content. This must remain a fantasy compendium rather than an admin panel.
+- The top/header region intentionally contains **Back to Manual** only. Keep
+  the atmospheric top/background treatment, but do not restore normal game
+  header content to this page.
+- Use a cinematic, deep navy/black dark-fantasy interface with restrained gold
+  borders and fine corner ornamentation, warm-gold headings, ivory body text,
+  faculty accent colours, subtle selected glow, and an atmospheric landscape
+  around/behind the interface. Avoid bright flat cards, excessive rounded
+  corners/pills/gradients/animation, mobile-app styling, and clutter.
+- Preserve the lower-left atmospheric/decorative breathing space. A restrained
+  presentation-only quotation such as “Different paths. A greater purpose.” is
+  permitted; it is not gameplay data.
+
+### Left gallery requirements
+
+- Display `HERO GALLERY`, a concise introductory subtitle, then faculty filters
+  in this order: All, Warrior, Mage, Paladin, Rogue, Priest. Reuse existing
+  faculty iconography/assets only when available. A selected filter has a
+  restrained gold state, while each faculty retains its established accent.
+- Below filters, render all ten approved definitions as illustrated cards using
+  stable definition IDs. Every card contains hero artwork/avatar, faculty
+  identity, specialization, and textual Owned/Locked state.
+- Selected card uses the concept-like illuminated gold border/glow. Owned uses
+  restrained green; Locked uses subdued neutral styling and a lock indicator.
+  Locked cards remain focusable, clickable, and fully inspectable.
+
+### Selected profile requirements
+
+- Selected approved artwork is a large focal image between the gallery and
+  profile. Preserve aspect ratio and important head/helmet/weapon features;
+  blend it into the profile with a subtle lower fade rather than an obvious
+  generic rectangle. Reuse `AssetImage`/asset fallback and do not modify source
+  artwork merely to meet the composition.
+- Profile begins with faculty and specialization (with faculty icon only where
+  available), followed by a concise optional registry tagline, brief
+  introduction, and textual Owned/Locked state.
+- Include a dedicated **Battle Style** panel. It is checked, plain-language
+  explanatory copy, not a formal gameplay role/classification system.
+- Replace any generic properties display with **PROPERTIES (Base Range)**:
+  HP/Damage, Defence/Agility, then **Magic Resistance Schools** for Fire,
+  Frost, Arcane, Shadow, Death, Poison, and Nature. Use the compact two-column,
+  thin-separator/ivory-label/warm-gold-range treatment of the concept, falling
+  back to one column on narrow screens.
+- The concept's Holy Knight numbers are visual reference only. Never hardcode
+  them from the image: consume verified authoritative range data, explain
+  randomized starting stats, and document any concept/data discrepancy. Omit a
+  range that cannot be verified rather than inventing one.
+
+### Skills, passives, and responsive requirements
+
+- Use tab semantics for **Active Skills (N)** and **Passive (N)**, with counts
+  derived from the actual definition/skill data. Active skills are accessible
+  accordion rows with available approved icon, name, concise checked copy, and
+  expand/collapse affordance. Passives remain structurally separate; show a
+  clean `N/A` state where none exists.
+- On tablet, retain practical filters/card grid and reorganize profile/artwork
+  without losing hierarchy. On mobile use the owner-approved reading order:
+  title, filters, cards, selected artwork, identity/introduction, Battle Style,
+  Properties, tabs, and accordions. Do not allow horizontal overflow.
+- Keep meaningful image alt text, visible focus, selected/expanded ARIA state,
+  usable tabs/accordions, ownership text independent of colour, contrast, and
+  existing keyboard/touch/UI-audio behaviour. Sound On/Off still governs these
+  UI cues.
 
 ## Background
 
@@ -52,6 +135,9 @@ Before implementation, the project manager must record a short dated plan in
   an authoritative backend contract rather than React-owned logic;
 - current roster, progression, reward/unlock-route, asset/fallback, audio, and
   browser-storage findings; and
+- an explicit concept-to-implementation mapping for header, two-region
+  composition, card grid, hero artwork, profile, property range, skill tabs,
+  decoration, and desktop/tablet/mobile layout; and
 - any material data gap or rule ambiguity requiring escalation before it is
   presented to players.
 
@@ -167,14 +253,18 @@ an accurate result.
 2. The Gallery accurately presents all ten approved definitions, filtering,
    selection, artwork fallback, profile content, randomized-stat explanation,
    visible locked states, and only real unlock routes.
-3. Battle Instruction is player-readable and factually aligned with current
+3. The Gallery recognizably follows the approved concept: Back to Manual-only
+   header, cinematic two-region desktop composition, atmospheric background,
+   restrained gold ornamentation, illuminated selected card, large blended hero
+   art, information-dense Base Range properties, and active/passive skill tabs.
+4. Battle Instruction is player-readable and factually aligned with current
    engine/GDD rules, with suggestions clearly distinguished from rules.
-4. The sound toggle changes and persistently restores the central UI and battle
+5. The sound toggle changes and persistently restores the central UI and battle
    sound preference without weakening autoplay safety or audio ordering.
-5. Navigation, focus restoration, Escape, keyboard, touch, responsive layout,
+6. Navigation, focus restoration, Escape, keyboard, touch, responsive layout,
    loading/error states, existing map hotspots, save/progression, and battle
    flow all remain correct.
-6. Documentation distinguishes stable gameplay truth from presentation copy,
+7. Documentation distinguishes stable gameplay truth from presentation copy,
    reflects new routes/audio preference/data contract if any, and records data
    gaps and limitations honestly.
 
@@ -184,7 +274,10 @@ an accurate result.
   navigation, all ten roster cards/faculty filters, selected profile/passive
   `N/A`, final/fallback artwork, active-slot ownership/locked display, real vs
   absent unlock routes, stat randomization copy, and empty/error/long-content
-  states.
+  states. Include concept-specific structural/style tests for the reduced
+  header, two-region composition, selected-card state, property grouping,
+  tab/accordion semantics, and narrow-screen reading order where the existing
+  test infrastructure can prove them.
 - Test factual Battle Instruction content against documented rules where
   practical, and prevent unsupported presentation claims from silently
   appearing.
@@ -195,7 +288,10 @@ an accurate result.
   broader frontend tests; typecheck, lint, production build, Python compile,
   and diff check. Manually validate desktop and narrow/touch-like views across
   navigation, modal focus, Gallery, Instruction, locked/unlocked state, and
-  sound preference. Record exact evidence and limitations.
+  sound preference. At desktop/tablet/mobile sizes specifically inspect hero
+  art cropping, text overlap/clipping, long specialization/skill copy,
+  property density, locked-state readability, keyboard navigation, and
+  horizontal overflow. Record exact evidence and limitations.
 
 ## Agent Assignments
 

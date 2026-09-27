@@ -1258,3 +1258,708 @@ Start by proposing the route, page structure, content source, and any data gaps 
 The Manual window must match the Stage Map’s dark-fantasy style, support keyboard and touch input, manage focus correctly, close with Escape or its close button, and return focus to Manual. Provide clear navigation back to the Stage Map from both pages. Preserve existing map hotspots, battle behavior, progression, and audio event ordering.
 
 Implement the changes, add focused tests for menu behavior, navigation, hero coverage and ownership, instruction accuracy where practical, sound toggle behavior, and accessibility. Update relevant documentation and report validation results and any remaining limitations.
+
+### Date
+
+2026-09-22
+
+### Screenshot name
+
+Hero_Gallery_Concept.png
+
+### Task List
+
+Current Hero Gallery UI is too dull and simple. An improvment work is essential. Design and implement the Hero Gallery page for Legends of Champions Tactics based as closely as practical on the approved concept UI/reference image Hero_Gallery_Concept.png.
+
+IMPORTANT:
+The attached/approved Hero Gallery concept is now the visual design target. Do not redesign the page from scratch. Reproduce its layout, hierarchy, proportions, dark-fantasy visual language, gold ornamentation, typography treatment, card structure, spacing, and overall presentation while integrating it correctly with the existing project architecture and authoritative game data.
+
+Before making changes, read and follow:
+
+- docs/Codex/Current_Task.md
+- docs/Codex/Project_Rules.md
+- docs/Technical/Architecture.md
+- docs/GDD/Hero_System.md
+- docs/GDD/Skill_System.md
+- docs/web-ui/WEB_UI_ARCHITECTURE.md
+- docs/web-ui/Style_Guide.md
+- docs/web-ui/BATTLE_DATA_CONTRACT_V1.md
+- any relevant image/asset creation rules
+
+Also inspect:
+- existing routes
+- startup and stage-map navigation
+- Manual/menu flow
+- hero definitions
+- approved hero artwork and avatar assets
+- roster API
+- active save-slot ownership flow
+- existing asset fallback system
+- responsive/layout conventions
+- audio and input handling
+
+Follow all existing agent, architecture, documentation, and testing rules.
+
+==================================================
+1. PURPOSE
+==================================================
+
+Hero Gallery is an introduction/reference page for the game's heroes.
+
+It is NOT Team Builder.
+
+Players should be able to browse the 10 approved web hero specializations across:
+
+- Warrior
+- Mage
+- Paladin
+- Rogue
+- Priest
+
+The Gallery should explain:
+- who each hero is
+- their faculty
+- their specialization
+- their general battle style
+- their general properties
+- their active skills
+- their passive ability/abilities where applicable
+- whether the hero is currently Owned or Locked
+
+Locked heroes MUST remain fully viewable in the Gallery.
+
+Do not imply an unlock method unless a real unlock route currently exists in authoritative project data.
+
+In particular, do not invent an unlock route for Priest Discipline.
+
+==================================================
+2. APPROVED VISUAL DESIGN
+==================================================
+
+Reproduce the approved concept UI as closely as practical.
+
+The page should use a cinematic dark-fantasy presentation with:
+- deep navy/black panels
+- restrained gold borders
+- fine ornamental corner details
+- warm gold headings
+- ivory/off-white body text
+- faculty-specific accent colours
+- subtle glow for selected elements
+- atmospheric fantasy landscape visible behind/around the interface
+- high-quality hero artwork as the major visual focus
+
+Do not make the UI look like a generic modern SaaS dashboard.
+
+Avoid:
+- bright flat cards
+- excessive rounded corners
+- oversized pills
+- modern mobile-app styling
+- excessive gradients
+- unnecessary animation
+- clutter
+
+The design should feel like a polished fantasy strategy/RPG compendium.
+
+==================================================
+3. SITE HEADER
+==================================================
+
+The approved design intentionally removes the normal header CONTENT.
+
+Item displayed in header:
+- Back to Manual
+
+
+Preserve the atmospheric/background treatment associated with the header/top region so the page still blends naturally with the existing game presentation.
+
+Navigation into/out of Hero Gallery should fit the existing game flow.
+
+Hero Gallery should be accessible through the Manual/menu flow already established for the Stage Map.
+
+==================================================
+4. DESKTOP PAGE STRUCTURE
+==================================================
+
+Follow the approved composition.
+
+The main desktop layout is essentially two major regions:
+
+LEFT:
+Hero browsing/gallery.
+
+RIGHT:
+Selected hero profile.
+
+The selected hero artwork should visually bridge the composition and remain a major focal point.
+
+Do not convert this into a simple list/detail admin layout.
+
+==================================================
+5. LEFT — HERO GALLERY
+==================================================
+
+At the upper-left:
+
+HERO GALLERY
+
+Subtitle similar in purpose to:
+"Meet the champions. Explore their abilities, playstyles, and find your favourites."
+
+Below this place the faculty filters.
+
+Filters:
+
+- All
+- Warrior
+- Mage
+- Paladin
+- Rogue
+- Priest
+
+Use existing faculty iconography/assets where available.
+
+Each faculty should retain its established visual identity/accent colour.
+
+The selected filter should use a restrained gold highlighted state consistent with the concept.
+
+==================================================
+6. HERO CARD GRID
+==================================================
+
+Below the filters display cards for all 10 approved hero specializations.
+
+Use stable hero definition IDs for identity.
+
+Each card should contain:
+- hero avatar/artwork
+- faculty identity/icon
+- specialization name
+- Owned or Locked state
+
+Use actual approved assets and the project's existing fallback system.
+
+Do not create duplicate hero identity logic based on display names.
+
+The selected hero card should have a clearly visible gold illuminated border/glow similar to the approved concept.
+
+OWNED:
+Use the restrained green treatment shown in the concept.
+
+LOCKED:
+Use subdued neutral styling and a lock indicator.
+
+Locked cards remain clickable/selectable.
+
+Selecting a locked hero must still display the complete Gallery profile.
+
+Do not visually disable locked heroes as if they cannot be inspected.
+
+==================================================
+7. LEFT LOWER DECORATIVE AREA
+==================================================
+
+Preserve the concept's atmospheric lower-left area rather than filling every available space with controls.
+
+A restrained fantasy quotation/decorative line may be used, similar in spirit to:
+
+"Different paths. A greater purpose."
+
+Treat this as presentation content, not gameplay data.
+
+The landscape/background should remain visible around this area.
+
+==================================================
+8. SELECTED HERO ARTWORK
+==================================================
+
+Use the selected hero's approved large artwork as a major visual feature between the gallery and information panel.
+
+Artwork should:
+- remain high resolution
+- preserve aspect ratio
+- avoid unintended cropping of important head/helmet/weapon features where practical
+- blend naturally into the dark profile panel
+- use subtle lower-edge fading/gradient where needed
+- not sit inside an obvious generic rectangular image box
+
+Use existing hero assets/fallback logic.
+
+Do not modify original image files unnecessarily.
+
+==================================================
+9. RIGHT — HERO PROFILE HEADER
+==================================================
+
+The selected hero profile should begin with:
+
+FACULTY
+SPECIALIZATION NAME
+
+For example:
+
+PALADIN
+HOLY KNIGHT
+
+Use faculty iconography beside the heading where appropriate.
+
+Below it display a short thematic tagline if one exists in the presentation-content registry.
+
+Then display:
+- brief hero introduction
+- Owned/Locked state
+
+Keep these descriptions concise and readable.
+
+Do not invent lore that contradicts project documentation.
+
+==================================================
+10. BATTLE STYLE
+==================================================
+
+Below the introduction create a dedicated BATTLE STYLE panel.
+
+This is plain-language presentation content describing how the hero generally behaves in battle.
+
+Example style:
+
+"Durable and supportive frontline fighter. Holy Knights protect allies, disrupt enemies, and bring divine power to the battlefield through a blend of defence, healing, and righteous strikes."
+
+IMPORTANT:
+Do NOT introduce a formal gameplay "role" system unless such a system already exists authoritatively.
+
+"Battle Style" is explanatory UI copy, not a new gameplay classification.
+
+==================================================
+11. PROPERTIES — USE AUTHORITATIVE HERO RANGES
+==================================================
+
+Replace the previous generic Properties section with the approved property presentation shown in the latest concept.
+
+Section title:
+
+PROPERTIES (Base Range)
+
+Display the actual verified hero property ranges available from authoritative project data.
+
+The approved visual structure is:
+
+HP                  [range]
+Damage              [range]
+
+Defence             [range]
+Agility             [range]
+
+Then:
+
+Magic Resistance Schools
+
+Fire                [range]
+Frost               [range]
+
+Arcane              [range]
+Shadow              [range]
+
+Death               [range]
+Poison              [range]
+
+Nature              [range]
+
+For the currently approved Holy Knight concept, the visual reference showed:
+
+HP                  85–95
+Damage              55–65
+Defence             34–40
+Agility             15–25
+
+Magic Resistance Schools
+
+Fire                34–40
+Frost               34–40
+Arcane              34–40
+Shadow              40–50
+Death               40–50
+Poison              20–30
+Nature              25–35
+
+IMPORTANT:
+These values must NOT simply be hardcoded because they appeared in the concept.
+
+First verify the authoritative hero/property definitions.
+
+Use authoritative values/ranges if they exist.
+
+If the concept and authoritative data disagree, authoritative game data wins and document the discrepancy.
+
+Hero starting stats are randomized, so present RANGE information rather than pretending every hero starts with one fixed stat value.
+
+React must not reproduce Python gameplay calculations.
+
+Prefer consuming authoritative definition/API data where appropriate.
+
+If an exact property range cannot actually be verified, do not invent one.
+
+==================================================
+12. PROPERTY VISUAL DESIGN
+==================================================
+
+Integrate Properties professionally into the existing profile rather than creating a large spreadsheet.
+
+Use:
+- compact two-column layout where space permits
+- thin separators
+- ivory labels
+- warm gold numeric ranges
+- slightly stronger label treatment for "Magic Resistance Schools"
+- consistent spacing
+- no unnecessary icons for every property
+
+The property section should be information-dense but elegant.
+
+On narrower layouts it may collapse into one column.
+
+==================================================
+13. SKILLS AREA
+==================================================
+
+Below the hero information/profile area implement the skill section shown in the approved design.
+
+Use tabs:
+
+Active Skills (N)
+Passive (N)
+
+Counts must come from actual hero/skill definitions rather than being hardcoded globally.
+
+Each active skill should appear as an expandable accordion row.
+
+Each row should contain:
+- skill icon if an approved asset exists
+- skill name
+- concise plain-language description
+- expand/collapse indicator
+
+Expanded content may provide a somewhat fuller explanation of what the skill generally does.
+
+Do NOT show battle-preview numbers as permanent skill values.
+
+Do NOT calculate in React:
+- damage
+- healing
+- hit chance
+- target legality
+- status outcomes
+- resistance resolution
+- cooldown behavior
+- combat formulas
+
+Python remains gameplay authority.
+
+The Gallery explains abilities; it does not simulate them.
+
+==================================================
+14. PASSIVES
+==================================================
+
+Passive abilities must be visually and structurally separated from active skills.
+
+Use the Passive tab/panel from the approved design.
+
+Where a hero has no passive, handle this cleanly rather than inventing one.
+
+Do not convert passives into active skills for presentation convenience.
+
+==================================================
+15. PRESENTATION CONTENT REGISTRY
+==================================================
+
+Create/extend a maintainable presentation-content registry for Gallery-specific explanatory text.
+
+Appropriate content includes:
+- short introduction
+- tagline
+- Battle Style summary
+- concise skill explanation where authoritative raw definitions are not presentation-friendly
+
+Keep this separate from gameplay logic.
+
+Every gameplay-related claim in presentation copy must be checked against current hero/skill behavior.
+
+Do not duplicate authoritative mechanical values into presentation copy unnecessarily.
+
+==================================================
+16. DATA AUTHORITY
+==================================================
+
+Respect current ownership boundaries.
+
+Use authoritative backend/save-slot data for:
+- Owned
+- Locked
+
+Do not infer ownership from frontend state when authoritative save-slot data exists.
+
+Do not invent:
+- mana
+- rarity
+- hero levels
+- equipment
+- formal role classifications
+- cooldown rules
+- unlock requirements
+- progression rules
+
+Do not create parallel hero definitions in React.
+
+Stable definition IDs remain the identity source.
+
+==================================================
+17. NAVIGATION
+==================================================
+
+Integrate Hero Gallery with the existing navigation flow.
+
+The Stage Map Manual button/menu should include:
+
+1. Hero Gallery
+2. Battle Instruction
+3. Sound On/Off
+
+Hero Gallery opens this page.
+
+Provide an appropriate way to return to the previous game context without restoring the removed full site header.
+
+Reuse existing navigation conventions where possible.
+
+Do not break:
+- startup flow
+- stage-map flow
+- Team Builder
+- battle navigation
+- save-slot flow
+
+==================================================
+18. RESPONSIVE DESIGN
+==================================================
+
+The approved image represents the desktop composition.
+
+Preserve its visual hierarchy at smaller sizes rather than simply shrinking everything.
+
+Desktop:
+- gallery on left
+- major hero artwork/profile composition on right
+- skills below profile content
+
+Tablet:
+- filters remain easy to use
+- hero grid adapts
+- profile/artwork may reorganize vertically
+- Properties can collapse intelligently
+
+Mobile:
+Suggested flow:
+
+Hero Gallery title
+→ faculty filters
+→ hero cards
+→ selected hero artwork
+→ hero identity/introduction
+→ Battle Style
+→ Properties
+→ Active/Passive tabs
+→ skill accordions
+
+Do not allow horizontal page overflow.
+
+Touch targets must remain usable.
+
+==================================================
+19. ACCESSIBILITY
+==================================================
+
+Implement proper accessibility rather than relying on visuals alone.
+
+Include:
+- semantic buttons
+- keyboard-accessible faculty filters
+- keyboard-accessible hero selection
+- visible focus states
+- appropriate aria state for selected filters/cards
+- accessible accordion controls
+- aria-expanded
+- usable Active/Passive tab semantics
+- meaningful image alt text
+- ownership state represented in text, not colour alone
+- sufficient contrast
+
+Preserve existing keyboard behavior.
+
+==================================================
+20. AUDIO
+==================================================
+
+Use existing UI audio infrastructure if applicable.
+
+Do not create another audio system.
+
+Gallery interactions such as:
+- faculty selection
+- hero selection
+- accordion expansion
+- tab switching
+
+may use the existing UI click behavior where consistent with the rest of the game.
+
+Respect Sound On/Off.
+
+==================================================
+21. TESTS
+==================================================
+
+Add focused tests covering at minimum:
+
+- all 10 approved hero specializations appear
+- faculty filtering
+- stable definition IDs
+- selected hero changes correctly
+- Owned state
+- Locked state
+- locked hero remains viewable/selectable
+- authoritative ownership data is used
+- no fake Priest Discipline unlock route appears
+- property ranges render correctly from authoritative data
+- Magic Resistance Schools render correctly
+- Active/Passive tab behavior
+- skill accordion behavior
+- navigation into Gallery
+- navigation out of Gallery
+- keyboard interaction
+- important accessibility semantics
+- responsive behavior where existing test infrastructure supports it
+- asset fallback behavior if appropriate
+
+Do not rewrite unrelated tests.
+
+==================================================
+22. DOCUMENTATION
+==================================================
+
+Update relevant documentation according to Project_Rules.md.
+
+Document:
+- Hero Gallery route
+- navigation entry point
+- page responsibility
+- presentation-content registry
+- ownership source
+- property range source
+- asset usage/fallback
+- any new components
+- tests/validation
+- known limitations/data gaps
+
+Update Current_Task/Completed or other project tracking documents only according to the project's established documentation workflow.
+
+==================================================
+23. IMPLEMENTATION PROCESS
+==================================================
+
+Do not immediately start coding.
+
+First inspect the required documentation and current implementation.
+
+Then provide a SHORT implementation plan containing:
+
+1. proposed route
+2. component/page structure
+3. authoritative data sources
+4. presentation-content source
+5. ownership source
+6. property-range source
+7. asset source/fallback
+8. navigation integration
+9. identified data gaps or conflicts with the approved concept
+
+Then implement.
+
+Do not stop after producing the plan unless a genuine blocker requires clarification.
+
+==================================================
+24. VALIDATION
+==================================================
+
+After implementation run the relevant:
+
+- frontend tests
+- targeted Hero Gallery tests
+- type checking
+- linting
+- build
+- backend tests if backend/API behavior was touched
+
+Also manually verify the page at representative desktop/tablet/mobile viewport sizes if the project's tooling supports this.
+
+Check specifically for:
+- clipping
+- overlapping text
+- hero artwork cropping
+- property layout
+- long specialization names
+- skill descriptions
+- locked state readability
+- keyboard navigation
+- horizontal overflow
+
+==================================================
+25. FINAL REPORT
+==================================================
+
+At completion report concisely:
+
+- files changed
+- route implemented
+- major components added/changed
+- data sources used
+- how ownership works
+- how property ranges are sourced
+- presentation registry location
+- navigation changes
+- tests added
+- validation commands/results
+- documentation updated
+- remaining limitations/data gaps
+
+Do not claim validation that was not actually run.
+
+==================================================
+DESIGN PRIORITY
+==================================================
+
+The approved Hero Gallery concept is the visual target.
+
+Preserve its major composition:
+
+LEFT
+- HERO GALLERY heading
+- faculty filters
+- 10 hero cards
+- selected gold-highlighted card
+- Owned/Locked indicators
+- atmospheric lower area
+
+CENTER/RIGHT
+- large selected hero artwork
+- faculty + specialization
+- Owned/Locked indicator
+- introduction
+- BATTLE STYLE
+- PROPERTIES (Base Range)
+- Magic Resistance Schools
+- Active Skills / Passive tabs
+- expandable skill rows
+
+The implementation should look recognizably like the approved concept rather than merely containing the same information.
+
+At the same time, project architecture and authoritative gameplay data take precedence over visual mockup assumptions.

@@ -236,3 +236,26 @@ skill/passive inventory, and unlock-source presentation. Close that gap through
 one additive, deterministic, non-mutating contract before wiring final Gallery
 content. Preserve Priest Discipline's absent unlock route and correct the stale
 Holy Aura 10–14 presentation copy to the authoritative 6–8 value.
+
+## 2026-09-22 Approved Concept Mapping
+
+The owner-supplied `Hero_Gallery_Concept.png` is a read-only visual target,
+not a source of gameplay values, identities, roles, or artwork. Its fictional
+Holy Knight profile and numbers are not copied. The implementation maps the
+concept to the authoritative UI-027 architecture as follows:
+
+| Concept element | UI-027 implementation rule |
+| --- | --- |
+| Isolated atmospheric header | The Gallery header contains only **Back to Manual**; a route-local cinematic dark navy/black background sits behind the compendium surface. |
+| Two-region desktop compendium | A left browsing panel holds the title, ordered filters, cards, and lower-left quotation/breathing space. A right profile panel holds identity, battle style, Base Range properties, and skills. |
+| Large centre hero art | `AssetImage` uses the selected definition's registered figure with aspect-preserving containment, a lower fade, and initials/class fallback; no source art is changed or recropped in files. |
+| Gold frames and selected illumination | Fine gold rules/corner ornamentation and a restrained selected-card halo replace generic rounded dashboard cards. Ownership remains textual as well as coloured. |
+| Property block | Engine-owned configured ranges render as **PROPERTIES (Base Range)**: HP/Damage, Defence/Agility, then all seven resistance schools. The existing randomized-range explanation remains adjacent. |
+| Active/Passive skill section | Actual `isPassive` skill data determines accessible tabs and counts. Stable skill IDs select registry copy; accordion rows preserve `aria-expanded`. A zero-passive definition displays a professional N/A panel. |
+| Responsive order | Desktop keeps two regions. Tablet retains filters/cards and moves profile art without clipping. Mobile reads title, filters, cards, selected art, identity/introduction, Battle Style, Base Range properties, tabs, then accordions; no horizontal overflow is permitted. |
+
+Additional concept validation must cover desktop composition/cropping/text
+overlap, long profile content, locked state, keyboard tabs/accordions, and
+tablet/mobile horizontal overflow. The Gallery currently has no factual data
+gap: backend catalogue data is additive/read-only, ownership remains active-slot
+progression-only, and Priest Discipline remains an explicit no-route profile.
