@@ -332,6 +332,21 @@ class Skill:
             self.last_target_outcomes[id(opponents)] = "ally"
             return self._call_skill_action(opponents, 'ally')
           else:
+            # Penance's enemy branch deals damage. Record the same
+            # authoritative immunity outcome as ordinary damage skills so
+            # adapters can publish a typed ``damagePrevented`` event instead
+            # of trying to infer a shield block from unchanged HP. This is
+            # deliberately scoped to Penance: other legacy hybrid skills have
+            # separate status/effect contracts.
+            if self.name == "Penance" and self.immunity_condition_all_check(opponents):
+              self.last_target_outcomes[id(opponents)] = "immunity_condition_all"
+              self.last_target_outcome_reasons[id(opponents)] = self._immunity_reason(
+                  opponents, self.immunity_condition_all
+              )
+              return (
+                  f"{self.initiator.name} tries to use {self.name} on "
+                  f"{opponents.name}, but {opponents.name} is immune to all damage."
+              )
             if not self.evasion_check(opponents):
               self.last_target_outcomes[id(opponents)] = "hit"
               return self._call_skill_action(opponents, 'opponent')

@@ -174,6 +174,13 @@ def test_penance_shield_prevention_matches_live_execution_without_linked_preview
         and event.get("targetId") == _id(adapter, session, target)
         for event in result["events"]
     )
+    assert any(
+        event["type"] == "damagePrevented"
+        and event.get("targetId") == _id(adapter, session, target)
+        and event.get("reasonId") == "status.shield_of_protection"
+        and event.get("amount") == 0
+        for event in result["events"]
+    )
     assert not any(
         event["type"] == "healingApplied"
         and event.get("targetId") == _id(adapter, session, ally)
