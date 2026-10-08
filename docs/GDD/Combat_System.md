@@ -90,6 +90,14 @@ miss; Shield of Righteous is the reference behavior.
 Healing and hybrid skills have their own paths and must not be assumed to use
 the full damage-immunity pipeline.
 
+Priest Discipline's opponent-targeted Penance can trigger same-caster Holy Word
+Redemption linked healing only after its selected target loses positive HP from
+the authoritative damage receipt. A Shield of Protection or fully absorbing
+Holy Word Shell receipt therefore triggers no linked healing; a partial or
+ordinary positive target receipt can. This condition is based on resolved
+selected-target HP loss, not raw attempted damage, combat-log prose, or damage
+redirected to another combatant.
+
 ## Damage, Healing, and Resistance
 
 There is no single universal damage formula. Concrete skills calculate physical,

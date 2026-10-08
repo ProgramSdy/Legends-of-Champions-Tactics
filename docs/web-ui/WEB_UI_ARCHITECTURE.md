@@ -221,6 +221,17 @@ enemy control is `player`; the 1v1 branch prohibits both formation fields. The
 roster is loaded from `GET /api/v1/heroes`; the client rejects wrong-version or
 malformed roster responses.
 
+The Game Manual consumes the same catalogue through the stricter
+`fetchHeroGalleryRoster` boundary. It requires the additive configured ranges,
+stable skill inventory, and unlock-source fields before rendering the Gallery;
+an incomplete response becomes a recoverable Gallery error rather than
+client-derived data. Gallery ownership is independently fetched from
+`GET /api/v1/progression`. The Manual dialog owns its focus trap, Escape and
+return-focus behavior; `/manual/heroes` and `/manual/battle-instruction` are
+read-only routes. `SoundPreferenceProvider` restores its browser-local setting
+only after mount, gates the central `AudioManager`, and never replays events or
+changes battle-event ordering.
+
 UI-020 additionally loads `GET /api/v1/progression` for selectable definition
 IDs and `GET /api/v1/stages` for the two curricula and step access. Structured
 launch posts only the player team, a size-valid player-selected formation for
@@ -322,7 +333,7 @@ Their mobile layouts retain normal document scrolling.
 `useBattlePreview` is the revision-bound lifecycle boundary for the audited
 preview allowlist. It debounces, aborts superseded requests, validates echoed
 actor/skill/target identity, and clears stale responses. `LiveBattleProvider`
-decodes the additive `damage`/`healing`/`prevented` primary and discriminated
+decodes the additive `damage`/`healing`/`prevented`/status-only primary and discriminated
 material consequences; `BattleScreen` only presents that data in the anchored
 card or compact dock. Healing never displays Hit Chance. Binding's secondary
 recipient, Shadow Word Pain, and Paladin Wrath copy are all selected from the
@@ -332,16 +343,24 @@ The current scope is explicitly finite: the original Mage/Rogue skills plus
 Priest Comprehensiveness Holy Smite/Shadow Word Pain/Binding Heal, Paladin
 Retribution Hammer of Anger/Crusader Strike/Flash of Light, Paladin Protection
 Hammer of Revenge/Shield of Righteous/Heroric Charge, Paladin Holy Purify
-Healing/Holy Blast/Shield of Protection, and all nine active published Warrior
-skills. Holy Aura is passive-only and excluded. Moon Slash, Holy Blast, and
-Thunder Pot use the established per-target draft/full path; Antivenom Potion,
+Healing/Holy Blast/Shield of Protection, Priest Discipline Penance/Holy Word
+Redemption/Holy Word Punishment, and all nine active published Warrior skills.
+Holy Aura is passive-only and excluded. Moon Slash, Holy Blast, Thunder Pot,
+and Holy Word Punishment use the established per-target draft/full path;
+Antivenom Potion,
 Warlust, and Shield of Protection use the same typed,
 revision-bound `selfPreview` path with no fabricated target. Warrior material
 rows preserve server-authored first/stack/refresh/extension/replacement/already
 active outcomes instead of collapsing them to an "Apply" claim. Paladin
 Protection/Holy status, immunity, actor-side, and Purify-candidate rows are
 rendered only from typed provider facts; no Paladin formula, random status pick,
-or control-state inference exists in the client. Hover, focus,
+or control-state inference exists in the client. Discipline linked-recipient
+healing and status-only Redemption rows are likewise server facts; the client
+does not choose Penance's side branch, an extra Redemption recipient, or a
+status result. For opponent Penance, the adapter additionally owns the
+positive selected-target receipt gate: blocked/full-absorption states show no
+linked recipient row, while an ambiguous zero-to-positive receipt range is
+unavailable rather than approximated. Hover, focus,
 and target-button touch activation retain the same non-blocking selection path;
 the pointer-transparent presentation clears on departure, abort, stale state,
 unavailable result, automatic turn, or unsupported skill.

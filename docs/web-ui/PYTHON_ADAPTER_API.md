@@ -64,8 +64,16 @@ Returns service and contract version health.
 
 ### `GET /api/v1/heroes`
 
-Returns contract version `1.0` and exactly the ten approved hero definitions,
-including stable `definitionId`, display name, faculty, and specialization.
+Returns contract version `1.0` and exactly the ten approved hero definitions.
+Each definition includes stable `definitionId`, display name, faculty, and
+specialization, plus the read-only Hero Gallery fields: exactly four configured
+starting-stat ranges (`id`, `label`, `minimum`, `maximum`), exactly seven
+configured resistance ranges of the same shape, a stable skill inventory
+(`skillId`, `displayName`, `isPassive`), and `unlockSource` (`starter`, a
+stage-reward descriptor, or `null`). These fields are catalogue facts only:
+they do not create heroes, roll randomized values, consume RNG, or grant an
+unlock. The browser must render ranges as ranges, obtain actual ownership from
+`GET /api/v1/progression`, and must not infer a missing unlock route.
 The roster display name is catalogue metadata. Each non-summoned battle
 combatant receives a runtime name from its class's `HeroGenerator` faculty pool
 during session creation.
@@ -315,7 +323,8 @@ and Poisoned Dagger; Priest Comprehensiveness Holy Smite, Shadow Word Pain,
 and Binding Heal; Paladin Retribution Hammer of Anger, Crusader Strike, and
 Flash of Light; Paladin Protection Hammer of Revenge, Shield of Righteous, and
 Heroric Charge; Paladin Holy Purify Healing, Holy Blast, and Shield of
-Protection; Warrior Defence Devastate, Shield Bash, and Thunder Pot;
+Protection; Priest Discipline Penance, Holy Word Redemption, and Holy Word
+Punishment; Warrior Defence Devastate, Shield Bash, and Thunder Pot;
 Warrior Weapon Master Fatal Strike, Armor Crush, and Antivenom Potion; and
 Warrior Berserker Moon Slash, Warlust, and Strike of Meteorite. It accepts
 `expectedRevision`, `actorId`, `skillId`, and `targetIds` and validates the
@@ -333,7 +342,9 @@ Unprovable Purify states and contradictory Charge Warlust/immunity state return
 the ordinary unavailable coverage rather than approximating an action.
 
 Each target response supplies current/max HP and an immediate `damage`,
-`healing`, or deterministic `prevented` primary. Direct damage/prevention
+`healing`, deterministic `prevented`, or status-only `null` primary. Only Holy
+Word Redemption uses the status-only shape; it has no fabricated zero
+damage/healing or Hit Chance. Direct damage/prevention
 retains the evasion-only Hit Chance; healing uses a null Hit Chance and shows
 post-modifier skill power before the live maximum-HP cap. Typed
 material consequences can report a newly applicable Shadow Word Pain,
@@ -348,6 +359,24 @@ only; there is no aggregate total. Antivenom Potion and Warlust require an
 empty target list and return typed `selfPreview` facts, rather than a fabricated
 target. Shield of Protection uses the same targetless shape. This preview-only subset rule never changes the target count required
 by `useSkill`.
+
+Discipline Penance is side-aware only in the adapter: an ally gets Healing with
+no Hit Chance, while an opponent gets direct Damage/Hit Chance and any
+same-caster Redemption-linked recipient rows only `onHit`. Punishment uses the
+published target cardinality: one target is a draft when two are published and
+a complete command only when one is published (1v1/sole survivor). It reports
+per-target direct facts and finite application/already-active status rows, not
+an aggregate or future tick total. Low-HP Redemption extra-recipient and
+foreign/global-record states return unavailable rather than predict RNG or a
+false refresh.
+
+For opponent Penance, `onHit` additionally requires valid direct selected-target
+HP loss after the engine's authoritative damage receipt. Shield of Protection
+and a fully absorbing Holy Word Shell therefore show no linked Redemption row;
+a positive partial/ordinary receipt may show the row. A receipt range that can
+both fully absorb and partially damage a linked-healing Penance target is
+returned as the ordinary revision-bound unavailable preview rather than an
+invented conditional range.
 
 Warrior preview consequences remain discriminated API data. Armor Breaker
 exposes first/next-stack/refresh plus resulting stacks; Stun exposes

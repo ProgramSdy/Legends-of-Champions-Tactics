@@ -47,14 +47,21 @@ export function SoundPreferenceProvider({
   children: ReactNode;
   manager?: SoundPreferenceManager;
 }) {
-  const [enabled, setEnabledState] = useState(() => {
-    if (typeof window === "undefined") return true;
-    return readStoredPreference() ?? true;
-  });
+  // Start from one SSR-safe value. Restoring browser storage during render can
+  // disagree with the server markup and briefly set a different audio state.
+  const [enabled, setEnabledState] = useState(true);
 
   useEffect(() => {
-    manager.setEnabled(enabled);
-  }, [enabled, manager]);
+    let active = true;
+    Promise.resolve().then(() => {
+      if (!active) return;
+      const restored = readStoredPreference();
+      const next = restored ?? true;
+      setEnabledState(next);
+      manager.setEnabled(next);
+    });
+    return () => { active = false; };
+  }, [manager]);
 
   const setEnabled = useCallback((next: boolean) => {
     manager.setEnabled(next);

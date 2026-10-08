@@ -49,7 +49,7 @@ export const DEFAULT_HERO_FIGURE_SCALE = 1;
 export const heroFigureScales: Record<string, number> = {
   "hero.paladin.protection": 1.2,
   "hero.paladin.retribution": 1.2,
-  "hero.paladin.holy": 1.2,
+  "hero.paladin.holy": 0.8,
   "hero.priest.comprehensiveness": 1,
   "hero.priest.discipline": 1,
   "hero.mage.comprehensiveness": 0.9,

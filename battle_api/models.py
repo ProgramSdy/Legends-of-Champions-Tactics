@@ -268,6 +268,30 @@ class SecondaryHealingPreviewConsequence(StrictApiModel):
     amount_range: DamageAmountRange = Field(alias="amountRange")
 
 
+class HolyWordRedemptionPreviewConsequence(StrictApiModel):
+    kind: Literal["holyWordRedemption"]
+    certainty: Literal["always"]
+    recipient_id: str = Field(alias="recipientId", min_length=1)
+    duration: Literal[5]
+    outcome: Literal["firstApplication", "durationRefresh"]
+
+
+class HolyWordPunishmentPreviewConsequence(StrictApiModel):
+    kind: Literal["holyWordPunishment"]
+    certainty: Literal["onHit"]
+    recipient_id: str = Field(alias="recipientId", min_length=1)
+    duration: Literal[4] | None = None
+    outcome: Literal["firstApplication", "alreadyActive"]
+
+    @model_validator(mode="after")
+    def validate_duration_for_outcome(self):
+        if self.outcome == "firstApplication" and self.duration != 4:
+            raise ValueError("first Holy Word Punishment application lasts 4 rounds")
+        if self.outcome == "alreadyActive" and self.duration is not None:
+            raise ValueError("active Holy Word Punishment is not refreshed")
+        return self
+
+
 class WrathDamageBonusPreviewConsequence(StrictApiModel):
     kind: Literal["wrathDamageBonus"]
     certainty: Literal["always"]
@@ -434,6 +458,8 @@ BattlePreviewConsequence = Annotated[
     DamagePreviewConsequence
     | ShadowWordPainPreviewConsequence
     | SecondaryHealingPreviewConsequence
+    | HolyWordRedemptionPreviewConsequence
+    | HolyWordPunishmentPreviewConsequence
     | WrathDamageBonusPreviewConsequence
     | WrathHealingBonusPreviewConsequence
     | WrathOfCrusaderPreviewConsequence
@@ -463,7 +489,7 @@ class DamagePreviewTarget(ApiModel):
     target_id: str = Field(alias="targetId")
     current_hp: int = Field(alias="currentHp", ge=0)
     max_hp: int = Field(alias="maxHp", ge=1)
-    primary: DamagePreviewPrimary
+    primary: DamagePreviewPrimary | None
     direct_hit_chance_percent: int | None = Field(
         default=None, alias="directHitChancePercent", ge=0, le=100
     )
@@ -471,7 +497,10 @@ class DamagePreviewTarget(ApiModel):
 
     @model_validator(mode="after")
     def validate_hit_chance_for_primary(self):
-        if self.primary.kind == "healing":
+        if self.primary is None:
+            if self.direct_hit_chance_percent is not None:
+                raise ValueError("status-only preview cannot include direct Hit Chance")
+        elif self.primary.kind == "healing":
             if self.direct_hit_chance_percent is not None:
                 raise ValueError("healing preview cannot include direct Hit Chance")
         elif self.direct_hit_chance_percent is None:

@@ -303,3 +303,150 @@ Full email/password registration, email verification, social login, conventional
 > **For the first online pre-alpha: web-first; Google e2-micro as the initial always-on authoritative FastAPI/Python backend; existing SQLite persistence with backup; lightweight unique player names plus recovery codes; per-device hidden authentication tokens; in-memory active battles; and pseudonymous playtest telemetry.**
 
 This keeps infrastructure cost and implementation complexity low while preserving migration paths toward managed hosting, PostgreSQL/Supabase, recoverable battle state, full account systems, Redis, matchmaking, and PvP.
+
+
+## 13. 2026-10-08 — Google Compute Engine Deployment and Billing Validation
+
+### Purpose
+
+Document the initial Google Compute Engine backend deployment and verify actual infrastructure costs for the *Legends of Champions Tactics* online pre-alpha environment.
+
+This validation supports the earlier decision to use Google Compute Engine `e2-micro` as the initial always-on FastAPI + Python combat-engine hosting platform.
+
+### VM Deployment Configuration
+
+The initial backend VM has been successfully created and verified.
+
+| Item | Configuration |
+|---|---|
+| Google Cloud project | `legends-of-champions-tactics` |
+| VM instance | `legends-of-champions-tactics-backend` |
+| Region | `us-central1` (Iowa, USA) |
+| Zone | `us-central1-a` |
+| Machine type | `e2-micro` |
+| Provisioning model | Standard (non-Spot) |
+| Operating system | Ubuntu 24.04 LTS Minimal, x86-64 |
+| Python | 3.12.3 |
+| Git | 2.43.0 |
+| Boot disk | 10 GB Standard Persistent Disk |
+| Networking | Default VPC, external ephemeral IPv4 |
+| VM backups | No automatic snapshot schedule |
+
+Browser-based SSH access was successfully established through Google Cloud Console.
+
+Basic system verification confirmed that Ubuntu, Python, and Git were operational.
+
+At the time of verification, the VM had approximately 953 MiB of RAM, with approximately 673 MiB available, and approximately 6.8 GB of available root filesystem capacity.
+
+These checks confirm that the VM is ready for the next backend deployment phase. They do not yet establish application performance or production suitability.
+
+### Google Cloud Billing Verification
+
+**Verification date:** 8 October 2026
+
+Google Cloud Billing Reports were reviewed using the **Group by SKU** setting, with all savings included.
+
+The billing records covered approximately 155 hours of VM resource usage.
+
+#### Compute Resource Charges
+
+| Billing SKU | Usage cost | Free Tier discount | Net cost |
+|---|---:|---:|---:|
+| E2 Instance Core running in Americas | $1.20 | -$1.20 | $0.00 |
+| E2 Instance RAM running in Americas | $0.65 | -$0.65 | $0.00 |
+| **Total compute** | **$1.85** | **-$1.85** | **$0.00** |
+
+The billing records explicitly confirmed that Google Cloud Free Tier discounts fully offset the reported E2 CPU and RAM charges.
+
+The discounts were recorded as separate billing SKUs rather than deductions from the Google Cloud Free Trial promotional credit.
+
+#### Additional Infrastructure Charges
+
+The following billing items were also reviewed:
+
+| Resource or service | Observed net cost |
+|---|---:|
+| Standard Persistent Disk capacity | $0.00 |
+| External IPv4 address | $0.00 |
+| Ubuntu 24.04 LTS Minimal licensing | $0.00 |
+| Reported network data transfer | $0.00 |
+| Network Intelligence Center services | $0.00 |
+
+The Network Intelligence Center generated small usage charges, but these were fully offset by corresponding savings.
+
+The External IP SKU showed approximately 155 hours of recorded usage with a reported usage cost of $0.00.
+
+The disk and network usage remained within the observed zero-cost billing amounts during the verification period.
+
+### Actual Billing Result
+
+**Observed total net infrastructure cost: $0.00.**
+
+The Google Cloud Billing Report showed a total of $0.00 after applying the available discounts and savings.
+
+The account also showed approximately **A$427.04 in remaining Free Trial credit**, with 90 days remaining at the time of the initial billing review.
+
+The CPU and RAM charges were offset by explicitly recorded Free Tier discounts. Therefore, the observed zero compute cost was not solely the result of consuming Free Trial promotional credit.
+
+### Cost Interpretation and Limitations
+
+The current configuration has demonstrated zero net billed infrastructure cost during the observed period.
+
+However, this does not guarantee that the backend will remain free under all future conditions.
+
+Costs may change if:
+
+- The VM machine type, region, or number of instances changes.
+- Persistent disk usage exceeds applicable free allowances.
+- Internet data transfer increases beyond applicable allowances.
+- Additional Google Cloud services are enabled.
+- Backup snapshots, managed databases, load balancers, or other paid resources are introduced.
+- Google Cloud pricing or Free Tier eligibility changes.
+
+Billing data can also be delayed, so the reported results represent the charges visible at the verification time.
+
+The initial VM configuration should be preserved during early testing unless a change is justified by measured requirements.
+
+### Updated Infrastructure Cost Decision
+
+**Decision: Retain Google Compute Engine `e2-micro` as the initial backend hosting platform.**
+
+The first infrastructure milestone is complete:
+
+- VM provisioning succeeded.
+- Browser-based SSH access was verified.
+- Ubuntu, Python, and Git were confirmed operational.
+- The actual billing records confirmed full Free Tier offsets for CPU and RAM.
+- The observed total net infrastructure cost was $0.00.
+
+This validates the initial infrastructure setup and cost assumptions for the current pre-alpha configuration.
+
+It does not yet validate the VM's capacity to handle real game traffic, concurrent battles, or sustained backend workloads.
+
+### Next Steps
+
+Proceed with the backend deployment phase:
+
+1. Deploy the existing FastAPI application and authoritative Python combat engine.
+2. Configure the application runtime and required dependencies.
+3. Validate backend startup and API health.
+4. Establish secure external API access.
+5. Connect the Next.js frontend to the hosted backend.
+6. Test real battles and persistence using the existing SQLite system.
+7. Measure CPU, RAM, request latency, errors, and representative concurrent battles.
+8. Implement and validate a lightweight SQLite backup and recovery strategy.
+9. Continue monitoring Google Cloud Billing by SKU as actual player traffic increases.
+
+### Final Status
+
+**Infrastructure provisioning: COMPLETE**
+
+**Initial SSH and system verification: COMPLETE**
+
+**Initial billing validation: COMPLETE — $0.00 observed net cost**
+
+**Backend application deployment: PENDING**
+
+**Performance and concurrency validation: PENDING**
+
+**SQLite backup and recovery validation: PENDING**

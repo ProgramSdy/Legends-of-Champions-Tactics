@@ -10,10 +10,12 @@ approved Mage/Rogue damage skills plus Priest Comprehensiveness Holy Smite,
 Shadow Word Pain, Binding Heal; Paladin Retribution Hammer of Anger, Crusader
 Strike, Flash of Light; Paladin Protection Hammer of Revenge, Shield of
 Righteous, Heroric Charge; Paladin Holy Purify Healing, Holy Blast, Shield of
-Protection; and the finite nine-skill published Warrior roster. Holy Aura is a
+Protection; Priest Discipline Penance, Holy Word Redemption, Holy Word
+Punishment; and the finite nine-skill published Warrior roster. Holy Aura is a
 passive and is intentionally outside the preview allowlist.
 It is not a generic preview system. The
-adapter returns typed immediate `damage`, `healing`, or `prevented` primary
+adapter returns typed immediate `damage`, `healing`, `prevented`, or finite
+status-only `null` primary
 facts and typed material consequences; React renders those facts and neither
 runs skill callbacks nor copies combat formulas, caps, Wrath state, status
 eligibility, target legality, or Warrior stack/refresh/control state.
@@ -26,6 +28,15 @@ recomputed in React.
 Healing preview ranges deliberately communicate post-modifier skill power,
 including for a full-health target. The live engine alone caps applied HP at
 the recipient maximum.
+
+Opponent Penance's same-caster Holy Word Redemption healing is an engine
+mechanic gated by positive HP loss of the selected target after authoritative
+receipt, rather than by raw attempted damage. A Shield of Protection or fully
+absorbing Holy Word Shell receipt produces no linked healing; a partial or
+ordinary positive receipt may do so. The adapter mirrors only definite finite
+states and returns unavailable for a linked-healing receipt range that crosses
+between zero and positive damage, rather than simulate combat or invent a
+conditional formula in the client.
 
 Preview evaluation uses audited pure range/receipt primitives under the current
 revision/session lock. It cannot consume RNG, mutate heroes/session/events/

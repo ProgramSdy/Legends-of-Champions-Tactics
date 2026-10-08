@@ -107,6 +107,7 @@ function buffOutcomeLabel(outcome: string): string {
 function previewConsequenceCopy(
   consequence: BattlePreviewTarget["consequences"][number],
   skillId?: string | null,
+  recipientName?: string | null,
 ): { label: string; value: string } {
   if (consequence.kind === "cold") return { label: "Debuff Apply", value: "Cold" };
   if (consequence.kind === "shadowWordPain") return { label: "Shadow Debuff", value: "100% chance" };
@@ -134,7 +135,9 @@ function previewConsequenceCopy(
     return { label: "Buff Self", value: "Wrath of Crusader" };
   }
   if (consequence.kind === "secondaryHealing") {
-    return { label: "Self Healing", value: `${consequence.amountRange.min}–${consequence.amountRange.max}` };
+    return recipientName
+      ? { label: `Healing → ${recipientName}`, value: `${consequence.amountRange.min}–${consequence.amountRange.max}` }
+      : { label: "Self Healing", value: `${consequence.amountRange.min}–${consequence.amountRange.max}` };
   }
   if (consequence.kind === "armorBreaker") {
     return {
@@ -221,25 +224,46 @@ function previewConsequenceCopy(
       value: `Damage Immunity · ${consequence.duration} rounds`,
     };
   }
+  if (consequence.kind === "holyWordRedemption") {
+    return {
+      label: buffOutcomeLabel(consequence.outcome),
+      value: "Holy Word Redemption · linked healing",
+    };
+  }
+  if (consequence.kind === "holyWordPunishment") {
+    return {
+      label: statusOutcomeLabel(consequence.outcome),
+      value: "Holy Word Punishment",
+    };
+  }
   return { label: "Effect", value: "Applied" };
 }
 
-function PreviewConsequenceRows({ consequences, omitSecondaryHealing = false, skillId }: { consequences: BattlePreviewTarget["consequences"]; omitSecondaryHealing?: boolean; skillId?: string | null }) {
+function PreviewConsequenceRows({ consequences, omitSecondaryHealing = false, skillId, recipientNameFor }: {
+  consequences: BattlePreviewTarget["consequences"];
+  omitSecondaryHealing?: boolean;
+  skillId?: string | null;
+  recipientNameFor?: (recipientId: string) => string;
+}) {
   return consequences
     .filter((consequence) => !omitSecondaryHealing || consequence.kind !== "secondaryHealing")
     .map((consequence, index) => {
-    const copy = previewConsequenceCopy(consequence, skillId);
+    const recipientName = consequence.kind === "secondaryHealing"
+      ? recipientNameFor?.(consequence.recipientId) ?? null
+      : null;
+    const copy = previewConsequenceCopy(consequence, skillId, recipientName);
     return <div className="preview-consequence" key={`${consequence.kind}.${index}`}><dt>{copy.label}</dt><dd>{copy.value}</dd></div>;
   });
 }
 
-function TargetPreviewCard({ id, phase, targetName, target, skillId, selfPreview }: {
+function TargetPreviewCard({ id, phase, targetName, target, skillId, selfPreview, recipientNameFor }: {
   id: string;
   phase: TargetPreviewPhase;
   targetName: string;
   target: BattlePreviewTarget | null;
   skillId?: string | null;
   selfPreview?: BattlePreviewSelf | null;
+  recipientNameFor?: (recipientId: string) => string;
 }) {
   const targetSideBuffs = skillId === "skill.warrior.thunder_pot"
     ? selfPreview?.consequences.filter((consequence) => consequence.kind === "resistanceBoost") ?? []
@@ -249,10 +273,10 @@ function TargetPreviewCard({ id, phase, targetName, target, skillId, selfPreview
     {phase === "loading" ? <p>Checking outcome…</p>
       : phase === "unavailable" || !target ? <p>Preview unavailable</p>
         : <dl>
-          <div><dt>{target.primary.kind === "healing" ? "Healing" : "Damage"}</dt><dd>{target.primary.kind === "prevented" ? "0 · Blocked" : `${target.primary.amountRange.min}–${target.primary.amountRange.max}`}</dd></div>
-          {target.primary.kind === "damage" && target.directHitChancePercent !== null ? <div><dt>Hit Chance</dt><dd>{target.directHitChancePercent}%</dd></div> : null}
+          {target.primary ? <div><dt>{target.primary.kind === "healing" ? "Healing" : "Damage"}</dt><dd>{target.primary.kind === "prevented" ? "0 · Blocked" : `${target.primary.amountRange.min}–${target.primary.amountRange.max}`}</dd></div> : null}
+          {target.primary?.kind === "damage" && target.directHitChancePercent !== null ? <div><dt>Hit Chance</dt><dd>{target.directHitChancePercent}%</dd></div> : null}
           <div><dt>Target HP</dt><dd>{target.currentHp} / {target.maxHp}</dd></div>
-          <PreviewConsequenceRows consequences={target.consequences} omitSecondaryHealing skillId={skillId} />
+          <PreviewConsequenceRows consequences={target.consequences} omitSecondaryHealing={skillId === "skill.priest.binding_heal"} skillId={skillId} recipientNameFor={recipientNameFor} />
           <PreviewConsequenceRows consequences={targetSideBuffs} skillId={skillId} />
         </dl>}
   </section>;
@@ -287,12 +311,12 @@ function previewTargetsForAnchor(legal: LegalAction | undefined, selected: reado
   return selected.includes(anchorId) ? [...selected] : [...selected, anchorId];
 }
 
-function BattlefieldFigure({ hero, active, event, hpEvent, healingCasterEvent, eventSourceSide, eventSourceIsPriest, eventSourceIsPaladin, selectable, targetSelectionPending, targetCursorIntent, selected, onSelect, onTargetHover, onTargetFocus, formationScale, previewPhase, previewTarget, previewDescriptionId, skillId, selfPreview }: {
+function BattlefieldFigure({ hero, active, event, hpEvent, healingCasterEvent, eventSourceSide, eventSourceIsPriest, eventSourceIsPaladin, selectable, targetSelectionPending, targetCursorIntent, selected, onSelect, onTargetHover, onTargetFocus, formationScale, previewPhase, previewTarget, previewDescriptionId, skillId, selfPreview, previewRecipientNameFor }: {
   hero: CombatantState; active: boolean; event: BattleEvent | null; eventSourceSide: SideId | null;
   hpEvent: BattleEvent | null;
   healingCasterEvent: BattleEvent | null; eventSourceIsPriest: boolean; eventSourceIsPaladin: boolean;
   selectable: boolean; targetSelectionPending: boolean; targetCursorIntent: TargetCursorIntent; selected: boolean; onSelect: () => void; onTargetHover: (combatantId: string | null) => void; onTargetFocus: (combatantId: string | null, fromKeyboard?: boolean) => void; formationScale: number;
-  previewPhase: TargetPreviewPhase; previewTarget: BattlePreviewTarget | null; previewDescriptionId?: string; skillId?: string | null; selfPreview?: BattlePreviewSelf | null;
+  previewPhase: TargetPreviewPhase; previewTarget: BattlePreviewTarget | null; previewDescriptionId?: string; skillId?: string | null; selfPreview?: BattlePreviewSelf | null; previewRecipientNameFor?: (recipientId: string) => string;
 }) {
   const [figureFrameHeight, setFigureFrameHeight] = useState(FALLBACK_FIGURE_FRAME_HEIGHT);
   const eventTarget = event?.targetId === hero.id;
@@ -350,7 +374,7 @@ function BattlefieldFigure({ hero, active, event, hpEvent, healingCasterEvent, e
         {effect === "attackEvaded" && <span className="combat-text evade">EVADE</span>}
       </button>
       {previewPhase !== "idle" && previewDescriptionId
-        ? <TargetPreviewCard id={previewDescriptionId} phase={previewPhase} targetName={hero.displayName} target={previewTarget} skillId={skillId} selfPreview={selfPreview} />
+        ? <TargetPreviewCard id={previewDescriptionId} phase={previewPhase} targetName={hero.displayName} target={previewTarget} skillId={skillId} selfPreview={selfPreview} recipientNameFor={previewRecipientNameFor} />
         : null}
     </div>
   );
@@ -633,6 +657,7 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
               previewDescriptionId={previewDescriptionId}
               skillId={selectedSkill}
               selfPreview={preview?.selfPreview}
+              previewRecipientNameFor={(recipientId) => combatants[recipientId]?.displayName ?? "Linked ally"}
               onSelect={() => toggleTarget(hero.id)}
               onTargetHover={(targetId) => { setTargetInputMode("pointer"); setHoveredTargetId(targetId); }}
               onTargetFocus={(targetId, fromKeyboard) => { setTargetInputMode(fromKeyboard || !hoveredTargetId ? "keyboard" : "pointer"); setFocusedTargetId(targetId); }} />
@@ -649,7 +674,7 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
               ? (() => {
                   const target = preview.targets.find((item) => item.targetId === previewAnchorId) ?? null;
                   const hero = combatants[previewAnchorId];
-                  return <TargetPreviewCard id={`target-preview-dock-${previewAnchorId.replaceAll(".", "-")}`} phase={target ? "ready" : "unavailable"} targetName={hero?.displayName ?? "Target"} target={target} skillId={selectedSkill} selfPreview={preview.selfPreview} />;
+                  return <TargetPreviewCard id={`target-preview-dock-${previewAnchorId.replaceAll(".", "-")}`} phase={target ? "ready" : "unavailable"} targetName={hero?.displayName ?? "Target"} target={target} skillId={selectedSkill} selfPreview={preview.selfPreview} recipientNameFor={(recipientId) => combatants[recipientId]?.displayName ?? "Linked ally"} />;
                 })()
               : <TargetPreviewCard id="target-preview-dock-status" phase={previewPhase} targetName={combatants[previewAnchorId]?.displayName ?? "Target"} target={null} skillId={selectedSkill} />}
           </aside> : null}

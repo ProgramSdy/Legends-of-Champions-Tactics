@@ -2,6 +2,140 @@
 
 Completed work should be appended in reverse chronological order, with the newest entry first.
 
+## 2026-10-08 — BATTLE-TRANSPARENCY-005: Priest Discipline
+
+**Summary:**
+
+Completed the finite, server-owned transparency scope for Priest Discipline's
+Penance, Holy Word Redemption, and Holy Word Punishment, which completes
+pre-confirmation coverage for all ten approved web specializations. Penance is
+side-aware only in the adapter: an ally receives Healing without Hit Chance,
+while an opponent receives Damage/Hit Chance plus named same-caster Redemption
+recipient rows only when immediate facts are provable. Redemption is a
+status-only primary, never a fake zero-value damage/healing fact. Punishment
+retains its published lawful draft/full cardinality, per-target direct facts,
+and finite apply/already-active status state—without aggregate or future DoT
+claims.
+
+The owner-approved Penance mechanics correction is included: after a
+non-evaded opponent Penance, linked Redemption healing occurs only if the
+selected target actually loses HP through the authoritative damage receipt.
+Shield of Protection and fully absorbed Holy Word Shell cause no linked
+healing; partial and ordinary positive receipts preserve it. An ambiguous
+receipt range that spans zero and positive loss is preview-unavailable rather
+than simulated or approximated.
+
+**Roles and independent review:**
+
+- **project manager:** /root/btt005_pm established the source-audit, scope,
+  staged role workflow, validation, and closeout plan.
+- **game engine developer:** /root/btt005_engine audited live Penance,
+  Redemption, Punishment, receipt, formation, and purity boundaries; the
+  approved Penance-local correction was applied without a global receipt
+  refactor.
+- **UI developer:** /root/btt005_ui completed the finite typed client
+  presentation and its existing hover/focus/draft/full integration.
+- **test automator:** /root/ui027_test added deterministic Penance
+  execution-parity coverage for Shield, full Shell, partial Shell, ordinary
+  receipt, and no-mutation/RNG behaviour.
+- **independent reviewer:** /root/ui027_review identified the original
+  incorrect Shield semantics, reviewed the owner-approved correction, required
+  the public-contract and no-healing-event proof, then gave final approval.
+
+**Documentation:**
+
+- Added the dated engine audit and owner-decision studies under
+  docs/Codex/Analysis/, including the explicitly rejected adapter-only proposal
+  and its approved valid-direct-damage successor.
+- Updated docs/web-ui/BATTLE_DATA_CONTRACT_V1.md,
+  docs/web-ui/PYTHON_ADAPTER_API.md, docs/web-ui/WEB_UI_ARCHITECTURE.md,
+  docs/web-ui/Style_Guide.md, and docs/Technical/Architecture.md for the
+  finite Discipline transport, status-only primary, typed consequences, and
+  receipt gate.
+- Updated docs/GDD/Combat_System.md because the owner-approved selected-target
+  HP-loss gate changes live Penance mechanics. No other GDD change was needed.
+
+**Validation:**
+
+- Backend preview/adapter regression command covering BTT-001 through BTT-005,
+  battle adapter, and relevant Paladin compatibility — **242 passed**, with one
+  existing Starlette/httpx deprecation warning.
+- Python compile of heroes/priest.py, battle_api/adapter.py,
+  battle_api/models.py, and the BTT-005 tests — passed.
+- Focused frontend Transparency/audio suite — **52 passed**.
+- Frontend typecheck, quiet lint, and production build — passed. Build emitted
+  only Vinext's existing dynamic-route-classification informational notice.
+- git diff --check — passed.
+- Final independent review — **approved**.
+
+**Manual browser validation and limitation:**
+
+Ego Debug validation at 1613×838 confirmed the live Penance hover preview and
+selectable target controls in 1v1, 2v2, and 3v3. It displayed the expected
+server facts (Damage 17–21, Hit Chance, and Target HP), including 2v2 and 3v3
+enemy figures. The Debug builder has no deterministic status-state injector,
+so it could not manually construct Shield of Protection, Holy Word Redemption,
+or Shell receipt states on demand. Those exact Shield/full-Shell/partial-Shell
+and event-order branches are covered by deterministic engine/adapter parity
+tests above; no unsupported manual success is claimed.
+
+---
+
+
+## 2026-10-08 — UI-027: Game Manual, Hero Gallery, Battle Instruction, and Sound Preference
+
+**Summary:**
+
+Completed the Stage Map Game Manual with exactly Hero Gallery, Battle
+Instruction, and Sound On/Off choices. The Manual has a focus trap, initial
+Hero Gallery focus, Escape/backdrop/close return focus, and an explicit
+`/stages?manual=open` return protocol. The Gallery renders all ten
+backend-owned definitions with faculty filters, asset fallbacks, ownership from
+the active save slot, configured Base Ranges, stable active/passive skill
+inventory, genuine unlock routes (including Priest Discipline's current null
+route), accessible tab/panel behavior, and a recoverable retry error state.
+The guide is a read-only player-facing route. `SoundPreferenceProvider` starts
+SSR-safe, restores browser-local storage after mount, and gates only the
+existing central AudioManager; it does not replay history or change combat
+events.
+
+**Roles and review:**
+
+- **project coordination:** root preserved the task boundary, staged the
+  closure gates, and recorded scope/validation/documentation evidence.
+- **UI implementation:** Manual, Gallery, Instruction, responsive visual
+  composition, focus behavior, and central sound preference were implemented
+  against the read-only catalogue contract.
+- **engine/data:** the additive deterministic hero catalogue supplies ranges,
+  stable skill inventory, and unlock sources without hero construction, RNG,
+  or progression mutation.
+- **test automation:** `/root/ui027_test` repaired affected Stage Map mocks and
+  added focused Manual/Gallery/sound coverage.
+- **independent reviewer:** `/root/ui027_review` found the initial focus,
+  focus-return, hydration, tab semantics, retry, documentation, and coverage
+  gaps; after correction, it approved the implementation.
+
+**Documentation:**
+
+Updated `docs/web-ui/PYTHON_ADAPTER_API.md`,
+`docs/web-ui/BATTLE_DATA_CONTRACT_V1.md`,
+`docs/web-ui/WEB_UI_ARCHITECTURE.md`, `docs/web-ui/Screen_Flow.md`, and
+`docs/web-ui/Style_Guide.md`. No GDD mechanic document changed: UI-027 adds
+read-only presentation and preference behavior, not skills, values, target
+rules, progression rewards, or combat formulas.
+
+**Validation:**
+
+- `cd web-ui && npm test -- --run tests/ui-027-manual-gallery.test.tsx tests/ui-012-stage-selection.test.tsx tests/ui-023-arena-debug.test.tsx tests/ui-audio-boundary.test.tsx tests/audio-manager.test.ts tests/battle-audio.test.ts tests/presentation-audio-boundary.test.tsx` — **53 passed**. JSDOM reports its expected non-navigation warnings for route-link interactions.
+- `cd web-ui && npm run typecheck && npm run lint -- --quiet && npm run build` — passed.
+- `./.venv/bin/python -m pytest -q tests/test_ui027_gallery_metadata.py` — **7 passed**, with one existing Starlette/httpx deprecation warning; `python3 -m compileall -q battle_api` and `git diff --check` — passed.
+- Manual Ego browser validation covered Stage Map Manual ordering/focus return,
+  desktop Gallery (ten definitions, filters, configured ranges, skill panels,
+  vertical-only card scrolling), Battle Instruction, and a 390px narrow view
+  with no page/card horizontal overflow. Audible procedural playback was not
+  manually judged; injected AudioManager and presentation-queue tests cover
+  mute/re-enable and ordered non-replay behavior.
+
 ## 2026-09-20 — BATTLE-TRANSPARENCY-004: Paladin Holy and Protection
 
 **Summary:**

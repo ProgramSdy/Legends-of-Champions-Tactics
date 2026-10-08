@@ -257,6 +257,25 @@ _To be documented._
 - Ordered battle sounds follow authoritative active presentation events. Never
   infer sound from HP/status snapshots, log prose, rerenders, or client-side
   classification. Neutral/unknown status presentation remains silent.
+- The Manual sound control is a browser-local preference for this central audio
+  system. It defaults on until safely restored after mount, never blocks a
+  control when storage is unavailable, and does not alter combat authority or
+  event ordering.
+
+### Game Manual and Hero Gallery
+
+- The Stage Map Manual is a compact focus-contained dialog with exactly three
+  primary options: Hero Gallery, Battle Instruction, and Sound On/Off. Initial
+  focus belongs on Hero Gallery; Escape and every close path restore the Manual
+  trigger.
+- The Hero Gallery uses a cinematic two-region desktop composition: filters and
+  selectable roster cards on the left, selected aspect-preserving figure art
+  and factual profile content on the right. Narrow layouts stack in reading
+  order and use vertical, never horizontal, card-pane scrolling.
+- Gallery values are labelled **Base Range** and remain authoritative catalogue
+  ranges, not combat predictions. Active/passive skill controls use keyboard
+  accessible tabs and expose only registered skills; unavailable ownership and
+  absent unlock routes stay textual as well as visual.
 
 ## Team Builder
 
@@ -304,6 +323,18 @@ _To be documented._
   notification, which announces the backend message and focuses Continue.
 
 ## Change Log
+
+- 2026-10-08 — Completed finite Battle Information Transparency coverage for
+  Priest Discipline, and therefore all ten approved web specializations.
+  Penance uses server-authored ally Healing or opponent Damage/Hit Chance;
+  same-caster Redemption-linked heals are compact named recipient rows and
+  only occur after a hit produces positive selected-target HP loss; blocked or
+  fully absorbed Penance shows no linked-healing row. Redemption is a status-only card—never a fake zero-value
+  damage/heal—and unsafe legacy extra-recipient/foreign-source states are
+  plainly unavailable. Punishment follows its published cardinality for
+  draft/full selection, displays per-target application/already-active state,
+  and never shows an aggregate or future periodic total. React calculates none
+  of these facts.
 
 - 2026-09-20 — Extended Battle Information Transparency to the six approved
   active Paladin Protection/Holy skills. Targetless Shield of Protection uses

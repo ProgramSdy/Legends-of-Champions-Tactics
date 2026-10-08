@@ -299,6 +299,18 @@ function isBattlePreviewConsequence(value: unknown): boolean {
       && value.maximumRemovals === 1
       && typeof value.mayRemoveNone === "boolean";
   }
+  if (value.kind === "holyWordRedemption") {
+    return value.certainty === "always"
+      && typeof value.recipientId === "string"
+      && value.duration === 5
+      && (value.outcome === "firstApplication" || value.outcome === "durationRefresh");
+  }
+  if (value.kind === "holyWordPunishment") {
+    return value.certainty === "onHit"
+      && typeof value.recipientId === "string"
+      && ((value.outcome === "firstApplication" && value.duration === 4)
+        || (value.outcome === "alreadyActive" && value.duration === null));
+  }
   return value.kind === "damageImmunity"
     && value.certainty === "always"
     && typeof value.recipientId === "string"
@@ -344,17 +356,20 @@ function isBattlePreview(value: unknown): value is BattlePreview {
       || typeof target.targetId !== "string"
       || !Number.isFinite(target.currentHp)
       || !Number.isFinite(target.maxHp)
-      || !isRecord(target.primary)
-      || (target.primary.kind !== "damage" && target.primary.kind !== "healing" && target.primary.kind !== "prevented")
-      || !isPreviewAmountRange(target.primary.amountRange)
-      || !(target.primary.reasonId === undefined || isNullableString(target.primary.reasonId))
       || !(target.directHitChancePercent === null
         || (Number.isFinite(target.directHitChancePercent)
           && Number(target.directHitChancePercent) >= 0
           && Number(target.directHitChancePercent) <= 100))
-      || (target.primary.kind === "healing" && target.directHitChancePercent !== null)
-      || (target.primary.kind === "damage" && !Number.isFinite(target.directHitChancePercent))
       || !Array.isArray(target.consequences)) return false;
+
+    if (target.primary === null) {
+      if (target.directHitChancePercent !== null) return false;
+    } else if (!isRecord(target.primary)
+      || (target.primary.kind !== "damage" && target.primary.kind !== "healing" && target.primary.kind !== "prevented")
+      || !isPreviewAmountRange(target.primary.amountRange)
+      || !(target.primary.reasonId === undefined || isNullableString(target.primary.reasonId))
+      || (target.primary.kind === "healing" && target.directHitChancePercent !== null)
+      || (target.primary.kind === "damage" && !Number.isFinite(target.directHitChancePercent))) return false;
 
     return target.consequences.every(isBattlePreviewConsequence);
   });

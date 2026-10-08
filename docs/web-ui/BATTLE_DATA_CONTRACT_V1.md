@@ -533,6 +533,19 @@ The development transport is JSON HTTP:
 - `GET /api/v1/battles/{battleId}`
 - `POST /api/v1/battles/{battleId}/commands`
 
+### Hero Gallery catalogue extension
+
+`GET /api/v1/heroes` remains the stable full ten-definition catalogue used by
+Team Builder and locked-enemy validation. For the Game Manual it additionally
+returns four configured starting-stat ranges and seven resistance ranges per
+definition (`id`, `label`, `minimum`, `maximum`), stable skill inventory items
+(`skillId`, `displayName`, `isPassive`), and an `unlockSource` of `starter`, a
+stage-reward descriptor, or `null`. This extension is read-only and
+deterministic: it neither constructs heroes nor consumes session/module RNG.
+It describes configuration ranges, not a combat roll. Active-save ownership is
+still supplied only by `GET /api/v1/progression`; React may not derive it from
+catalogue text or unlock routes.
+
 Sessions are process-local and disappear on restart. A session stores its own
 Python `random` state; the adapter swaps that state around engine calls under a
 session lock. This makes seeded single-session tests reproducible without
@@ -559,12 +572,15 @@ Hammer of Revenge/Shield of Righteous/Heroric Charge; Paladin Holy Purify
 Healing/Holy Blast/Shield of Protection; and every active skill of the three
 published Warrior definitions: Defence Devastate/Shield
 Bash/Thunder Pot, Weapon Master Fatal Strike/Armor Crush/Antivenom Potion, and
-Berserker Moon Slash/Warlust/Strike of Meteorite. It is deliberately not a
+Berserker Moon Slash/Warlust/Strike of Meteorite; and Priest Discipline
+Penance/Holy Word Redemption/Holy Word Punishment. It is deliberately not a
 generic roster or healing-preview fallback. Protection's passive Holy Aura is
 explicitly excluded.
 
 Each target supplies authoritative current/max HP and one immediate primary
-fact: direct `damage`, `healing`, or deterministic `prevented`. Damage carries
+fact: direct `damage`, `healing`, deterministic `prevented`, or status-only
+`null`. Status-only `null` is finite and currently used only for Holy Word
+Redemption; it requires `directHitChancePercent: null`. Damage carries
 the existing evasion-only direct Hit Chance; healing carries `null` because it
 has no direct-evasion check. A healing range is post-modifier skill power before
 the live maximum-HP cap, so a full-health target still shows the heal it would
@@ -602,8 +618,8 @@ type BattlePreviewResponse = {
         kind: "damage" | "healing" | "prevented";
         amountRange: { min: number; max: number };
         reasonId?: string;
-      };
-      // Numeric for damage/prevented; null for healing.
+      } | null;
+      // Numeric for damage/prevented; null for healing/status-only.
       directHitChancePercent: number | null;
       consequences: Array<{
         kind: "bleed" | "poison" | "cold";
@@ -614,9 +630,21 @@ type BattlePreviewResponse = {
         certainty: "onHit";
       } | {
         kind: "secondaryHealing";
-        certainty: "always";
+        certainty: "always" | "onHit";
         recipientId: string;
         amountRange: { min: number; max: number };
+      } | {
+        kind: "holyWordRedemption";
+        certainty: "always";
+        recipientId: string;
+        duration: 5;
+        outcome: "firstApplication" | "durationRefresh";
+      } | {
+        kind: "holyWordPunishment";
+        certainty: "onHit";
+        recipientId: string;
+        duration: 4 | null;
+        outcome: "firstApplication" | "alreadyActive";
       } | {
         // Effective immediate target-damage contribution after live receipt.
         kind: "wrathDamageBonus";

@@ -822,6 +822,8 @@ class BattleAdapter:
             if isinstance(actor, Rogue_Comprehensiveness)
             else {"Holy Smite", "Shadow Word Pain", "Binding Heal"}
             if isinstance(actor, Priest_Comprehensiveness)
+            else {"Penance", "Holy Word Redemption", "Holy Word Punishment"}
+            if isinstance(actor, Priest_Discipline)
             else {"Hammer of Anger", "Crusader Strike", "Flash of Light"}
             if isinstance(actor, Paladin_Retribution)
             else {"Hammer of Revenge", "Shield of Righteous", "Heroric Charge"}
@@ -870,6 +872,7 @@ class BattleAdapter:
             "Thunder Pot",
             "Moon Slash",
             "Holy Blast",
+            "Holy Word Punishment",
         }:
             if not 1 <= len(target_ids) <= maximum_targets:
                 raise BattleAdapterError(
@@ -958,6 +961,133 @@ class BattleAdapter:
             for raw_healing in range(raw_range[0], raw_range[1] + 1)
         ]
         return min(received), max(received)
+
+    @staticmethod
+    def _discipline_direct_damage_values(skill_name: str) -> tuple[int, ...] | None:
+        """Enumerate Discipline's audited immediate raw damage without RNG."""
+        if skill_name == "Penance":
+            return tuple(range(17, 22))
+        if skill_name == "Holy Word Punishment":
+            return tuple(range(7, 12))
+        return None
+
+    @staticmethod
+    def _discipline_healing_range(skill_name: str) -> tuple[int, int] | None:
+        """Return Penance's ally-branch base healing power without executing it."""
+        return (21, 25) if skill_name == "Penance" else None
+
+    @staticmethod
+    def _discipline_redemption_records(actor) -> list[tuple[Any, Any]] | None:
+        """Mirror Penance's legacy discovery loop or reject leaked-effect ambiguity.
+
+        Penance later reads the loop variable named ``buff`` rather than each
+        recipient's matching Redemption record.  A later unrelated buff can
+        therefore author every linked heal.  Preview does not advertise a
+        recipient-specific range for that malformed mixed-record state.
+        """
+        records: list[tuple[Any, Any]] = []
+        leaked_buff = None
+        for ally in actor.allies:
+            for buff in ally.buffs:
+                leaked_buff = buff
+                if buff.name == "Holy Word Redemption" and buff.initiator is actor:
+                    records.append((ally, buff))
+                    break
+        if not records:
+            return []
+        if (
+            leaked_buff is None
+            or leaked_buff.name != "Holy Word Redemption"
+            or leaked_buff.initiator is not actor
+            or any(record.effect != leaked_buff.effect for _, record in records)
+        ):
+            return None
+        return records
+
+    @classmethod
+    def _discipline_secondary_healing_range(
+        cls,
+        actor,
+        skill_name: str,
+        recipient,
+        redemption,
+        linked_count: int,
+    ) -> tuple[int, int] | None:
+        """Mirror only immediate same-caster Redemption healing boundaries."""
+        if not isinstance(redemption.effect, (int, float)):
+            return None
+        values: list[int] = []
+        if skill_name == "Penance":
+            raw_values = (
+                round(redemption.effect * direct_damage)
+                for direct_damage in range(17, 22)
+            )
+        elif skill_name == "Holy Word Punishment":
+            coefficient = actor.take_healing_coefficient(linked_count)
+            raw_values = (
+                round(
+                    (math.ceil(redemption.effect * direct_damage) + variation)
+                    * coefficient
+                )
+                for direct_damage in range(7, 12)
+                for variation in range(-1, 2)
+            )
+        else:
+            return None
+        for raw_healing in raw_values:
+            values.append(cls._apply_audited_healing_receipt(recipient, raw_healing))
+        return min(values), max(values)
+
+    def _discipline_secondary_healing_consequences(
+        self, session, actor, skill
+    ) -> list[dict[str, Any]] | None:
+        linked = self._discipline_redemption_records(actor)
+        if linked is None:
+            return None
+        consequences: list[dict[str, Any]] = []
+        for recipient, redemption in linked:
+            amount_range = self._discipline_secondary_healing_range(
+                actor,
+                skill.name,
+                recipient,
+                redemption,
+                len(linked),
+            )
+            if amount_range is None:
+                return None
+            consequences.append(
+                {
+                    "kind": "secondaryHealing",
+                    "certainty": "onHit",
+                    "recipientId": self._combatant_id(session, recipient),
+                    "amountRange": {
+                        "min": amount_range[0],
+                        "max": amount_range[1],
+                    },
+                }
+            )
+        return consequences
+
+    @staticmethod
+    def _discipline_redemption_outcome(actor, target) -> str | None:
+        """Classify safe selected-target Redemption state; ambiguity is unavailable."""
+        # The live low-HP branch consumes RNG and may author a second recipient.
+        if len(actor.allies) > 1 and actor.hp <= round(0.75 * actor.hp_max):
+            return None
+        matching = [
+            buff
+            for buff in target.buffs
+            if buff.name == "Holy Word Redemption" and buff.initiator is actor
+        ]
+        foreign = [
+            buff
+            for buff in target.buffs
+            if buff.name == "Holy Word Redemption" and buff.initiator is not actor
+        ]
+        active = bool(target.status.get("holy_word_redemption", False))
+        if foreign or active != bool(matching):
+            return None
+        return "durationRefresh" if active else "firstApplication"
 
     def _unavailable_preview(self, session, request) -> dict[str, Any]:
         return {
@@ -1475,6 +1605,32 @@ class BattleAdapter:
             and not prevented
         ):
             return [{"kind": "cold", "certainty": "onHit"}]
+        if isinstance(actor, Priest_Discipline):
+            if prevented or target not in actor.opponents:
+                return []
+            consequences: list[dict[str, Any]] = []
+            if skill.name == "Holy Word Punishment":
+                first_application = not target.status.get(
+                    "holy_word_punishment", False
+                )
+                consequences.append(
+                    {
+                        "kind": "holyWordPunishment",
+                        "certainty": "onHit",
+                        "recipientId": self._combatant_id(session, target),
+                        "duration": 4 if first_application else None,
+                        "outcome": (
+                            "firstApplication" if first_application else "alreadyActive"
+                        ),
+                    }
+                )
+            if skill.name in {"Penance", "Holy Word Punishment"}:
+                linked_healing = self._discipline_secondary_healing_consequences(
+                    session, actor, skill
+                )
+                if linked_healing is not None:
+                    consequences.extend(linked_healing)
+            return consequences
         if isinstance(actor, Priest_Comprehensiveness):
             if (
                 skill.name == "Shadow Word Pain"
@@ -1832,6 +1988,21 @@ class BattleAdapter:
         }
 
     def _evaluate_preview(self, session, actor, skill, targets, request):
+        redemption_outcome = None
+        if isinstance(actor, Priest_Discipline):
+            if skill.name == "Holy Word Redemption":
+                redemption_outcome = self._discipline_redemption_outcome(
+                    actor, targets[0]
+                )
+                if redemption_outcome is None:
+                    return self._unavailable_preview(session, request)
+            elif skill.name in {"Penance", "Holy Word Punishment"}:
+                redemption_records = self._discipline_redemption_records(actor)
+                if redemption_records is None or any(
+                    not isinstance(redemption.effect, (int, float))
+                    for _, redemption in redemption_records
+                ):
+                    return self._unavailable_preview(session, request)
         if (
             isinstance(actor, Warrior_Weapon_Master)
             and skill.name == "Antivenom Potion"
@@ -1887,17 +2058,79 @@ class BattleAdapter:
         target_results = []
         for target_index, target in enumerate(targets):
             target_id = self._combatant_id(session, target)
-            is_healing = skill.skill_type == "healing"
+            is_discipline_penance = (
+                isinstance(actor, Priest_Discipline) and skill.name == "Penance"
+            )
+            is_healing = skill.skill_type == "healing" or (
+                is_discipline_penance and target in actor.allies
+            )
+            is_status_only = (
+                isinstance(actor, Priest_Discipline)
+                and skill.name == "Holy Word Redemption"
+            )
             prevention = (
-                None if is_healing else self._deterministic_prevention(skill, target)
+                "prevention.allDamage"
+                if (
+                    is_discipline_penance
+                    and target in actor.opponents
+                    and target.status.get("shield_of_protection", False)
+                )
+                else None
+                if is_healing or is_status_only or is_discipline_penance
+                else self._deterministic_prevention(skill, target)
             )
+            penance_receipt_prevented = False
+            if (
+                is_discipline_penance
+                and target in actor.opponents
+                and prevention is None
+            ):
+                # Redemption may follow opponent Penance only when the selected
+                # target actually loses HP after its authoritative receipt. A
+                # partially absorbing receipt is not representable by the
+                # finite linked-healing contract without false precision.
+                received = [
+                    self._apply_audited_damage_receipt(
+                        target,
+                        target.take_damage_calculation(
+                            raw_damage, skill.attack_type, actor
+                        ),
+                    )[0]
+                    for raw_damage in self._discipline_direct_damage_values(
+                        skill.name
+                    )
+                ]
+                penance_receipt_prevented = max(received) == 0
+                if (
+                    min(received) == 0 < max(received)
+                    and self._discipline_redemption_records(actor)
+                ):
+                    return self._unavailable_preview(session, request)
             consequences = self._preview_consequences(
-                session, actor, skill, target, prevented=prevention is not None
+                session,
+                actor,
+                skill,
+                target,
+                prevented=prevention is not None or penance_receipt_prevented,
             )
-            if is_healing:
+            if is_status_only:
+                consequences = [
+                    {
+                        "kind": "holyWordRedemption",
+                        "certainty": "always",
+                        "recipientId": target_id,
+                        "duration": 5,
+                        "outcome": redemption_outcome,
+                    }
+                ]
+                primary = None
+                direct_hit_chance = None
+            elif is_healing:
                 raw_range = (
                     self._paladin_healing_range(skill.name)
                     if isinstance(actor, Paladin_Holy)
+                    else self._discipline_healing_range(skill.name)
+                    if isinstance(actor, Priest_Discipline)
                     else actor.audited_healing_range(skill.name)
                 )
                 if raw_range is None:
@@ -1908,6 +2141,11 @@ class BattleAdapter:
                 primary_kind = "healing"
                 primary_reason = None
                 direct_hit_chance = None
+                primary = {
+                    "kind": primary_kind,
+                    "amountRange": {"min": minimum, "max": maximum},
+                    "reasonId": primary_reason,
+                }
                 if (
                     isinstance(actor, Priest_Comprehensiveness)
                     and skill.name == "Binding Heal"
@@ -1936,6 +2174,11 @@ class BattleAdapter:
                 primary_kind = "prevented"
                 primary_reason = prevention
                 direct_hit_chance = self._direct_hit_chance_percent(target)
+                primary = {
+                    "kind": primary_kind,
+                    "amountRange": {"min": minimum, "max": maximum},
+                    "reasonId": primary_reason,
+                }
             else:
                 raw_range = (
                     self._paladin_direct_damage_values(
@@ -1946,6 +2189,8 @@ class BattleAdapter:
                         targets=targets,
                     )
                     if isinstance(actor, (Paladin_Protection, Paladin_Holy))
+                    else self._discipline_direct_damage_values(skill.name)
+                    if isinstance(actor, Priest_Discipline)
                     else actor.audited_direct_damage_range(skill.name, target)
                 )
                 if raw_range is None:
@@ -1970,16 +2215,17 @@ class BattleAdapter:
                     primary_kind = "damage"
                     primary_reason = None
                 direct_hit_chance = self._direct_hit_chance_percent(target)
+                primary = {
+                    "kind": primary_kind,
+                    "amountRange": {"min": minimum, "max": maximum},
+                    "reasonId": primary_reason,
+                }
             target_results.append(
                 {
                     "targetId": target_id,
                     "currentHp": target.hp,
                     "maxHp": target.hp_max,
-                    "primary": {
-                        "kind": primary_kind,
-                        "amountRange": {"min": minimum, "max": maximum},
-                        "reasonId": primary_reason,
-                    },
+                    "primary": primary,
                     "directHitChancePercent": direct_hit_chance,
                     "consequences": consequences,
                 }

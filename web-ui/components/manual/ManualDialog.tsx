@@ -12,9 +12,16 @@ type ManualDialogProps = {
 
 const FOCUSABLE_SELECTOR = "button:not(:disabled), a[href], [tabindex]:not([tabindex='-1'])";
 
+function focusableInManual(dialog: HTMLElement | null): HTMLElement[] {
+  const focusable = Array.from(dialog?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR) ?? []);
+  const close = focusable.find((element) => element.classList.contains("manual-close"));
+  return close ? [...focusable.filter((element) => element !== close), close] : focusable;
+}
+
 export function ManualDialog({ open, onClose, triggerRef }: ManualDialogProps) {
   const router = useRouter();
   const dialogRef = useRef<HTMLElement>(null);
+  const firstOptionRef = useRef<HTMLButtonElement>(null);
   const { enabled, toggle } = useSoundPreference();
 
   useEffect(() => {
@@ -22,12 +29,12 @@ export function ManualDialog({ open, onClose, triggerRef }: ManualDialogProps) {
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
-        onClose();
+        closeAndRestoreFocus();
       }
     };
     window.addEventListener("keydown", onKeyDown);
     window.requestAnimationFrame(() => {
-      dialogRef.current?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR)?.focus();
+      firstOptionRef.current?.focus();
     });
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [onClose, open]);
@@ -39,7 +46,7 @@ export function ManualDialog({ open, onClose, triggerRef }: ManualDialogProps) {
 
   function trapFocus(event: KeyboardEvent<HTMLElement>) {
     if (event.key !== "Tab") return;
-    const focusable = Array.from(dialogRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR) ?? []);
+    const focusable = focusableInManual(dialogRef.current);
     if (focusable.length === 0) return;
     const first = focusable[0];
     const last = focusable.at(-1)!;
@@ -74,7 +81,7 @@ export function ManualDialog({ open, onClose, triggerRef }: ManualDialogProps) {
           <button type="button" className="manual-close" onClick={closeAndRestoreFocus} aria-label="Close Game Manual">×</button>
         </header>
         <div className="manual-options" aria-label="Game Manual options">
-          <button type="button" onClick={() => router.push("/manual/heroes")}>
+          <button ref={firstOptionRef} type="button" onClick={() => router.push("/manual/heroes")}>
             <span aria-hidden="true">♜</span><strong>Hero Gallery</strong><small>Browse every approved specialization</small>
           </button>
           <button type="button" onClick={() => router.push("/manual/battle-instruction")}>

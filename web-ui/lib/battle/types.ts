@@ -532,6 +532,20 @@ export type BattlePreviewConsequence =
     recipientId: string;
     duration: 2;
     outcome: "firstApplication" | "durationRefresh";
+  }
+  | {
+    kind: "holyWordRedemption";
+    certainty: "always";
+    recipientId: string;
+    duration: 5;
+    outcome: "firstApplication" | "durationRefresh";
+  }
+  | {
+    kind: "holyWordPunishment";
+    certainty: "onHit";
+    recipientId: string;
+    duration: 4 | null;
+    outcome: "firstApplication" | "alreadyActive";
   };
 
 export interface BattlePreviewSelf {
@@ -554,7 +568,7 @@ export interface BattlePreviewTarget {
     kind: "damage" | "healing" | "prevented";
     amountRange: { min: number; max: number };
     reasonId?: string | null;
-  };
+  } | null;
   /** Server-authoritative direct-evasion chance; null for healing. */
   directHitChancePercent: number | null;
   consequences: BattlePreviewConsequence[];

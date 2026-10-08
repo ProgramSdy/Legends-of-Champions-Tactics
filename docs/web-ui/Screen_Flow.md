@@ -17,6 +17,10 @@ Load application
               -> occupied slot: confirm overwrite -> replace and activate -> Stage Selection
            -> LOAD GAME -> choose occupied slot -> activate -> Stage Selection
         -> Stage Selection
+           -> MANUAL
+              -> Hero Gallery (/manual/heroes) -> Back to Manual
+              -> Battle Instruction (/manual/battle-instruction) -> Back to Manual
+              -> Sound On/Off (browser-local central audio preference)
            -> Arena (/game)
               -> Load approved roster from GET /api/v1/heroes
                  -> Loading state
@@ -258,6 +262,12 @@ flow. Its return link navigates directly to `/game`.
 - `/` opens the cinematic title scene. START GAME opens the five-slot New Game /
   Load Game dialog without navigating.
 - `/stages` opens the stage-selection map without creating a battle session.
+- The Stage Map **Manual** opens a focus-contained dialog with exactly Hero
+  Gallery, Battle Instruction, and Sound On/Off. Escape, its close control, or
+  backdrop close returns focus to Manual. `/manual/heroes` and
+  `/manual/battle-instruction` return to `/stages?manual=open`; neither route
+  creates a battle session or changes progression. Sound preference is local to
+  the browser and gates central UI and battle audio only.
 - `/game` and `/game?stage=arena` open the active-slot Arena Run hub.
 - `/debug` opens the full-roster Engineering Test & Debugging builder without
   a progression/save-slot request or write.

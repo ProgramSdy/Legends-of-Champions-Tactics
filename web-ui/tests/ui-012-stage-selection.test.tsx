@@ -12,7 +12,12 @@ import { audioManager } from "@/lib/audio/AudioManager";
 const push = vi.fn();
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push }),
+  useRouter: () => ({ push, replace: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
+}));
+vi.mock("@/components/audio/SoundPreferenceProvider", () => ({
+  SoundPreferenceProvider: ({ children }: { children: React.ReactNode }) => children,
+  useSoundPreference: () => ({ enabled: true, toggle: vi.fn() }),
 }));
 
 afterEach(() => {
@@ -62,7 +67,7 @@ describe("UI-012 stage-selection flow", () => {
     expect(screen.getByRole("button", { name: "Enter Arena" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Enter Warrior's Barrack" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Enter Paladin's Altar" })).toBeVisible();
-    expect(screen.getAllByRole("button")).toHaveLength(3);
+    expect(screen.getAllByRole("button")).toHaveLength(4);
     for (const name of ["Mage's Tower", "Rogue's Forest", "Priest's Cathedral"]) {
       expect(screen.queryByRole("button", { name: new RegExp(name, "i") })).not.toBeInTheDocument();
     }

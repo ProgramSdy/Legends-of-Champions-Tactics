@@ -11,7 +11,14 @@ import { UiAudioBoundary } from "@/components/audio/UiAudioBoundary";
 import { audioManager } from "@/lib/audio/AudioManager";
 
 const routerReplace = vi.fn();
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: routerReplace }) }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), replace: routerReplace }),
+  useSearchParams: () => new URLSearchParams(),
+}));
+vi.mock("@/components/audio/SoundPreferenceProvider", () => ({
+  SoundPreferenceProvider: ({ children }: { children: React.ReactNode }) => children,
+  useSoundPreference: () => ({ enabled: true, toggle: vi.fn() }),
+}));
 
 const roster: HeroDefinitionSummary[] = [
   ["hero.warrior.weapon_master", "Ragnar", "Warrior", "Weapon Master"],
@@ -93,7 +100,7 @@ describe("UI-023 Stage Map and debug boundary", () => {
     render(<StageSelectionScreen />);
     expect(screen.getByRole("link", { name: "Return to Game Start" })).toHaveAttribute("href", "/");
     expect(screen.getByRole("link", { name: "Open Engineering Test and Debugging" })).toHaveAttribute("href", "/debug");
-    expect(screen.getAllByRole("button")).toHaveLength(3);
+    expect(screen.getAllByRole("button")).toHaveLength(4);
   });
 
   it("loads only the full roster and keeps a clear Stage Map return route", async () => {

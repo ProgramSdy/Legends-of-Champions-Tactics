@@ -541,9 +541,16 @@ class Priest_Discipline(Priest):
               break
         if ally_with_buff:
           self.game.display_battle_info(f"{self.name} casts Penance at {other_hero.name}.")
+          target_hp_before_receipt = other_hero.hp
+          damage_result = other_hero.take_damage(damage_dealt, attack_type, self)
           self.game.display_battle_info(
-              f"{other_hero.take_damage(damage_dealt, attack_type, self)}"
+              f"{damage_result}"
           )
+          # Redemption is earned only when the selected opponent actually
+          # loses HP after the authoritative damage receipt.  A blocked or
+          # fully absorbed Penance must not trigger its linked healing.
+          if other_hero.hp >= target_hp_before_receipt:
+              return damage_result
           #print("Holy light shines upon ally heroes")
           buff_healing = round(buff.effect * damage_dealt)
           variation = random.randint(-1, 1)
