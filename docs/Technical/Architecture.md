@@ -87,6 +87,11 @@ combat.
   concrete hero classes resolve all live rules.
 - **Battle Screen (Next.js):** renders snapshots, queues supplied events, and
   uses a presentation-only formation registry for figure coordinates/depth.
+- **Hero Gallery catalogue (Python + generated editorial registry):** extends
+  the static roster response with deterministic skill-reference facts without
+  constructing heroes or touching combat/session/RNG state. Human-editable
+  YAML is strictly compiled into a typed frontend module before dev/build; it
+  contains prose only and cannot author mechanics or numeric facts.
 
 ## Ownership Boundaries
 
@@ -100,6 +105,8 @@ combat.
 | Browser display mode and shared actor browser-size rate | Next.js battle presentation configuration |
 | Five-slot selection, training unlocks, stage progress, generic reward counts, Arena Run state | SQLite progression store / FastAPI |
 | Profile naming/deletion, active-battle recovery, inventory/equipment, cloud/account saves | Not implemented |
+| Gallery target semantics, classifications, numeric reference availability | Python static catalogue / audited registry |
+| Gallery introductions, battle styles, skill prose, optional tips | Validated generated editorial content |
 
 The formation registry must never assign combat positions or decide legal
 targets. Conversely, visual 3v3 depth is formation-, side-, and slot-specific

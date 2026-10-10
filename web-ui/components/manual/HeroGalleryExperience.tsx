@@ -4,14 +4,56 @@ import { useCallback, useEffect, useMemo, useState, type KeyboardEvent } from "r
 import Link from "next/link";
 import { AssetImage } from "@/components/battle/AssetImage";
 import { fetchHeroGalleryRoster, fetchPlayerProgression } from "@/lib/battle/liveProvider";
-import type { HeroGalleryDefinition } from "@/lib/battle/types";
-import { heroManualContent } from "@/lib/manual/heroManualContent";
+import type { HeroGalleryDefinition, HeroSkillInventoryItem } from "@/lib/battle/types";
+import { heroGalleryContent } from "@/lib/manual/heroGalleryContent";
+import type { HeroGallerySkillContent } from "@/lib/manual/heroGalleryContentTypes";
+import { buildSkillReferenceRows } from "@/lib/manual/heroGalleryPresentation";
 
 type State = { heroes: HeroGalleryDefinition[]; owned: Set<string> | null; error: string | null };
 type SkillTab = "active" | "passive";
 
 const ACTIVE_TAB_ID = "hero-skill-tab-active";
 const PASSIVE_TAB_ID = "hero-skill-tab-passive";
+
+export function SkillReferenceCard({ skill, content }: { skill: HeroSkillInventoryItem; content: HeroGallerySkillContent }) {
+  const rows = buildSkillReferenceRows(skill.reference);
+  return (
+    <details>
+      <summary>{skill.displayName}</summary>
+      <div className="skill-reference-copy">
+        <p>{content.introduction}</p>
+        <dl className="skill-reference-grid">
+          {rows.map((row) => (
+            <div key={row.id}>
+              <dt>{row.label}</dt>
+              <dd>
+                <strong>{row.value}</strong>
+                {row.note && <small>{row.note}</small>}
+                {!!row.conditions?.length && (
+                  <ul aria-label={`${row.label} conditions`}>
+                    {row.conditions.map((condition) => (
+                      <li key={condition.label}>
+                        <span>{condition.label}</span>
+                        <strong>{condition.amountRange.minimum === condition.amountRange.maximum
+                          ? condition.amountRange.minimum
+                          : `${condition.amountRange.minimum}–${condition.amountRange.maximum}`}</strong>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </dd>
+            </div>
+          ))}
+        </dl>
+        {!!content.tips?.length && (
+          <aside className="skill-reference-tips" aria-label={`${skill.displayName} strategy tips`}>
+            {content.tips.map((tip) => <p key={`${tip.label}:${tip.text}`}><strong>{tip.label}</strong>{tip.text}</p>)}
+          </aside>
+        )}
+      </div>
+    </details>
+  );
+}
 
 export function HeroGalleryExperience() {
   const [state, setState] = useState<State>({ heroes: [], owned: null, error: null });
@@ -43,7 +85,7 @@ export function HeroGalleryExperience() {
   );
   const heroes = state.heroes.filter((hero) => faculty === "All" || hero.faculty === faculty);
   const hero = state.heroes.find((item) => item.definitionId === (selected ?? heroes[0]?.definitionId)) ?? null;
-  const content = hero ? heroManualContent[hero.definitionId] : null;
+  const content = hero ? heroGalleryContent[hero.definitionId] : null;
   const active = hero?.skills.filter((skill) => !skill.isPassive) ?? [];
   const passive = hero?.skills.filter((skill) => skill.isPassive) ?? [];
   const panelId = `hero-skill-panel-${skillTab}`;
@@ -112,7 +154,11 @@ export function HeroGalleryExperience() {
                   <button id={PASSIVE_TAB_ID} role="tab" type="button" tabIndex={skillTab === "passive" ? 0 : -1} aria-selected={skillTab === "passive"} aria-controls="hero-skill-panel-passive" onKeyDown={onSkillTabKeyDown} onClick={() => setSkillTab("passive")}>Passive ({passive.length})</button>
                 </div>
                 <div id={panelId} role="tabpanel" aria-labelledby={skillTab === "active" ? ACTIVE_TAB_ID : PASSIVE_TAB_ID} tabIndex={0}>
-                  {skillTab === "active" ? active.map((skill) => <details key={skill.skillId}><summary>{skill.displayName}</summary><p>{content.skills[skill.skillId] ?? "Authoritative skill details are available in battle."}</p></details>) : passive.length ? passive.map((skill) => <details key={skill.skillId}><summary>{skill.displayName}</summary><p>{content.skills[skill.skillId]}</p></details>) : <p className="manual-na">N/A</p>}
+                  {skillTab === "active"
+                    ? active.map((skill) => <SkillReferenceCard key={skill.skillId} skill={skill} content={content.skills[skill.skillId]} />)
+                    : passive.length
+                      ? passive.map((skill) => <SkillReferenceCard key={skill.skillId} skill={skill} content={content.skills[skill.skillId]} />)
+                      : <p className="manual-na">N/A</p>}
                 </div>
                 <p className="ownership-copy">{state.owned === null ? "Ownership unavailable without an active save slot." : state.owned.has(hero.definitionId) ? "Owned in the active save slot." : hero.unlockSource?.kind === "stageReward" ? `Locked · Reward from ${hero.unlockSource.stageDisplayName}, Battle ${hero.unlockSource.battleIndex}.` : hero.unlockSource?.kind === "starter" ? "Starter definition for a new save slot." : "Locked · No current unlock route."}</p>
               </section>

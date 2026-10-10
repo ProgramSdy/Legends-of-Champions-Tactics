@@ -173,6 +173,127 @@ HERO_SKILL_INVENTORY: dict[str, tuple[tuple[str, str, bool], ...]] = {
     ),
 }
 
+
+@dataclass(frozen=True)
+class _HeroSkillReferenceDefinition:
+    """Static, audited inputs for the read-only Hero Gallery catalogue.
+
+    This deliberately contains no callbacks or hero objects.  Runtime battle
+    legality continues to come from ``Skill`` instances; exhaustive parity
+    tests keep this no-construction catalogue aligned with those definitions.
+    """
+
+    skill_type: Literal["damage", "healing", "damage_healing", "buffs", "effect"]
+    target_type: Literal["single", "multi", "self"] = "single"
+    target_quantity: int = 1
+    attack_type: str = "NA"
+    damage_nature: str = "NA"
+    damage_type: str = "NA"
+
+
+HERO_SKILL_REFERENCE_DEFINITIONS: dict[str, _HeroSkillReferenceDefinition] = {
+    "skill.priest.holy_smite": _HeroSkillReferenceDefinition(
+        "damage", attack_type="ranged_instant", damage_nature="magical", damage_type="holy"
+    ),
+    "skill.priest.shadow_word_pain": _HeroSkillReferenceDefinition(
+        "damage", attack_type="ranged_instant", damage_nature="magical", damage_type="shadow"
+    ),
+    "skill.priest.binding_heal": _HeroSkillReferenceDefinition("healing"),
+    "skill.priest.penance": _HeroSkillReferenceDefinition(
+        "damage_healing", attack_type="ranged_instant"
+    ),
+    "skill.priest.holy_word_redemption": _HeroSkillReferenceDefinition("buffs"),
+    "skill.priest.holy_word_punishment": _HeroSkillReferenceDefinition(
+        "damage", target_type="multi", target_quantity=2, attack_type="ranged_instant"
+    ),
+    "skill.paladin.hammer_of_anger": _HeroSkillReferenceDefinition(
+        "damage", attack_type="ranged_projectile"
+    ),
+    "skill.paladin.crusader_strike": _HeroSkillReferenceDefinition(
+        "damage", attack_type="melee"
+    ),
+    "skill.paladin.flash_of_light": _HeroSkillReferenceDefinition("healing"),
+    "skill.paladin.hammer_of_revenge": _HeroSkillReferenceDefinition(
+        "damage", attack_type="ranged_instant"
+    ),
+    "skill.paladin.shield_of_righteous": _HeroSkillReferenceDefinition(
+        "damage", attack_type="melee"
+    ),
+    "skill.paladin.heroric_charge": _HeroSkillReferenceDefinition(
+        "damage", attack_type="ranged_instant"
+    ),
+    "skill.paladin.holy_aura": _HeroSkillReferenceDefinition(
+        "effect", target_type="self", target_quantity=0
+    ),
+    "skill.paladin.purify_healing": _HeroSkillReferenceDefinition("healing"),
+    "skill.paladin.holy_blast": _HeroSkillReferenceDefinition(
+        "damage", target_type="multi", target_quantity=2, attack_type="ranged_projectile"
+    ),
+    "skill.paladin.shield_of_protection": _HeroSkillReferenceDefinition(
+        "buffs", target_quantity=0
+    ),
+    "skill.mage.fireball": _HeroSkillReferenceDefinition(
+        "damage", attack_type="ranged_projectile", damage_nature="magical", damage_type="fire"
+    ),
+    "skill.mage.arcane_missiles": _HeroSkillReferenceDefinition(
+        "damage", target_type="multi", target_quantity=2,
+        attack_type="ranged_projectile", damage_nature="magical", damage_type="arcane"
+    ),
+    "skill.mage.frost_bolt": _HeroSkillReferenceDefinition(
+        "damage", attack_type="ranged_projectile", damage_nature="magical", damage_type="frost"
+    ),
+    "skill.warrior.devastate": _HeroSkillReferenceDefinition(
+        "damage", attack_type="melee"
+    ),
+    "skill.warrior.shield_bash": _HeroSkillReferenceDefinition(
+        "damage", attack_type="melee"
+    ),
+    "skill.warrior.thunder_pot": _HeroSkillReferenceDefinition(
+        "damage", target_type="multi", target_quantity=2, attack_type="ranged_projectile"
+    ),
+    "skill.warrior.fatal_strike": _HeroSkillReferenceDefinition(
+        "damage", attack_type="melee"
+    ),
+    "skill.warrior.armor_crush": _HeroSkillReferenceDefinition(
+        "damage", attack_type="melee"
+    ),
+    "skill.warrior.antivenom_potion": _HeroSkillReferenceDefinition(
+        "buffs", target_quantity=0
+    ),
+    "skill.warrior.moon_slash": _HeroSkillReferenceDefinition(
+        "damage", target_type="multi", target_quantity=2, attack_type="ranged_instant"
+    ),
+    "skill.warrior.warlust": _HeroSkillReferenceDefinition(
+        "buffs", target_quantity=0
+    ),
+    "skill.warrior.strike_of_meteorite": _HeroSkillReferenceDefinition(
+        "damage", attack_type="melee"
+    ),
+    "skill.rogue.sharp_blade": _HeroSkillReferenceDefinition(
+        "damage", attack_type="melee"
+    ),
+    "skill.rogue.poisoned_dagger": _HeroSkillReferenceDefinition(
+        "damage", attack_type="ranged_instant"
+    ),
+    "skill.rogue.shadow_evasion": _HeroSkillReferenceDefinition(
+        "buffs", target_quantity=0
+    ),
+}
+
+
+def _audited_target_mode(
+    skill_type: str, target_type: str, target_quantity: int
+) -> str:
+    """Share the adapter's authoritative static targeting classification."""
+    if target_quantity == 0:
+        return "self"
+    if skill_type == "damage_healing":
+        return "flexible"
+    if skill_type in {"healing", "buffs"}:
+        return "singleAlly" if target_type == "single" else "multipleAllies"
+    return "singleEnemy" if target_type == "single" else "multipleEnemies"
+
+
 STARTING_STAT_RANGE_ROWS = (
     ("hp", "HP", "Hp_Min", "Hp_Max"),
     ("damage", "Damage", "Damage_Min", "Damage_Max"),
@@ -334,6 +455,141 @@ class BattleAdapter:
         if self._engine_data is None:
             self._engine_data = _EngineData()
         return self._engine_data
+
+    @staticmethod
+    def _catalogue_classification(value: str, *, applicable: bool) -> dict[str, str]:
+        if not applicable:
+            return {"state": "notApplicable"}
+        if not value or value == "NA":
+            return {"state": "unclassified", "reasonId": "definitionMissing"}
+        normalized = {
+            "ranged_instant": "rangedInstant",
+            "ranged_projectile": "rangedProjectile",
+        }.get(value, value)
+        return {"state": "classified", "value": normalized}
+
+    @staticmethod
+    def _catalogue_unavailable_numeric(note: str, *, reason_id="notAudited") -> dict[str, str]:
+        return {
+            "state": "unavailable",
+            "reasonId": reason_id,
+            "note": note,
+        }
+
+    @classmethod
+    def _catalogue_skill_reference(
+        cls,
+        skill_id: str,
+        definition: _HeroSkillReferenceDefinition,
+        *,
+        profession: str,
+        basic_properties,
+    ) -> dict[str, Any]:
+        """Build one deterministic skill reference without a Hero or Skill."""
+        target_mode = _audited_target_mode(
+            definition.skill_type,
+            definition.target_type,
+            definition.target_quantity,
+        )
+        target: dict[str, Any] = {"mode": target_mode}
+        if target_mode in {"multipleAllies", "multipleEnemies"}:
+            target["maximumTargets"] = definition.target_quantity
+
+        damage_capable = definition.skill_type in {"damage", "damage_healing"}
+        normalized_skill_type = {
+            "damage_healing": "damageHealing",
+            "buffs": "buff",
+        }.get(definition.skill_type, definition.skill_type)
+
+        not_applicable = {"state": "notApplicable"}
+        if damage_capable:
+            base_damage: dict[str, Any] = cls._catalogue_unavailable_numeric(
+                "A deterministic baseline damage range has not yet been audited for this skill."
+            )
+        else:
+            base_damage = dict(not_applicable)
+        if definition.skill_type in {"healing", "damage_healing"}:
+            base_healing: dict[str, Any] = cls._catalogue_unavailable_numeric(
+                "A deterministic baseline healing range has not yet been audited for this skill."
+            )
+        else:
+            base_healing = dict(not_applicable)
+
+        if skill_id == "skill.priest.holy_smite":
+            base_damage = {
+                "state": "available",
+                "amountRange": {"minimum": 16, "maximum": 22},
+                "basis": "baselinePower",
+                "note": (
+                    "Immediate skill power before target receipt, formation, shields, "
+                    "immunity, or evasion."
+                ),
+                "conditions": [],
+            }
+        elif skill_id == "skill.priest.shadow_word_pain":
+            base_damage = cls._catalogue_unavailable_numeric(
+                (
+                    "The immediate formula embeds the target's generated Shadow "
+                    "Resistance, so no caster-only baseline is truthful. Periodic "
+                    "damage is not included."
+                ),
+                reason_id="targetDependentBaseline",
+            )
+        elif skill_id == "skill.priest.binding_heal":
+            base_healing = {
+                "state": "available",
+                "amountRange": {"minimum": 22, "maximum": 28},
+                "basis": "baselinePower",
+                "note": "Selected-target healing power before healing modifiers and HP cap.",
+                "conditions": [
+                    {
+                        "label": "Caster healing when another ally is selected",
+                        "amountRange": {"minimum": 17, "maximum": 23},
+                    }
+                ],
+            }
+        elif skill_id == "skill.paladin.hammer_of_revenge":
+            damage_minimum = int(basic_properties.loc["Damage_Min", profession])
+            damage_maximum = int(basic_properties.loc["Damage_Max", profession])
+            base_damage = {
+                "state": "available",
+                "amountRange": {
+                    "minimum": damage_minimum - 4,
+                    "maximum": damage_maximum - 1,
+                },
+                "basis": "baselinePower",
+                "note": "Base power before target Defence and later receipt rules.",
+                "conditions": [
+                    {
+                        "label": "Bonus with 1 self debuff",
+                        "amountRange": {"minimum": 3, "maximum": 5},
+                    },
+                    {
+                        "label": "Bonus with 2 self debuffs",
+                        "amountRange": {"minimum": 6, "maximum": 8},
+                    },
+                    {
+                        "label": "Bonus with 3 or more self debuffs",
+                        "amountRange": {"minimum": 9, "maximum": 11},
+                    },
+                ],
+            }
+
+        return {
+            "target": target,
+            "skillType": normalized_skill_type,
+            "attackType": cls._catalogue_classification(
+                definition.attack_type, applicable=damage_capable
+            ),
+            "damageNature": cls._catalogue_classification(
+                definition.damage_nature, applicable=damage_capable
+            ),
+            "damageType": cls._catalogue_classification(
+                definition.damage_type, applicable=damage_capable
+            ),
+            "baseDamage": base_damage,
+            "baseHealing": base_healing,
+        }
 
     def create_battle(
         self,
@@ -544,6 +800,12 @@ class BattleAdapter:
                         "skillId": skill_id,
                         "displayName": display_name,
                         "isPassive": is_passive,
+                        "reference": self._catalogue_skill_reference(
+                            skill_id,
+                            HERO_SKILL_REFERENCE_DEFINITIONS[skill_id],
+                            profession=definition["class"].__name__,
+                            basic_properties=basic,
+                        ),
                     }
                     for skill_id, display_name, is_passive
                     in HERO_SKILL_INVENTORY[definition_id]
@@ -3304,13 +3566,9 @@ class BattleAdapter:
 
     @staticmethod
     def _target_mode(skill) -> str:
-        if skill.target_qty == 0:
-            return "self"
-        if skill.skill_type == "damage_healing":
-            return "flexible"
-        if skill.skill_type in {"healing", "buffs"}:
-            return "singleAlly" if skill.target_type == "single" else "multipleAllies"
-        return "singleEnemy" if skill.target_type == "single" else "multipleEnemies"
+        return _audited_target_mode(
+            skill.skill_type, skill.target_type, skill.target_qty
+        )
 
     @staticmethod
     def _effect_hint(skill) -> str:

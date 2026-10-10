@@ -77,6 +77,52 @@ export interface HeroSkillInventoryItem {
   skillId: string;
   displayName: string;
   isPassive: boolean;
+  reference: HeroSkillReference;
+}
+
+export type HeroSkillTargetReference =
+  | { mode: "self" | "singleAlly" | "singleEnemy" | "flexible" }
+  | { mode: "multipleAllies" | "multipleEnemies"; maximumTargets: number };
+
+export type HeroSkillClassificationValue =
+  | "melee" | "rangedInstant" | "rangedProjectile"
+  | "physical" | "magical"
+  | "fire" | "frost" | "arcane" | "shadow" | "holy" | "poison" | "nature" | "death";
+
+export type HeroSkillClassificationReference =
+  | { state: "classified"; value: HeroSkillClassificationValue }
+  | { state: "unclassified"; reasonId: "definitionMissing" }
+  | { state: "notApplicable" };
+
+export interface HeroSkillReferenceAmountRange {
+  minimum: number;
+  maximum: number;
+}
+
+export interface HeroSkillReferenceCondition {
+  label: string;
+  amountRange: HeroSkillReferenceAmountRange;
+}
+
+export type HeroSkillNumericReference =
+  | {
+    state: "available";
+    amountRange: HeroSkillReferenceAmountRange;
+    basis: "baselinePower";
+    note: string;
+    conditions: HeroSkillReferenceCondition[];
+  }
+  | { state: "unavailable"; reasonId: "notAudited" | "targetDependentBaseline"; note: string }
+  | { state: "notApplicable" };
+
+export interface HeroSkillReference {
+  target: HeroSkillTargetReference;
+  skillType: "damage" | "healing" | "damageHealing" | "buff" | "effect";
+  attackType: HeroSkillClassificationReference;
+  damageNature: HeroSkillClassificationReference;
+  damageType: HeroSkillClassificationReference;
+  baseDamage: HeroSkillNumericReference;
+  baseHealing: HeroSkillNumericReference;
 }
 
 export type HeroUnlockSource =

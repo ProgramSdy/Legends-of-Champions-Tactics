@@ -570,6 +570,57 @@ function isGalleryRange(value: unknown): boolean {
     && Number(value.minimum) <= Number(value.maximum);
 }
 
+const GALLERY_TARGET_MODES = new Set(["self", "singleAlly", "singleEnemy", "flexible", "multipleAllies", "multipleEnemies"]);
+const GALLERY_SKILL_TYPES = new Set(["damage", "healing", "damageHealing", "buff", "effect"]);
+const GALLERY_CLASSIFICATION_VALUES = new Set([
+  "melee", "rangedInstant", "rangedProjectile", "physical", "magical",
+  "fire", "frost", "arcane", "shadow", "holy", "poison", "nature", "death",
+]);
+
+function isGalleryAmountRange(value: unknown): boolean {
+  return isRecord(value)
+    && Number.isInteger(value.minimum)
+    && Number.isInteger(value.maximum)
+    && Number(value.minimum) <= Number(value.maximum);
+}
+
+function isGalleryClassification(value: unknown): boolean {
+  if (!isRecord(value) || typeof value.state !== "string") return false;
+  if (value.state === "notApplicable") return true;
+  if (value.state === "unclassified") return value.reasonId === "definitionMissing";
+  return value.state === "classified" && typeof value.value === "string" && GALLERY_CLASSIFICATION_VALUES.has(value.value);
+}
+
+function isGalleryNumericReference(value: unknown): boolean {
+  if (!isRecord(value) || typeof value.state !== "string") return false;
+  if (value.state === "notApplicable") return true;
+  if (value.state === "unavailable") {
+    return (value.reasonId === "notAudited" || value.reasonId === "targetDependentBaseline")
+      && typeof value.note === "string" && value.note.length > 0;
+  }
+  return value.state === "available"
+    && isGalleryAmountRange(value.amountRange)
+    && value.basis === "baselinePower"
+    && typeof value.note === "string" && value.note.length > 0
+    && Array.isArray(value.conditions)
+    && value.conditions.every((condition) => isRecord(condition)
+      && typeof condition.label === "string" && condition.label.length > 0
+      && isGalleryAmountRange(condition.amountRange));
+}
+
+function isGallerySkillReference(value: unknown): boolean {
+  if (!isRecord(value) || !isRecord(value.target) || typeof value.target.mode !== "string"
+    || !GALLERY_TARGET_MODES.has(value.target.mode)) return false;
+  if ((value.target.mode === "multipleAllies" || value.target.mode === "multipleEnemies")
+    && (!Number.isInteger(value.target.maximumTargets) || Number(value.target.maximumTargets) < 2)) return false;
+  return typeof value.skillType === "string" && GALLERY_SKILL_TYPES.has(value.skillType)
+    && isGalleryClassification(value.attackType)
+    && isGalleryClassification(value.damageNature)
+    && isGalleryClassification(value.damageType)
+    && isGalleryNumericReference(value.baseDamage)
+    && isGalleryNumericReference(value.baseHealing);
+}
+
 function isGalleryHero(value: HeroDefinitionSummary): value is HeroGalleryDefinition {
   const source = value.unlockSource;
   const sourceValid = source === null
@@ -587,7 +638,8 @@ function isGalleryHero(value: HeroDefinitionSummary): value is HeroGalleryDefini
     && Array.isArray(value.skills)
     && value.skills.length >= 3
     && value.skills.every((skill) => typeof skill.skillId === "string"
-      && typeof skill.displayName === "string" && typeof skill.isPassive === "boolean")
+      && typeof skill.displayName === "string" && typeof skill.isPassive === "boolean"
+      && isGallerySkillReference(skill.reference))
     && sourceValid;
 }
 

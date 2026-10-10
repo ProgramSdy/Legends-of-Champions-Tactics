@@ -1,0 +1,19 @@
+schemaVersion: 1
+definitionId: hero.paladin.protection
+introduction: |-
+  A resilient paladin who withstands harm and protects the line.
+battleStyle: |-
+  Absorbs pressure, disrupts enemies, and supports the team over time.
+skills:
+  - skillId: skill.paladin.hammer_of_revenge
+    introduction: |-
+      A ranged holy retaliation that responds to the caster's debuffs.
+  - skillId: skill.paladin.shield_of_righteous
+    introduction: |-
+      A melee shield strike that strengthens the caster's defence.
+  - skillId: skill.paladin.heroric_charge
+    introduction: |-
+      A ranged charge that can disrupt and draw hostility.
+  - skillId: skill.paladin.holy_aura
+    introduction: |-
+      Passive: while alive, restores each living teammate at round start.

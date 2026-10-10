@@ -1,0 +1,16 @@
+schemaVersion: 1
+definitionId: hero.priest.comprehensiveness
+introduction: |-
+  A versatile priest who balances holy restoration with shadow pressure.
+battleStyle: |-
+  Supports wounded allies while maintaining ranged pressure.
+skills:
+  - skillId: skill.priest.holy_smite
+    introduction: |-
+      A direct holy attack against one enemy.
+  - skillId: skill.priest.shadow_word_pain
+    introduction: |-
+      Marks one enemy with a continuing shadow affliction.
+  - skillId: skill.priest.binding_heal
+    introduction: |-
+      Restores an ally and also helps the caster.

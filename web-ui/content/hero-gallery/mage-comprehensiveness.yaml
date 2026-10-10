@@ -1,0 +1,16 @@
+schemaVersion: 1
+definitionId: hero.mage.comprehensiveness
+introduction: |-
+  An arcane scholar who commands elemental and arcane attacks.
+battleStyle: |-
+  Uses ranged magic to exploit opponents and control their pace.
+skills:
+  - skillId: skill.mage.fireball
+    introduction: |-
+      A ranged fire attack against one enemy.
+  - skillId: skill.mage.arcane_missiles
+    introduction: |-
+      Arcane projectiles directed at multiple enemies.
+  - skillId: skill.mage.frost_bolt
+    introduction: |-
+      A ranged frost attack that can inflict Cold.

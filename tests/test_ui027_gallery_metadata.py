@@ -39,7 +39,14 @@ def test_roster_publishes_configured_ranges_and_static_skill_inventory():
         assert all(item["minimum"] <= item["maximum"] for item in (
             hero["startingStatRanges"] + hero["startingResistanceRanges"]
         ))
-        assert hero["skills"] == [
+        assert [
+            {
+                "skillId": skill["skillId"],
+                "displayName": skill["displayName"],
+                "isPassive": skill["isPassive"],
+            }
+            for skill in hero["skills"]
+        ] == [
             {
                 "skillId": skill_id,
                 "displayName": display_name,
@@ -53,7 +60,15 @@ def test_roster_publishes_configured_ranges_and_static_skill_inventory():
         hero for hero in heroes
         if hero["definitionId"] == "hero.paladin.protection"
     )
-    assert [skill for skill in protection["skills"] if skill["isPassive"]] == [
+    assert [
+        {
+            "skillId": skill["skillId"],
+            "displayName": skill["displayName"],
+            "isPassive": skill["isPassive"],
+        }
+        for skill in protection["skills"]
+        if skill["isPassive"]
+    ] == [
         {
             "skillId": "skill.paladin.holy_aura",
             "displayName": "Holy Aura",

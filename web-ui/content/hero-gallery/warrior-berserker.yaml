@@ -1,0 +1,16 @@
+schemaVersion: 1
+definitionId: hero.warrior.berserker
+introduction: |-
+  A relentless warrior who thrives on aggressive momentum.
+battleStyle: |-
+  Pressures several enemies and turns fury into force.
+skills:
+  - skillId: skill.warrior.moon_slash
+    introduction: |-
+      A sweeping attack against multiple enemies.
+  - skillId: skill.warrior.warlust
+    introduction: |-
+      A self-buff that increases battle aggression.
+  - skillId: skill.warrior.strike_of_meteorite
+    introduction: |-
+      A heavy single-enemy attack.

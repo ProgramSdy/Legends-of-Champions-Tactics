@@ -28,6 +28,29 @@ const ids = [
   ["hero.rogue.comprehensiveness", "Rogue", "Rogue", "Comprehensiveness"],
 ] as const;
 
+const skillIds: Record<string, string[]> = {
+  "hero.warrior.weapon_master": ["skill.warrior.fatal_strike", "skill.warrior.armor_crush", "skill.warrior.antivenom_potion"],
+  "hero.warrior.defence": ["skill.warrior.devastate", "skill.warrior.shield_bash", "skill.warrior.thunder_pot"],
+  "hero.warrior.berserker": ["skill.warrior.moon_slash", "skill.warrior.warlust", "skill.warrior.strike_of_meteorite"],
+  "hero.mage.comprehensiveness": ["skill.mage.fireball", "skill.mage.arcane_missiles", "skill.mage.frost_bolt"],
+  "hero.paladin.retribution": ["skill.paladin.hammer_of_anger", "skill.paladin.crusader_strike", "skill.paladin.flash_of_light"],
+  "hero.paladin.protection": ["skill.paladin.hammer_of_revenge", "skill.paladin.shield_of_righteous", "skill.paladin.heroric_charge", "skill.paladin.holy_aura"],
+  "hero.paladin.holy": ["skill.paladin.purify_healing", "skill.paladin.holy_blast", "skill.paladin.shield_of_protection"],
+  "hero.priest.comprehensiveness": ["skill.priest.holy_smite", "skill.priest.shadow_word_pain", "skill.priest.binding_heal"],
+  "hero.priest.discipline": ["skill.priest.penance", "skill.priest.holy_word_redemption", "skill.priest.holy_word_punishment"],
+  "hero.rogue.comprehensiveness": ["skill.rogue.sharp_blade", "skill.rogue.poisoned_dagger", "skill.rogue.shadow_evasion"],
+};
+
+const unavailableReference = {
+  target: { mode: "singleEnemy" as const },
+  skillType: "damage" as const,
+  attackType: { state: "classified" as const, value: "melee" as const },
+  damageNature: { state: "classified" as const, value: "physical" as const },
+  damageType: { state: "unclassified" as const, reasonId: "definitionMissing" as const },
+  baseDamage: { state: "unavailable" as const, reasonId: "notAudited" as const, note: "Reference power has not yet been audited." },
+  baseHealing: { state: "notApplicable" as const },
+};
+
 const gallery: HeroGalleryDefinition[] = ids.map(([definitionId, displayName, faculty, specialization], index) => ({
   definitionId,
   displayName,
@@ -35,12 +58,22 @@ const gallery: HeroGalleryDefinition[] = ids.map(([definitionId, displayName, fa
   specialization,
   startingStatRanges: ["HP", "Damage", "Defence", "Agility"].map((label, rangeIndex) => ({ id: label.toLowerCase(), label, minimum: 10 + rangeIndex, maximum: 20 + rangeIndex })),
   startingResistanceRanges: ["Fire", "Frost", "Arcane", "Shadow", "Death", "Poison", "Nature"].map((label) => ({ id: label.toLowerCase(), label, minimum: 1, maximum: 5 })),
-  skills: [
-    { skillId: `skill.${index}.active.one`, displayName: "Primary Skill", isPassive: false },
-    { skillId: `skill.${index}.active.two`, displayName: "Secondary Skill", isPassive: false },
-    { skillId: `skill.${index}.active.three`, displayName: "Third Skill", isPassive: false },
-    ...(definitionId === "hero.paladin.protection" ? [{ skillId: "skill.paladin.holy_aura", displayName: "Holy Aura", isPassive: true }] : []),
-  ],
+  skills: skillIds[definitionId].map((skillId) => ({
+    skillId,
+    displayName: skillId === "skill.paladin.holy_aura" ? "Holy Aura" : skillId.split(".").at(-1)?.replaceAll("_", " ") ?? skillId,
+    isPassive: skillId === "skill.paladin.holy_aura",
+    reference: skillId === "skill.paladin.holy_aura"
+      ? {
+        target: { mode: "multipleAllies" as const, maximumTargets: 3 },
+        skillType: "healing" as const,
+        attackType: { state: "notApplicable" as const },
+        damageNature: { state: "notApplicable" as const },
+        damageType: { state: "notApplicable" as const },
+        baseDamage: { state: "notApplicable" as const },
+        baseHealing: { state: "unavailable" as const, reasonId: "notAudited" as const, note: "Reference power has not yet been audited." },
+      }
+      : unavailableReference,
+  })),
   unlockSource: index < 4 ? { kind: "starter" } : index === 5 ? { kind: "stageReward", stageId: "paladins-altar", stageDisplayName: "Paladin's Altar", battleIndex: 3 } : null,
 }));
 

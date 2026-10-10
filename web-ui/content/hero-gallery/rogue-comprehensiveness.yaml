@@ -1,0 +1,16 @@
+schemaVersion: 1
+definitionId: hero.rogue.comprehensiveness
+introduction: |-
+  A quick rogue who uses precision, poison, and evasive movement.
+battleStyle: |-
+  Prioritises vulnerable enemies while avoiding retaliation.
+skills:
+  - skillId: skill.rogue.sharp_blade
+    introduction: |-
+      A swift melee strike that can cause bleeding.
+  - skillId: skill.rogue.poisoned_dagger
+    introduction: |-
+      A ranged dagger attack that can apply poison.
+  - skillId: skill.rogue.shadow_evasion
+    introduction: |-
+      A self-buff that improves evasion.

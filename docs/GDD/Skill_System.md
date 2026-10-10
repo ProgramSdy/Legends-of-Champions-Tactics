@@ -99,6 +99,19 @@ maximum targets, current cooldown/availability, and null resource cost. It
 accepts `useSkill` commands only. A documented `endTurn` concept is not an
 implemented API command and must not be presented as active gameplay.
 
+### Hero Gallery reference metadata
+
+The static Hero Gallery catalogue separately presents each approved skill's
+adapter-audited player-facing target semantic, skill type, classifications, and
+base Damage/Healing reference state. This metadata is not a command, live
+legality result, or battle preview. A numeric reference is published only after
+an exact formula-bound audit; it describes baseline skill power before target
+receipt rules and does not predict a combat result. Target-dependent or
+otherwise unproved values are explicitly unavailable. `Unclassified` means a
+damage concept applies but the engine definition omits that classification;
+`Not applicable` means the concept does not apply. The frontend consumes the
+typed result and does not derive it from `target_type`, source code, or formulas.
+
 ## Requirements for New Skills
 
 1. Define the specialization callback and explicit target/effect metadata.

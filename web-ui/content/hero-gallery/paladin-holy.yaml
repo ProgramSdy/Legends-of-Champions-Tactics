@@ -1,0 +1,16 @@
+schemaVersion: 1
+definitionId: hero.paladin.holy
+introduction: |-
+  A holy paladin devoted to resilient protection and restoration.
+battleStyle: |-
+  Combines healing, cleansing, protection, and ranged holy pressure.
+skills:
+  - skillId: skill.paladin.purify_healing
+    introduction: |-
+      Restores one ally and can cleanse an eligible harmful effect.
+  - skillId: skill.paladin.holy_blast
+    introduction: |-
+      A ranged holy attack that can affect multiple enemies.
+  - skillId: skill.paladin.shield_of_protection
+    introduction: |-
+      Protects the caster from incoming damage for a limited time.

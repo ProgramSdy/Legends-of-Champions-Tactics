@@ -67,6 +67,18 @@ as engine rules. Repeated selections and cross-team overlap are allowed for
 player/specified-enemy teams; random enemy construction samples without
 replacement.
 
+### Hero Gallery reference facts
+
+The read-only Hero Gallery catalogue supplies stable identity, configured
+starting ranges, skill inventory, unlock source, and a per-skill reference
+record. Reference records are explanatory baseline facts, not a battle preview
+or combat result: the Python catalogue publishes adapter-audited target
+semantics, classifications, and either an audited base power range or an
+explicit unavailable/not-applicable state. They are static and deterministic:
+reading the catalogue neither constructs a hero nor consumes RNG. Editorial
+introductions and strategy tips are separate human-authored content and cannot
+alter hero mechanics, classifications, or numbers.
+
 Every hero has an engine-owned battle `position` of `front` or `rear`.
 Construction defaults to `front` for legacy simulations, generators, summons,
 and 1v1 battles. In an adapter-created 2v2 or 3v3 battle, the ordered team and

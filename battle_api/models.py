@@ -69,10 +69,124 @@ class HeroStartingResistanceRange(HeroConfiguredRange):
     id: Literal["fire", "frost", "arcane", "shadow", "death", "poison", "nature"]
 
 
+class HeroSkillSingleTargetReference(StrictApiModel):
+    mode: Literal["self", "singleAlly", "singleEnemy", "flexible"]
+
+
+class HeroSkillMultipleTargetReference(StrictApiModel):
+    mode: Literal["multipleAllies", "multipleEnemies"]
+    maximum_targets: int = Field(alias="maximumTargets", ge=2)
+
+
+HeroSkillTargetReference = Annotated[
+    HeroSkillSingleTargetReference | HeroSkillMultipleTargetReference,
+    Field(discriminator="mode"),
+]
+
+
+class HeroSkillClassifiedAttackTypeReference(StrictApiModel):
+    state: Literal["classified"]
+    value: Literal["melee", "rangedInstant", "rangedProjectile"]
+
+
+class HeroSkillClassifiedDamageNatureReference(StrictApiModel):
+    state: Literal["classified"]
+    value: Literal["physical", "magical"]
+
+
+class HeroSkillClassifiedDamageTypeReference(StrictApiModel):
+    state: Literal["classified"]
+    value: Literal["fire", "frost", "arcane", "shadow", "holy", "poison", "nature", "death"]
+
+
+class HeroSkillUnclassifiedReference(StrictApiModel):
+    state: Literal["unclassified"]
+    reason_id: Literal["definitionMissing"] = Field(alias="reasonId")
+
+
+class HeroSkillNotApplicableReference(StrictApiModel):
+    state: Literal["notApplicable"]
+
+
+HeroSkillAttackTypeReference = Annotated[
+    HeroSkillClassifiedAttackTypeReference
+    | HeroSkillUnclassifiedReference
+    | HeroSkillNotApplicableReference,
+    Field(discriminator="state"),
+]
+
+HeroSkillDamageNatureReference = Annotated[
+    HeroSkillClassifiedDamageNatureReference
+    | HeroSkillUnclassifiedReference
+    | HeroSkillNotApplicableReference,
+    Field(discriminator="state"),
+]
+
+HeroSkillDamageTypeReference = Annotated[
+    HeroSkillClassifiedDamageTypeReference
+    | HeroSkillUnclassifiedReference
+    | HeroSkillNotApplicableReference,
+    Field(discriminator="state"),
+]
+
+
+class HeroSkillReferenceAmountRange(StrictApiModel):
+    minimum: int
+    maximum: int
+
+    @model_validator(mode="after")
+    def validate_bounds(self) -> "HeroSkillReferenceAmountRange":
+        if self.minimum > self.maximum:
+            raise ValueError("minimum must be less than or equal to maximum")
+        return self
+
+
+class HeroSkillReferenceCondition(StrictApiModel):
+    label: str = Field(min_length=1)
+    amount_range: HeroSkillReferenceAmountRange = Field(alias="amountRange")
+
+
+class HeroSkillAvailableNumericReference(StrictApiModel):
+    state: Literal["available"]
+    amount_range: HeroSkillReferenceAmountRange = Field(alias="amountRange")
+    basis: Literal["baselinePower"]
+    note: str = Field(min_length=1)
+    conditions: list[HeroSkillReferenceCondition] = Field(default_factory=list)
+
+
+class HeroSkillUnavailableNumericReference(StrictApiModel):
+    state: Literal["unavailable"]
+    reason_id: Literal["notAudited", "targetDependentBaseline"] = Field(
+        alias="reasonId"
+    )
+    note: str = Field(min_length=1)
+
+
+HeroSkillNumericReference = Annotated[
+    HeroSkillAvailableNumericReference
+    | HeroSkillUnavailableNumericReference
+    | HeroSkillNotApplicableReference,
+    Field(discriminator="state"),
+]
+
+
+class HeroSkillReference(StrictApiModel):
+    target: HeroSkillTargetReference
+    skill_type: Literal["damage", "healing", "damageHealing", "buff", "effect"] = (
+        Field(alias="skillType")
+    )
+    attack_type: HeroSkillAttackTypeReference = Field(alias="attackType")
+    damage_nature: HeroSkillDamageNatureReference = Field(alias="damageNature")
+    damage_type: HeroSkillDamageTypeReference = Field(alias="damageType")
+    base_damage: HeroSkillNumericReference = Field(alias="baseDamage")
+    base_healing: HeroSkillNumericReference = Field(alias="baseHealing")
+
+
 class HeroSkillInventoryItem(StrictApiModel):
     skill_id: str = Field(alias="skillId", pattern=r"^skill\.[a-z0-9_]+\.[a-z0-9_]+$")
     display_name: str = Field(alias="displayName")
     is_passive: bool = Field(alias="isPassive")
+    reference: HeroSkillReference
 
 
 class HeroStarterUnlockSource(StrictApiModel):

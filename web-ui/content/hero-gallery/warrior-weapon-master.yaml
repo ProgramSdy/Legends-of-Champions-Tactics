@@ -1,0 +1,16 @@
+schemaVersion: 1
+definitionId: hero.warrior.weapon_master
+introduction: |-
+  A seasoned weapon master who pursues decisive physical strikes.
+battleStyle: |-
+  Finishes vulnerable enemies and weakens durable defenders.
+skills:
+  - skillId: skill.warrior.fatal_strike
+    introduction: |-
+      A decisive strike that can reduce healing received.
+  - skillId: skill.warrior.armor_crush
+    introduction: |-
+      A crushing strike that can weaken armour.
+  - skillId: skill.warrior.antivenom_potion
+    introduction: |-
+      A self-directed recovery and poison-resistance action.

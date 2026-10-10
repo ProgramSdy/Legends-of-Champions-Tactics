@@ -1,0 +1,16 @@
+schemaVersion: 1
+definitionId: hero.paladin.retribution
+introduction: |-
+  A battle-ready paladin who builds crusading momentum.
+battleStyle: |-
+  Alternates steady melee pressure with empowered holy attacks and support.
+skills:
+  - skillId: skill.paladin.hammer_of_anger
+    introduction: |-
+      A ranged holy attack that benefits from crusader momentum.
+  - skillId: skill.paladin.crusader_strike
+    introduction: |-
+      A melee strike that builds Wrath of Crusader.
+  - skillId: skill.paladin.flash_of_light
+    introduction: |-
+      Restores an ally, strengthened by Wrath of Crusader.

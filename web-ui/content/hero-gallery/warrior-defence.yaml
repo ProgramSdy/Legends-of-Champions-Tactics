@@ -1,0 +1,16 @@
+schemaVersion: 1
+definitionId: hero.warrior.defence
+introduction: |-
+  A shield-bearing warrior built to hold ground under pressure.
+battleStyle: |-
+  Breaks armour, disrupts enemies, and reinforces personal defence.
+skills:
+  - skillId: skill.warrior.devastate
+    introduction: |-
+      A forceful attack against one enemy.
+  - skillId: skill.warrior.shield_bash
+    introduction: |-
+      A shield attack that can stun.
+  - skillId: skill.warrior.thunder_pot
+    introduction: |-
+      A defensive technique with enemy-facing pressure.
