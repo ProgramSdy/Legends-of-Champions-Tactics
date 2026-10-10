@@ -69,11 +69,22 @@ Each definition includes stable `definitionId`, display name, faculty, and
 specialization, plus the read-only Hero Gallery fields: exactly four configured
 starting-stat ranges (`id`, `label`, `minimum`, `maximum`), exactly seven
 configured resistance ranges of the same shape, a stable skill inventory
-(`skillId`, `displayName`, `isPassive`), and `unlockSource` (`starter`, a
-stage-reward descriptor, or `null`). These fields are catalogue facts only:
+(`skillId`, `displayName`, `isPassive`, `reference`), and `unlockSource`
+(`starter`, a stage-reward descriptor, or `null`). `reference` is an additive
+strictly typed skill-facts record: audited target semantics, skill type,
+active/passive status, attack/damage classifications, and Base Damage/Base
+Healing availability. Numerical results are either audited baseline-power
+bounds, an explicit unavailable reason/note, or not applicable; classification
+states distinguish missing applicable data (`unclassified`) from a genuinely
+inapplicable concept. These fields are catalogue facts only:
 they do not create heroes, roll randomized values, consume RNG, or grant an
 unlock. The browser must render ranges as ranges, obtain actual ownership from
 `GET /api/v1/progression`, and must not infer a missing unlock route.
+
+The adapter maps target presentation from its audited legal-target semantics,
+not raw engine `target_type` alone. Reference metadata is static and never
+executes a skill or opens a session; it is not a calculation of damage dealt
+or healing received in a live battle.
 The roster display name is catalogue metadata. Each non-summoned battle
 combatant receives a runtime name from its class's `HeroGenerator` faculty pool
 during session creation.

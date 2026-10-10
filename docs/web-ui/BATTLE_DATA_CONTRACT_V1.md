@@ -539,12 +539,28 @@ The development transport is JSON HTTP:
 Team Builder and locked-enemy validation. For the Game Manual it additionally
 returns four configured starting-stat ranges and seven resistance ranges per
 definition (`id`, `label`, `minimum`, `maximum`), stable skill inventory items
-(`skillId`, `displayName`, `isPassive`), and an `unlockSource` of `starter`, a
-stage-reward descriptor, or `null`. This extension is read-only and
+(`skillId`, `displayName`, `isPassive`, `reference`), and an `unlockSource` of
+`starter`, a stage-reward descriptor, or `null`. Each additive `reference`
+record is a typed static fact: audited player-facing target semantics; skill
+type; active/passive classification; attack, damage-nature, and damage-type
+classification; and Base Damage/Base Healing states. Numeric states are
+`available` with audited baseline-power bounds, `unavailable` with a stable
+reason and explanatory note, or `notApplicable`; classifications distinguish
+`unclassified` from `notApplicable`. Target modes are adapter-owned (`self`,
+single ally/enemy, flexible ally-or-enemy, or size-bounded multiple allies or
+enemies), rather than a client interpretation of raw engine target metadata.
+This extension is read-only and
 deterministic: it neither constructs heroes nor consumes session/module RNG.
 It describes configuration ranges, not a combat roll. Active-save ownership is
 still supplied only by `GET /api/v1/progression`; React may not derive it from
 catalogue text or unlock routes.
+
+The reference facts are deliberately not a battle preview: they do not
+incorporate target defence, resistance, shields, immunity, evasion, formation,
+HP caps, or live receipt modifiers. The catalogue path does not execute skills,
+create a battle session, update status/progression, or mutate engine data.
+Clients render these fields verbatim after strict validation and must not
+calculate replacement values or infer omitted classifications.
 
 Sessions are process-local and disappear on restart. A session stores its own
 Python `random` state; the adapter swaps that state around engine calls under a

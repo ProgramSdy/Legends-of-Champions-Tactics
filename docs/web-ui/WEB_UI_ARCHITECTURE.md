@@ -223,14 +223,25 @@ malformed roster responses.
 
 The Game Manual consumes the same catalogue through the stricter
 `fetchHeroGalleryRoster` boundary. It requires the additive configured ranges,
-stable skill inventory, and unlock-source fields before rendering the Gallery;
-an incomplete response becomes a recoverable Gallery error rather than
-client-derived data. Gallery ownership is independently fetched from
+stable skill inventory, typed skill `reference` facts, and unlock-source fields
+before rendering the Gallery; an incomplete response becomes a recoverable
+Gallery error rather than client-derived data. Human-authored introductions,
+battle-style copy, skill descriptions, and optional tips are edited only in
+strict per-hero YAML under `web-ui/content/hero-gallery/`. The Node content
+builder validates the fixed hero/skill ID coverage and emits the typed generated
+registry consumed by the browser; the browser neither fetches YAML nor derives
+mechanical values from it. Gallery ownership is independently fetched from
 `GET /api/v1/progression`. The Manual dialog owns its focus trap, Escape and
 return-focus behavior; `/manual/heroes` and `/manual/battle-instruction` are
 read-only routes. `SoundPreferenceProvider` restores its browser-local setting
 only after mount, gates the central `AudioManager`, and never replays events or
 changes battle-event ordering.
+
+`fetchHeroGalleryRoster` additionally compares every catalogue definition ID
+and its exact skill-ID set with that generated editorial registry. A phased or
+malformed API/content mismatch is rejected as recoverable Gallery data before
+rendering, instead of allowing a missing local-copy lookup to produce a blank
+panel or an exception.
 
 UI-020 additionally loads `GET /api/v1/progression` for selectable definition
 IDs and `GET /api/v1/stages` for the two curricula and step access. Structured

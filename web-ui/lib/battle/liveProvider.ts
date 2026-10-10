@@ -23,6 +23,7 @@ import {
   type StructuredStagesResponse,
   type VictoryCommitResponse,
 } from "./types";
+import { heroGalleryContent } from "@/lib/manual/heroGalleryContent";
 
 interface Envelope<T> {
   contractVersion: "1.0";
@@ -643,12 +644,39 @@ function isGalleryHero(value: HeroDefinitionSummary): value is HeroGalleryDefini
     && sourceValid;
 }
 
+/**
+ * Gallery editorial copy is deliberately local, while mechanics remain API
+ * owned. Reject an API/content ID mismatch at the strict Gallery boundary so
+ * a phased deployment cannot reach the renderer with a missing lookup.
+ */
+function hasMatchingGalleryEditorialContent(hero: HeroGalleryDefinition): boolean {
+  const content = heroGalleryContent[hero.definitionId];
+  if (!content) return false;
+
+  const skillIds = hero.skills.map((skill) => skill.skillId);
+  const editorialSkillIds = Object.keys(content.skills);
+  return skillIds.length === editorialSkillIds.length
+    && new Set(skillIds).size === skillIds.length
+    && skillIds.every((skillId) => Object.hasOwn(content.skills, skillId));
+}
+
+function hasExactGalleryEditorialCoverage(heroes: readonly HeroGalleryDefinition[]): boolean {
+  const expectedDefinitionIds = Object.keys(heroGalleryContent);
+  const returnedDefinitionIds = new Set(heroes.map((hero) => hero.definitionId));
+  return heroes.length === expectedDefinitionIds.length
+    && returnedDefinitionIds.size === expectedDefinitionIds.length
+    && expectedDefinitionIds.every((definitionId) => returnedDefinitionIds.has(definitionId))
+    && heroes.every(hasMatchingGalleryEditorialContent);
+}
+
 export async function fetchHeroGalleryRoster(baseUrl = DEFAULT_BASE_URL): Promise<HeroGalleryDefinition[]> {
   const heroes = await fetchHeroRoster(baseUrl);
-  if (!heroes.every(isGalleryHero)) {
+  const galleryHeroes = heroes.filter(isGalleryHero);
+  if (galleryHeroes.length !== heroes.length
+    || !hasExactGalleryEditorialCoverage(galleryHeroes)) {
     throw new BattleProviderError("The battle service returned incomplete Hero Gallery data.", "adapter");
   }
-  return heroes;
+  return galleryHeroes;
 }
 
 export async function fetchPlayerProgression(

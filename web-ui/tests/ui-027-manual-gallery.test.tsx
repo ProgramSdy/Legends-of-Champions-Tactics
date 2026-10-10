@@ -5,6 +5,7 @@ import { StageSelectionScreen } from "@/components/stages/StageSelectionScreen";
 import { SoundPreferenceProvider, useSoundPreference } from "@/components/audio/SoundPreferenceProvider";
 import HeroGalleryPage from "@/app/manual/heroes/page";
 import BattleInstructionPage from "@/app/manual/battle-instruction/page";
+import { fetchHeroGalleryRoster } from "@/lib/battle/liveProvider";
 import type { HeroGalleryDefinition } from "@/lib/battle/types";
 
 const push = vi.fn();
@@ -157,6 +158,26 @@ describe("UI-027 Manual and Gallery", () => {
     expect(screen.getByRole("heading", { name: "Victory and Formations" })).toBeVisible();
     expect(screen.getByText(/Tips are suggestions, not extra combat rules/)).toBeVisible();
     expect(screen.getByRole("link", { name: /Back to Game Manual/ })).toHaveAttribute("href", "/stages?manual=open");
+  });
+
+  it("rejects API/editorial hero or skill ID drift before the Gallery can render", async () => {
+    const unknownHero = gallery.map((hero, index) => index === 0
+      ? { ...hero, definitionId: "hero.unknown" }
+      : hero);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(json({ contractVersion: "1.0", heroes: unknownHero }));
+    await expect(fetchHeroGalleryRoster()).rejects.toMatchObject({ kind: "adapter" });
+
+    const unknownSkill = gallery.map((hero, index) => index === 0
+      ? { ...hero, skills: hero.skills.map((skill, skillIndex) => skillIndex === 0
+        ? { ...skill, skillId: "skill.warrior.unknown" }
+        : skill) }
+      : hero);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(json({ contractVersion: "1.0", heroes: unknownSkill }));
+    await expect(fetchHeroGalleryRoster()).rejects.toMatchObject({ kind: "adapter" });
+
+    const duplicateKnownHero = gallery.map(() => gallery[0]);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(json({ contractVersion: "1.0", heroes: duplicateKnownHero }));
+    await expect(fetchHeroGalleryRoster()).rejects.toMatchObject({ kind: "adapter" });
   });
 });
 

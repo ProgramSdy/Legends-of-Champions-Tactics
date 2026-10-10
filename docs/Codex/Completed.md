@@ -2,6 +2,90 @@
 
 Completed work should be appended in reverse chronological order, with the newest entry first.
 
+## 2026-10-10 — UI-028: Hero Gallery Skill Reference Metadata and Editable Expanded Cards
+
+**Summary:**
+
+Completed the existing Hero Gallery’s scoped skill-reference expansion without
+changing combat rules, Gallery navigation/accordion behavior, or frontend
+authority. `GET /api/v1/heroes` now supplies every approved skill with a typed,
+deterministic, read-only `reference` record. It conveys adapter-audited target
+semantics, skill/classification facts, and Base Damage/Base Healing as audited
+baseline bounds, explicit unavailable facts, or Not applicable. The catalogue
+does not construct heroes, execute skills, mutate data, create sessions, or
+consume RNG.
+
+The first audited pilot is Priest Comprehensiveness (Holy Smite 16–22; Binding
+Heal selected-target healing 22–28 plus a separately labelled 17–23 caster
+condition; Shadow Word Pain unavailable because the immediate formula embeds
+target resistance) and Paladin Protection's Hammer of Revenge (51–64 baseline,
+with three separately disclosed self-debuff bonus bands). The remaining
+approved skills are fully represented but use truthful unavailable/not-
+applicable states until a dedicated formula audit proves a numeric range.
+
+Hero/skill introductions and optional tips now live in strict, per-hero YAML
+under `web-ui/content/hero-gallery/`. A deterministic Node build/check script
+rejects malformed, duplicate, unknown, stale, missing, or mechanically
+authoritative editorial content and emits the typed browser registry. The
+Gallery’s stricter fetch boundary also requires the exact unique ten-hero and
+per-hero skill-ID coverage of that local registry, returning recoverable data
+failure before an API/content rollout mismatch can produce a blank panel or
+render error.
+
+**Role contributions and review:**
+
+- **project-manager:** `/root/ui028_pm` established the audit → pilot →
+  rollout gate, scope/data-gap decisions, and completion evidence plan.
+- **game-engine-developer:** `/root/btt005_engine` implemented the static
+  metadata models/catalogue, adapter-owned target semantics, pilot proof, and
+  deterministic engine/API coverage without runtime construction or RNG.
+- **ui-developer:** `/root/ui028_ui` implemented the YAML compiler/README,
+  generated registry, typed client decoder, editable fact-card presentation,
+  responsive grid, and frontend validation.
+- **test-automator:** `/root/ui027_test` added the acceptance coverage for
+  exact roster/skill coverage, YAML drift/schema conditions, strict client
+  decoding, and two-to-one responsive grid behavior.
+- **reviewer:** initial `/root/ui027_review` dispatch could not complete due
+  a usage-limit error. Independent final reviewer `/root/ui028_final_reviewer`
+  found and verified fixes for API/editorial hero/skill drift and exact unique
+  hero coverage, then approved the result with no remaining blocker.
+
+**Files / boundaries changed:**
+
+- `battle_api/models.py`, `battle_api/adapter.py`, and metadata contract tests.
+- `web-ui/content/hero-gallery/`, generated Gallery content types/registry,
+  strict content build script, Gallery presentation, strict live-provider
+  decoder, responsive CSS, and Gallery tests.
+- Hero/Skill GDD, Technical Architecture, API/contract, Web UI Architecture,
+  Style Guide, dated audit, Current Task, and this completion record.
+
+**Validation:**
+
+- `./.venv/bin/python -m pytest -q` across the focused UI-027/UI-028,
+  battle API/adapter, and BATTLE-TRANSPARENCY suites — **252 passed**; one
+  existing Starlette/httpx deprecation warning.
+- `./.venv/bin/python -m py_compile battle_api/adapter.py battle_api/models.py
+  tests/test_ui028_skill_reference_metadata.py` — passed.
+- `cd web-ui && npm run content:check` — passed.
+- Focused Gallery Vitest suites — **17 passed**.
+- `npm run typecheck`, `npm run lint -- --quiet`, and `npm run build` — passed.
+- `git diff --check` — passed.
+- Full frontend suite — **415 passed, 15 failed** in UI-006/UI-008/UI-017/
+  UI-021, battle-background, and Paladin-figure legacy suites; none exercise
+  UI-028/Gallery behavior. The failures remain outside this task’s touched
+  behavior and are recorded rather than hidden.
+- Manual browser: local Hero Gallery at desktop 1597×822, tablet 768×1024,
+  and narrow 600×900; verified pilot values/conditions, long unavailable copy,
+  accordion/tabs, two-column then one-column grid, and no horizontal overflow.
+
+**Documentation scope:**
+
+`Screen_Flow.md` is unchanged because neither routes nor transitions changed.
+`Combat_System.md` is unchanged because UI-028 only exposes static catalogue
+facts and does not alter a combat rule, formula, or event.
+
+---
+
 ## 2026-10-08 — BATTLE-TRANSPARENCY-005: Priest Discipline
 
 **Summary:**

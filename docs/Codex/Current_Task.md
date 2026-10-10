@@ -1,6 +1,6 @@
 # Current Task
 
-**Status:** Ready for Core Team
+**Status:** Completed
 
 **Task:** UI-028 — Hero Gallery Skill Reference Metadata and Editable Expanded Cards
 
@@ -272,7 +272,8 @@ implementation begins until the dated audit and pilot decisions are recorded.
 - **test-automator — `/root/ui027_test` (dispatched):** owns the
   acceptance-mapped catalogue/content/range/parity and frontend regression
   plan, followed by integrated validation.
-- **reviewer — `/root/ui027_review` (dispatched):** owns the independent
+- **reviewer — `/root/ui027_review` (dispatched), followed by
+  `/root/ui028_final_reviewer`:** owned the independent
   mechanics/contract/content/UI risk audit and final post-validation review.
 
 The project-manager's gate requires a static read-only Python catalogue
@@ -290,5 +291,31 @@ full-roster availability ledger, YAML guardrails, and rollout gates.
 
 ## Completion Notes
 
-Pending audit, pilot, full roster implementation, validation, and independent
-review.
+Completed 2026-10-10. The full approved ten-hero/31-skill catalogue now has a
+strict additive `reference` block, while edit-only descriptions live in the
+validated YAML content boundary. The pilot exposes audited baseline facts for
+Holy Smite (16–22), Binding Heal selected-target healing (22–28 with its
+separate caster condition), and Hammer of Revenge (51–64 plus stated
+self-debuff bands); Shadow Word Pain correctly remains unavailable because a
+caster-only baseline would be untruthful. Every other unsupported numeric
+value is explicit unavailable/not-applicable rather than inferred.
+
+Independent final review was approved after two contract-resilience corrections:
+the strict Gallery fetch now rejects unknown hero/skill IDs and duplicate or
+missing hero coverage before a local editorial lookup can render. Required
+documentation was updated in the Hero/Skill GDD, Technical Architecture,
+adapter/API contract, Web UI Architecture, and Style Guide. `Screen_Flow.md`
+needs no change because no route or navigation transition changed;
+`Combat_System.md` needs no change because no combat mechanic changed.
+
+Validation evidence: 252 focused backend/API/adapter/Transparency tests passed
+with one existing Starlette/httpx deprecation warning; Python compilation,
+content check, TypeScript, lint, production build, and `git diff --check`
+passed. The focused Gallery suite passed 17 tests. The full frontend suite had
+415 passing and 15 failures in six unrelated legacy suites
+(UI-006/UI-008/UI-017/UI-021, battle-backgrounds, and paladin-figure); none
+exercise the Gallery. Manual browser checks on `http://localhost:3001/manual/heroes`
+confirmed desktop 1597×822, tablet 768×1024, and narrow 600×900 behavior:
+Priest Comprehensiveness facts, Paladin Protection's expanded Hammer of
+Revenge facts/conditions, two-column then one-column grid transition, and no
+horizontal overflow/clipping.

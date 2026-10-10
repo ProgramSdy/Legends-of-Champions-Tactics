@@ -276,6 +276,18 @@ _To be documented._
   ranges, not combat predictions. Active/passive skill controls use keyboard
   accessible tabs and expose only registered skills; unavailable ownership and
   absent unlock routes stay textual as well as visual.
+- An expanded skill card keeps its native accessible disclosure behavior and
+  places the editable introduction before a compact semantic facts grid. The
+  grid uses two readable columns where space permits and one column at narrow
+  widths; long unavailable explanations wrap without horizontal scrolling.
+- Mechanical facts come only from the typed catalogue `reference` block.
+  Present values with player-friendly labels; use **Unavailable** with its
+  concise supplied reason, show **Unclassified** when applicable information is
+  absent, and omit fields that are **Not applicable**. Do not turn the grid into
+  a battle-preview panel or synthesize formula results in React.
+- Editorial copy is deliberately distinct from these facts: maintainers edit
+  the per-hero YAML content files and run the Gallery content validation/build
+  path. YAML must not contain mechanical numeric authority.
 
 ## Team Builder
 
