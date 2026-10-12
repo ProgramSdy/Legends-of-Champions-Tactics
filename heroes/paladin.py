@@ -104,8 +104,8 @@ class Paladin_Retribution(Paladin):
 
     def __init__(self, sys_init, name, group, is_player_controlled, position="front"):
             super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major, position=position)
-            self.add_skill(Skill(self, "Hammer of Anger", self.hammer_of_anger, target_type = "single", skill_type= "damage", attack_type = "ranged_projectile"))
-            self.add_skill(Skill(self, "Crusader Strike", self.crusader_strike, target_type = "single", skill_type= "damage", attack_type = "melee", independent_effect_action=self.independent_crusader_strike))
+            self.add_skill(Skill(self, "Hammer of Anger", self.hammer_of_anger, target_type = "single", skill_type= "damage", attack_type = "ranged_projectile", damage_nature = "physical", damage_type = "weapon"))
+            self.add_skill(Skill(self, "Crusader Strike", self.crusader_strike, target_type = "single", skill_type= "damage", attack_type = "melee", damage_nature = "physical", damage_type = "holy", independent_effect_action=self.independent_crusader_strike))
             self.add_skill(Skill(self, "Flash of Light", self.flash_of_light, "single", skill_type= "healing"))
 
     @staticmethod
@@ -354,9 +354,9 @@ class Paladin_Protection(Paladin):
     def __init__(self, sys_init, name, group, is_player_controlled, position="front"):
             super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major, position=position)
             self.provides_holy_aura = True
-            self.add_skill(Skill(self, "Hammer of Revenge", self.hammer_of_revenge, target_type = "single", skill_type= "damage", attack_type = "ranged_instant"))
-            self.add_skill(Skill(self, "Shield of Righteous", self.shield_of_righteous, target_type = "single", skill_type= "damage", attack_type = "melee", independent_effect_action=self.independent_shield_of_righteous))
-            self.add_skill(Skill(self, "Heroric Charge", self.heroric_charge, target_type = "single", skill_type= "damage", attack_type = "ranged_instant", is_control_skill = True, independent_effect_action=self.independent_heroric_charge))
+            self.add_skill(Skill(self, "Hammer of Revenge", self.hammer_of_revenge, target_type = "single", skill_type= "damage", attack_type = "ranged_instant", damage_nature = "physical", damage_type = "weapon"))
+            self.add_skill(Skill(self, "Shield of Righteous", self.shield_of_righteous, target_type = "single", skill_type= "damage", attack_type = "melee", damage_nature = "physical", damage_type = "holy", independent_effect_action=self.independent_shield_of_righteous))
+            self.add_skill(Skill(self, "Heroric Charge", self.heroric_charge, target_type = "single", skill_type= "damage", attack_type = "ranged_instant", damage_nature = "physical", damage_type = "weapon", is_control_skill = True, independent_effect_action=self.independent_heroric_charge))
             self.add_skill(Skill(self, "Holy Aura", self.holy_aura, target_type = "self", skill_type= "effect", target_qty=0, is_passive=True))
 
     def holy_aura(self):
@@ -550,7 +550,7 @@ class Paladin_Holy(Paladin):
     def __init__(self, sys_init, name, group, is_player_controlled, position="front"):
             super().__init__(sys_init, name, group, is_player_controlled, major=self.__class__.major, position=position)
             self.add_skill(Skill(self, "Purify Healing", self.purify_healing, target_type = "single", skill_type= "healing"))
-            self.add_skill(Skill(self, "Holy Blast", self.holy_blast, target_type = "multi", skill_type= "damage", attack_type = "ranged_projectile", target_qty= 2))
+            self.add_skill(Skill(self, "Holy Blast", self.holy_blast, target_type = "multi", skill_type= "damage", attack_type = "ranged_projectile", damage_nature = "magical", damage_type = "holy", target_qty= 2))
             self.add_skill(Skill(self, "Shield of Protection", self.shield_of_protection, target_type = "single", skill_type= "buffs", target_qty= 0))
 
     def purify_healing(self, other_hero):

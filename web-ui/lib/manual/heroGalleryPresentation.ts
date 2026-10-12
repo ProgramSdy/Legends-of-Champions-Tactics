@@ -29,6 +29,7 @@ const CLASSIFICATION_LABELS: Record<HeroSkillClassificationValue, string> = {
   poison: "Poison",
   nature: "Nature",
   death: "Death",
+  weapon: "Weapon",
 };
 
 const SKILL_TYPE_LABELS: Record<HeroSkillReference["skillType"], string> = {

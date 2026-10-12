@@ -64,6 +64,29 @@ describe("UI-028 expanded skill reference card", () => {
     expect(screen.queryByText("ranged_instant")).not.toBeInTheDocument();
   });
 
+  it("renders the Warrior weapon classification with a player-friendly label", async () => {
+    render(<SkillReferenceCard
+      skill={{
+        ...skill,
+        skillId: "skill.warrior.fatal_strike",
+        displayName: "Fatal Strike",
+        reference: {
+          ...skill.reference,
+          skillType: "damage",
+          attackType: { state: "classified", value: "melee" },
+          damageNature: { state: "classified", value: "physical" },
+          damageType: { state: "classified", value: "weapon" },
+          baseDamage: { state: "unavailable", reasonId: "notAudited", note: "Reference power has not yet been audited." },
+          baseHealing: { state: "notApplicable" },
+        },
+      }}
+      content={{ introduction: "A decisive weapon strike." }}
+    />);
+    await userEvent.setup().click(screen.getByText("Fatal Strike"));
+    expect(screen.getByText("Physical")).toBeVisible();
+    expect(screen.getByText("Weapon")).toBeVisible();
+  });
+
   it("formats multi-target and classified values without exposing raw enums", async () => {
     render(<SkillReferenceCard
       skill={{

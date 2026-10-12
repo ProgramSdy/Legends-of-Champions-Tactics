@@ -126,14 +126,8 @@ def test_pilot_reference_ranges_and_conditions_are_exact():
             "amountRange": {"minimum": 9, "maximum": 11},
         },
     ]
-    assert hammer["damageNature"] == {
-        "state": "unclassified",
-        "reasonId": "definitionMissing",
-    }
-    assert hammer["damageType"] == {
-        "state": "unclassified",
-        "reasonId": "definitionMissing",
-    }
+    assert hammer["damageNature"] == {"state": "classified", "value": "physical"}
+    assert hammer["damageType"] == {"state": "classified", "value": "weapon"}
 
 
 def test_non_pilot_numeric_states_are_explicit_and_relevant():
@@ -161,6 +155,53 @@ def test_non_pilot_numeric_states_are_explicit_and_relevant():
             else:
                 assert reference["baseDamage"] == {"state": "notApplicable"}
                 assert reference["baseHealing"] == {"state": "notApplicable"}
+
+
+def test_warrior_damage_skills_publish_authoritative_physical_weapon_facts():
+    body = client.get("/api/v1/heroes").json()
+    warrior_damage_skills = {
+        "hero.warrior.defence": {
+            "skill.warrior.devastate",
+            "skill.warrior.shield_bash",
+            "skill.warrior.thunder_pot",
+        },
+        "hero.warrior.weapon_master": {
+            "skill.warrior.fatal_strike",
+            "skill.warrior.armor_crush",
+        },
+        "hero.warrior.berserker": {
+            "skill.warrior.moon_slash",
+            "skill.warrior.strike_of_meteorite",
+        },
+    }
+    expected = {
+        "damageNature": {"state": "classified", "value": "physical"},
+        "damageType": {"state": "classified", "value": "weapon"},
+    }
+    for definition_id, skill_ids in warrior_damage_skills.items():
+        for skill_id in skill_ids:
+            reference = _skill(body, definition_id, skill_id)["reference"]
+            assert {key: reference[key] for key in expected} == expected
+
+
+def test_paladin_and_discipline_damage_skills_publish_updated_classifications():
+    body = client.get("/api/v1/heroes").json()
+    expected_classifications = {
+        ("hero.paladin.retribution", "skill.paladin.hammer_of_anger"): ("physical", "weapon"),
+        ("hero.paladin.retribution", "skill.paladin.crusader_strike"): ("physical", "holy"),
+        ("hero.paladin.protection", "skill.paladin.hammer_of_revenge"): ("physical", "weapon"),
+        ("hero.paladin.protection", "skill.paladin.shield_of_righteous"): ("physical", "holy"),
+        ("hero.paladin.protection", "skill.paladin.heroric_charge"): ("physical", "weapon"),
+        ("hero.paladin.holy", "skill.paladin.holy_blast"): ("magical", "holy"),
+        ("hero.priest.discipline", "skill.priest.penance"): ("magical", "holy"),
+        ("hero.priest.discipline", "skill.priest.holy_word_punishment"): ("magical", "holy"),
+        ("hero.rogue.comprehensiveness", "skill.rogue.sharp_blade"): ("physical", "weapon"),
+        ("hero.rogue.comprehensiveness", "skill.rogue.poisoned_dagger"): ("physical", "weapon"),
+    }
+    for (definition_id, skill_id), (nature, damage_type) in expected_classifications.items():
+        reference = _skill(body, definition_id, skill_id)["reference"]
+        assert reference["damageNature"] == {"state": "classified", "value": nature}
+        assert reference["damageType"] == {"state": "classified", "value": damage_type}
 
 
 def test_target_semantics_share_live_adapter_policy_and_multi_quantity():
@@ -258,9 +299,9 @@ def test_http_catalogue_does_not_create_battle_sessions():
         ),
         (
             lambda value: value["reference"]["damageNature"].update(
-                value="magical"
+                value="not-a-classification"
             ),
-            ("reference", "damageNature", "unclassified", "value"),
+            ("reference", "damageNature", "classified", "value"),
         ),
         (
             lambda value: value["reference"]["target"].pop("maximumTargets"),

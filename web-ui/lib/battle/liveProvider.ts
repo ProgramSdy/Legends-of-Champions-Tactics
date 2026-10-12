@@ -575,7 +575,7 @@ const GALLERY_TARGET_MODES = new Set(["self", "singleAlly", "singleEnemy", "flex
 const GALLERY_SKILL_TYPES = new Set(["damage", "healing", "damageHealing", "buff", "effect"]);
 const GALLERY_CLASSIFICATION_VALUES = new Set([
   "melee", "rangedInstant", "rangedProjectile", "physical", "magical",
-  "fire", "frost", "arcane", "shadow", "holy", "poison", "nature", "death",
+  "fire", "frost", "arcane", "shadow", "holy", "poison", "nature", "death", "weapon",
 ]);
 
 function isGalleryAmountRange(value: unknown): boolean {

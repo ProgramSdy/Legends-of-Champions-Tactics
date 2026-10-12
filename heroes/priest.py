@@ -513,9 +513,9 @@ class Priest_Discipline(Priest):
     def __init__(self, sys_init, name, group, is_player_controlled=False, position="front"):
             super().__init__(sys_init, name, group, is_player_controlled, major = self.__class__.major, position=position)
             self.preset_target = None
-            self.add_skill(Skill(self, "Penance", self.penance, "single", skill_type= "damage_healing", attack_type = "ranged_instant"))
+            self.add_skill(Skill(self, "Penance", self.penance, "single", skill_type= "damage_healing", attack_type = "ranged_instant", damage_nature = "magical", damage_type = "holy"))
             self.add_skill(Skill(self, "Holy Word Redemption", self.holy_word_redemption, "single", skill_type= "buffs"))
-            self.add_skill(Skill(self, "Holy Word Punishment", self.holy_word_punishment, target_type = "multi", skill_type= "damage", attack_type = "ranged_instant", target_qty= 2))
+            self.add_skill(Skill(self, "Holy Word Punishment", self.holy_word_punishment, target_type = "multi", skill_type= "damage", attack_type = "ranged_instant", damage_nature = "magical", damage_type = "holy", target_qty= 2))
 
     def penance(self, other_hero, target_type, attack_type="NA"):
       healing_amount_base = 25

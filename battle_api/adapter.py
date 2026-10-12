@@ -200,34 +200,36 @@ HERO_SKILL_REFERENCE_DEFINITIONS: dict[str, _HeroSkillReferenceDefinition] = {
     ),
     "skill.priest.binding_heal": _HeroSkillReferenceDefinition("healing"),
     "skill.priest.penance": _HeroSkillReferenceDefinition(
-        "damage_healing", attack_type="ranged_instant"
+        "damage_healing", attack_type="ranged_instant", damage_nature="magical", damage_type="holy"
     ),
     "skill.priest.holy_word_redemption": _HeroSkillReferenceDefinition("buffs"),
     "skill.priest.holy_word_punishment": _HeroSkillReferenceDefinition(
-        "damage", target_type="multi", target_quantity=2, attack_type="ranged_instant"
+        "damage", target_type="multi", target_quantity=2, attack_type="ranged_instant",
+        damage_nature="magical", damage_type="holy"
     ),
     "skill.paladin.hammer_of_anger": _HeroSkillReferenceDefinition(
-        "damage", attack_type="ranged_projectile"
+        "damage", attack_type="ranged_projectile", damage_nature="physical", damage_type="weapon"
     ),
     "skill.paladin.crusader_strike": _HeroSkillReferenceDefinition(
-        "damage", attack_type="melee"
+        "damage", attack_type="melee", damage_nature="physical", damage_type="holy"
     ),
     "skill.paladin.flash_of_light": _HeroSkillReferenceDefinition("healing"),
     "skill.paladin.hammer_of_revenge": _HeroSkillReferenceDefinition(
-        "damage", attack_type="ranged_instant"
+        "damage", attack_type="ranged_instant", damage_nature="physical", damage_type="weapon"
     ),
     "skill.paladin.shield_of_righteous": _HeroSkillReferenceDefinition(
-        "damage", attack_type="melee"
+        "damage", attack_type="melee", damage_nature="physical", damage_type="holy"
     ),
     "skill.paladin.heroric_charge": _HeroSkillReferenceDefinition(
-        "damage", attack_type="ranged_instant"
+        "damage", attack_type="ranged_instant", damage_nature="physical", damage_type="weapon"
     ),
     "skill.paladin.holy_aura": _HeroSkillReferenceDefinition(
         "effect", target_type="self", target_quantity=0
     ),
     "skill.paladin.purify_healing": _HeroSkillReferenceDefinition("healing"),
     "skill.paladin.holy_blast": _HeroSkillReferenceDefinition(
-        "damage", target_type="multi", target_quantity=2, attack_type="ranged_projectile"
+        "damage", target_type="multi", target_quantity=2, attack_type="ranged_projectile",
+        damage_nature="magical", damage_type="holy"
     ),
     "skill.paladin.shield_of_protection": _HeroSkillReferenceDefinition(
         "buffs", target_quantity=0
@@ -243,37 +245,39 @@ HERO_SKILL_REFERENCE_DEFINITIONS: dict[str, _HeroSkillReferenceDefinition] = {
         "damage", attack_type="ranged_projectile", damage_nature="magical", damage_type="frost"
     ),
     "skill.warrior.devastate": _HeroSkillReferenceDefinition(
-        "damage", attack_type="melee"
+        "damage", attack_type="melee", damage_nature="physical", damage_type="weapon"
     ),
     "skill.warrior.shield_bash": _HeroSkillReferenceDefinition(
-        "damage", attack_type="melee"
+        "damage", attack_type="melee", damage_nature="physical", damage_type="weapon"
     ),
     "skill.warrior.thunder_pot": _HeroSkillReferenceDefinition(
-        "damage", target_type="multi", target_quantity=2, attack_type="ranged_projectile"
+        "damage", target_type="multi", target_quantity=2, attack_type="ranged_projectile",
+        damage_nature="physical", damage_type="weapon"
     ),
     "skill.warrior.fatal_strike": _HeroSkillReferenceDefinition(
-        "damage", attack_type="melee"
+        "damage", attack_type="melee", damage_nature="physical", damage_type="weapon"
     ),
     "skill.warrior.armor_crush": _HeroSkillReferenceDefinition(
-        "damage", attack_type="melee"
+        "damage", attack_type="melee", damage_nature="physical", damage_type="weapon"
     ),
     "skill.warrior.antivenom_potion": _HeroSkillReferenceDefinition(
         "buffs", target_quantity=0
     ),
     "skill.warrior.moon_slash": _HeroSkillReferenceDefinition(
-        "damage", target_type="multi", target_quantity=2, attack_type="ranged_instant"
+        "damage", target_type="multi", target_quantity=2, attack_type="ranged_instant",
+        damage_nature="physical", damage_type="weapon"
     ),
     "skill.warrior.warlust": _HeroSkillReferenceDefinition(
         "buffs", target_quantity=0
     ),
     "skill.warrior.strike_of_meteorite": _HeroSkillReferenceDefinition(
-        "damage", attack_type="melee"
+        "damage", attack_type="melee", damage_nature="physical", damage_type="weapon"
     ),
     "skill.rogue.sharp_blade": _HeroSkillReferenceDefinition(
-        "damage", attack_type="melee"
+        "damage", attack_type="melee", damage_nature="physical", damage_type="weapon"
     ),
     "skill.rogue.poisoned_dagger": _HeroSkillReferenceDefinition(
-        "damage", attack_type="ranged_instant"
+        "damage", attack_type="ranged_instant", damage_nature="physical", damage_type="weapon"
     ),
     "skill.rogue.shadow_evasion": _HeroSkillReferenceDefinition(
         "buffs", target_quantity=0

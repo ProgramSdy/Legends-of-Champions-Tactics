@@ -96,7 +96,7 @@ class HeroSkillClassifiedDamageNatureReference(StrictApiModel):
 
 class HeroSkillClassifiedDamageTypeReference(StrictApiModel):
     state: Literal["classified"]
-    value: Literal["fire", "frost", "arcane", "shadow", "holy", "poison", "nature", "death"]
+    value: Literal["fire", "frost", "arcane", "shadow", "holy", "poison", "nature", "death", "weapon"]
 
 
 class HeroSkillUnclassifiedReference(StrictApiModel):

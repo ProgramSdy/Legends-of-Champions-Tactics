@@ -87,7 +87,7 @@ export type HeroSkillTargetReference =
 export type HeroSkillClassificationValue =
   | "melee" | "rangedInstant" | "rangedProjectile"
   | "physical" | "magical"
-  | "fire" | "frost" | "arcane" | "shadow" | "holy" | "poison" | "nature" | "death";
+  | "fire" | "frost" | "arcane" | "shadow" | "holy" | "poison" | "nature" | "death" | "weapon";
 
 export type HeroSkillClassificationReference =
   | { state: "classified"; value: HeroSkillClassificationValue }

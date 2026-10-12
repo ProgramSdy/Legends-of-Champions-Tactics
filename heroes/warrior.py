@@ -224,9 +224,9 @@ class Warrior_Defence(Warrior):
             self.probability_shield_bash = 0
             self.probability_slash = 0
             self.preset_target = None
-            self.add_skill(Skill(self, "Devastate", self.devastate, target_type = "single", skill_type= "damage",attack_type = "melee"))
-            self.add_skill(Skill(self, "Shield Bash", self.shield_bash, target_type = "single", skill_type= "damage", attack_type = "melee", capable_interrupt_magic_casting = True))
-            self.add_skill(Skill(self, "Thunder Pot", self.thunder_pot, target_type = "multi", skill_type= "damage", target_qty=2, attack_type = "ranged_projectile", is_control_skill = True, independent_effect_action=self.independent_shield_defence))
+            self.add_skill(Skill(self, "Devastate", self.devastate, target_type = "single", skill_type= "damage",attack_type = "melee", damage_nature = "physical", damage_type = "weapon"))
+            self.add_skill(Skill(self, "Shield Bash", self.shield_bash, target_type = "single", skill_type= "damage", attack_type = "melee", damage_nature = "physical", damage_type = "weapon", capable_interrupt_magic_casting = True))
+            self.add_skill(Skill(self, "Thunder Pot", self.thunder_pot, target_type = "multi", skill_type= "damage", target_qty=2, attack_type = "ranged_projectile", damage_nature = "physical", damage_type = "weapon", is_control_skill = True, independent_effect_action=self.independent_shield_defence))
 
     def audited_direct_damage_range(self, skill_name, target):
         """Return the finite pre-formation range used by the live action."""
@@ -545,8 +545,8 @@ class Warrior_Weapon_Master(Warrior):
             self.probability_shield_bash = 0
             self.probability_slash = 0
             self.preset_target = None
-            self.add_skill(Skill(self, "Fatal Strike", self.fatal_strike, target_type = "single", skill_type= "damage",attack_type = "melee"))
-            self.add_skill(Skill(self, "Armor Crush", self.armor_crush, target_type = "single", skill_type= "damage", attack_type = "melee"))
+            self.add_skill(Skill(self, "Fatal Strike", self.fatal_strike, target_type = "single", skill_type= "damage",attack_type = "melee", damage_nature = "physical", damage_type = "weapon"))
+            self.add_skill(Skill(self, "Armor Crush", self.armor_crush, target_type = "single", skill_type= "damage", attack_type = "melee", damage_nature = "physical", damage_type = "weapon"))
             self.add_skill(Skill(self, "Antivenom Potion", self.antivenom_potion, target_type = "single", skill_type= "buffs", target_qty= 0))
 
     def audited_direct_damage_range(self, skill_name, target):
@@ -912,9 +912,9 @@ class Warrior_Berserker(Warrior):
         self.defense_decreased_amount_by_blood_frenzy = 0
 
         # 技能
-        self.add_skill(Skill(self, "Moon Slash", self.moon_slash, target_type="multi", skill_type="damage", target_qty=2, attack_type = "ranged_instant"))
+        self.add_skill(Skill(self, "Moon Slash", self.moon_slash, target_type="multi", skill_type="damage", target_qty=2, attack_type = "ranged_instant", damage_nature = "physical", damage_type = "weapon"))
         self.add_skill(Skill(self, "Warlust", self.warlust, target_type="single", skill_type="buffs", target_qty=0))
-        self.add_skill(Skill(self, "Strike of Meteorite", self.strike_of_meteorite, target_type="single", skill_type="damage", attack_type = "melee", capable_interrupt_magic_casting=True))
+        self.add_skill(Skill(self, "Strike of Meteorite", self.strike_of_meteorite, target_type="single", skill_type="damage", attack_type = "melee", damage_nature = "physical", damage_type = "weapon",capable_interrupt_magic_casting=True))
 
     def audited_direct_damage_range(self, skill_name, target):
         """Return the finite pre-formation range used by the live action."""
