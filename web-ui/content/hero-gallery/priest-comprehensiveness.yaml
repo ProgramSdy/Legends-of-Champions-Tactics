@@ -10,7 +10,7 @@ skills:
       A direct holy attack against one enemy.
   - skillId: skill.priest.shadow_word_pain
     introduction: |-
-      Marks one enemy with a continuing shadow affliction.
+      Marks one enemy with a continuing shadow affliction. Debuff attached: Shadow Word: Pain.
   - skillId: skill.priest.binding_heal
     introduction: |-
-      Restores an ally and also helps the caster.
+      Restores an ally and also heals the caster.

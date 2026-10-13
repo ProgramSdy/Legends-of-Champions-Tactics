@@ -112,7 +112,14 @@ export type HeroSkillNumericReference =
     note: string;
     conditions: HeroSkillReferenceCondition[];
   }
-  | { state: "unavailable"; reasonId: "notAudited" | "targetDependentBaseline"; note: string }
+  | {
+    state: "unavailable";
+    reasonId: "notAudited" | "targetDependentBaseline";
+    note: string;
+    /** Optional adapter metadata is serialized as null when absent by Pydantic. */
+    displayLabel?: string | null;
+    calculation?: { title: string; formula: string } | null;
+  }
   | { state: "notApplicable" };
 
 export interface HeroSkillReference {

@@ -160,6 +160,24 @@ describe("UI-027 Manual and Gallery", () => {
     expect(screen.getByRole("link", { name: /Back to Game Manual/ })).toHaveAttribute("href", "/stages?manual=open");
   });
 
+  it("accepts null optional calculation metadata emitted by the Python roster model", async () => {
+    const apiRoster = JSON.parse(JSON.stringify(gallery)) as Array<{
+      skills: Array<{ reference: { baseDamage: Record<string, unknown>; baseHealing: Record<string, unknown> } }>;
+    }>;
+    for (const hero of apiRoster) {
+      for (const skill of hero.skills) {
+        for (const numericReference of [skill.reference.baseDamage, skill.reference.baseHealing]) {
+          if (numericReference.state === "unavailable") {
+            numericReference.displayLabel = null;
+            numericReference.calculation = null;
+          }
+        }
+      }
+    }
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(json({ contractVersion: "1.0", heroes: apiRoster }));
+    await expect(fetchHeroGalleryRoster()).resolves.toHaveLength(10);
+  });
+
   it("rejects API/editorial hero or skill ID drift before the Gallery can render", async () => {
     const unknownHero = gallery.map((hero, index) => index === 0
       ? { ...hero, definitionId: "hero.unknown" }

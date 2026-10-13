@@ -74,7 +74,9 @@ configured resistance ranges of the same shape, a stable skill inventory
 strictly typed skill-facts record: audited target semantics, skill type,
 active/passive status, attack/damage classifications, and Base Damage/Base
 Healing availability. Numerical results are either audited baseline-power
-bounds, an explicit unavailable reason/note, or not applicable; classification
+bounds, an explicit unavailable reason/note (optionally with an
+adapter-authored display label and static calculation title/text for a Gallery
+help dialog), or not applicable; classification
 states distinguish missing applicable data (`unclassified`) from a genuinely
 inapplicable concept. These fields are catalogue facts only:
 they do not create heroes, roll randomized values, consume RNG, or grant an
@@ -84,7 +86,8 @@ unlock. The browser must render ranges as ranges, obtain actual ownership from
 The adapter maps target presentation from its audited legal-target semantics,
 not raw engine `target_type` alone. Reference metadata is static and never
 executes a skill or opens a session; it is not a calculation of damage dealt
-or healing received in a live battle.
+or healing received in a live battle. React renders any supplied calculation
+copy verbatim and must not derive or duplicate formula logic.
 The roster display name is catalogue metadata. Each non-summoned battle
 combatant receives a runtime name from its class's `HeroGenerator` faculty pool
 during session creation.

@@ -87,6 +87,45 @@ describe("UI-028 expanded skill reference card", () => {
     expect(screen.getByText("Weapon")).toBeVisible();
   });
 
+  it("renders the backend-owned Shadow Word Pain calculation dialog", async () => {
+    render(<SkillReferenceCard
+      skill={{
+        ...skill,
+        skillId: "skill.priest.shadow_word_pain",
+        displayName: "Shadow Word Pain",
+        reference: {
+          ...skill.reference,
+          skillType: "damage",
+          attackType: { state: "classified", value: "rangedInstant" },
+          damageNature: { state: "classified", value: "magical" },
+          damageType: { state: "classified", value: "shadow" },
+          baseDamage: {
+            state: "unavailable",
+            reasonId: "targetDependentBaseline",
+            displayLabel: "Target-dependent",
+            note: "The target's Shadow Resistance is part of the immediate formula.",
+            calculation: {
+              title: "Damage Calculation",
+              formula: "Direct damage = round((Caster Damage + Skill Variation − Target Shadow Resistance) ÷ 2)",
+            },
+          },
+          baseHealing: { state: "notApplicable" },
+        },
+      }}
+      content={{ introduction: "Marks one enemy with a continuing shadow affliction." }}
+    />);
+    const user = userEvent.setup();
+    await user.click(screen.getByText("Shadow Word Pain"));
+    expect(screen.getByText("Target-dependent")).toBeVisible();
+    expect(screen.queryByText("The target's Shadow Resistance is part of the immediate formula.")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /open damage calculation/i }));
+    expect(screen.getByRole("dialog", { name: "Damage Calculation" })).toHaveTextContent(
+      "Direct damage = round((Caster Damage + Skill Variation − Target Shadow Resistance) ÷ 2)",
+    );
+    await user.click(screen.getByRole("button", { name: "Close damage calculation" }));
+    expect(screen.queryByRole("dialog", { name: "Damage Calculation" })).not.toBeInTheDocument();
+  });
+
   it("formats multi-target and classified values without exposing raw enums", async () => {
     render(<SkillReferenceCard
       skill={{

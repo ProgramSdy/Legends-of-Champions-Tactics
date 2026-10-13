@@ -473,12 +473,23 @@ class BattleAdapter:
         return {"state": "classified", "value": normalized}
 
     @staticmethod
-    def _catalogue_unavailable_numeric(note: str, *, reason_id="notAudited") -> dict[str, str]:
-        return {
+    def _catalogue_unavailable_numeric(
+        note: str,
+        *,
+        reason_id="notAudited",
+        display_label: str | None = None,
+        calculation: dict[str, str] | None = None,
+    ) -> dict[str, Any]:
+        reference: dict[str, Any] = {
             "state": "unavailable",
             "reasonId": reason_id,
             "note": note,
         }
+        if display_label is not None:
+            reference["displayLabel"] = display_label
+        if calculation is not None:
+            reference["calculation"] = calculation
+        return reference
 
     @classmethod
     def _catalogue_skill_reference(
@@ -538,6 +549,14 @@ class BattleAdapter:
                     "damage is not included."
                 ),
                 reason_id="targetDependentBaseline",
+                display_label="Target-dependent",
+                calculation={
+                    "title": "Damage Calculation",
+                    "formula": (
+                        "Direct damage = round((Caster Damage + Skill Variation "
+                        "− Target Shadow Resistance) ÷ 2)"
+                    ),
+                },
             )
         elif skill_id == "skill.priest.binding_heal":
             base_healing = {

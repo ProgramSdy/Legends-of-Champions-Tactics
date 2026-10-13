@@ -545,7 +545,8 @@ record is a typed static fact: audited player-facing target semantics; skill
 type; active/passive classification; attack, damage-nature, and damage-type
 classification; and Base Damage/Base Healing states. Numeric states are
 `available` with audited baseline-power bounds, `unavailable` with a stable
-reason and explanatory note, or `notApplicable`; classifications distinguish
+reason and explanatory note (optionally with an adapter-authored display label
+and static calculation title/text for Gallery help), or `notApplicable`; classifications distinguish
 `unclassified` from `notApplicable`. Target modes are adapter-owned (`self`,
 single ally/enemy, flexible ally-or-enemy, or size-bounded multiple allies or
 enemies), rather than a client interpretation of raw engine target metadata.

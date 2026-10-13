@@ -87,6 +87,14 @@ def test_pilot_reference_ranges_and_conditions_are_exact():
     assert shadow_pain["baseDamage"]["state"] == "unavailable"
     assert shadow_pain["baseDamage"]["reasonId"] == "targetDependentBaseline"
     assert "Shadow Resistance" in shadow_pain["baseDamage"]["note"]
+    assert shadow_pain["baseDamage"]["displayLabel"] == "Target-dependent"
+    assert shadow_pain["baseDamage"]["calculation"] == {
+        "title": "Damage Calculation",
+        "formula": (
+            "Direct damage = round((Caster Damage + Skill Variation "
+            "− Target Shadow Resistance) ÷ 2)"
+        ),
+    }
 
     binding_heal = _skill(
         body, "hero.priest.comprehensiveness", "skill.priest.binding_heal"

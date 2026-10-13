@@ -17,6 +17,7 @@ const PASSIVE_TAB_ID = "hero-skill-tab-passive";
 
 export function SkillReferenceCard({ skill, content }: { skill: HeroSkillInventoryItem; content: HeroGallerySkillContent }) {
   const rows = buildSkillReferenceRows(skill.reference);
+  const [calculation, setCalculation] = useState<{ title: string; formula: string } | null>(null);
   return (
     <details>
       <summary>{skill.displayName}</summary>
@@ -25,7 +26,17 @@ export function SkillReferenceCard({ skill, content }: { skill: HeroSkillInvento
         <dl className="skill-reference-grid">
           {rows.map((row) => (
             <div key={row.id}>
-              <dt>{row.label}</dt>
+              <dt>
+                {row.label}
+                {row.calculation && (
+                  <button
+                    className="skill-reference-calculation-trigger"
+                    type="button"
+                    aria-label={`Open ${row.calculation.title} for ${skill.displayName}`}
+                    onClick={() => setCalculation(row.calculation!)}
+                  >?</button>
+                )}
+              </dt>
               <dd>
                 <strong>{row.value}</strong>
                 {row.note && <small>{row.note}</small>}
@@ -49,6 +60,22 @@ export function SkillReferenceCard({ skill, content }: { skill: HeroSkillInvento
           <aside className="skill-reference-tips" aria-label={`${skill.displayName} strategy tips`}>
             {content.tips.map((tip) => <p key={`${tip.label}:${tip.text}`}><strong>{tip.label}</strong>{tip.text}</p>)}
           </aside>
+        )}
+        {calculation && (
+          <div className="skill-reference-calculation-backdrop" onClick={() => setCalculation(null)}>
+            <section
+              className="skill-reference-calculation-dialog"
+              role="dialog"
+              aria-modal="true"
+              aria-label={calculation.title}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <button type="button" aria-label="Close damage calculation" onClick={() => setCalculation(null)}>×</button>
+              <small>SKILL REFERENCE</small>
+              <h3>{calculation.title}</h3>
+              <p>{calculation.formula}</p>
+            </section>
+          </div>
         )}
       </div>
     </details>

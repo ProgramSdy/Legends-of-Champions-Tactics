@@ -154,12 +154,19 @@ class HeroSkillAvailableNumericReference(StrictApiModel):
     conditions: list[HeroSkillReferenceCondition] = Field(default_factory=list)
 
 
+class HeroSkillReferenceCalculation(StrictApiModel):
+    title: str = Field(min_length=1)
+    formula: str = Field(min_length=1)
+
+
 class HeroSkillUnavailableNumericReference(StrictApiModel):
     state: Literal["unavailable"]
     reason_id: Literal["notAudited", "targetDependentBaseline"] = Field(
         alias="reasonId"
     )
     note: str = Field(min_length=1)
+    display_label: str | None = Field(default=None, alias="displayLabel", min_length=1)
+    calculation: HeroSkillReferenceCalculation | None = None
 
 
 HeroSkillNumericReference = Annotated[

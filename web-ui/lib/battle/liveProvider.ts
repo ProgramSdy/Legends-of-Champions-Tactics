@@ -597,7 +597,15 @@ function isGalleryNumericReference(value: unknown): boolean {
   if (value.state === "notApplicable") return true;
   if (value.state === "unavailable") {
     return (value.reasonId === "notAudited" || value.reasonId === "targetDependentBaseline")
-      && typeof value.note === "string" && value.note.length > 0;
+      && typeof value.note === "string" && value.note.length > 0
+      && (value.displayLabel === undefined
+        || value.displayLabel === null
+        || typeof value.displayLabel === "string" && value.displayLabel.length > 0)
+      && (value.calculation === undefined
+        || value.calculation === null
+        || isRecord(value.calculation)
+          && typeof value.calculation.title === "string" && value.calculation.title.length > 0
+          && typeof value.calculation.formula === "string" && value.calculation.formula.length > 0);
   }
   return value.state === "available"
     && isGalleryAmountRange(value.amountRange)

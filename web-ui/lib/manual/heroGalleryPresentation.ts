@@ -13,6 +13,7 @@ export interface HeroGalleryFactRow {
   value: string;
   note?: string;
   conditions?: readonly HeroSkillReferenceCondition[];
+  calculation?: { title: string; formula: string };
 }
 
 const CLASSIFICATION_LABELS: Record<HeroSkillClassificationValue, string> = {
@@ -71,7 +72,15 @@ function amountLabel(range: { minimum: number; maximum: number }): string {
 function numericRow(id: string, label: string, reference: HeroSkillNumericReference): HeroGalleryFactRow | null {
   if (reference.state === "notApplicable") return null;
   if (reference.state === "unavailable") {
-    return { id, label, value: "Unavailable", note: reference.note };
+    return {
+      id,
+      label,
+      value: reference.displayLabel ?? "Unavailable",
+      // A calculation dialog supplies the explanatory detail without making
+      // the compact Base Damage card repeat it.
+      note: reference.calculation ? undefined : reference.note,
+      calculation: reference.calculation ?? undefined,
+    };
   }
   return {
     id,

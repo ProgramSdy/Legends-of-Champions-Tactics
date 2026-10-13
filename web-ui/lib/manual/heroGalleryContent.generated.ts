@@ -73,10 +73,10 @@ export const heroGalleryContent = {
         "introduction": "A direct holy attack against one enemy."
       },
       "skill.priest.shadow_word_pain": {
-        "introduction": "Marks one enemy with a continuing shadow affliction."
+        "introduction": "Marks one enemy with a continuing shadow affliction. Debuff attached: Shadow Word: Pain."
       },
       "skill.priest.binding_heal": {
-        "introduction": "Restores an ally and also helps the caster."
+        "introduction": "Restores an ally and also heals the caster."
       }
     }
   },
