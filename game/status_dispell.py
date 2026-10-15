@@ -25,7 +25,17 @@ class StatusDispell:
             hero.status['cold'] = False
             self.game.display_battle_info(f"{BLUE}{hero.name}'s cold effect has been dispelled. {hero.name}'s agility has returned to {hero.agility}.{RESET}")
           elif status == 'shadow_word_pain':
-            hero.shadow_word_pain_debuff_duration = 0
+            debuff = next(
+                (
+                    item for item in hero.debuffs
+                    if item.name == "Shadow Word Pain"
+                ),
+                None,
+            )
+            if debuff is not None:
+              debuff.duration = 0
+              hero.debuffs.remove(debuff)
+              hero.buffs_debuffs_recycle_pool.append(debuff)
             hero.shadow_word_pain_continuous_damage = 0 # Reset shadow word pain continuous_damage
             hero.status['shadow_word_pain'] = False
             self.game.display_battle_info(f"{BLUE}{hero.name}'s Shadow Word Pain effect has been dispelled. {hero.name} is no longer feeling pain.{RESET}")

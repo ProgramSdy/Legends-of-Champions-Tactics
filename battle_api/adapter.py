@@ -354,7 +354,7 @@ STATUS_DURATIONS = {
     "bleeding_sharp_blade": "sharp_blade_debuff_duration",
     "poisoned_dagger": "poisoned_dagger_debuff_duration",
     "shadow_evasion": "shadow_evasion_buff_duration",
-    "shadow_word_pain": "shadow_word_pain_debuff_duration",
+    "shadow_word_pain": None,  # duration is held on the matching Debuff
     "holy_word_redemption": "holy_word_redemption_duration",
     "holy_word_punishment": None,
     "wrath_of_crusader": "wrath_of_crusader_duration",
@@ -375,6 +375,7 @@ STATUS_ENGINE_NAMES = {
     "scoff": "Scoff",
     "holy_word_redemption": "Holy Word Redemption",
     "holy_word_punishment": "Holy Word Punishment",
+    "shadow_word_pain": "Shadow Word Pain",
     "shield_defence": "Shield Defence",
     "purify_healing": "Purify Healing",
     "bleeding_moon_slash": "Moon Slash",
@@ -554,7 +555,9 @@ class BattleAdapter:
                     "title": "Damage Calculation",
                     "formula": (
                         "Direct damage = round((Caster Damage + Skill Variation "
-                        "− Target Shadow Resistance) ÷ 2)"
+                        "− Target Shadow Resistance) ÷ 2)\n"
+                        "Continuous damage = max(1, round((Caster Original Damage "
+                        "− Target Shadow Resistance) ÷ 3) + Skill Variation)"
                     ),
                 },
             )

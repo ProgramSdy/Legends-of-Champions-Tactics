@@ -222,14 +222,20 @@ class StatusEffectManager:
 
             # Handle Shadow Word Pain Debuff Duration
             if hero.status['shadow_word_pain'] and hero.hp > 0:
-                hero.shadow_word_pain_debuff_duration -=1
-                if hero.shadow_word_pain_debuff_duration > 0:
-                    variation = random.randint(-2, 2)
-                    self.game.display_status_updates(f"{BLUE}{hero.name}'s Shadow Word Pain debuff duration is {hero.shadow_word_pain_debuff_duration} rounds. {self._status_damage(hero, hero.shadow_word_pain_continuous_damage + variation, 'shadow_word_pain')}{RESET}")
-                elif hero.shadow_word_pain_debuff_duration == 0:
-                    hero.shadow_word_pain_continuous_damage = 0 # Reset shadow word pain continuous_damage
-                    hero.status['shadow_word_pain'] = False
-                    self.game.display_status_updates(f"{BLUE}{hero.name} is no longer feeling pain. Shadow Word Pain effect has faded away from {hero.name}.{RESET}")
+                for debuff in hero.debuffs:
+                    if debuff.name == "Shadow Word Pain":
+                        debuff.duration -= 1
+                        if debuff.duration > 0:
+                            basic_damage = round((debuff.initiator.original_damage - hero.shadow_resistance)*(1/3))
+                            variation = random.randint(0, 2)
+                            hero.shadow_word_pain_continuous_damage = max(1, basic_damage + variation)
+                            self.game.display_status_updates(f"{BLUE}{self._status_damage(hero, hero.shadow_word_pain_continuous_damage, 'shadow_word_pain', debuff.initiator)} {hero.name}'s Shadow Word Pain debuff duration is {debuff.duration} rounds.{RESET}")
+                        elif debuff.duration == 0:
+                            hero.status['shadow_word_pain'] = False
+                            hero.shadow_word_pain_continuous_damage = 0
+                            hero.debuffs.remove(debuff)
+                            hero.buffs_debuffs_recycle_pool.append(debuff)
+                            self.game.display_status_updates(f"{BLUE}{hero.name} is no longer feeling pain. Shadow Word Pain effect has faded away from {hero.name}.{RESET}")
 
             # Handle Poison Dagger Debuff Duration
             if hero.status['poisoned_dagger'] and hero.hp > 0:
@@ -242,7 +248,7 @@ class StatusEffectManager:
                         hero.poisoned_dagger_continuous_damage = math.ceil((hero.poisoned_dagger_applier_damage - hero.poison_resistance)/2)
                     self.game.display_status_updates(f"{BLUE}{hero.name}'s Poisoned Dagger duration is {hero.poisoned_dagger_debuff_duration} rounds. {self._status_damage(hero, hero.poisoned_dagger_continuous_damage + variation, 'poisoned_dagger')}{RESET}")
                 elif hero.poisoned_dagger_debuff_duration == 0:
-                    hero.poisoned_dagger_continuous_damage = 0 # Reset shadow word pain continuous_damage
+                    hero.poisoned_dagger_continuous_damage = 0 
                     hero.status['poisoned_dagger'] = False
                     hero.poisoned_dagger_stacks = 0
                     self.game.display_status_updates(f"{BLUE}{hero.name} is no longer poisoned.{RESET}")
@@ -311,7 +317,7 @@ class StatusEffectManager:
                     variation = random.randint(-2, 2)
                     self.game.display_status_updates(f"{BLUE}{hero.name}'s bleeding effect from Sharp Blade is {hero.sharp_blade_debuff_duration} rounds. {self._status_damage(hero, hero.sharp_blade_continuous_damage + variation, 'bleeding_sharp_blade')}{RESET}")
                 elif hero.sharp_blade_debuff_duration == 0:
-                    hero.sharp_blade_continuous_damage = 0 # Reset shadow word pain continuous_damage
+                    hero.sharp_blade_continuous_damage = 0 
                     hero.status['bleeding_sharp_blade'] = False
                     self.game.display_status_updates(f"{BLUE}{hero.name} is no longer bleeding. Their wound from Sharp Blade has recovered.{RESET}")
 
@@ -452,7 +458,7 @@ class StatusEffectManager:
                     variation = random.randint(-1, 1)
                     self.game.display_status_updates(f"{BLUE}{hero.name}'s Curse of Agony duration is {hero.curse_of_agony_duration} rounds. {self._status_damage(hero, damage_dealt + variation, 'curse_of_agony')}{RESET}")
                 elif hero.curse_of_agony_duration == 0:
-                    hero.curse_of_agony_continuous_damage = [0, 0, 0, 0] # Reset shadow word pain continuous_damage
+                    hero.curse_of_agony_continuous_damage = [0, 0, 0, 0] 
                     hero.status['curse_of_agony'] = False
                     self.game.display_status_updates(f"{BLUE}{hero.name}'s Curse of Agony duration is {hero.curse_of_agony_duration} rounds. Curse of Agony has faded away from {hero.name}.{RESET}")
 
@@ -1067,7 +1073,7 @@ class StatusEffectManager:
                     variation = random.randint(-2, 2)
                     self.game.display_status_updates(f"{BLUE}{hero.name}'s bleeding effect from Corroded Blade is {hero.corroded_blade_debuff_duration} rounds. {self._status_damage(hero, hero.corroded_blade_continuous_damage + variation, 'bleeding_corroded_blade')}{RESET}")
                 elif hero.corroded_blade_debuff_duration == 0:
-                    hero.corroded_blade_continuous_damage = 0 # Reset shadow word pain continuous_damage
+                    hero.corroded_blade_continuous_damage = 0 
                     hero.status['bleeding_corroded_blade'] = False
                     self.game.display_status_updates(f"{BLUE}{hero.name} is no longer bleeding. Their wound from Corroded Blade has recovered.{RESET}")
 

@@ -106,7 +106,7 @@ describe("UI-028 expanded skill reference card", () => {
             note: "The target's Shadow Resistance is part of the immediate formula.",
             calculation: {
               title: "Damage Calculation",
-              formula: "Direct damage = round((Caster Damage + Skill Variation − Target Shadow Resistance) ÷ 2)",
+              formula: "Direct damage = round((Caster Damage + Skill Variation − Target Shadow Resistance) ÷ 2)\nContinuous damage = max(1, round((Caster Original Damage − Target Shadow Resistance) ÷ 3) + Skill Variation)",
             },
           },
           baseHealing: { state: "notApplicable" },
@@ -120,7 +120,7 @@ describe("UI-028 expanded skill reference card", () => {
     expect(screen.queryByText("The target's Shadow Resistance is part of the immediate formula.")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /open damage calculation/i }));
     expect(screen.getByRole("dialog", { name: "Damage Calculation" })).toHaveTextContent(
-      "Direct damage = round((Caster Damage + Skill Variation − Target Shadow Resistance) ÷ 2)",
+      "Direct damage = round((Caster Damage + Skill Variation − Target Shadow Resistance) ÷ 2) Continuous damage = max(1, round((Caster Original Damage − Target Shadow Resistance) ÷ 3) + Skill Variation)",
     );
     await user.click(screen.getByRole("button", { name: "Close damage calculation" }));
     expect(screen.queryByRole("dialog", { name: "Damage Calculation" })).not.toBeInTheDocument();

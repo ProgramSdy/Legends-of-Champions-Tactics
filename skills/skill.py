@@ -407,4 +407,4 @@ class Debuff:
         self.duration = duration
         self.initiator = initiator
         self.effect = effect
-        self.type = ['none']
+        self.type = ['none'] #['Bleeding'] ['Disease'] ['Toxic'] ['Magic'] ['Physical']

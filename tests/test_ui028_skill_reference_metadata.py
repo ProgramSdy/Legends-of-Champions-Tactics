@@ -92,7 +92,9 @@ def test_pilot_reference_ranges_and_conditions_are_exact():
         "title": "Damage Calculation",
         "formula": (
             "Direct damage = round((Caster Damage + Skill Variation "
-            "− Target Shadow Resistance) ÷ 2)"
+            "− Target Shadow Resistance) ÷ 2)\n"
+            "Continuous damage = max(1, round((Caster Original Damage "
+            "− Target Shadow Resistance) ÷ 3) + Skill Variation)"
         ),
     }
 

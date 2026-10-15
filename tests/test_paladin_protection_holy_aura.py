@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from battle_api.adapter import BattleAdapter
-from skills import Buff
+from skills import Buff, Debuff
 
 
 def _battle():
@@ -94,8 +94,11 @@ def test_status_phase_emits_aura_then_each_dot_as_distinct_ordered_events(monkey
     ally.bleeding_slash_duration = 2
     ally.bleeding_slash_continuous_damage = 7
     ally.status["shadow_word_pain"] = True
-    ally.shadow_word_pain_debuff_duration = 2
-    ally.shadow_word_pain_continuous_damage = 9
+    ally.add_debuff(Debuff("Shadow Word Pain", 2, paladin, 0))
+    pain_damage = max(
+        1,
+        round((paladin.original_damage - ally.shadow_resistance) * (1 / 3)),
+    )
     monkeypatch.setattr(
         "game.status_effect_manager.random.randint", lambda _low, _high: 0
     )
@@ -112,7 +115,7 @@ def test_status_phase_emits_aura_then_each_dot_as_distinct_ordered_events(monkey
         "damageApplied",
         "damageApplied",
     ]
-    assert [event["amount"] for event in ally_events] == [6, 7, 9]
+    assert [event["amount"] for event in ally_events] == [6, 7, pain_damage]
     assert ally_events[0]["sourceId"] == adapter._combatant_id(session, paladin)
     assert ally_events[0]["statusId"] == "status.holy_aura"
     assert [event["statusId"] for event in ally_events[1:]] == [
@@ -122,7 +125,7 @@ def test_status_phase_emits_aura_then_each_dot_as_distinct_ordered_events(monkey
     assert [event["hpAfter"]["current"] for event in ally_events] == [
         ally.hp_max - 34,
         ally.hp_max - 41,
-        ally.hp_max - 50,
+        ally.hp_max - 41 - pain_damage,
     ]
     assert [event["sequence"] for event in ally_events] == sorted(
         event["sequence"] for event in ally_events

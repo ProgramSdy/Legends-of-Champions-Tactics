@@ -81,17 +81,32 @@ class Priest_Comprehensiveness(Priest):
 
     def shadow_word_pain(self, other_hero, attack_type="NA"):
         variation = random.randint(0, 5)
-        actual_damage = self.damage + variation
         damage_dealt = self._shadow_word_pain_direct_damage(
             self.damage, other_hero.shadow_resistance, variation
         )
         if other_hero.status['shadow_word_pain'] == False:
             other_hero.status['shadow_word_pain'] = True
-            other_hero.shadow_word_pain_debuff_duration = 5  # Effect lasts for 4 rounds
-            if damage_dealt > 0:
-              other_hero.shadow_word_pain_continuous_damage = round((actual_damage - other_hero.shadow_resistance)*(1/3))
+            recycled_debuff = next(
+                (
+                    debuff
+                    for debuff in other_hero.buffs_debuffs_recycle_pool
+                    if debuff.name == "Shadow Word Pain" and debuff.initiator is self
+                ),
+                None,
+            )
+            if recycled_debuff is not None:
+                other_hero.buffs_debuffs_recycle_pool.remove(recycled_debuff)
+                recycled_debuff.duration = 5
+                other_hero.add_debuff(recycled_debuff)
             else:
-              other_hero.shadow_word_pain_continuous_damage = random.randint(1, 10)
+                debuff = Debuff(
+                    name='Shadow Word Pain',
+                    duration=5,  # Shadow Word Pain lasts for five rounds.
+                    initiator=self,
+                    effect=0,
+                )
+                debuff.type = ['Magic']
+                other_hero.add_debuff(debuff)
             self.game.display_battle_info(f"{self.name} uses Shadow Word Pain on {other_hero.name}. {other_hero.name} feels continuous pain")
         else:
             self.game.display_battle_info(f"{self.name} uses Shadow Word Pain on {other_hero.name}.")
@@ -123,6 +138,10 @@ class Priest_Comprehensiveness(Priest):
         active_statuses = {
             name for name, active in hero.status.items() if active
         }
+        shadow_word_pain = next(
+            (debuff for debuff in hero.debuffs if debuff.name == "Shadow Word Pain"),
+            None,
+        )
         return {
             "hero": hero,
             "faculty": hero.faculty,
@@ -138,8 +157,8 @@ class Priest_Comprehensiveness(Priest):
             "agility": hero.agility,
             "shadow_resistance": hero.shadow_resistance,
             "active_statuses": active_statuses,
-            "shadow_word_pain_duration": getattr(
-                hero, "shadow_word_pain_debuff_duration", 0
+            "shadow_word_pain_duration": (
+                shadow_word_pain.duration if shadow_word_pain is not None else 0
             ),
             "buffs": [
                 {
