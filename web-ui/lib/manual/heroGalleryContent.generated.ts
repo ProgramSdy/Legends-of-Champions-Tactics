@@ -100,13 +100,13 @@ export const heroGalleryContent = {
     "battleStyle": "Prioritises vulnerable enemies while avoiding retaliation.",
     "skills": {
       "skill.rogue.sharp_blade": {
-        "introduction": "A swift melee strike that can cause bleeding."
+        "introduction": "A swift melee dagger strike that has 50% chance to cause bleeding."
       },
       "skill.rogue.poisoned_dagger": {
-        "introduction": "A ranged dagger attack that can apply poison."
+        "introduction": "Rogue sneak to a ranged target and perform a poisoned dagger attack that has 85% chance to apply poison. Poison debuff max 2 stacks."
       },
       "skill.rogue.shadow_evasion": {
-        "introduction": "A self-buff that improves evasion."
+        "introduction": "Enable Rogue to dodge all coming attack in the current round."
       }
     }
   },

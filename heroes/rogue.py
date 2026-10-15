@@ -40,7 +40,7 @@ class Rogue_Comprehensiveness(Rogue):
     @staticmethod
     def _poisoned_dagger_direct_damage(damage, defense, variation):
         """Pure direct damage shared by execution and audited preview."""
-        return max(int((damage + variation - defense) / 2), 0)
+        return max(round((damage + variation - defense) / 2), 0)
 
     def audited_direct_damage_range(self, skill_name, target):
         """Return the MVP Rogue skill's RNG-free immediate damage range.

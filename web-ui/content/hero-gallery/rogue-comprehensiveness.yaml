@@ -7,10 +7,10 @@ battleStyle: |-
 skills:
   - skillId: skill.rogue.sharp_blade
     introduction: |-
-      A swift melee strike that can cause bleeding.
+      A swift melee dagger strike that has 50% chance to cause bleeding.
   - skillId: skill.rogue.poisoned_dagger
     introduction: |-
-      A ranged dagger attack that can apply poison.
+      Rogue sneak to a ranged target and perform a poisoned dagger attack that has 85% chance to apply poison. Poison debuff max 2 stacks.
   - skillId: skill.rogue.shadow_evasion
     introduction: |-
-      A self-buff that improves evasion.
+      Enable Rogue to dodge all coming attack in the current round.

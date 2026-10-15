@@ -574,6 +574,36 @@ class BattleAdapter:
                     }
                 ],
             }
+        elif skill_id == "skill.rogue.sharp_blade":
+            base_damage = cls._catalogue_unavailable_numeric(
+                "Direct damage depends on the selected target's Defence.",
+                reason_id="targetDependentBaseline",
+                display_label="Target-dependent",
+                calculation={
+                    "title": "Damage Calculation",
+                    "formula": (
+                        "Direct damage = max(Caster Damage + Skill Variation "
+                        "− Target Defence, 0)\n"
+                        "Bleeding damage per activation = 5–8 when Direct Damage "
+                        "is 20 or less; otherwise 9–14"
+                    ),
+                },
+            )
+        elif skill_id == "skill.rogue.poisoned_dagger":
+            base_damage = cls._catalogue_unavailable_numeric(
+                "Direct damage depends on the selected target's Defence.",
+                reason_id="targetDependentBaseline",
+                display_label="Target-dependent",
+                calculation={
+                    "title": "Damage Calculation",
+                    "formula": (
+                        "Direct damage = max(round((Caster Damage + Skill Variation "
+                        "− Target Defence) ÷ 2), 0)\n"
+                        "Poison damage per stack = ceil((Caster Damage + Skill "
+                        "Variation − Target Poison Resistance) ÷ 4)"
+                    ),
+                },
+            )
         elif skill_id == "skill.paladin.hammer_of_revenge":
             damage_minimum = int(basic_properties.loc["Damage_Min", profession])
             damage_maximum = int(basic_properties.loc["Damage_Max", profession])

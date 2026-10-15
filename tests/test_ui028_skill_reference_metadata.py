@@ -114,6 +114,44 @@ def test_pilot_reference_ranges_and_conditions_are_exact():
         }
     ]
 
+    sharp_blade = _skill(
+        body, "hero.rogue.comprehensiveness", "skill.rogue.sharp_blade"
+    )["reference"]
+    assert sharp_blade["baseDamage"] == {
+        "state": "unavailable",
+        "reasonId": "targetDependentBaseline",
+        "note": "Direct damage depends on the selected target's Defence.",
+        "displayLabel": "Target-dependent",
+        "calculation": {
+            "title": "Damage Calculation",
+            "formula": (
+                "Direct damage = max(Caster Damage + Skill Variation "
+                "− Target Defence, 0)\n"
+                "Bleeding damage per activation = 5–8 when Direct Damage "
+                "is 20 or less; otherwise 9–14"
+            ),
+        },
+    }
+
+    poisoned_dagger = _skill(
+        body, "hero.rogue.comprehensiveness", "skill.rogue.poisoned_dagger"
+    )["reference"]
+    assert poisoned_dagger["baseDamage"] == {
+        "state": "unavailable",
+        "reasonId": "targetDependentBaseline",
+        "note": "Direct damage depends on the selected target's Defence.",
+        "displayLabel": "Target-dependent",
+        "calculation": {
+            "title": "Damage Calculation",
+            "formula": (
+                "Direct damage = max(round((Caster Damage + Skill Variation "
+                "− Target Defence) ÷ 2), 0)\n"
+                "Poison damage per stack = ceil((Caster Damage + Skill "
+                "Variation − Target Poison Resistance) ÷ 4)"
+            ),
+        },
+    }
+
     hammer = _skill(
         body, "hero.paladin.protection", "skill.paladin.hammer_of_revenge"
     )["reference"]
@@ -146,6 +184,8 @@ def test_non_pilot_numeric_states_are_explicit_and_relevant():
         "skill.priest.holy_smite",
         "skill.priest.shadow_word_pain",
         "skill.priest.binding_heal",
+        "skill.rogue.sharp_blade",
+        "skill.rogue.poisoned_dagger",
         "skill.paladin.hammer_of_revenge",
     }
     for hero in body["heroes"]:

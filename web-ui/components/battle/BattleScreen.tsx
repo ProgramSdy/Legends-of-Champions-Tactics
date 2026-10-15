@@ -332,11 +332,15 @@ function BattlefieldFigure({ hero, active, event, hpEvent, healingCasterEvent, e
     ? `evade-${eventSourceSide}` : "";
   const assetKey = hero.definitionId;
   const figureScale = formationScale * heroFigureScaleFor(hero.definitionId);
+  const hasShadowEvasion = hero.alive
+    && hero.definitionId === "hero.rogue.comprehensiveness"
+    && hero.statuses.some((status) => status.id === "status.shadow_evasion");
   return (
     <div
-      className={`battle-figure slot-${hero.slot} ${hero.sideId} ${active ? "acting" : ""} ${effect ? `fx-${effect}` : ""} ${targetEffect === "priest-healing" ? "priest-healing-target" : ""} ${targetEffect === "paladin-healing" ? "paladin-healing-target" : ""} ${movementClass} ${evadeClass} ${selectable ? "selectable" : ""} ${selected ? "targeted" : ""}`}
+      className={`battle-figure slot-${hero.slot} ${hero.sideId} ${active ? "acting" : ""} ${effect ? `fx-${effect}` : ""} ${targetEffect === "priest-healing" ? "priest-healing-target" : ""} ${targetEffect === "paladin-healing" ? "paladin-healing-target" : ""} ${movementClass} ${evadeClass} ${selectable ? "selectable" : ""} ${selected ? "targeted" : ""} ${hasShadowEvasion ? "shadow-evasion-active" : ""}`}
       data-combatant-id={hero.id}
       data-figure-footprint="shared"
+      data-shadow-evasion={hasShadowEvasion ? "active" : undefined}
       style={{ "--figure-frame-width": `${FIGURE_FRAME_WIDTH}px`, "--figure-frame-height": `${figureFrameHeight}px`, "--figure-scale": figureScale } as CSSProperties}
     >
       {hpEvent?.targetId === hero.id && <div className="overhead event-hud" data-battle-layer="world-ui" role="status" aria-live="polite">

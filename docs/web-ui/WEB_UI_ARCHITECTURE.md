@@ -321,6 +321,14 @@ rings. The client never classifies a status locally. Attack-lunge direction is
 derived from the acting combatant's side while the authoritative formation and
 combat positions remain unchanged.
 
+Shadow Evasion's sustained battlefield presentation is derived only from the
+current combatant snapshot: a living Rogue figure whose `statuses` includes
+`status.shadow_evasion` renders its artwork at half opacity. Ordered status
+events update that same visible snapshot during playback, and final snapshot
+reconciliation removes the treatment without a frontend duration or timer.
+The opacity is scoped to figure artwork, preserving target controls, auras,
+health UI, effects, formation scale/depth, and accessibility content.
+
 The additive typed `damagePrevented` event is rendered only at its supplied
 target as a golden shield and visible zero damage. It is emitted by the adapter
 only for the engine-authored Shield of Protection prevention reason; React does

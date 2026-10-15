@@ -126,6 +126,42 @@ describe("UI-028 expanded skill reference card", () => {
     expect(screen.queryByRole("dialog", { name: "Damage Calculation" })).not.toBeInTheDocument();
   });
 
+  it("renders the backend-owned Rogue target-dependent formula dialog", async () => {
+    render(<SkillReferenceCard
+      skill={{
+        ...skill,
+        skillId: "skill.rogue.poisoned_dagger",
+        displayName: "Poisoned Dagger",
+        reference: {
+          ...skill.reference,
+          skillType: "damage",
+          attackType: { state: "classified", value: "rangedInstant" },
+          damageNature: { state: "classified", value: "physical" },
+          damageType: { state: "classified", value: "weapon" },
+          baseDamage: {
+            state: "unavailable",
+            reasonId: "targetDependentBaseline",
+            displayLabel: "Target-dependent",
+            note: "Direct damage depends on the selected target's Defence.",
+            calculation: {
+              title: "Damage Calculation",
+              formula: "Direct damage = max(round((Caster Damage + Skill Variation − Target Defence) ÷ 2), 0)\nPoison damage per stack = ceil((Caster Damage + Skill Variation − Target Poison Resistance) ÷ 4)",
+            },
+          },
+          baseHealing: { state: "notApplicable" },
+        },
+      }}
+      content={{ introduction: "A ranged dagger attack that can apply poison." }}
+    />);
+    const user = userEvent.setup();
+    await user.click(screen.getByText("Poisoned Dagger"));
+    expect(screen.getByText("Target-dependent")).toBeVisible();
+    await user.click(screen.getByRole("button", { name: /open damage calculation/i }));
+    expect(screen.getByRole("dialog", { name: "Damage Calculation" })).toHaveTextContent(
+      "Direct damage = max(round((Caster Damage + Skill Variation − Target Defence) ÷ 2), 0) Poison damage per stack = ceil((Caster Damage + Skill Variation − Target Poison Resistance) ÷ 4)",
+    );
+  });
+
   it("formats multi-target and classified values without exposing raw enums", async () => {
     render(<SkillReferenceCard
       skill={{

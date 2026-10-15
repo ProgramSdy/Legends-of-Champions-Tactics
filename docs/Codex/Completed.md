@@ -2,6 +2,73 @@
 
 Completed work should be appended in reverse chronological order, with the newest entry first.
 
+## 2026-10-15 — UI-029: Shadow Evasion Battlefield Transparency Effect
+
+**Summary:**
+
+Rogue Comprehensiveness's battlefield artwork now renders at 50% opacity for
+the authoritative lifetime of `status.shadow_evasion`. `BattlefieldFigure`
+derives the state from the current combatant snapshot only when the combatant
+is living and has the Rogue Comprehensiveness definition. It adds a named
+class/data attribute and scopes the transition to `.figure-art`; controls,
+selection glow, aura, HP UI, effects, scale, mirroring, formation depth,
+sidebar portraits, cards, assets, and combat mechanics remain unchanged. No
+timer, log matching, local duration, or adapter/API contract was introduced.
+
+**Roles and independent review:**
+
+- **project-manager — `/root/ui029_pm`:** completed the moderate-risk
+  lifecycle/dependency map, all-five-role pre-code gate, scope controls, and
+  documentation decision.
+- **game-engine-developer — `/root/ui029_engine`:** verified the existing
+  engine flag → adapter stable status → snapshot lifecycle. A seeded probe
+  confirmed active `status.shadow_evasion` with one round remaining, then
+  authoritative removal and evasion reset; no backend change was warranted.
+- **ui-developer — `/root/ui029_ui`:** implemented the status-derived,
+  figure-art-only presentation and the applicable UI architecture/style docs.
+- **test-automator — `/root/ui027_test`:** added deterministic lifecycle and
+  renderer coverage for apply/expiry, removal, friendly/enemy figures,
+  non-Rogue/dead guards, interaction, status icon preservation, 2v2, and all
+  approved 3v3 formations.
+- **reviewer — `/root/ui028_final_reviewer`:** found and resolved a test-only
+  attempt to read a non-contract snapshot field, then approved the final
+  authority, stale-state, layering, interaction, documentation, and dirty
+  owner-file boundaries.
+
+**Files changed:**
+
+- `web-ui/components/battle/BattleScreen.tsx`
+- `web-ui/app/globals.css`
+- `web-ui/tests/ui-029-shadow-evasion.test.tsx`
+- `tests/test_ui029_shadow_evasion_lifecycle.py`
+- `docs/web-ui/WEB_UI_ARCHITECTURE.md`
+- `docs/web-ui/Style_Guide.md`
+- `docs/Codex/Current_Task.md` and this completion record.
+
+**Validation:**
+
+- `./.venv/bin/python -m pytest -q tests/test_ui029_shadow_evasion_lifecycle.py tests/test_battle_api.py tests/test_battle_adapter.py` — **91 passed**; one existing Starlette/httpx deprecation warning.
+- Focused UI-029/Battle Screen/status/formation Vitest suite — **77 passed**.
+- Python compilation, Gallery content check, TypeScript typecheck, quiet lint,
+  production build, and `git diff --check` — passed. The build retained only
+  Vinext's existing dynamic-route-classification informational notice.
+- Manual browser: live Debug 1v1 at **1597×822** showed a friendly Rogue at
+  computed artwork opacity `0.5` after casting Shadow Evasion, and opacity `1`
+  after the authoritative Round 2 expiry. At **600×900**, the restored target
+  control remained present with no horizontal overflow.
+
+**Manual limitation:**
+
+The Debug flow was not manually repeated with an enemy Rogue or live 2v2/3v3
+cast during this session. Those cases are deterministically covered in the
+new frontend regression suite; no unsupported manual visual result is claimed.
+`BATTLE_DATA_CONTRACT_V1.md`, `PYTHON_ADAPTER_API.md`,
+`Technical/Architecture.md`, `GDD/Combat_System.md`, and `Screen_Flow.md` are
+unchanged because the status contract, combat rule, and route flow did not
+change.
+
+---
+
 ## 2026-10-10 — UI-028: Hero Gallery Skill Reference Metadata and Editable Expanded Cards
 
 **Summary:**
@@ -22,6 +89,15 @@ target resistance) and Paladin Protection's Hammer of Revenge (51–64 baseline,
 with three separately disclosed self-debuff bonus bands). The remaining
 approved skills are fully represented but use truthful unavailable/not-
 applicable states until a dedicated formula audit proves a numeric range.
+
+**Rogue Comprehensiveness follow-up:** Sharp Blade and Poisoned Dagger now
+also use the typed **Target-dependent** Base Damage presentation. Their existing
+gold calculation dialog renders adapter-authored formula text: Sharp Blade's
+target-Defence direct formula plus conditional per-activation Bleeding band,
+and Poisoned Dagger's target-Defence direct formula plus its target-Poison-
+Resistance per-activation formula. Neither card claims a target-independent
+baseline, aggregate periodic total, or stack count; React still renders the
+authoritative static metadata verbatim.
 
 Hero/skill introductions and optional tips now live in strict, per-hero YAML
 under `web-ui/content/hero-gallery/`. A deterministic Node build/check script

@@ -157,6 +157,12 @@ _To be documented._
   registry. Owner-approved per-hero values adjust only that hero's battlefield
   art, attached target control/aura/effects, and HP-panel position. Portraits,
   side cards, and game rules are unaffected; unknown definitions use `1.0`.
+- A living Rogue Comprehensiveness figure with the authoritative active
+  `status.shadow_evasion` snapshot status renders only its battlefield artwork
+  at 50% opacity. Its target control, selection glow, aura, HP UI, effects,
+  formation scale/depth, portraits, and cards remain fully visible and
+  unchanged. Removal or expiry follows the snapshot status immediately; no
+  client timer or inferred duration is permitted.
 - Overhead health/status UI must retain 12px of visible separation above the
   dynamic figure frame in every format.
 - Stackable status icons show a centered yellow numeral inside the icon's

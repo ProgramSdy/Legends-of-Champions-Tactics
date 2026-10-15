@@ -120,8 +120,8 @@ claim that no live effect exists.
 | Warrior B | Moon Slash | Multiple Enemies (2) | Unavailable — ordered multi-target/conditional audit required |
 | Warrior B | Warlust | Self | Not applicable — self buff action |
 | Warrior B | Strike of Meteorite | One Enemy | Unavailable — direct formula audit required |
-| Rogue C | Sharp Blade | One Enemy | Unavailable — direct/bleed lifecycle audit required |
-| Rogue C | Poisoned Dagger | One Enemy | Unavailable — direct/poison stack lifecycle audit required |
+| Rogue C | Sharp Blade | One Enemy | Target-dependent — the direct value is `max(Caster Damage + Skill Variation − Target Defence, 0)`. The Gallery calculation dialog separately explains its conditional per-activation Bleeding band; it does not claim a total. |
+| Rogue C | Poisoned Dagger | One Enemy | Target-dependent — the direct value is `max(round((Caster Damage + Skill Variation − Target Defence) ÷ 2), 0)`. The Gallery calculation dialog separately explains the conditional per-activation Poison formula; it does not claim a total or a stack count. |
 | Rogue C | Shadow Evasion | Self | Not applicable — self buff action |
 
 This is deliberately conservative: UI-028 does not rebalance a skill or
