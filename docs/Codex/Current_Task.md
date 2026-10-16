@@ -1,225 +1,229 @@
 # Current Task
 
-**Status:** Completed
+**Status:** Ready for Core Team
 
-**Task:** UI-029 — Shadow Evasion Battlefield Transparency Effect
+**Task:** UI-030 — Hero Gallery Target-Dependent Damage References for Warrior Weapon Master
 
-**Owner request date:** 2026-10-15
+**Owner request date:** 2026-10-16
 
 ## Objective
 
-When Rogue Comprehensiveness uses **Shadow Evasion**, make that Rogue's
-battlefield figure visibly half transparent for the full authoritative lifetime
-of `status.shadow_evasion`. Return the same figure to its normal appearance as
-soon as that status is removed or expires.
+Extend the existing Hero Gallery skill-reference pattern so every published
+skill whose Base Damage is truthfully **Target-dependent** uses the same
+presentation already established for Priest Comprehensiveness's Shadow Word
+Pain:
 
-The effect is a status-state presentation, not a momentary cast animation. It
-must work for player and enemy Rogues in 1v1, 2v2, and 3v3 without changing any
-combat rule, duration, evasion calculation, skill cooldown, targeting, or
-status behaviour.
+- show **Target-dependent** rather than an invented static damage range;
+- show the existing yellow `?` calculation trigger beside Base Damage; and
+- open the existing accessible calculation popup containing the
+  backend-authored player-facing formula.
+
+Complete the next requested Warrior Weapon Master references:
+
+1. **Fatal Strike** — resolve as Target-dependent Base Damage, with its exact
+   direct-damage formula in the calculation popup.
+2. **Armor Crush** — resolve as Target-dependent Base Damage, including the
+   authoritative Armor Breaker stack-dependent direct-damage formula/condition
+   bands in the calculation popup.
+3. **Antivenom Potion** — add its audited **Base Healing** box for the
+   self-heal, while preserving its non-damaging/buff classification and other
+   mechanics.
+
+This task only exposes existing mechanics accurately. It does not change live
+damage, healing, status, stacks, poison resistance, healing reduction, cooldown,
+targeting, RNG, or Warrior balance.
 
 ## Background
 
-Shadow Evasion is implemented by `Rogue_Comprehensiveness.shadow_evasion()`.
-It applies the existing engine-owned `shadow_evasion` status, gives it a
-duration through `shadow_evasion_buff_duration`, and the status manager later
-cleans it up. The battle adapter publishes it as stable
-`status.shadow_evasion` with buff presentation, and frontend combatants already
-receive their current `statuses` in each snapshot.
+UI-028 established typed, deterministic, read-only skill-reference metadata
+on `GET /api/v1/heroes`. The Gallery already renders an unavailable numeric
+reference with `reasonId: "targetDependentBaseline"`, display label
+**Target-dependent**, and adapter-authored `calculation` title/text as the
+yellow `?` popup. Shadow Word Pain and the two Rogue direct-damage skills are
+existing examples.
 
-`BattlefieldFigure` currently renders the battlefield figure via
-`AssetImage`/`.figure-art`; this is the presentation boundary to extend. Do not
-make the visual depend on battle-log wording, a locally scheduled timeout,
-skill-name matching, presentation-queue timing alone, or a duplicated duration
-calculation.
+Warrior Weapon Master's live methods have target-dependent direct damage:
+
+- Fatal Strike uses caster Damage plus variation, less target Defence, with a
+  live minimum-damage floor.
+- Armor Crush uses caster Damage plus variation and target Defence, then
+  applies an Armor Breaker-state multiplier and its live rounding/floor rules.
+- Antivenom Potion heals the caster from a fixed base plus variation, while
+  separately applying its existing poison-resistance and dispel/buff effects.
+
+The Gallery catalogue must remain static/read-only: it must not instantiate a
+hero, execute a skill, create a battle/session, mutate state, or consume RNG.
+React only renders typed backend facts; it must not contain a combat formula.
 
 ## Requirements
 
-1. Read the current battle renderer, snapshot/status contract, adapter status
-   serialization, Shadow Evasion implementation, expiry path, status icon
-   metadata, affected CSS, existing tests, and all required project rules
-   before editing.
-2. Determine whether the existing `CombatantState.statuses` reliably exposes
-   the active stable ID `status.shadow_evasion` during the whole duration and
-   immediately after removal. If it does, consume that data directly. If it
-   does not, make the smallest additive adapter/contract correction required;
-   do not infer status from logs or introduce parallel client state.
-3. Add a clearly named, status-derived class/data attribute to only the active
-   Rogue battlefield figure. Apply an approximately 50% visual opacity to the
-   figure artwork while preserving the normal hero footprint, positioning,
-   scale, side mirroring, formation layering, target button hit area, health
-   display, selected-target highlight, attack/heal/buff/debuff effects, and
-   accessibility text.
-4. The figure must fade or otherwise transition cleanly into and out of the
-   state, but must not flicker, remain faded after expiry/death/replacement,
-   cause a layout shift, alter z-index/depth, or reduce command/target
-   usability. Keep the existing dark-fantasy visual language. Do not introduce
-   a new image asset unless it is demonstrably necessary.
-5. The change applies only to the battlefield Rogue figure. Existing sidebar
-   portraits, Hero Gallery assets, active-hero card, status icon, skill card,
-   audio, and unrelated Rogue visuals must remain unchanged unless a small
-   documented accessibility/contract adjustment is genuinely required.
-6. Preserve the authoritative status lifecycle. Shadow Evasion should become
-   transparent only after its authoritative status is present and return to
-   normal as soon as it is absent, including normal expiry and any existing
-   authoritative removal path. It must not use a guessed number of rounds.
-7. Keep all current status presentation, Battle Information Transparency,
-   formation, battle event, API, save, and game-mechanics behaviour intact.
+### 1. Reuse the established Target-dependent presentation
+
+- Reuse the existing `SkillReferenceCard`, `buildSkillReferenceRows`, yellow
+  calculation trigger, dialog accessibility/close behavior, and compact
+  Hero Gallery styling. Do not build a second popup or a new visual pattern.
+- For any already-published skill whose authoritative `baseDamage` has
+  `reasonId: "targetDependentBaseline"`, ensure the Gallery presents
+  **Target-dependent** with the yellow `?` and supplied formula popup exactly
+  as Shadow Word Pain does.
+- Audit the existing target-dependent inventory rather than blindly changing
+  every unavailable damage value. A skill becomes Target-dependent only when
+  its live direct formula has an inseparable target-specific input that makes a
+  caster-only Base Damage range misleading. Other un-audited skills remain
+  truthfully unavailable.
+- Formula text, title, display label, reason ID, and conditions are
+  adapter-owned typed metadata. The browser must neither reconstruct,
+  interpolate, nor calculate formulas.
+
+### 2. Fatal Strike
+
+- Audit the actual live `Warrior_Weapon_Master.fatal_strike` path, including
+  variation, target Defence, the minimum-damage floor, receipt path, and the
+  healing-reduction status/refresh behavior.
+- Publish **Base Damage: Target-dependent** with the existing calculation
+  popup. The formula must accurately describe the direct pre-receipt result
+  and its live minimum floor, using player-friendly terms such as Caster
+  Damage, Skill Variation, and Target Defence.
+- Do not state or imply that the popup formula is final damage dealt. Clearly
+  separate any material existing healing-reduction effect from the direct
+  formula only when its exact current game behaviour is verified. Do not
+  invent a percentage, duration, refresh rule, or aggregate effect.
+
+### 3. Armor Crush
+
+- Audit the actual live `Warrior_Weapon_Master.armor_crush` path, including
+  variation, target Defence, `ceil`/minimum-floor behavior, Armor Breaker
+  absent/one-stack/two-or-more-stack multiplier cases, stack cap/refresh, and
+  associated defence/agility/wound/bleeding side effects.
+- Publish **Base Damage: Target-dependent** and reuse the calculation popup.
+  Its text must make clear which multiplier applies in each verified Armor
+  Breaker state and retain the actual rounding/minimum semantics. It must not
+  claim a target-independent number, total periodic damage, or a guaranteed
+  stack outcome.
+- Describe any material status consequences only where already authoritative
+  and relevant to the Gallery reference. Keep formulas concise and readable;
+  a popup is explanatory reference material, not a full rules worksheet.
+
+### 4. Antivenom Potion
+
+- Audit its current direct self-healing calculation and publish **Base
+  Healing: 18–20** only if the audit confirms the existing base value and
+  `-1..+1` variation still govern the live heal.
+- Label the value as self-healing power before healing modifiers and the HP
+  cap. Do not call it damage or expose irrelevant damage classifications.
+- Preserve its existing self target, buff identity, poison-resistance change,
+  eligible-status dispel behavior, duration, and cooldown. These effects must
+  not be changed merely to support the Gallery.
+
+### 5. Authority, compatibility, and scope controls
+
+- Keep the additive frozen v1 Hero Gallery catalogue compatible with existing
+  clients and retain exact stable hero/skill IDs.
+- Prefer the smallest pure static helper/constants extraction only if required
+  to keep Gallery reference text/range proof aligned with live code. Any
+  extraction must preserve live arithmetic, rounding, RNG call count/order,
+  event/status ordering, and behaviour. No runtime hero construction or RNG is
+  allowed for a catalogue read.
+- Preserve existing Shadow Word Pain, Rogue Target-dependent popups, current
+  skill-card accordion/tabs, YAML editorial content, accessibility, responsive
+  facts grid, and all unrelated Gallery references.
 
 ## Out of Scope
 
-- Changing Shadow Evasion's evasion value, duration, cooldown, AI priority,
-  damage, target rules, status name, or combat log wording.
-- Adding invisibility mechanics, hiding the hero, modifying portraits/cards,
-  redesigning generic buffs, or applying transparency to other statuses.
-- New art, backend refactors, a new API version, duplicated UI timers, or
-  unrelated battle-screen styling work.
+- Changing Warrior Weapon Master combat formulas, game balance, status rules,
+  skill descriptions in YAML unless factual correction is required, cooldowns,
+  target legality, healing receipt, battle events, or AI.
+- Converting all unavailable damage references into Target-dependent ones
+  without a formula audit; sampled/randomized estimates; live Battle
+  Information Transparency; frontend combat calculations; a new modal/popup
+  design; or a Hero Gallery layout redesign.
+- New assets, status effects, audio, backend API version, progress/save work,
+  commits, pushes, PRs, or publication without separate owner authorisation.
 
 ## Relevant Files
 
-- `heroes/rogue.py`, `heroes/hero.py`, and
-  `game/status_effect_manager.py` — existing authoritative application and
-  expiry only; inspect before deciding whether any engine change is needed.
-- `battle_api/adapter.py`, `battle_api/models.py`, and battle API/adapter
-  status tests — stable status serialization and snapshot authority.
-- `web-ui/components/battle/BattleScreen.tsx`,
-  `web-ui/lib/battle/types.ts`, `web-ui/lib/battle/assets.ts`, and
-  `web-ui/app/globals.css` — battlefield figure state and styling boundary.
-- Existing battle renderer/status/formation tests plus
-  `tests/test_battle_api.py` and `tests/test_battle_adapter.py`.
-- `docs/GDD/Combat_System.md`, `docs/Technical/Architecture.md`,
+- `heroes/warrior.py` — `Warrior_Weapon_Master.fatal_strike`, `armor_crush`,
+  `antivenom_potion`, and existing audited range helpers; live source of truth.
+- `heroes/hero.py`, `skills/skill.py`, status/receipt paths, and Warrior
+  engine tests — inspect for actual calculation and side-effect ordering.
+- `battle_api/adapter.py`, `battle_api/models.py`, `battle_api/app.py`,
+  `tests/test_ui028_skill_reference_metadata.py`, and roster/API tests —
+  static catalogue reference authority and v1 contract.
+- `web-ui/components/manual/HeroGalleryExperience.tsx`,
+  `web-ui/lib/manual/heroGalleryPresentation.ts`,
+  `web-ui/lib/battle/types.ts`, `web-ui/lib/battle/liveProvider.ts`, Gallery
+  CSS, and Gallery presentation tests — existing popup/rendering boundary.
+- `web-ui/content/hero-gallery/warrior-weapon-master.yaml` and content
+  validation — editable editorial text only; mechanics remain backend-owned.
+- `docs/Codex/Analysis/2026-10-10_UI-028_Hero_Gallery_Skill_Reference_Audit.md`,
+  `docs/GDD/Skill_System.md`, `docs/Technical/Architecture.md`,
   `docs/web-ui/BATTLE_DATA_CONTRACT_V1.md`,
-  `docs/web-ui/PYTHON_ADAPTER_API.md`,
-  `docs/web-ui/WEB_UI_ARCHITECTURE.md`, and `docs/web-ui/Style_Guide.md` as
-  applicable to final stable behaviour.
+  `docs/web-ui/PYTHON_ADAPTER_API.md`, `docs/web-ui/WEB_UI_ARCHITECTURE.md`,
+  and `docs/web-ui/Style_Guide.md`.
 
 ## Acceptance Criteria
 
-1. A Rogue's battlefield artwork becomes visibly about half transparent while
-   its current snapshot includes `status.shadow_evasion`.
-2. It returns to normal immediately after that status is authoritatively
-   removed/expires, with no stale opacity in later turns, after defeat, or when
-   a different hero occupies a view slot.
-3. The effect is correct for friendly and enemy Rogue figures and remains
-   correct in 1v1, 2v2, and all 3v3 formations.
-4. Figure scale, visual depth, target selection, hover/focus/keyboard control,
-   health/status UI, animation/effect layers, and existing status icons remain
-   usable and visually coherent.
-5. The implementation has one authoritative source of truth: published active
-   status data. It neither changes engine mechanics nor infers duration from
-   logs, cast timing, or a frontend countdown.
-6. Relevant technical/contract/style documentation is updated only where the
-   user-visible status presentation or architecture boundary requires it.
+1. Shadow Word Pain and existing Rogue Target-dependent skill references keep
+   their current label, yellow `?`, backend-authored popup, and formula text.
+2. Fatal Strike has Base Damage **Target-dependent** and its popup accurately
+   explains the audited direct formula, variation, Target Defence, and minimum
+   floor without claiming final received damage.
+3. Armor Crush has Base Damage **Target-dependent** and its popup accurately
+   explains the audited direct formula plus the applicable Armor Breaker
+   multiplier states, rounding, and floor without fabricated totals/effects.
+4. Antivenom Potion shows Base Healing **18–20** with a truthful self-healing
+   explanation; Base Damage and damage classifications remain inapplicable.
+5. All published Target-dependent values are based on an explicit authoritative
+   formula audit; unrelated un-audited skills remain unavailable.
+6. The solution stays deterministic/read-only/RNG-free for catalogue reads;
+   React renders server facts without formulas or gameplay calculation.
+7. Accordion, tabs, keyboard/pointer dialog behavior, responsive layout,
+   content/YAML validation, other Gallery skills, and live combat mechanics
+   remain compatible.
 
 ## Validation Required
 
-- Add/update deterministic engine/adapter coverage proving Shadow Evasion is
-  serialized as active while present and absent after normal expiry/removal;
-  verify no mechanics, duration, RNG, events, or unrelated status data changed.
-- Add frontend regression tests for active/inactive snapshots, friendly/enemy
-  Rogues, status removal, figure-only scope, and preservation of targeting and
-  existing figure classes/effects. Cover a multi-hero formation case to guard
-  layering/slot regressions.
-- Run relevant backend adapter/API/status tests and battle renderer/frontend
-  tests, then typecheck, lint, production build, and `git diff --check`.
-- Manually check the live or deterministic battle view at desktop and narrow
-  viewport: cast Shadow Evasion, observe the sustained approximately 50%
-  transparency, observe normal appearance after expiry, and confirm an enemy
-  Rogue and a 2v2/3v3 formation. Record exact evidence honestly.
+- Add deterministic backend/API tests for Fatal Strike, Armor Crush, and
+  Antivenom metadata shape, stable IDs, exact Target-dependent reason/label,
+  formula text, all audited multiplier/rounding/floor conditions, Base Healing
+  boundary, correct applicability states, and frozen v1 compatibility.
+- Prove catalogue reads do not instantiate heroes, execute skills, create
+  sessions, mutate state, or consume RNG. If a live/helper extraction occurs,
+  add execution-parity and random-call-order tests for representative normal
+  and conditional Armor Crush/Fatal Strike/Antivenom cases.
+- Add/update frontend tests that open the familiar yellow calculation dialog
+  for Fatal Strike and Armor Crush; verify title/formula, close/focus/keyboard
+  behavior, no raw enum/formula logic in React, Antivenom Base Healing,
+  relevant-field omission, and preserved Shadow Word Pain/Rogue behavior.
+- Run content validation, relevant Gallery/API/engine/adapter regressions,
+  typecheck, lint, production build, Python compilation, and `git diff
+  --check`. Manually inspect Warrior Weapon Master expanded cards on desktop
+  and tablet/narrow viewport for readable popup/grid behavior and no clipping.
+- Record exact commands/results, audited assumptions, and any value that stays
+  unavailable because its formula is not proven.
 
 ## Agent Assignments
 
-**Complexity/risk:** Moderate. The visual change is small, but it depends on a
-live engine → adapter → typed battle snapshot → renderer status lifecycle;
-an incorrect shortcut can leave a hero permanently faded or duplicate combat
-authority. All five roles are selected to satisfy the project status-integration
-gate and independently validate lifecycle correctness.
+**Complexity/risk:** Moderate cross-boundary reference work. The requested UI
+pattern already exists, but the task exposes legacy target-dependent Warrior
+formulas through a public read-only API and must not drift from combat/RNG or
+mislead players. All five roles are selected for formula authority,
+presentation, deterministic test coverage, and independent review.
 
-- **project-manager:** map the status lifecycle, coordinate the cross-boundary
-  work, control scope, and consolidate documentation/completion evidence.
-- **game-engine-developer:** verify the authoritative status application,
-  serialization, expiry/removal contract, and make only a minimal correction if
-  the published snapshot is insufficient.
-- **ui-developer:** implement the status-derived battlefield figure effect,
-  responsive/effect-layer compatibility, accessibility preservation, and UI
-  documentation.
-- **test-automator:** add deterministic lifecycle and renderer regression
-  coverage, run the specified validation, and report exact results.
-- **reviewer:** independently review status authority, stale-state risks,
-  formation/layering/interaction regressions, test adequacy, and documentation.
+- **project-manager:** lead the exact formula audit, scope gate, role
+  coordination, documentation, and completion evidence.
+- **game-engine-developer:** own live-formula/side-effect audit, static
+  catalogue metadata, smallest safe shared-helper work if needed, API contract,
+  and engine parity evidence.
+- **ui-developer:** reuse the existing target-dependent calculation UI,
+  preserve accessibility/responsiveness, and integrate typed presentation
+  without client mechanics.
+- **test-automator:** own deterministic contract/formula-boundary/parity and
+  Gallery dialog/content regression coverage plus integrated validation.
+- **reviewer:** independently verify formula truth, scope limits, status/rounding
+  conditions, read-only/RNG guarantees, UI reuse/accessibility, and docs.
 
 ## Completion Notes
 
-Completed 2026-10-15. A living Rogue Comprehensiveness figure now derives
-`shadow-evasion-active` and `data-shadow-evasion="active"` solely from the
-current snapshot's `status.shadow_evasion`. Only `.figure-art` fades to 50%
-opacity (220ms transition), so target controls, selection glow, aura, HP UI,
-combat effects, mirroring, and formation depth remain unchanged. The alive
-guard prevents a stale visual if a defeated Rogue retains the legacy engine
-flag outside the normal round-status path. No engine, mechanics, adapter,
-model, API, asset, or targetability change was needed.
-
-Role evidence: `/root/ui029_pm` completed the moderate-risk lifecycle and
-five-role gate; `/root/ui029_engine` verified application/expiry/adapter
-serialization with no contract gap; `/root/ui029_ui` implemented the
-figure-only state and documentation; `/root/ui027_test` added lifecycle and
-renderer regression coverage; `/root/ui028_final_reviewer` approved the final
-authority, stale-state, layering, interaction, documentation, and
-owner-file-preservation review.
-
-Validation: the focused backend lifecycle/API/adapter suite passed **91**
-tests (one existing Starlette/httpx deprecation warning); frontend UI-029,
-battle screen/status/formation suites passed **77** tests; Python compilation,
-content check, TypeScript typecheck, quiet lint, production build, and
-`git diff --check` passed. Browser verification at desktop **1597×822** used a
-live Debug 1v1 Rogue cast: artwork reported opacity `0.5` while the snapshot
-status was active, then `1` after Round 2's authoritative expiry. At narrow
-**600×900**, the restored figure and target control remained present with no
-horizontal overflow. The Debug interaction was not manually repeated for an
-enemy Rogue or a live 2v2/3v3 cast in this session; those boundaries are
-covered deterministically by the focused frontend tests rather than claimed as
-manual observation.
-
-Documentation: `WEB_UI_ARCHITECTURE.md` and `Style_Guide.md` now describe the
-snapshot-owned, artwork-only treatment. `BATTLE_DATA_CONTRACT_V1.md`,
-`PYTHON_ADAPTER_API.md`, `Technical/Architecture.md`, `GDD/Combat_System.md`,
-and `Screen_Flow.md` need no update because the existing status contract and
-combat/route rules are unchanged.
-
-## Pre-implementation role gate — 2026-10-15
-
-**Assessment:** Moderate cross-boundary status-presentation work. The requested
-opacity is visually small, but it consumes an authoritative engine status
-through adapter serialization and the typed battle snapshot; a shortcut can
-create stale figure state or impair targeting/effect layers. All five
-configured roles are selected and dispatched. Inspection confirms
-`status.shadow_evasion` is already serialized from the engine flag and duration,
-so backend work is verification-only unless deterministic lifecycle tests expose
-a contract gap. Implementation must derive the state from the current
-`CombatantState.statuses` and `hero.alive`, apply opacity only to battlefield
-figure artwork, and must not add timers, logs, duration inference, or mechanic
-changes.
-
-- **project-manager — `/root/ui029_pm` (dispatched):** lifecycle/dependency
-  mapping, scope control, staged gates, documentation decision, and completion
-  evidence.
-- **game-engine-developer — `/root/ui029_engine` (dispatched):** authoritative
-  application/expiry/removal and adapter snapshot verification; backend edits
-  require a demonstrated contract failure.
-- **ui-developer — `/root/ui029_ui` (dispatched):** status-derived
-  figure-only presentation, transitions, formation/effect/target/accessibility
-  compatibility, and applicable UI documentation.
-- **test-automator — `/root/ui027_test` (dispatched):** deterministic lifecycle
-  and renderer regressions plus complete validation evidence.
-- **reviewer — `/root/ui028_final_reviewer` (dispatched):** independent final
-  review of authority, stale-state, layering/interaction, tests, documentation,
-  and owner-file preservation.
-
-**Decision gates:** Engine/adapter verification precedes UI implementation;
-focused lifecycle and renderer validation precede desktop/narrow manual checks;
-independent reviewer approval precedes completion documentation. If a normal
-expiry/removal snapshot retains the stable status ID, UI work stops for the
-minimal engine/adapter correction. If only a defeated hero retains it, the
-presentation remains `hero.alive`-gated rather than broadening generic status
-cleanup. Contract/API/GDD documents require no change if the existing status
-snapshot remains sufficient; the final record must state that conclusion.
+Pending formula audit, implementation, validation, independent review, and
+owner-approved publication only.
