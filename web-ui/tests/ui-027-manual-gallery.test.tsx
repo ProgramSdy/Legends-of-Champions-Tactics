@@ -32,7 +32,7 @@ const ids = [
 const skillIds: Record<string, string[]> = {
   "hero.warrior.weapon_master": ["skill.warrior.fatal_strike", "skill.warrior.armor_crush", "skill.warrior.antivenom_potion"],
   "hero.warrior.defence": ["skill.warrior.devastate", "skill.warrior.shield_bash", "skill.warrior.thunder_pot"],
-  "hero.warrior.berserker": ["skill.warrior.moon_slash", "skill.warrior.warlust", "skill.warrior.strike_of_meteorite"],
+  "hero.warrior.berserker": ["skill.warrior.moon_slash", "skill.warrior.warlust", "skill.warrior.strike_of_meteorite", "skill.warrior.blood_frenzy"],
   "hero.mage.comprehensiveness": ["skill.mage.fireball", "skill.mage.arcane_missiles", "skill.mage.frost_bolt"],
   "hero.paladin.retribution": ["skill.paladin.hammer_of_anger", "skill.paladin.crusader_strike", "skill.paladin.flash_of_light"],
   "hero.paladin.protection": ["skill.paladin.hammer_of_revenge", "skill.paladin.shield_of_righteous", "skill.paladin.heroric_charge", "skill.paladin.holy_aura"],
@@ -61,9 +61,9 @@ const gallery: HeroGalleryDefinition[] = ids.map(([definitionId, displayName, fa
   startingResistanceRanges: ["Fire", "Frost", "Arcane", "Shadow", "Death", "Poison", "Nature"].map((label) => ({ id: label.toLowerCase(), label, minimum: 1, maximum: 5 })),
   skills: skillIds[definitionId].map((skillId) => ({
     skillId,
-    displayName: skillId === "skill.paladin.holy_aura" ? "Holy Aura" : skillId.split(".").at(-1)?.replaceAll("_", " ") ?? skillId,
-    isPassive: skillId === "skill.paladin.holy_aura",
-    reference: skillId === "skill.paladin.holy_aura"
+    displayName: skillId === "skill.paladin.holy_aura" ? "Holy Aura" : skillId === "skill.warrior.blood_frenzy" ? "Blood Frenzy" : skillId.split(".").at(-1)?.replaceAll("_", " ") ?? skillId,
+    isPassive: skillId === "skill.paladin.holy_aura" || skillId === "skill.warrior.blood_frenzy",
+    reference: skillId === "skill.paladin.holy_aura" || skillId === "skill.warrior.blood_frenzy"
       ? {
         target: { mode: "multipleAllies" as const, maximumTargets: 3 },
         skillType: "healing" as const,
@@ -144,6 +144,14 @@ describe("UI-027 Manual and Gallery", () => {
     await userEvent.setup().click(screen.getByRole("tab", { name: /Passive/ }));
     expect(screen.getByText("Holy Aura")).toBeVisible();
     expect(screen.getByText(/Reward from Paladin's Altar, Battle 3/)).toBeVisible();
+    await userEvent.setup().click(screen.getByRole("button", { name: "Warrior" }));
+    await userEvent.setup().click(screen.getByRole("button", { name: /Berserker/ }));
+    expect(screen.getByRole("tab", { name: "Passive (1)" })).toBeVisible();
+    await userEvent.setup().click(screen.getByRole("tab", { name: "Passive (1)" }));
+    expect(screen.getByText("Blood Frenzy")).toBeVisible();
+    await userEvent.setup().click(screen.getByText("Blood Frenzy"));
+    expect(screen.getByText(/guaranteed at 10% HP or less/)).toBeVisible();
+    expect(screen.getByText(/Moon Slash heals separately for each target/)).toBeVisible();
     await userEvent.setup().click(screen.getByRole("button", { name: "Priest" }));
     await userEvent.setup().click(screen.getByRole("button", { name: /Discipline/ }));
     expect(screen.getByText("Locked · No current unlock route.")).toBeVisible();
@@ -176,6 +184,73 @@ describe("UI-027 Manual and Gallery", () => {
     }
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(json({ contractVersion: "1.0", heroes: apiRoster }));
     await expect(fetchHeroGalleryRoster()).resolves.toHaveLength(10);
+  });
+
+  it("accepts positive cooldown rounds and rejects malformed cooldown facts", async () => {
+    const apiRoster = JSON.parse(JSON.stringify(gallery)) as Array<{
+      skills: Array<{ reference: { cooldownRounds?: number | null } }>;
+    }>;
+    apiRoster[9].skills[2].reference.cooldownRounds = 2;
+    apiRoster[0].skills[0].reference.cooldownRounds = null;
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(json({ contractVersion: "1.0", heroes: apiRoster }));
+    const heroes = await fetchHeroGalleryRoster();
+    expect(heroes[9].skills[2].reference.cooldownRounds).toBe(2);
+
+    for (const invalid of [0, -1, 1.5]) {
+      apiRoster[9].skills[2].reference.cooldownRounds = invalid;
+      vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(json({ contractVersion: "1.0", heroes: apiRoster }));
+      await expect(fetchHeroGalleryRoster()).rejects.toMatchObject({ kind: "adapter" });
+    }
+  });
+
+  it("accepts an audited healing value with an intentionally blank note", async () => {
+    const apiRoster = JSON.parse(JSON.stringify(gallery)) as Array<{
+      skills: Array<{ reference: { baseHealing: Record<string, unknown> } }>;
+    }>;
+    apiRoster[0].skills[2].reference.baseHealing = {
+      state: "available",
+      amountRange: { minimum: 18, maximum: 20 },
+      basis: "baselinePower",
+      note: "",
+      conditions: [],
+    };
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(json({ contractVersion: "1.0", heroes: apiRoster }));
+    await expect(fetchHeroGalleryRoster()).resolves.toHaveLength(10);
+
+    delete apiRoster[0].skills[2].reference.baseHealing.note;
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(json({ contractVersion: "1.0", heroes: apiRoster }));
+    await expect(fetchHeroGalleryRoster()).rejects.toMatchObject({ kind: "adapter" });
+  });
+
+  it("accepts a target-dependent damage formula with an intentionally blank note", async () => {
+    const apiRoster = JSON.parse(JSON.stringify(gallery)) as Array<{
+      skills: Array<{ reference: { baseDamage: Record<string, unknown> } }>;
+    }>;
+    apiRoster[1].skills[0].reference.baseDamage = {
+      state: "unavailable",
+      reasonId: "targetDependentBaseline",
+      note: "",
+      displayLabel: "Target-dependent",
+      calculation: {
+        title: "Damage Calculation",
+        formula: "Direct damage = max(ceil((Caster Damage + Skill Variation − Target Defence) × 75%), 1)",
+      },
+    };
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(json({ contractVersion: "1.0", heroes: apiRoster }));
+    await expect(fetchHeroGalleryRoster()).resolves.toHaveLength(10);
+
+    delete apiRoster[1].skills[0].reference.baseDamage.note;
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(json({ contractVersion: "1.0", heroes: apiRoster }));
+    await expect(fetchHeroGalleryRoster()).rejects.toMatchObject({ kind: "adapter" });
+
+    apiRoster[1].skills[0].reference.baseDamage.note = "";
+    delete apiRoster[1].skills[0].reference.baseDamage.calculation;
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(json({ contractVersion: "1.0", heroes: apiRoster }));
+    await expect(fetchHeroGalleryRoster()).rejects.toMatchObject({ kind: "adapter" });
+
+    apiRoster[1].skills[0].reference.baseDamage.reasonId = "notAudited";
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(json({ contractVersion: "1.0", heroes: apiRoster }));
+    await expect(fetchHeroGalleryRoster()).rejects.toMatchObject({ kind: "adapter" });
   });
 
   it("rejects API/editorial hero or skill ID drift before the Gallery can render", async () => {

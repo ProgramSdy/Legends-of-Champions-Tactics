@@ -247,6 +247,7 @@ describe("UI-023 Arena Run frontend authority", () => {
     expect(calls.find((call) => call.path.endsWith("/nodes/1/battles"))?.body).toEqual({
       playerTeam: unlockedIds.slice(0, 2),
       playerFormation: "side-by-side",
+      attemptId: expect.any(String),
     });
     expect(calls.some((call) => call.path.includes("/nodes/2/battles"))).toBe(false);
     expect(calls.filter((call) => call.path.endsWith("/completion"))).toHaveLength(1);

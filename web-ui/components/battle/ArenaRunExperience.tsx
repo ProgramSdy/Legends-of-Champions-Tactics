@@ -10,6 +10,7 @@ import {
   fetchArenaState,
   fetchHeroRoster,
   fetchPlayerProgression,
+  createBattleAttemptId,
   LiveBattleProvider,
 } from "@/lib/battle/liveProvider";
 import type {
@@ -172,6 +173,7 @@ export function ArenaRunExperience({ countdownStepMs = 1000 }: { countdownStepMs
       undefined,
       configuration,
       `/api/v1/arena/runs/${encodeURIComponent(run.runId)}/nodes/${currentNode.nodeIndex}/battles`,
+      createBattleAttemptId(),
     );
     setSessionKey((key) => key + 1);
     setActiveBattle({ runId: run.runId, node: currentNode, provider: nextProvider });

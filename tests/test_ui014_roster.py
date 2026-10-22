@@ -50,7 +50,9 @@ def test_each_new_hero_constructs_with_stable_ids_skills_and_a_live_action():
         friendly_id = snapshot["sides"][0]["combatantIds"][0]
         combatant = snapshot["combatants"][friendly_id]
         assert combatant["definitionId"] == definition_id
-        assert len(combatant["skills"]) == 3
+        assert len(combatant["skills"]) == (
+            4 if definition_id == "hero.warrior.berserker" else 3
+        )
         action = snapshot["legalActions"][0]
         result = adapter.submit(
             session,

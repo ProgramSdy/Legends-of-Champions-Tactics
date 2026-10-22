@@ -2,6 +2,223 @@
 
 Completed work should be appended in reverse chronological order, with the newest entry first.
 
+Entries record the state at their completion date. Later follow-ons may expand
+the roster, change presentation wording, or audit values that an earlier task
+listed as unavailable; use the current GDD and web UI contract for current
+rules and inventory.
+
+## 2026-10-19 — Hero Gallery skill-reference documentation standard
+
+Consulted Core Project Team for a read-only handoff and consolidated the
+owner-approved Gallery conventions into the GDD, technical architecture, web
+UI architecture/style and data contract, and Gallery editorial README. The
+standard now covers audited Base Damage/Healing, Target-dependent formula
+popups, truthful unavailable states, active/passive inventory, the last-position
+Cool Down box, editable multiline prose, and the checklist for new skills. It
+also distinguishes descriptive numeric prose from authoritative structured
+mechanics and marks the UI-028 pilot analysis as historical.
+
+This was a direct documentation-only task: no implementation agent was
+dispatched and no game code, mechanics, API, owner-controlled YAML, commit, or
+push was changed. Validation: `npm run content:check`, the focused Gallery
+presentation suite (11 tests), and `git diff --check` passed. The new standard
+documents the current working tree; it does not claim all existing catalogue
+values have been audited or all working-tree changes committed.
+
+---
+
+## 2026-10-19 — Hero Gallery Cool Down facts for approved heroes
+
+Audited cooldown assignments in all ten approved hero definitions, the shared
+`Skill.execute` miss/control paths, independent effects, and the round-start
+cooldown tick. Added a nullable, positive `cooldownRounds` fact to the
+read-only Hero Gallery catalogue. The existing facts grid now shows a **Cool
+Down** box only for Shadow Evasion (`2 Rounds`) and Shield Bash, Thunder Pot,
+Antivenom Potion, Warlust, Heroric Charge, and Shield of Protection (`3
+Rounds` each). All other 25 published skills, including passives, omit the
+box. These values are engine-assigned initial counters, not live remaining
+cooldowns or promises of an exact future turn; no gameplay logic changed.
+
+Validation: 143 focused backend tests passed, including real skill-execution
+checks for each of the seven counters; 23 Gallery frontend tests passed,
+including conditional rendering and malformed-value rejection. Python
+compilation, frontend typecheck, production build, and `git diff --check`
+passed. ESLint had 0 errors and 3 pre-existing warnings. Browser QA checked
+all ten heroes and all seven boxes; Shadow Evasion at 600px showed `2 Rounds`
+without horizontal overflow. This direct task did not request subagents.
+
+## 2026-10-19 — Paladin and Priest Discipline Gallery Base Damage audit
+
+Audited the live direct-power calculations for all damage skills of Paladin
+Retribution, Protection, Holy, and Priest Discipline. Hammer of Anger, Hammer
+of Revenge, and Heroric Charge now show **Target-dependent** with the existing
+yellow calculation popup and adapter-authored formulas; the first two include
+their exact Wrath/self-debuff bonus bands. Crusader Strike and Shield of
+Righteous show 18–22; Holy Blast shows 20–25 for the first target and 14–17
+for the second; Penance shows enemy damage 17–21 and ally healing 21–25; Holy
+Word Punishment shows immediate damage 7–11. Non-damaging skills remain
+inapplicable to Base Damage. No explanatory note was added below these Base
+Damage values, and no combat formula or mechanic changed.
+
+Validation: 174 focused backend tests and 21 Gallery frontend tests passed;
+Python compilation, frontend typecheck, production build, and `git diff
+--check` passed. ESLint had 0 errors and 3 existing warnings. Local browser
+inspection covered the four heroes, all three Paladin formula popups, and
+the long popup at 600px width with no horizontal overflow. The existing
+typed catalogue and shared Gallery component required no schema, React, or
+Style Guide change. This direct follow-on did not request subagents.
+
+## 2026-10-19 — Warrior Berserker Blood Frenzy Gallery passive
+
+Audited `Warrior_Berserker.trigger_blood_frenzy`, its damage-intake call site,
+round-expiry handling, and Moon Slash/Strike of Meteorite healing. Registered a
+non-actionable Blood Frenzy passive marker so the static Gallery catalogue can
+show it under Passive (1), with owner-facing text for the exact post-damage HP
+activation bands, two-round Agility/Defence tradeoff, and 30% calculated-direct-
+damage healing. The runtime trigger and combat formulas remain unchanged. The
+AI and adapter exclude the marker from selectable actions; the battle skill
+presentation has a deliberate passive glyph and status description.
+
+Validation: 147 focused backend tests, 74 focused frontend tests, Python
+compilation, frontend typecheck, production build, and `git diff --check` all
+passed. Lint had 0 errors and 3 existing warnings. In the local browser at
+`/manual/heroes`, Warrior Berserker showed Active Skills (3) and Passive (1);
+the expanded Blood Frenzy entry showed the audited text, Self/Effect facts,
+and no page-level horizontal overflow. This was a direct follow-on task; no
+subagents were requested or dispatched.
+
+## 2026-10-19 — Hero Gallery skill-introduction line breaks
+
+Preserved the owner's authored line breaks and indentation in the Armor Crush
+skill introduction by applying `white-space: pre-wrap` to Gallery skill
+introduction paragraphs. The YAML and generated content already contained all
+four lines; normal paragraph rendering had collapsed them visually. The
+change applies consistently to multiline skill introductions without altering
+their text, mechanics, facts grid, or editor-owned YAML. Added a focused
+frontend regression test and documented the editorial presentation rule.
+
+Validation: the targeted Gallery frontend suites passed (21 tests), typecheck
+and production build passed, and lint finished with 0 errors and 3 existing
+warnings. Local browser inspection at 1597px and 600px widths confirmed four
+rendered lines, preserved indentation, and no page-level horizontal overflow.
+The normal content builder also synchronized the already-edited Berserker YAML
+with its generated output; the owner YAML was not changed. This was a narrow
+styling follow-on completed directly; no subagents were dispatched.
+
+## 2026-10-16 — Warrior Defence/Berserker Hero Gallery Base Damage references
+
+Audited the live direct-damage calculations for Warrior Defence's Devastate,
+Shield Bash, and Thunder Pot, and Warrior Berserker's Moon Slash and Strike of
+Meteorite. Their static Hero Gallery Base Damage references now use the
+existing **Target-dependent** label and yellow calculation popup with
+adapter-authored formulas. All five intentionally have no explanatory note
+beneath the value. Warlust remains a non-damaging buff. No combat callback,
+damage formula, session state, RNG, or YAML mechanics changed.
+
+This narrow follow-on was implemented and validated directly; no subagents
+or independent reviewer were dispatched. The API and strict client decoder
+now permit a required empty note only for a formula-backed Target-dependent
+unavailable reference; missing notes and empty un-audited notes remain invalid.
+The existing Gallery UI component and styling were reused unchanged. The
+pre-existing owner YAML edit was preserved, and the derived Gallery content
+file was refreshed through the normal content builder.
+
+Validation: 96 targeted backend tests passed (one existing Starlette/httpx
+deprecation warning); 20 targeted frontend tests passed; Python compile,
+frontend typecheck, lint (0 errors, 3 unrelated warnings), production build,
+and `git diff --check` passed. Browser inspection of `/manual/heroes` confirmed
+all five card labels, absent notes, yellow triggers, and formula dialogs.
+GDD, API, data contract, UI architecture, and style documentation now reflect
+the expanded audited set. No route or navigation changed, so Screen Flow
+documentation was not updated. No deferred implementation remains.
+
+## 2026-10-16 — UI-030: Hero Gallery Target-Dependent Damage References for Warrior Weapon Master
+
+**Summary:**
+
+Expanded only the static, frozen-v1 Hero Gallery catalogue for Warrior Weapon
+Master. Fatal Strike and Armor Crush now use the established
+**Target-dependent** Base Damage presentation, the existing yellow `?`, and the
+existing backend-authored accessible calculation dialog. Fatal Strike publishes
+`max(Caster Damage + Skill Variation − Target Defence, 1)` as direct
+pre-receipt power. Armor Crush publishes its `ceil`/minimum-floor formula with
+the audited Armor Breaker 55% (absent/zero), 65% (one), and 75% (two-or-more)
+bands. Neither implies final received damage or guarantees a status result.
+Antivenom Potion now publishes Base Healing **18–20** as self-healing power
+before healing modifiers and the HP cap; it remains a non-damaging buff with
+damage fields not applicable.
+
+No live skill callback, combat rule, status, RNG call, session, API schema,
+frontend formula, popup component, or YAML mechanics changed. The audit keeps
+the Target-dependent inventory limited to Shadow Word Pain, Sharp Blade,
+Poisoned Dagger, Fatal Strike, and Armor Crush; un-audited entries remain
+unavailable.
+
+**Roles and independent review:**
+
+- **project-manager — `/root/ui030_pm`:** assessed the moderate cross-boundary
+  risk, defined formula-authority gates, ownership, documentation scope, and
+  completion evidence.
+- **game-engine-developer — `/root/ui030_engine`:** audited live source and
+  implemented the literal static adapter metadata without hero construction,
+  skill execution, sessions, mutation, or RNG.
+- **ui-developer — `/root/ui030_ui`:** verified the generic typed Gallery path
+  reuses the established yellow trigger and accessible dialog with no React/CSS
+  change or client combat calculation.
+- **test-automator — `/root/ui030_test`:** added targeted metadata, inventory,
+  and Gallery dialog/card regression coverage.
+- **reviewer — `/root/ui030_review`:** independently audited formulas and the
+  final diff, caught and verified correction of adapter/test wording drift, and
+  approved the integrated result with no blocker.
+
+**Files and documentation changed:**
+
+- `battle_api/adapter.py` — static audited reference metadata only.
+- `tests/test_ui028_skill_reference_metadata.py` and
+  `web-ui/tests/ui-028-hero-gallery-presentation.test.tsx` — contract,
+  no-RNG/static-inventory, and UI dialog/card coverage.
+- `docs/GDD/Skill_System.md`, `docs/web-ui/PYTHON_ADAPTER_API.md`,
+  `docs/web-ui/BATTLE_DATA_CONTRACT_V1.md`,
+  `docs/web-ui/WEB_UI_ARCHITECTURE.md`, and `docs/web-ui/Style_Guide.md` —
+  authority, payload, UI reuse, and presentation rules.
+- `docs/Codex/Current_Task.md` and this completion record — required gate and
+  evidence.
+- `web-ui/lib/manual/heroGalleryContent.generated.ts` — normal generated output
+  from the pre-existing owner YAML update; the YAML itself was preserved.
+
+**Validation:**
+
+- `./.venv/bin/python -m pytest -q tests/test_ui028_skill_reference_metadata.py tests/test_battle_api.py tests/test_battle_adapter.py tests/test_warrior_weapon_master_strategy.py` — **111 passed**; one existing Starlette/httpx deprecation warning.
+- `./.venv/bin/python -m py_compile battle_api/adapter.py battle_api/models.py heroes/warrior.py` — passed.
+- `cd web-ui && npm run content:check` — passed.
+- `cd web-ui && npm test -- --run tests/ui-028-hero-gallery-presentation.test.tsx` — **9 passed**.
+- `cd web-ui && npm run typecheck`, `npm run lint -- --quiet`, and `npm run build` — passed. Build retained Vinext's existing dynamic-route classification informational notice.
+- `git diff --check` — passed.
+- Manual browser: local `/manual/heroes` at **1597×822** verified the Weapon
+  Master cards, Fatal Strike and Armor Crush formula dialogs, their close
+  behavior, and Antivenom self-healing facts. At **768×1024** and **600×900**,
+  the Armor Crush 440px dialog fit within the viewport and the Gallery had no
+  horizontal overflow.
+
+**Documentation scope and residual risk:**
+
+The GDD/API/contract/UI architecture/style documents now record the new static
+facts and reuse boundary. `Technical/Architecture.md` needs no update because
+the architecture and authority boundary did not change; `Screen_Flow.md` needs
+no update because routes and navigation did not change. The existing dialog's
+Escape/focus-return behavior was preserved rather than redesigned; this task
+validated its existing close control and did not add a new modal pattern.
+
+**Follow-up Gallery load fix:** Removing Antivenom's explanatory line left its
+available `note` as an empty string, which the client decoder initially
+rejected and surfaced as “Hero Gallery data is unavailable.” The decoder now
+accepts an empty available note while still requiring the field to be a
+string. The Gallery route loaded in the browser and showed Antivenom's
+`18–20` Base Healing without that sentence. Focused Gallery tests passed
+**19/19**, TypeScript typecheck passed, and `git diff --check` passed.
+
+---
+
 ## 2026-10-15 — UI-029: Shadow Evasion Battlefield Transparency Effect
 
 **Summary:**

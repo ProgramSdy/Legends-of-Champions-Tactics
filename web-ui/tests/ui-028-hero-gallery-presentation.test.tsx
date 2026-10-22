@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { SkillReferenceCard } from "@/components/manual/HeroGalleryExperience";
 import { fetchHeroGalleryRoster } from "@/lib/battle/liveProvider";
+import { buildSkillReferenceRows } from "@/lib/manual/heroGalleryPresentation";
 import type { HeroSkillInventoryItem } from "@/lib/battle/types";
 
 const skill: HeroSkillInventoryItem = {
@@ -21,13 +22,34 @@ const skill: HeroSkillInventoryItem = {
       state: "available",
       amountRange: { minimum: 22, maximum: 28 },
       basis: "baselinePower",
-      note: "Healing power before the target's missing-HP cap.",
-      conditions: [{ label: "Self-heal when healing another ally", amountRange: { minimum: 17, maximum: 23 } }],
+      note: "",
+      conditions: [{ label: "Healing received by caster", amountRange: { minimum: 17, maximum: 23 } }],
     },
   },
 };
 
 describe("UI-028 expanded skill reference card", () => {
+  it("shows the audited Cool Down box only for skills with an engine cooldown", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<SkillReferenceCard
+      skill={{ ...skill, skillId: "skill.rogue.shadow_evasion", displayName: "Shadow Evasion", reference: {
+        ...skill.reference, cooldownRounds: 2,
+      } }}
+      content={{ introduction: "Enter an evasive stance." }}
+    />);
+    await user.click(screen.getByText("Shadow Evasion"));
+    expect(screen.getByText("Cool Down")).toBeVisible();
+    expect(screen.getByText("2 Rounds")).toBeVisible();
+    expect(buildSkillReferenceRows({ ...skill.reference, cooldownRounds: 2 }).at(-1)?.id).toBe("cooldown");
+
+    rerender(<SkillReferenceCard
+      skill={{ ...skill, reference: { ...skill.reference, cooldownRounds: null } }}
+      content={{ introduction: "Restore an ally." }}
+    />);
+    expect(screen.queryByText("Cool Down")).not.toBeInTheDocument();
+    expect(screen.queryByText("2 Rounds")).not.toBeInTheDocument();
+  });
+
   it("rejects a catalogue response whose skill reference shape is incomplete", async () => {
     const malformed = {
       contractVersion: "1.0",
@@ -58,6 +80,8 @@ describe("UI-028 expanded skill reference card", () => {
     expect(screen.getByText("Unclassified")).toBeVisible();
     expect(screen.getByText("Unavailable")).toBeVisible();
     expect(screen.getByText("17–23")).toBeVisible();
+    expect(screen.getByText("Healing received by caster")).toBeVisible();
+    expect(screen.queryByText("Healing power before the target's missing-HP cap.")).not.toBeInTheDocument();
     expect(screen.getByText("Support the most wounded ally.")).toBeVisible();
     expect(screen.queryByText("Attack Type")).not.toBeInTheDocument();
     expect(screen.queryByText("Damage Type")).not.toBeInTheDocument();
@@ -76,15 +100,100 @@ describe("UI-028 expanded skill reference card", () => {
           attackType: { state: "classified", value: "melee" },
           damageNature: { state: "classified", value: "physical" },
           damageType: { state: "classified", value: "weapon" },
-          baseDamage: { state: "unavailable", reasonId: "notAudited", note: "Reference power has not yet been audited." },
+          baseDamage: {
+            state: "unavailable",
+            reasonId: "targetDependentBaseline",
+            displayLabel: "Target-dependent",
+            note: "Direct damage depends on the selected target's Defence.",
+            calculation: {
+              title: "Damage Calculation",
+              formula: "Direct damage = max(Caster Damage + Skill Variation − Target Defence, 1)",
+            },
+          },
           baseHealing: { state: "notApplicable" },
         },
       }}
       content={{ introduction: "A decisive weapon strike." }}
     />);
-    await userEvent.setup().click(screen.getByText("Fatal Strike"));
+    const user = userEvent.setup();
+    await user.click(screen.getByText("Fatal Strike"));
     expect(screen.getByText("Physical")).toBeVisible();
     expect(screen.getByText("Weapon")).toBeVisible();
+    expect(screen.getByText("Target-dependent")).toBeVisible();
+    await user.click(screen.getByRole("button", { name: /open damage calculation/i }));
+    expect(screen.getByRole("dialog", { name: "Damage Calculation" })).toHaveTextContent(
+      "Direct damage = max(Caster Damage + Skill Variation − Target Defence, 1)",
+    );
+    await user.click(screen.getByRole("button", { name: "Close damage calculation" }));
+    expect(screen.queryByRole("dialog", { name: "Damage Calculation" })).not.toBeInTheDocument();
+  });
+
+  it("renders the Armor Crush target-dependent formula and all Armor Breaker bands", async () => {
+    render(<SkillReferenceCard
+      skill={{
+        ...skill,
+        skillId: "skill.warrior.armor_crush",
+        displayName: "Armor Crush",
+        reference: {
+          ...skill.reference,
+          skillType: "damage",
+          attackType: { state: "classified", value: "melee" },
+          damageNature: { state: "classified", value: "physical" },
+          damageType: { state: "classified", value: "weapon" },
+          baseDamage: {
+            state: "unavailable",
+            reasonId: "targetDependentBaseline",
+            displayLabel: "Target-dependent",
+            note: "Direct damage depends on the selected target's Defence and Armor Breaker state.",
+            calculation: {
+              title: "Damage Calculation",
+              formula: "Direct damage = max(ceil((Caster Damage + Skill Variation − Target Defence) × Armor Breaker multiplier), 1)\nArmor Breaker multiplier: no Armor Breaker or 0 stacks = 55%; 1 stack = 65%; 2 or more stacks = 75%",
+            },
+          },
+          baseHealing: { state: "notApplicable" },
+        },
+      }}
+      content={{ introduction: "A crushing strike that weakens armour." }}
+    />);
+    const user = userEvent.setup();
+    await user.click(screen.getByText("Armor Crush"));
+    expect(screen.getByText("Target-dependent")).toBeVisible();
+    await user.click(screen.getByRole("button", { name: /open damage calculation/i }));
+    expect(screen.getByRole("dialog", { name: "Damage Calculation" })).toHaveTextContent(
+      "Direct damage = max(ceil((Caster Damage + Skill Variation − Target Defence) × Armor Breaker multiplier), 1) Armor Breaker multiplier: no Armor Breaker or 0 stacks = 55%; 1 stack = 65%; 2 or more stacks = 75%",
+    );
+  });
+
+  it("renders Antivenom Potion self-healing and omits inapplicable damage", async () => {
+    render(<SkillReferenceCard
+      skill={{
+        ...skill,
+        skillId: "skill.warrior.antivenom_potion",
+        displayName: "Antivenom Potion",
+        reference: {
+          ...skill.reference,
+          target: { mode: "self" },
+          skillType: "buff",
+          attackType: { state: "notApplicable" },
+          damageNature: { state: "notApplicable" },
+          damageType: { state: "notApplicable" },
+          baseDamage: { state: "notApplicable" },
+          baseHealing: {
+            state: "available",
+            amountRange: { minimum: 18, maximum: 20 },
+            basis: "baselinePower",
+            note: "",
+            conditions: [],
+          },
+        },
+      }}
+      content={{ introduction: "Drink a potion to recover health." }}
+    />);
+    await userEvent.setup().click(screen.getByText("Antivenom Potion"));
+    expect(screen.getByText("Self")).toBeVisible();
+    expect(screen.getByText("18–20")).toBeVisible();
+    expect(screen.queryByText("Self-healing power before healing modifiers and HP cap.")).not.toBeInTheDocument();
+    expect(screen.queryByText("Base Damage")).not.toBeInTheDocument();
   });
 
   it("renders the backend-owned Shadow Word Pain calculation dialog", async () => {
@@ -193,5 +302,17 @@ describe("UI-028 expanded skill reference card", () => {
     const css = readFileSync("app/globals.css", "utf8");
     expect(css).toMatch(/\.hero-profile \.skill-reference-grid\{[^}]*grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
     expect(css).toMatch(/@media\(max-width:620px\)\{[^}]*\.hero-profile \.skill-reference-grid\{grid-template-columns:1fr\}/s);
+  });
+
+  it("preserves authored line breaks and indentation in a skill introduction", async () => {
+    const introduction = "A crushing strike that weakens armour.\n Special Effect:\n   Two stacks apply Wound.\n   Three stacks apply Bleeding.";
+    render(<SkillReferenceCard
+      skill={{ ...skill, displayName: "Armor Crush" }}
+      content={{ introduction }}
+    />);
+    await userEvent.setup().click(screen.getByText("Armor Crush"));
+    expect(screen.getByText(/Special Effect:/).textContent).toBe(introduction);
+    const css = readFileSync("app/globals.css", "utf8");
+    expect(css).toMatch(/\.hero-gallery-page \.skill-reference-copy>p\{white-space:pre-wrap;overflow-wrap:anywhere\}/);
   });
 });

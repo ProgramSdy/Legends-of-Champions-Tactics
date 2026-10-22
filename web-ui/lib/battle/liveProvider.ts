@@ -58,6 +58,25 @@ interface CommandRejected {
 
 const DEFAULT_BASE_URL = process.env.NEXT_PUBLIC_BATTLE_API_URL ?? "http://localhost:8001";
 
+export function createBattleAttemptId(): string | null {
+  const secureCrypto = globalThis.crypto;
+  if (typeof secureCrypto?.randomUUID === "function") {
+    try {
+      return secureCrypto.randomUUID();
+    } catch {
+      // Some older browsers expose randomUUID outside a context where it can
+      // run. getRandomValues remains a secure source for the opaque fallback.
+    }
+  }
+  if (typeof secureCrypto?.getRandomValues !== "function") return null;
+
+  const bytes = secureCrypto.getRandomValues(new Uint8Array(16));
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0"));
+  return `${hex.slice(0, 4).join("")}-${hex.slice(4, 6).join("")}-${hex.slice(6, 8).join("")}-${hex.slice(8, 10).join("")}-${hex.slice(10).join("")}`;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
@@ -597,7 +616,9 @@ function isGalleryNumericReference(value: unknown): boolean {
   if (value.state === "notApplicable") return true;
   if (value.state === "unavailable") {
     return (value.reasonId === "notAudited" || value.reasonId === "targetDependentBaseline")
-      && typeof value.note === "string" && value.note.length > 0
+      // Only a formula-backed target-dependent reference can omit card copy.
+      && typeof value.note === "string"
+      && (value.note.length > 0 || value.reasonId === "targetDependentBaseline" && isRecord(value.calculation))
       && (value.displayLabel === undefined
         || value.displayLabel === null
         || typeof value.displayLabel === "string" && value.displayLabel.length > 0)
@@ -610,7 +631,9 @@ function isGalleryNumericReference(value: unknown): boolean {
   return value.state === "available"
     && isGalleryAmountRange(value.amountRange)
     && value.basis === "baselinePower"
-    && typeof value.note === "string" && value.note.length > 0
+    // The API keeps this field required, but an audited value may have no
+    // explanatory copy (for example Antivenom Potion's Base Healing).
+    && typeof value.note === "string"
     && Array.isArray(value.conditions)
     && value.conditions.every((condition) => isRecord(condition)
       && typeof condition.label === "string" && condition.label.length > 0
@@ -623,6 +646,8 @@ function isGallerySkillReference(value: unknown): boolean {
   if ((value.target.mode === "multipleAllies" || value.target.mode === "multipleEnemies")
     && (!Number.isInteger(value.target.maximumTargets) || Number(value.target.maximumTargets) < 2)) return false;
   return typeof value.skillType === "string" && GALLERY_SKILL_TYPES.has(value.skillType)
+    && (value.cooldownRounds === undefined || value.cooldownRounds === null
+      || Number.isInteger(value.cooldownRounds) && Number(value.cooldownRounds) > 0)
     && isGalleryClassification(value.attackType)
     && isGalleryClassification(value.damageNature)
     && isGalleryClassification(value.damageType)
@@ -797,6 +822,7 @@ export async function fetchStructuredStages(
 export class LiveBattleProvider implements BattleProvider {
   private battleId: string | null = null;
   private state: BattleState | null = null;
+  private creationPromise: Promise<BattleState> | null = null;
 
   constructor(
     private readonly baseUrl = DEFAULT_BASE_URL,
@@ -808,6 +834,7 @@ export class LiveBattleProvider implements BattleProvider {
       enemyControlMode: "player",
     },
     private readonly createPath = "/api/v1/battles",
+    private readonly attemptId?: string | null,
   ) {}
 
   private async request<T>(path: string, init?: RequestInit): Promise<Envelope<T>> {
@@ -820,20 +847,39 @@ export class LiveBattleProvider implements BattleProvider {
 
   async getState(): Promise<BattleState> {
     if (this.state) return structuredClone(this.state);
-    const envelope = await this.request<CreateData>(this.createPath, {
+    if (this.creationPromise) {
+      return structuredClone(await this.creationPromise);
+    }
+    if (this.attemptId === null) {
+      throw new BattleProviderError(
+        "This browser cannot securely identify a fresh battle attempt. Reload in a supported browser and try again.",
+        "adapter",
+      );
+    }
+    const creation = this.request<CreateData>(this.createPath, {
       method: "POST",
-      body: JSON.stringify(this.configuration),
+      body: JSON.stringify(this.attemptId === undefined
+        ? this.configuration
+        : { ...this.configuration, attemptId: this.attemptId }),
+    }).then((envelope) => {
+      this.battleId = envelope.battleId;
+      this.state = {
+        revision: envelope.revision,
+        snapshot: envelope.data.snapshot,
+        events: envelope.data.events ?? [],
+        ...(envelope.data.playOpening === true && envelope.data.openingSnapshot
+          ? { openingSnapshot: envelope.data.openingSnapshot, playOpening: true }
+          : {}),
+      };
+      return this.state;
     });
-    this.battleId = envelope.battleId;
-    this.state = {
-      revision: envelope.revision,
-      snapshot: envelope.data.snapshot,
-      events: envelope.data.events ?? [],
-      ...(envelope.data.playOpening === true && envelope.data.openingSnapshot
-        ? { openingSnapshot: envelope.data.openingSnapshot, playOpening: true }
-        : {}),
-    };
-    return structuredClone(this.state);
+    this.creationPromise = creation;
+    try {
+      return structuredClone(await creation);
+    } catch (reason) {
+      if (this.creationPromise === creation) this.creationPromise = null;
+      throw reason;
+    }
   }
 
   async commitStageVictory(): Promise<VictoryCommitResponse> {

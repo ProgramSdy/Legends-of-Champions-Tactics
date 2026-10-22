@@ -6,6 +6,12 @@
 combat rules, construction, session state, progression, or Battle Information
 Transparency.
 
+**Historical scope:** This records the UI-028 pilot as it stood on 2026-10-10;
+its roster counts and unavailable/reference ledger are not the current
+inventory. Subsequent approved Gallery changes are recorded in `Completed.md`;
+use `GDD/Skill_System.md` and `web-ui/BATTLE_DATA_CONTRACT_V1.md` for the
+current standard and catalogue facts.
+
 ## 1. Boundary map
 
 `GET /api/v1/heroes` is the correct authority boundary. Its route in

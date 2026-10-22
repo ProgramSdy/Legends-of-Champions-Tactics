@@ -19,6 +19,17 @@ Requests can include an optional seed for reproducible composition and
 computer-formation selection within that session. A refresh, process restart,
 or multi-worker deployment does not provide recovery or shared session state.
 
+Arena-node and structured-stage creation accept an optional opaque
+`attemptId`. The normal player UI sends one ID per intentional Enter Battle
+and reuses it for a transport retry by the same provider. Within the current
+adapter process, a profile-bound identical ID and launch configuration returns
+the original session/envelope without another seed draw; using the ID with a
+different route or configuration returns HTTP 409 `battleAttemptConflict`.
+Omitting the ID preserves legacy per-POST creation semantics. This is
+process-local retry safety, not durable exactly-once creation: a server restart
+or multi-worker deployment cannot recover the binding. Browser reload does not
+resume an active battle; a later explicit Enter Battle is a new attempt.
+
 Save selection uses request/response HTTP endpoints but is not an account
 system. `GET /api/v1/save-slots` lists exactly five local summaries; create,
 load, and confirmed-overwrite requests mutate the backend-owned active slot.

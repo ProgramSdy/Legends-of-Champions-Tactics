@@ -150,7 +150,9 @@ class HeroSkillAvailableNumericReference(StrictApiModel):
     state: Literal["available"]
     amount_range: HeroSkillReferenceAmountRange = Field(alias="amountRange")
     basis: Literal["baselinePower"]
-    note: str = Field(min_length=1)
+    # An audited numeric reference can intentionally omit explanatory copy
+    # while retaining a stable, required catalogue field for existing clients.
+    note: str
     conditions: list[HeroSkillReferenceCondition] = Field(default_factory=list)
 
 
@@ -164,9 +166,19 @@ class HeroSkillUnavailableNumericReference(StrictApiModel):
     reason_id: Literal["notAudited", "targetDependentBaseline"] = Field(
         alias="reasonId"
     )
-    note: str = Field(min_length=1)
+    # Target-dependent references can show the formula trigger without
+    # redundant explanatory copy inside the Base Damage card.
+    note: str
     display_label: str | None = Field(default=None, alias="displayLabel", min_length=1)
     calculation: HeroSkillReferenceCalculation | None = None
+
+    @model_validator(mode="after")
+    def validate_blank_note(self) -> "HeroSkillUnavailableNumericReference":
+        if not self.note and not (
+            self.reason_id == "targetDependentBaseline" and self.calculation
+        ):
+            raise ValueError("an empty note requires a target-dependent calculation")
+        return self
 
 
 HeroSkillNumericReference = Annotated[
@@ -181,6 +193,10 @@ class HeroSkillReference(StrictApiModel):
     target: HeroSkillTargetReference
     skill_type: Literal["damage", "healing", "damageHealing", "buff", "effect"] = (
         Field(alias="skillType")
+    )
+    # Initial engine counter, not live remaining cooldown or buff duration.
+    cooldown_rounds: int | None = Field(
+        default=None, alias="cooldownRounds", ge=1, strict=True
     )
     attack_type: HeroSkillAttackTypeReference = Field(alias="attackType")
     damage_nature: HeroSkillDamageNatureReference = Field(alias="damageNature")
@@ -740,6 +756,14 @@ class CreateStageBattleRequest(ApiModel):
         default=None, alias="playerFormation"
     )
     seed: int | None = None
+    attempt_id: str | None = Field(
+        default=None,
+        alias="attemptId",
+        min_length=1,
+        max_length=128,
+        pattern=r"^[A-Za-z0-9._:-]+$",
+        strict=True,
+    )
 
 
 class VictoryCommitResponse(ApiModel):
@@ -840,6 +864,14 @@ class CreateArenaBattleRequest(StrictApiModel):
     )
     player_formation: FormationId | None = Field(
         default=None, alias="playerFormation"
+    )
+    attempt_id: str | None = Field(
+        default=None,
+        alias="attemptId",
+        min_length=1,
+        max_length=128,
+        pattern=r"^[A-Za-z0-9._:-]+$",
+        strict=True,
     )
 
 

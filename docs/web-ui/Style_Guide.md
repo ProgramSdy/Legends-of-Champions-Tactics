@@ -280,20 +280,44 @@ _To be documented._
   order and use vertical, never horizontal, card-pane scrolling.
 - Gallery values are labelled **Base Range** and remain authoritative catalogue
   ranges, not combat predictions. Active/passive skill controls use keyboard
-  accessible tabs and expose only registered skills; unavailable ownership and
-  absent unlock routes stay textual as well as visual.
+  accessible tabs and expose only registered skills. Keep the tab/panel area
+  anchored when switching between Active and Passive rather than letting
+  different content heights unexpectedly move the controls. Unavailable
+  ownership and absent unlock routes stay textual as well as visual.
 - An expanded skill card keeps its native accessible disclosure behavior and
   places the editable introduction before a compact semantic facts grid. The
   grid uses two readable columns where space permits and one column at narrow
   widths; long unavailable explanations wrap without horizontal scrolling.
+- Order applicable facts as **Base Damage**, **Base Healing**, **Target Type**,
+  **Skill Type**, **Attack Type**, **Damage Nature**, **Damage Type**, then
+  **Cool Down** last. Omit inapplicable entries; remaining boxes flow in that
+  order rather than reserving empty positions. Keep separate damage and healing
+  rows for hybrid skills and separate conditions/ordered targets where needed.
 - Mechanical facts come only from the typed catalogue `reference` block.
   Present values with player-friendly labels; use **Unavailable** with its
   concise supplied reason, show **Unclassified** when applicable information is
   absent, and omit fields that are **Not applicable**. Do not turn the grid into
   a battle-preview panel or synthesize formula results in React.
+- Show an audited cooldown in the same compact facts grid as **Cool Down** and
+  `N Rounds` (for example, `2 Rounds`). Omit the box entirely for a null or
+  absent cooldown; do not confuse the initial skill counter with a status
+  duration, live remaining counter, or a guarantee of the exact future turn.
+- A catalogue-provided **Target-dependent** value uses the existing compact
+  yellow `?` beside its fact label. Its accessible dialog presents only the
+  adapter-authored calculation copy; it is explanatory reference material, not
+  a new card treatment or a browser-calculated combat prediction. An empty
+  catalogue note reserves no space beneath the value; avoid redundant
+  explanatory lines when the popup provides the detail. Do not turn an
+  unaudited value into a Target-dependent formula or suppress a necessary
+  unavailable explanation. Use the owner-approved **Direct damage** wording
+  in the formula copy; distinguish its pre-receipt scope in documentation
+  without adding unwanted explanatory text to the card.
 - Editorial copy is deliberately distinct from these facts: maintainers edit
   the per-hero YAML content files and run the Gallery content validation/build
-  path. YAML must not contain mechanical numeric authority.
+  path. Skill introductions preserve authored YAML block line breaks and
+  indentation while wrapping within the card at narrow widths. YAML may contain
+  audited numbers in descriptive prose, but it is not mechanical authority;
+  structured numeric facts and formulas belong to the Python catalogue.
 
 ## Team Builder
 

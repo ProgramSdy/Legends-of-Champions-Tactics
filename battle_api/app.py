@@ -6,12 +6,14 @@ import asyncio
 from collections.abc import Callable
 import os
 from pathlib import Path
+import secrets
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException, Path as ApiPath
 from fastapi.middleware.cors import CORSMiddleware
 
 from .adapter import CONTRACT_VERSION, BattleAdapterError, BattleRegistry
+from .attempts import BattleAttemptConflict, BattleAttemptRegistry
 from .models import (
     ArenaStateResponse,
     ArenaVictoryCommitResponse,
@@ -72,6 +74,7 @@ app.add_middleware(
     allow_headers=["Content-Type"],
 )
 registry = BattleRegistry()
+battle_attempt_registry = BattleAttemptRegistry()
 DEFAULT_PROGRESSION_DATABASE = (
     Path(__file__).resolve().parents[1] / "data" / "player_progression.sqlite3"
 )
@@ -117,6 +120,19 @@ def _arena_error(exc: ArenaAccessError) -> HTTPException:
         status_code=status,
         detail={"code": exc.code, "message": exc.message},
     )
+
+
+def _battle_attempt_error(exc: BattleAttemptConflict) -> HTTPException:
+    return HTTPException(
+        status_code=409,
+        detail={"code": "battleAttemptConflict", "message": str(exc)},
+    )
+
+
+def _fresh_battle_seed() -> int:
+    """Return server-owned entropy for one new player-facing attempt."""
+
+    return secrets.randbits(256)
 
 
 async def _read_progression(store: ProgressionStore) -> dict:
@@ -348,13 +364,47 @@ async def create_arena_battle(
     request: CreateArenaBattleRequest,
     store: Annotated[ProgressionStore, Depends(get_progression_store)],
 ) -> dict:
-    try:
-        node = await asyncio.to_thread(
-            store.arena_node_for_launch,
+    def create_attempt(profile_id: str) -> tuple[object, dict]:
+        node = store.arena_node_for_launch(
             run_id=run_id,
             node_index=node_index,
             player_team=list(request.player_team),
             player_formation=request.player_formation,
+        )
+        if node["profileId"] != profile_id:
+            raise SaveSlotAccessError(
+                "activeSaveSlotChanged",
+                "The active save slot changed; start the Arena battle again.",
+            )
+        return registry.create(
+            seed=_fresh_battle_seed(),
+            battle_size=node["battleSize"],
+            player_team=list(request.player_team),
+            enemy_composition_mode="specified",
+            enemy_team=list(node["enemyDefinitionIds"]),
+            enemy_control_mode="computer",
+            player_formation=request.player_formation,
+            enemy_formation=node["enemyFormation"],
+            fixed_computer_formation=True,
+            progression_profile_id=node["profileId"],
+            arena_run_id=run_id,
+            arena_node_index=node_index,
+        )
+
+    try:
+        profile_id = await asyncio.to_thread(store.active_profile_id)
+        _, envelope = await asyncio.to_thread(
+            battle_attempt_registry.get_or_create,
+            profile_id=profile_id,
+            attempt_id=request.attempt_id,
+            fingerprint=(
+                "arena",
+                run_id,
+                node_index,
+                tuple(request.player_team),
+                request.player_formation,
+            ),
+            factory=lambda: create_attempt(profile_id),
         )
     except ProgressionStoreError as exc:
         raise _store_unavailable(exc) from exc
@@ -362,21 +412,8 @@ async def create_arena_battle(
         raise _save_slot_error(exc) from exc
     except ArenaAccessError as exc:
         raise _arena_error(exc) from exc
-    _, envelope = await asyncio.to_thread(
-        registry.create,
-        seed=node["battleSeed"],
-        battle_size=node["battleSize"],
-        player_team=list(request.player_team),
-        enemy_composition_mode="specified",
-        enemy_team=list(node["enemyDefinitionIds"]),
-        enemy_control_mode="computer",
-        player_formation=request.player_formation,
-        enemy_formation=node["enemyFormation"],
-        fixed_computer_formation=True,
-        progression_profile_id=node["profileId"],
-        arena_run_id=run_id,
-        arena_node_index=node_index,
-    )
+    except BattleAttemptConflict as exc:
+        raise _battle_attempt_error(exc) from exc
     return envelope
 
 
@@ -506,13 +543,66 @@ async def create_stage_battle(
     request: CreateStageBattleRequest,
     store: Annotated[ProgressionStore, Depends(get_progression_store)],
 ) -> dict:
+    def create_attempt(profile_id: str) -> tuple[object, dict]:
+        battle = store.assert_stage_battle_access(
+            stage_id, battle_index, profile_id
+        )
+        store.assert_player_team_unlocked(list(request.player_team), profile_id)
+
+        if len(request.player_team) != battle.battle_size:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "code": "invalidStageBattleConfiguration",
+                    "message": "playerTeam must contain exactly the fixed battle size.",
+                },
+            )
+        valid_player_formations = {
+            1: {None},
+            2: {"front-rear", "side-by-side"},
+            3: {"one-front-two-rear", "two-front-one-rear", "all-front"},
+        }[battle.battle_size]
+        if request.player_formation not in valid_player_formations:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "code": "invalidStageBattleConfiguration",
+                    "message": (
+                        "playerFormation must be valid for this stage battle size."
+                    ),
+                },
+            )
+
+        return registry.create(
+            seed=(request.seed if request.seed is not None else _fresh_battle_seed()),
+            battle_size=battle.battle_size,
+            player_team=list(request.player_team),
+            enemy_composition_mode="specified",
+            enemy_team=list(battle.enemy_definition_ids),
+            enemy_control_mode="computer",
+            player_formation=request.player_formation,
+            enemy_formation=battle.formation,
+            fixed_computer_formation=True,
+            stage_id=stage_id,
+            stage_battle_index=battle_index,
+            progression_profile_id=profile_id,
+        )
+
     try:
         profile_id = await asyncio.to_thread(store.active_profile_id)
-        battle = await asyncio.to_thread(
-            store.assert_stage_battle_access, stage_id, battle_index, profile_id
-        )
-        await asyncio.to_thread(
-            store.assert_player_team_unlocked, list(request.player_team), profile_id
+        _, envelope = await asyncio.to_thread(
+            battle_attempt_registry.get_or_create,
+            profile_id=profile_id,
+            attempt_id=request.attempt_id,
+            fingerprint=(
+                "stage",
+                stage_id,
+                battle_index,
+                tuple(request.player_team),
+                request.player_formation,
+                request.seed,
+            ),
+            factory=lambda: create_attempt(profile_id),
         )
     except ProgressionStoreError as exc:
         raise _store_unavailable(exc) from exc
@@ -520,44 +610,8 @@ async def create_stage_battle(
         raise _access_error(exc) from exc
     except SaveSlotAccessError as exc:
         raise _save_slot_error(exc) from exc
-
-    if len(request.player_team) != battle.battle_size:
-        raise HTTPException(
-            status_code=422,
-            detail={
-                "code": "invalidStageBattleConfiguration",
-                "message": "playerTeam must contain exactly the fixed battle size.",
-            },
-        )
-    valid_player_formations = {
-        1: {None},
-        2: {"front-rear", "side-by-side"},
-        3: {"one-front-two-rear", "two-front-one-rear", "all-front"},
-    }[battle.battle_size]
-    if request.player_formation not in valid_player_formations:
-        raise HTTPException(
-            status_code=422,
-            detail={
-                "code": "invalidStageBattleConfiguration",
-                "message": "playerFormation must be valid for this stage battle size.",
-            },
-        )
-
-    _, envelope = await asyncio.to_thread(
-        registry.create,
-        seed=request.seed,
-        battle_size=battle.battle_size,
-        player_team=list(request.player_team),
-        enemy_composition_mode="specified",
-        enemy_team=list(battle.enemy_definition_ids),
-        enemy_control_mode="computer",
-        player_formation=request.player_formation,
-        enemy_formation=battle.formation,
-        fixed_computer_formation=True,
-        stage_id=stage_id,
-        stage_battle_index=battle_index,
-        progression_profile_id=profile_id,
-    )
+    except BattleAttemptConflict as exc:
+        raise _battle_attempt_error(exc) from exc
     return envelope
 
 

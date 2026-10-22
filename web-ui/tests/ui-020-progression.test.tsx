@@ -242,6 +242,7 @@ describe("UI-020 authoritative progression boundary", () => {
     expect(launch?.body).toEqual({
       playerTeam: ["hero.warrior.weapon_master", "hero.mage.comprehensiveness"],
       playerFormation: "side-by-side",
+      attemptId: expect.any(String),
     });
     expect(launch?.body).not.toHaveProperty("enemyTeam");
     expect(launch?.body).not.toHaveProperty("enemyControlMode");

@@ -13,10 +13,15 @@ from battle_api.adapter import (
     BattleAdapter,
     HERO_ROSTER,
     HERO_SKILL_INVENTORY,
+    HERO_SKILL_COOLDOWN_ROUNDS,
     HERO_SKILL_REFERENCE_DEFINITIONS,
 )
 from battle_api.app import app, registry
-from battle_api.models import HeroSkillInventoryItem
+from battle_api.models import (
+    HeroSkillInventoryItem,
+    HeroSkillReference,
+    HeroSkillUnavailableNumericReference,
+)
 from battle_api.progression import hero_unlock_sources
 
 
@@ -37,7 +42,7 @@ def test_reference_registry_and_response_cover_every_approved_skill_exactly():
         for skills in HERO_SKILL_INVENTORY.values()
         for skill_id, _display_name, _passive in skills
     }
-    assert len(expected_ids) == 31
+    assert len(expected_ids) == 32
     assert set(HERO_SKILL_REFERENCE_DEFINITIONS) == expected_ids
 
     response = client.get("/api/v1/heroes")
@@ -52,7 +57,81 @@ def test_reference_registry_and_response_cover_every_approved_skill_exactly():
     assert all(
         "reference" in skill for hero in body["heroes"] for skill in hero["skills"]
     )
-    assert sum(len(hero["skills"]) for hero in body["heroes"]) == 31
+    assert sum(len(hero["skills"]) for hero in body["heroes"]) == 32
+
+
+def test_gallery_cooldowns_match_the_seven_audited_engine_counters():
+    expected = {
+        "skill.rogue.shadow_evasion": 2,
+        "skill.warrior.shield_bash": 3,
+        "skill.warrior.thunder_pot": 3,
+        "skill.warrior.antivenom_potion": 3,
+        "skill.warrior.warlust": 3,
+        "skill.paladin.heroric_charge": 3,
+        "skill.paladin.shield_of_protection": 3,
+    }
+    assert HERO_SKILL_COOLDOWN_ROUNDS == expected
+
+    body = client.get("/api/v1/heroes").json()
+    actual = {
+        skill["skillId"]: skill["reference"]["cooldownRounds"]
+        for hero in body["heroes"]
+        for skill in hero["skills"]
+    }
+    assert len(actual) == 32
+    assert actual == {skill_id: expected.get(skill_id) for skill_id in actual}
+
+
+@pytest.mark.parametrize("invalid", [0, -1, 1.5, True])
+def test_gallery_cooldown_contract_rejects_nonpositive_or_noninteger_values(invalid):
+    body = client.get("/api/v1/heroes").json()
+    reference = deepcopy(body["heroes"][0]["skills"][0]["reference"])
+    reference["cooldownRounds"] = invalid
+    with pytest.raises(ValidationError):
+        HeroSkillReference.model_validate(reference)
+
+
+@pytest.mark.parametrize(
+    ("definition_id", "skill_name", "expected_rounds"),
+    [
+        ("hero.rogue.comprehensiveness", "Shadow Evasion", 2),
+        ("hero.warrior.defence", "Shield Bash", 3),
+        ("hero.warrior.defence", "Thunder Pot", 3),
+        ("hero.warrior.weapon_master", "Antivenom Potion", 3),
+        ("hero.warrior.berserker", "Warlust", 3),
+        ("hero.paladin.protection", "Heroric Charge", 3),
+        ("hero.paladin.holy", "Shield of Protection", 3),
+    ],
+)
+def test_gallery_cooldown_value_is_set_by_live_skill_execution(
+    definition_id, skill_name, expected_rounds
+):
+    adapter = BattleAdapter()
+    enemy_id = (
+        "hero.warrior.weapon_master"
+        if definition_id == "hero.rogue.comprehensiveness"
+        else "hero.rogue.comprehensiveness"
+    )
+    session, _ = adapter.create_battle(
+        seed=28031,
+        player_team=[definition_id],
+        enemy_team=[enemy_id],
+        enemy_control_mode="player",
+    )
+    actor = session.game.player_heroes[0]
+    target = session.game.opponent_heroes[0]
+    skill = next(item for item in actor.skills if item.name == skill_name)
+    skill.evasion_check = lambda _target: False
+
+    if skill.target_qty == 0:
+        skill.execute(["none"])
+    elif skill.target_type == "multi":
+        skill.execute([target])
+    else:
+        skill.execute(target)
+
+    assert skill.if_cooldown is True
+    assert skill.cooldown == expected_rounds
 
 
 def test_pilot_reference_ranges_and_conditions_are_exact():
@@ -79,6 +158,7 @@ def test_pilot_reference_ranges_and_conditions_are_exact():
         "minimum": 16,
         "maximum": 22,
     }
+    assert holy_smite["baseDamage"]["note"] == ""
     assert holy_smite["baseHealing"] == {"state": "notApplicable"}
 
     shadow_pain = _skill(
@@ -107,9 +187,10 @@ def test_pilot_reference_ranges_and_conditions_are_exact():
         "minimum": 22,
         "maximum": 28,
     }
+    assert binding_heal["baseHealing"]["note"] == ""
     assert binding_heal["baseHealing"]["conditions"] == [
         {
-            "label": "Caster healing when another ally is selected",
+            "label": "Healing received by caster",
             "amountRange": {"minimum": 17, "maximum": 23},
         }
     ]
@@ -152,31 +233,60 @@ def test_pilot_reference_ranges_and_conditions_are_exact():
         },
     }
 
-    hammer = _skill(
-        body, "hero.paladin.protection", "skill.paladin.hammer_of_revenge"
+    fatal_strike = _skill(
+        body, "hero.warrior.weapon_master", "skill.warrior.fatal_strike"
     )["reference"]
-    assert hammer["target"] == {"mode": "singleEnemy"}
-    assert hammer["baseDamage"]["amountRange"] == {
-        "minimum": 51,
-        "maximum": 64,
+    assert fatal_strike["target"] == {"mode": "singleEnemy"}
+    assert fatal_strike["baseDamage"] == {
+        "state": "unavailable",
+        "reasonId": "targetDependentBaseline",
+        "note": "Direct damage depends on the selected target's Defence.",
+        "displayLabel": "Target-dependent",
+        "calculation": {
+            "title": "Damage Calculation",
+            "formula": (
+                "Direct damage = max(Caster Damage + Skill Variation "
+                "− Target Defence, 1)"
+            ),
+        },
     }
-    assert hammer["baseDamage"]["conditions"] == [
-        {
-            "label": "Bonus with 1 self debuff",
-            "amountRange": {"minimum": 3, "maximum": 5},
-        },
-        {
-            "label": "Bonus with 2 self debuffs",
-            "amountRange": {"minimum": 6, "maximum": 8},
-        },
-        {
-            "label": "Bonus with 3 or more self debuffs",
-            "amountRange": {"minimum": 9, "maximum": 11},
-        },
-    ]
-    assert hammer["damageNature"] == {"state": "classified", "value": "physical"}
-    assert hammer["damageType"] == {"state": "classified", "value": "weapon"}
+    assert fatal_strike["baseHealing"] == {"state": "notApplicable"}
 
+    armor_crush = _skill(
+        body, "hero.warrior.weapon_master", "skill.warrior.armor_crush"
+    )["reference"]
+    assert armor_crush["target"] == {"mode": "singleEnemy"}
+    assert armor_crush["baseDamage"] == {
+        "state": "unavailable",
+        "reasonId": "targetDependentBaseline",
+        "note": "Direct damage depends on the selected target's Defence and Armor Breaker state.",
+        "displayLabel": "Target-dependent",
+        "calculation": {
+            "title": "Damage Calculation",
+            "formula": (
+                "Direct damage = max(ceil((Caster Damage + Skill Variation "
+                "− Target Defence) × Armor Breaker multiplier), 1)\n"
+                "Armor Breaker multiplier: no Armor Breaker or 0 stacks = 55%; "
+                "1 stack = 65%; "
+                "2 or more stacks = 75%"
+            ),
+        },
+    }
+    assert armor_crush["baseHealing"] == {"state": "notApplicable"}
+
+    antivenom = _skill(
+        body, "hero.warrior.weapon_master", "skill.warrior.antivenom_potion"
+    )["reference"]
+    assert antivenom["target"] == {"mode": "self"}
+    assert antivenom["skillType"] == "buff"
+    assert antivenom["baseDamage"] == {"state": "notApplicable"}
+    assert antivenom["baseHealing"] == {
+        "state": "available",
+        "amountRange": {"minimum": 18, "maximum": 20},
+        "basis": "baselinePower",
+        "note": "",
+        "conditions": [],
+    }
 
 def test_non_pilot_numeric_states_are_explicit_and_relevant():
     body = client.get("/api/v1/heroes").json()
@@ -187,6 +297,21 @@ def test_non_pilot_numeric_states_are_explicit_and_relevant():
         "skill.rogue.sharp_blade",
         "skill.rogue.poisoned_dagger",
         "skill.paladin.hammer_of_revenge",
+        "skill.warrior.fatal_strike",
+        "skill.warrior.armor_crush",
+        "skill.warrior.antivenom_potion",
+        "skill.warrior.devastate",
+        "skill.warrior.shield_bash",
+        "skill.warrior.thunder_pot",
+        "skill.warrior.moon_slash",
+        "skill.warrior.strike_of_meteorite",
+        "skill.paladin.hammer_of_anger",
+        "skill.paladin.crusader_strike",
+        "skill.paladin.shield_of_righteous",
+        "skill.paladin.heroric_charge",
+        "skill.paladin.holy_blast",
+        "skill.priest.penance",
+        "skill.priest.holy_word_punishment",
     }
     for hero in body["heroes"]:
         for skill in hero["skills"]:
@@ -205,6 +330,204 @@ def test_non_pilot_numeric_states_are_explicit_and_relevant():
             else:
                 assert reference["baseDamage"] == {"state": "notApplicable"}
                 assert reference["baseHealing"] == {"state": "notApplicable"}
+
+
+def test_target_dependent_inventory_is_limited_to_formula_audited_skills():
+    body = client.get("/api/v1/heroes").json()
+
+    target_dependent_ids = {
+        skill["skillId"]
+        for hero in body["heroes"]
+        for skill in hero["skills"]
+        if skill["reference"]["baseDamage"].get("reasonId")
+        == "targetDependentBaseline"
+    }
+
+    assert target_dependent_ids == {
+        "skill.priest.shadow_word_pain",
+        "skill.rogue.sharp_blade",
+        "skill.rogue.poisoned_dagger",
+        "skill.warrior.fatal_strike",
+        "skill.warrior.armor_crush",
+        "skill.warrior.devastate",
+        "skill.warrior.shield_bash",
+        "skill.warrior.thunder_pot",
+        "skill.warrior.moon_slash",
+        "skill.warrior.strike_of_meteorite",
+        "skill.paladin.hammer_of_anger",
+        "skill.paladin.hammer_of_revenge",
+        "skill.paladin.heroric_charge",
+    }
+
+
+@pytest.mark.parametrize(
+    ("definition_id", "skill_id", "formula"),
+    [
+        (
+            "hero.warrior.defence",
+            "skill.warrior.devastate",
+            "Direct damage = max(ceil((Caster Damage + Skill Variation − Target Defence) × 75%), 1)",
+        ),
+        (
+            "hero.warrior.defence",
+            "skill.warrior.shield_bash",
+            "Direct damage = max(int((Caster Damage + Skill Variation − Target Defence) ÷ 4), 1)",
+        ),
+        (
+            "hero.warrior.defence",
+            "skill.warrior.thunder_pot",
+            "Direct damage per target = max(1, round((Caster Damage − Target Defence) ÷ 3) + Skill Variation)",
+        ),
+        (
+            "hero.warrior.berserker",
+            "skill.warrior.moon_slash",
+            "Direct damage per target = max(ceil((Caster Damage + Skill Variation − Target Defence) × 2 ÷ 3), 1)",
+        ),
+        (
+            "hero.warrior.berserker",
+            "skill.warrior.strike_of_meteorite",
+            "Direct damage = max(Caster Damage + Skill Variation − Target Defence, 0)",
+        ),
+    ],
+)
+def test_warrior_defence_and_berserker_damage_references(
+    definition_id, skill_id, formula
+):
+    body = client.get("/api/v1/heroes").json()
+    reference = _skill(body, definition_id, skill_id)["reference"]
+
+    assert reference["baseDamage"] == {
+        "state": "unavailable",
+        "reasonId": "targetDependentBaseline",
+        "note": "",
+        "displayLabel": "Target-dependent",
+        "calculation": {
+            "title": "Damage Calculation",
+            "formula": formula,
+        },
+    }
+    assert reference["baseHealing"] == {"state": "notApplicable"}
+
+
+@pytest.mark.parametrize(
+    ("definition_id", "skill_id", "formula"),
+    [
+        (
+            "hero.paladin.retribution",
+            "skill.paladin.hammer_of_anger",
+            "Direct damage = max(Caster Damage + Skill Variation − Target Defence, 0) + Wrath of Crusader bonus\n"
+            "Wrath of Crusader bonus: active 1 stack = 3–5; active 2 stacks = 6–8; otherwise = 0",
+        ),
+        (
+            "hero.paladin.protection",
+            "skill.paladin.hammer_of_revenge",
+            "Direct damage = max(Caster Damage + Skill Variation − Target Defence, 0) + self-debuff bonus\n"
+            "Self-debuff bonus (distinct eligible active statuses): 0 = 0; 1 = 3–5; 2 = 6–8; 3 or more = 9–11",
+        ),
+        (
+            "hero.paladin.protection",
+            "skill.paladin.heroric_charge",
+            "Direct damage = max(1, round((Caster Damage − Target Defence) × 1) + Skill Variation)",
+        ),
+    ],
+)
+def test_paladin_target_dependent_damage_uses_audited_popup(
+    definition_id, skill_id, formula
+):
+    body = client.get("/api/v1/heroes").json()
+    reference = _skill(body, definition_id, skill_id)["reference"]
+
+    assert reference["baseDamage"] == {
+        "state": "unavailable",
+        "reasonId": "targetDependentBaseline",
+        "note": "",
+        "displayLabel": "Target-dependent",
+        "calculation": {"title": "Damage Calculation", "formula": formula},
+    }
+    assert reference["baseHealing"] == {"state": "notApplicable"}
+
+
+@pytest.mark.parametrize(
+    ("definition_id", "skill_id", "minimum", "maximum", "conditions"),
+    [
+        ("hero.paladin.retribution", "skill.paladin.crusader_strike", 18, 22, []),
+        ("hero.paladin.protection", "skill.paladin.shield_of_righteous", 18, 22, []),
+        (
+            "hero.paladin.holy",
+            "skill.paladin.holy_blast",
+            20,
+            25,
+            [{"label": "Second target", "amountRange": {"minimum": 14, "maximum": 17}}],
+        ),
+        ("hero.priest.discipline", "skill.priest.penance", 17, 21, []),
+        ("hero.priest.discipline", "skill.priest.holy_word_punishment", 7, 11, []),
+    ],
+)
+def test_paladin_and_discipline_fixed_direct_power_ranges(
+    definition_id, skill_id, minimum, maximum, conditions
+):
+    body = client.get("/api/v1/heroes").json()
+    reference = _skill(body, definition_id, skill_id)["reference"]
+
+    assert reference["baseDamage"] == {
+        "state": "available",
+        "amountRange": {"minimum": minimum, "maximum": maximum},
+        "basis": "baselinePower",
+        "note": "",
+        "conditions": conditions,
+    }
+    if skill_id == "skill.priest.penance":
+        assert reference["baseHealing"] == {
+            "state": "available",
+            "amountRange": {"minimum": 21, "maximum": 25},
+            "basis": "baselinePower",
+            "note": "",
+            "conditions": [],
+        }
+    else:
+        assert reference["baseHealing"] == {"state": "notApplicable"}
+
+
+def test_berserker_blood_frenzy_is_a_passive_self_effect_not_an_action():
+    body = client.get("/api/v1/heroes").json()
+    passive = _skill(
+        body, "hero.warrior.berserker", "skill.warrior.blood_frenzy"
+    )
+
+    assert passive["displayName"] == "Blood Frenzy"
+    assert passive["isPassive"] is True
+    assert passive["reference"] == {
+        "target": {"mode": "self"},
+        "skillType": "effect",
+        "cooldownRounds": None,
+        "attackType": {"state": "notApplicable"},
+        "damageNature": {"state": "notApplicable"},
+        "damageType": {"state": "notApplicable"},
+        "baseDamage": {"state": "notApplicable"},
+        "baseHealing": {"state": "notApplicable"},
+    }
+
+
+@pytest.mark.parametrize(
+    ("reason_id", "calculation"),
+    [
+        ("notAudited", {"title": "Damage Calculation", "formula": "Formula"}),
+        ("targetDependentBaseline", None),
+    ],
+)
+def test_blank_unavailable_note_requires_target_dependent_formula(
+    reason_id, calculation
+):
+    with pytest.raises(ValidationError):
+        HeroSkillUnavailableNumericReference.model_validate(
+            {
+                "state": "unavailable",
+                "reasonId": reason_id,
+                "note": "",
+                "displayLabel": "Target-dependent",
+                "calculation": calculation,
+            }
+        )
 
 
 def test_warrior_damage_skills_publish_authoritative_physical_weapon_facts():

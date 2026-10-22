@@ -90,8 +90,9 @@ combat.
 - **Hero Gallery catalogue (Python + generated editorial registry):** extends
   the static roster response with deterministic skill-reference facts without
   constructing heroes or touching combat/session/RNG state. Human-editable
-  YAML is strictly compiled into a typed frontend module before dev/build; it
-  contains prose only and cannot author mechanics or numeric facts.
+  YAML is strictly compiled into a typed frontend module before dev/build; its
+  prose cannot author mechanics or structured numerical facts. Descriptive
+  numbers may appear in prose but must be audited against the engine.
 
 ## Ownership Boundaries
 
@@ -107,6 +108,15 @@ combat.
 | Profile naming/deletion, active-battle recovery, inventory/equipment, cloud/account saves | Not implemented |
 | Gallery target semantics, classifications, numeric reference availability | Python static catalogue / audited registry |
 | Gallery introductions, battle styles, skill prose, optional tips | Validated generated editorial content |
+
+For new Gallery skills, the Python catalogue owns audited Base Damage/Healing,
+target-dependent formula text, classifications, target semantics, and initial
+cooldown counters. The frontend displays those facts using the shared Gallery
+pattern and never duplicates combat calculation or cooldown logic. A formula
+may name target Defence or Resistance without evaluating a target: the static
+reference is distinct from the battle-specific preview. Follow the new-skill
+checklist in `GDD/Skill_System.md` and validate the YAML/registry stable IDs
+together with the catalogue.
 
 The formation registry must never assign combat positions or decide legal
 targets. Conversely, visual 3v3 depth is formation-, side-, and slot-specific
@@ -153,8 +163,13 @@ the old session. No slot/stage/profile/reward field is added to
 Arena Run uses separate state, create, node-launch, and completion routes. The
 client supplies only an initial six-definition owned squad, then the current
 node's squad-limited friendly team and size-valid friendly formation. The store
-owns the twelve-node schedule, enemy roster/formation, seeds, current node,
-and completion receipts. Its profile-scoped abandon route removes only the
+owns the twelve-node schedule, enemy roster/formation, legacy node seed data,
+current node, and completion receipts. A new player-intended node launch gets
+a fresh server-owned combat seed; persisted node seeds no longer determine
+retry combat. The optional profile-bound `attemptId` on Arena and structured
+stage creation makes same-process transport retries return the original
+session, while a new intentional launch uses a new ID. Its profile-scoped
+abandon route removes only the
 matching active run after the UI's explicit confirmation, so a new squad is
 never created implicitly. `/api/v1/debug/battles` is a separate non-persistent
 boundary for free-form testing and never uses the progression store; it is not

@@ -77,7 +77,12 @@ semantics, classifications, and either an audited base power range or an
 explicit unavailable/not-applicable state. They are static and deterministic:
 reading the catalogue neither constructs a hero nor consumes RNG. Editorial
 introductions and strategy tips are separate human-authored content and cannot
-alter hero mechanics, classifications, or numbers.
+alter hero mechanics, classifications, or structured numerical facts. Prose
+may describe audited mechanics (including numbers) but must be checked against
+the engine; the YAML validator does not verify that prose is mechanically true.
+When adding a hero or skill, follow the Gallery reference and validation
+checklist in `Skill_System.md`, including active/passive inventory, audited
+power or truthful unavailable state, and any actual cooldown.
 
 Every hero has an engine-owned battle `position` of `front` or `rear`.
 Construction defaults to `front` for legacy simulations, generators, summons,

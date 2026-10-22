@@ -125,6 +125,8 @@ export type HeroSkillNumericReference =
 export interface HeroSkillReference {
   target: HeroSkillTargetReference;
   skillType: "damage" | "healing" | "damageHealing" | "buff" | "effect";
+  /** Initial engine cooldown counter; absent/null means no defined cooldown. */
+  cooldownRounds?: number | null;
   attackType: HeroSkillClassificationReference;
   damageNature: HeroSkillClassificationReference;
   damageType: HeroSkillClassificationReference;

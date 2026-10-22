@@ -165,6 +165,7 @@ HERO_SKILL_INVENTORY: dict[str, tuple[tuple[str, str, bool], ...]] = {
         ("skill.warrior.moon_slash", "Moon Slash", False),
         ("skill.warrior.warlust", "Warlust", False),
         ("skill.warrior.strike_of_meteorite", "Strike of Meteorite", False),
+        ("skill.warrior.blood_frenzy", "Blood Frenzy", True),
     ),
     "hero.rogue.comprehensiveness": (
         ("skill.rogue.sharp_blade", "Sharp Blade", False),
@@ -273,6 +274,9 @@ HERO_SKILL_REFERENCE_DEFINITIONS: dict[str, _HeroSkillReferenceDefinition] = {
     "skill.warrior.strike_of_meteorite": _HeroSkillReferenceDefinition(
         "damage", attack_type="melee", damage_nature="physical", damage_type="weapon"
     ),
+    "skill.warrior.blood_frenzy": _HeroSkillReferenceDefinition(
+        "effect", target_type="self", target_quantity=0
+    ),
     "skill.rogue.sharp_blade": _HeroSkillReferenceDefinition(
         "damage", attack_type="melee", damage_nature="physical", damage_type="weapon"
     ),
@@ -282,6 +286,19 @@ HERO_SKILL_REFERENCE_DEFINITIONS: dict[str, _HeroSkillReferenceDefinition] = {
     "skill.rogue.shadow_evasion": _HeroSkillReferenceDefinition(
         "buffs", target_quantity=0
     ),
+}
+
+# Audited initial cooldown counters assigned by the ten published heroes or
+# Skill.execute. A missing entry means the skill has no defined cooldown;
+# status/buff duration is not a cooldown. Keep this catalogue RNG-free.
+HERO_SKILL_COOLDOWN_ROUNDS: dict[str, int] = {
+    "skill.rogue.shadow_evasion": 2,
+    "skill.warrior.shield_bash": 3,
+    "skill.warrior.thunder_pot": 3,
+    "skill.warrior.antivenom_potion": 3,
+    "skill.warrior.warlust": 3,
+    "skill.paladin.heroric_charge": 3,
+    "skill.paladin.shield_of_protection": 3,
 }
 
 
@@ -536,10 +553,7 @@ class BattleAdapter:
                 "state": "available",
                 "amountRange": {"minimum": 16, "maximum": 22},
                 "basis": "baselinePower",
-                "note": (
-                    "Immediate skill power before target receipt, formation, shields, "
-                    "immunity, or evasion."
-                ),
+                "note": "",
                 "conditions": [],
             }
         elif skill_id == "skill.priest.shadow_word_pain":
@@ -566,14 +580,119 @@ class BattleAdapter:
                 "state": "available",
                 "amountRange": {"minimum": 22, "maximum": 28},
                 "basis": "baselinePower",
-                "note": "Selected-target healing power before healing modifiers and HP cap.",
+                "note": "",
                 "conditions": [
                     {
-                        "label": "Caster healing when another ally is selected",
+                        "label": "Healing received by caster",
                         "amountRange": {"minimum": 17, "maximum": 23},
                     }
                 ],
             }
+        elif skill_id == "skill.warrior.fatal_strike":
+            base_damage = cls._catalogue_unavailable_numeric(
+                "Direct damage depends on the selected target's Defence.",
+                reason_id="targetDependentBaseline",
+                display_label="Target-dependent",
+                calculation={
+                    "title": "Damage Calculation",
+                    "formula": (
+                        "Direct damage = max(Caster Damage + Skill "
+                        "Variation − Target Defence, 1)"
+                    ),
+                },
+            )
+        elif skill_id == "skill.warrior.armor_crush":
+            base_damage = cls._catalogue_unavailable_numeric(
+                (
+                    "Direct damage depends on the selected target's Defence and "
+                    "Armor Breaker state."
+                ),
+                reason_id="targetDependentBaseline",
+                display_label="Target-dependent",
+                calculation={
+                    "title": "Damage Calculation",
+                    "formula": (
+                        "Direct damage = max(ceil((Caster Damage + Skill "
+                        "Variation − Target Defence) × Armor Breaker multiplier), 1)\n"
+                        "Armor Breaker multiplier: no Armor Breaker or 0 stacks = 55%; "
+                        "1 stack = 65%; "
+                        "2 or more stacks = 75%"
+                    ),
+                },
+            )
+        elif skill_id == "skill.warrior.antivenom_potion":
+            base_healing = {
+                "state": "available",
+                "amountRange": {"minimum": 18, "maximum": 20},
+                "basis": "baselinePower",
+                "note": "",
+                "conditions": [],
+            }
+        elif skill_id == "skill.warrior.devastate":
+            base_damage = cls._catalogue_unavailable_numeric(
+                "",
+                reason_id="targetDependentBaseline",
+                display_label="Target-dependent",
+                calculation={
+                    "title": "Damage Calculation",
+                    "formula": (
+                        "Direct damage = max(ceil((Caster Damage + Skill Variation "
+                        "− Target Defence) × 75%), 1)"
+                    ),
+                },
+            )
+        elif skill_id == "skill.warrior.shield_bash":
+            base_damage = cls._catalogue_unavailable_numeric(
+                "",
+                reason_id="targetDependentBaseline",
+                display_label="Target-dependent",
+                calculation={
+                    "title": "Damage Calculation",
+                    "formula": (
+                        "Direct damage = max(int((Caster Damage + Skill Variation "
+                        "− Target Defence) ÷ 4), 1)"
+                    ),
+                },
+            )
+        elif skill_id == "skill.warrior.thunder_pot":
+            base_damage = cls._catalogue_unavailable_numeric(
+                "",
+                reason_id="targetDependentBaseline",
+                display_label="Target-dependent",
+                calculation={
+                    "title": "Damage Calculation",
+                    "formula": (
+                        "Direct damage per target = max(1, round((Caster Damage "
+                        "− Target Defence) ÷ 3) + Skill Variation)"
+                    ),
+                },
+            )
+        elif skill_id == "skill.warrior.moon_slash":
+            base_damage = cls._catalogue_unavailable_numeric(
+                "",
+                reason_id="targetDependentBaseline",
+                display_label="Target-dependent",
+                calculation={
+                    "title": "Damage Calculation",
+                    "formula": (
+                        "Direct damage per target = max(ceil((Caster Damage + "
+                        "Skill Variation − Target Defence) × 2 ÷ 3), 1)"
+                    ),
+                },
+            )
+        elif skill_id == "skill.warrior.strike_of_meteorite":
+            base_damage = cls._catalogue_unavailable_numeric(
+                "",
+                reason_id="targetDependentBaseline",
+                display_label="Target-dependent",
+                calculation={
+                    "title": "Damage Calculation",
+                    "formula": (
+                        "Direct damage = max(Caster Damage + Skill Variation "
+                        "− Target Defence, 0)"
+                    ),
+                },
+            )
         elif skill_id == "skill.rogue.sharp_blade":
             base_damage = cls._catalogue_unavailable_numeric(
                 "Direct damage depends on the selected target's Defence.",
@@ -604,36 +723,106 @@ class BattleAdapter:
                     ),
                 },
             )
-        elif skill_id == "skill.paladin.hammer_of_revenge":
-            damage_minimum = int(basic_properties.loc["Damage_Min", profession])
-            damage_maximum = int(basic_properties.loc["Damage_Max", profession])
+        elif skill_id == "skill.paladin.hammer_of_anger":
+            base_damage = cls._catalogue_unavailable_numeric(
+                "",
+                reason_id="targetDependentBaseline",
+                display_label="Target-dependent",
+                calculation={
+                    "title": "Damage Calculation",
+                    "formula": (
+                        "Direct damage = max(Caster Damage + Skill Variation "
+                        "− Target Defence, 0) + Wrath of Crusader bonus\n"
+                        "Wrath of Crusader bonus: active 1 stack = 3–5; "
+                        "active 2 stacks = 6–8; otherwise = 0"
+                    ),
+                },
+            )
+        elif skill_id == "skill.paladin.crusader_strike":
             base_damage = {
                 "state": "available",
-                "amountRange": {
-                    "minimum": damage_minimum - 4,
-                    "maximum": damage_maximum - 1,
-                },
+                "amountRange": {"minimum": 18, "maximum": 22},
                 "basis": "baselinePower",
-                "note": "Base power before target Defence and later receipt rules.",
+                "note": "",
+                "conditions": [],
+            }
+        elif skill_id == "skill.paladin.hammer_of_revenge":
+            base_damage = cls._catalogue_unavailable_numeric(
+                "",
+                reason_id="targetDependentBaseline",
+                display_label="Target-dependent",
+                calculation={
+                    "title": "Damage Calculation",
+                    "formula": (
+                        "Direct damage = max(Caster Damage + Skill Variation "
+                        "− Target Defence, 0) + self-debuff bonus\n"
+                        "Self-debuff bonus (distinct eligible active statuses): "
+                        "0 = 0; 1 = 3–5; 2 = 6–8; 3 or more = 9–11"
+                    ),
+                },
+            )
+        elif skill_id == "skill.paladin.shield_of_righteous":
+            base_damage = {
+                "state": "available",
+                "amountRange": {"minimum": 18, "maximum": 22},
+                "basis": "baselinePower",
+                "note": "",
+                "conditions": [],
+            }
+        elif skill_id == "skill.paladin.heroric_charge":
+            base_damage = cls._catalogue_unavailable_numeric(
+                "",
+                reason_id="targetDependentBaseline",
+                display_label="Target-dependent",
+                calculation={
+                    "title": "Damage Calculation",
+                    "formula": (
+                        "Direct damage = max(1, round((Caster Damage "
+                        "− Target Defence) × 1) + Skill Variation)"
+                    ),
+                },
+            )
+        elif skill_id == "skill.paladin.holy_blast":
+            base_damage = {
+                "state": "available",
+                "amountRange": {"minimum": 20, "maximum": 25},
+                "basis": "baselinePower",
+                "note": "",
                 "conditions": [
                     {
-                        "label": "Bonus with 1 self debuff",
-                        "amountRange": {"minimum": 3, "maximum": 5},
-                    },
-                    {
-                        "label": "Bonus with 2 self debuffs",
-                        "amountRange": {"minimum": 6, "maximum": 8},
-                    },
-                    {
-                        "label": "Bonus with 3 or more self debuffs",
-                        "amountRange": {"minimum": 9, "maximum": 11},
-                    },
+                        "label": "Second target",
+                        "amountRange": {"minimum": 14, "maximum": 17},
+                    }
                 ],
+            }
+        elif skill_id == "skill.priest.penance":
+            base_damage = {
+                "state": "available",
+                "amountRange": {"minimum": 17, "maximum": 21},
+                "basis": "baselinePower",
+                "note": "",
+                "conditions": [],
+            }
+            base_healing = {
+                "state": "available",
+                "amountRange": {"minimum": 21, "maximum": 25},
+                "basis": "baselinePower",
+                "note": "",
+                "conditions": [],
+            }
+        elif skill_id == "skill.priest.holy_word_punishment":
+            base_damage = {
+                "state": "available",
+                "amountRange": {"minimum": 7, "maximum": 11},
+                "basis": "baselinePower",
+                "note": "",
+                "conditions": [],
             }
 
         return {
             "target": target,
             "skillType": normalized_skill_type,
+            "cooldownRounds": HERO_SKILL_COOLDOWN_ROUNDS.get(skill_id),
             "attackType": cls._catalogue_classification(
                 definition.attack_type, applicable=damage_capable
             ),

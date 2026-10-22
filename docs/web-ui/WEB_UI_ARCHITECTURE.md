@@ -243,10 +243,49 @@ malformed API/content mismatch is rejected as recoverable Gallery data before
 rendering, instead of allowing a missing local-copy lookup to produce a blank
 panel or an exception.
 
+`SkillReferenceCard` remains generic for audited numeric-reference states: an
+unavailable value with the adapter-owned `Target-dependent` label and
+calculation metadata renders the existing yellow calculation trigger and its
+accessible dialog. The dialog displays backend-authored copy verbatim; it does
+not implement a per-hero formula. Weapon Master Fatal Strike and Armor Crush,
+Warrior Defence's three damage skills, and Berserker's Moon Slash and Strike
+of Meteorite therefore reuse the established Shadow Word Pain/Rogue path.
+Paladin Retribution's Hammer of Anger and Protection's Hammer of Revenge and
+Heroric Charge use that same component and backend-authored popup; fixed
+Paladin/Priest Discipline direct-power ranges use the existing numeric row.
+The Defence/Berserker entries have no explanatory card note; the strict
+client decoder accepts their required empty string while still requiring the
+reason, label, and calculation fields. Antivenom Potion's available
+self-healing range uses the ordinary facts-grid row.
+
+The Gallery facts grid also renders the adapter's nullable `cooldownRounds`
+as a **Cool Down** box with `N Rounds` only when a positive counter is present.
+It never derives a cooldown from active battle snapshots, effect duration,
+skill text, or a browser-side timer; skills without an engine-assigned
+cooldown have no box. **Cool Down is the last applicable row** after the
+damage/healing, target, skill and damage-classification facts. The grid flows
+without placeholder cells and collapses to a single column at narrow widths.
+
+New hero/skill work must audit live mechanics and update the stable skill IDs,
+typed Python reference, and matching per-hero YAML/validated registry together.
+Keep a target-dependent damage formula in backend-authored popup text, not in
+React; publish an audited baseline range only when its bounds are proven.
+Descriptions can contain reviewed numeric prose, but YAML is not the authority
+for structured combat facts and its schema check cannot prove prose accuracy.
+The checklist in `GDD/Skill_System.md` is the stable integration gate.
+
+The existing Active Skills/Passive tabs also place Warrior Berserker's
+engine-triggered Blood Frenzy marker under Passive. Its editorial explanation
+comes from the Berserker YAML, while the typed adapter reference supplies
+only self/effect and inapplicable numeric states. No Gallery formula or
+activation probability is calculated in React.
+
 UI-020 additionally loads `GET /api/v1/progression` for selectable definition
 IDs and `GET /api/v1/stages` for the two curricula and step access. Structured
-launch posts only the player team, a size-valid player-selected formation for
-2v2/3v3, and optional seed to the one-based stage battle route. Python supplies
+launch posts the player team, a size-valid player-selected formation for
+2v2/3v3, and a per-launch opaque `attemptId` to the one-based stage battle
+route. Normal player launch omits seed; deliberate developer/API seed support
+remains. Python supplies
 the fixed enemies, computer control, and fixed enemy formation.
 
 Returning from an ended battle discards the provider and keyed battle
@@ -254,6 +293,13 @@ component. This clears the battle ID, cached snapshot/revision, presentation
 generation, timers, log, selections, and modal state. Arena then returns to
 its local builder. In a structured stage, `BattleScreen` forwards the actual
 typed `BattleOutcome`. Non-victories return to the same preparation state.
+`LiveBattleProvider` reuses one secure attempt ID for creation retries within
+one player-facing Arena/structured launch; a subsequent deliberate Enter
+Battle creates a new provider and ID. The ID is not a combat seed. Generic
+free-form and debug battle payloads remain unchanged. A reload does not
+restore the old process-local battle session or automatically create a
+replacement. A same-ID replay can return the original session after another
+tab changes Arena progress, but that obsolete session cannot commit progress.
 Friendly victory calls the stage session completion endpoint; React advances
 only after the atomic commit and fresh progression/stage fetch succeed. Newly
 granted rewards open a focus-contained, backend-authored notification before

@@ -113,8 +113,11 @@ later Arena visit, the persisted completed run opens the replacement squad
 builder; the completed record is not removed until the replacement six-hero
 squad is confirmed and accepted. This presentation flow does not change the
 store's atomic run-replacement semantics.
-Live battles remain process-local, so reload creates a fresh session from the
-persisted node data.
+Live battles remain process-local. Browser reload does not itself create or
+resume a battle; it returns to preparation, and a later explicit Enter Battle
+creates a fresh attempt from the still-persisted node configuration. The
+Arena node's legacy stored battle seed remains readable but no longer fixes
+retry combat randomness. Existing run and save-slot rows need no migration.
 
 ## Save and Checkpoint Behaviour
 

@@ -73,7 +73,13 @@ configured resistance ranges of the same shape, a stable skill inventory
 (`starter`, a stage-reward descriptor, or `null`). `reference` is an additive
 strictly typed skill-facts record: audited target semantics, skill type,
 active/passive status, attack/damage classifications, and Base Damage/Base
-Healing availability. Numerical results are either audited baseline-power
+Healing availability.
+The optional nullable `cooldownRounds` reference reports the engine's
+initial cooldown counter only for skills that assign one: Shadow Evasion `2`;
+Shield Bash, Thunder Pot, Antivenom Potion, Warlust, Heroric Charge, and
+Shield of Protection `3`. The other 25 published skills return `null`.
+It is not the live `cooldownRemaining` snapshot field or buff duration.
+Numerical results are either audited baseline-power
 bounds, an explicit unavailable reason/note (optionally with an
 adapter-authored display label and static calculation title/text for a Gallery
 help dialog), or not applicable; classification
@@ -82,15 +88,46 @@ inapplicable concept. These fields are catalogue facts only:
 they do not create heroes, roll randomized values, consume RNG, or grant an
 unlock. The browser must render ranges as ranges, obtain actual ownership from
 `GET /api/v1/progression`, and must not infer a missing unlock route.
+An available numeric reference keeps a required string `note`; an empty string
+means the Gallery shows only the audited range and no explanatory line.
 
 The adapter maps target presentation from its audited legal-target semantics,
 not raw engine `target_type` alone. Reference metadata is static and never
 executes a skill or opens a session; it is not a calculation of damage dealt
 or healing received in a live battle. React renders any supplied calculation
 copy verbatim and must not derive or duplicate formula logic.
+
+The currently audited Target-dependent Gallery entries are Shadow Word Pain,
+Sharp Blade, Poisoned Dagger, Fatal Strike, Armor Crush, Devastate, Shield
+Bash, Thunder Pot, Moon Slash, Strike of Meteorite, Hammer of Anger, Hammer of
+Revenge, and Heroric Charge. The five Warrior
+Defence/Berserker entries use an empty card note and an adapter-authored
+direct-damage formula in the existing calculation popup. Fatal Strike and
+Armor Crush carry adapter-authored direct-damage formula copy and the
+latter's 55%/65%/75% Armor Breaker multiplier bands; the calculation text is
+not a final damage result or a status-outcome guarantee. Weapon Master's
+Antivenom Potion instead publishes available Base Healing `18–20` as
+self-healing power before modifiers and the HP cap, with damage fields not
+applicable. These are static catalogue facts, not a new API shape or preview.
+The three Paladin entries likewise publish direct-damage formula copy with no
+card note: Hammer of Anger includes the active Wrath of Crusader bonus bands,
+Hammer of Revenge includes distinct eligible self-debuff bonus bands, and
+Heroric Charge includes the engine's one-damage floor. Crusader Strike and
+Shield of Righteous each publish fixed direct power 18–22; Holy Blast publishes
+20–25 for its first target and 14–17 for the second. Priest Discipline's
+Penance publishes enemy damage power 17–21 and ally healing power 21–25;
+Holy Word Punishment publishes immediate damage power 7–11, excluding its
+periodic effect. None of these are final receipt/HP predictions.
 The roster display name is catalogue metadata. Each non-summoned battle
 combatant receives a runtime name from its class's `HeroGenerator` faculty pool
 during session creation.
+
+Warrior Berserker publishes Blood Frenzy as a fourth `isPassive` inventory
+item. Its runtime `Skill` is a non-interactive marker; the existing
+`Hero.take_damage` → `trigger_blood_frenzy` path alone decides activation.
+The Gallery receives a static self/effect reference with damage and healing
+numbers not applicable. Battle snapshots may display the passive, but the
+adapter excludes it from legal commands and battle previews.
 
 The current roster includes Priest Comprehensiveness and Discipline; Paladin
 Retribution, Protection, and Holy; Mage Comprehensiveness; Warrior Defence,
@@ -146,9 +183,11 @@ presentation config, but must not calculate access or rewards itself.
 
 ### `POST /api/v1/stages/{stageId}/battles/{battleIndex}`
 
-Creates one accessible structured battle. Its body contains only the player
-team, a player-selected formation when the size is 2v2/3v3, and an optional
-seed. The route owns the exact size, fixed computer enemy definition order,
+Creates one accessible structured battle. Its body contains the player team,
+a player-selected formation when the size is 2v2/3v3, an optional deliberately
+supplied reproducibility `seed`, and optional opaque `attemptId`. The normal
+player UI supplies `attemptId` and omits `seed`; a new intentional launch gets
+fresh server-owned entropy. The route owns the exact size, fixed computer enemy definition order,
 and fixed enemy formation; locked player definitions are rejected but locked
 static enemies are allowed. The player formation uses the same size-specific
 choices as Arena and must be omitted for 1v1. A locked step returns HTTP 409;
@@ -157,6 +196,22 @@ route with HTTP 422. An in-range locked or unavailable step returns HTTP 409.
 The normal Arena `POST /api/v1/battles` creation contract is
 unchanged, except it also rejects a locked friendly definition with HTTP 409
 `heroLocked`.
+
+`POST /api/v1/arena/runs/{runId}/nodes/{nodeIndex}/battles` also accepts an
+optional `attemptId` alongside its ordered player team and size-valid player
+formation. The persisted Arena node retains its schedule, enemy definitions,
+and enemy formation, but its legacy stored battle seed does not drive new
+attempts. For either player-facing creation route, the same `attemptId` and
+identical active profile/route/configuration replays the original battle
+envelope in the same process without drawing another seed. A changed profile,
+route, or configuration under the same ID returns HTTP 409
+`battleAttemptConflict`. Without `attemptId`, each valid POST is a separate
+launch for compatibility. A duplicate ID can replay its original session
+even if another tab has since advanced or abandoned the Arena run; such an
+obsolete session cannot commit progression. The binding is process-local and
+does not provide reload recovery or cross-restart/cross-worker exactly-once
+creation. Explicit equal stage seeds remain reproducible for developer/API
+tests; free-form debug creation is unchanged.
 
 ### `POST /api/v1/battles/{battleId}/completion`
 

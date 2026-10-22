@@ -79,8 +79,10 @@ profile's unlocked definition IDs, per-stage progress, and reward counts.
 authoritative two nine-battle curricula with fixed enemy IDs/formations and
 server-computed access flags.
 
-`POST /api/v1/stages/{stageId}/battles/{battleIndex}` accepts only the friendly
-team, a required size-valid player formation for 2v2/3v3, and optional seed.
+`POST /api/v1/stages/{stageId}/battles/{battleIndex}` accepts the friendly
+team, a required size-valid player formation for 2v2/3v3, an optional
+deliberate developer/test seed, and an optional opaque `attemptId` for
+transport retry safety. The normal player UI sends `attemptId` and no seed.
 It returns the normal `BattleEnvelope<BattleCreateData>` after the backend
 supplies the fixed computer team/formation. The player formation is omitted
 for 1v1. `POST /api/v1/battles/{battleId}/completion` is a
@@ -102,10 +104,20 @@ slot action; browser state and URLs are not save-selection authority.
 `GET /api/v1/arena` returns the active profile's eligibility plus its optional
 active/completed Arena Run. A run exposes the immutable six-definition squad
 and twelve ordered nodes, each with its index, battle size, server-authored
-enemy formation/team, and completion state. Server-only node seeds are never
-returned. `POST /api/v1/arena/runs` accepts only exactly six distinct owned
+enemy formation/team, and completion state. Server-only legacy node seed data
+is never returned and no longer determines the combat stream of a new
+attempt. `POST /api/v1/arena/runs` accepts only exactly six distinct owned
 `squadDefinitionIds`. `POST /api/v1/arena/runs/{runId}/nodes/{nodeIndex}/battles`
-accepts only the current node's friendly team and size-valid friendly formation.
+accepts the current node's friendly team, size-valid friendly formation, and
+optional opaque `attemptId`; the normal player UI always supplies the ID.
+Each new intentional launch draws fresh server-owned combat entropy, while
+the node's size, enemies, and formations remain fixed. For Arena and
+structured stage creation, the same active profile, `attemptId`, route, and
+ordered configuration returns the original battle envelope in the same
+server process without another seed draw. Reusing an ID with a different
+route or configuration returns HTTP 409 `battleAttemptConflict`. Omitting
+`attemptId` retains legacy per-POST creation; the binding does not survive
+server restart or span workers.
 `POST /api/v1/arena/battles/{battleId}/completion` commits only an
 authoritative friendly victory and is idempotent.
 `POST /api/v1/arena/runs/{runId}/abandon` deletes only the active profile's
@@ -543,25 +555,72 @@ definition (`id`, `label`, `minimum`, `maximum`), stable skill inventory items
 `starter`, a stage-reward descriptor, or `null`. Each additive `reference`
 record is a typed static fact: audited player-facing target semantics; skill
 type; active/passive classification; attack, damage-nature, and damage-type
-classification; and Base Damage/Base Healing states. Numeric states are
+classification; and Base Damage/Base Healing states. Skill cooldown counters
+are exposed separately as optional nullable `cooldownRounds` (a positive integer
+when defined, `null` otherwise; older compatible clients may omit it). Numeric states are
 `available` with audited baseline-power bounds, `unavailable` with a stable
-reason and explanatory note (optionally with an adapter-authored display label
+reason and required note string (optionally with an adapter-authored display label
 and static calculation title/text for Gallery help), or `notApplicable`; classifications distinguish
 `unclassified` from `notApplicable`. Target modes are adapter-owned (`self`,
 single ally/enemy, flexible ally-or-enemy, or size-bounded multiple allies or
 enemies), rather than a client interpretation of raw engine target metadata.
+An `available` or `unavailable` numeric reference has a required string
+`note`. An available reference may leave it empty; an unavailable reference
+may leave it empty only when it is formula-backed and Target-dependent, so no
+explanatory line appears beneath the value.
 This extension is read-only and
 deterministic: it neither constructs heroes nor consumes session/module RNG.
 It describes configuration ranges, not a combat roll. Active-save ownership is
 still supplied only by `GET /api/v1/progression`; React may not derive it from
 catalogue text or unlock routes.
 
-The reference facts are deliberately not a battle preview: they do not
-incorporate target defence, resistance, shields, immunity, evasion, formation,
-HP caps, or live receipt modifiers. The catalogue path does not execute skills,
-create a battle session, update status/progression, or mutate engine data.
-Clients render these fields verbatim after strict validation and must not
-calculate replacement values or infer omitted classifications.
+The reference facts are deliberately not a battle preview. Available numeric
+baseline ranges are before target-specific receipt/mitigation, shields,
+immunity, evasion, formation, HP caps, or live receipt modifiers. A
+Target-dependent symbolic formula may explicitly name target Defence or
+Resistance, but the catalogue does not select a target or evaluate a live
+result. The catalogue path does not execute skills, create a battle session,
+update status/progression, or mutate engine data. Clients render these fields
+after strict validation and must not calculate replacement values or infer
+omitted classifications.
+
+The audited non-null `cooldownRounds` values are Shadow Evasion `2`, and
+Shield Bash, Thunder Pot, Antivenom Potion, Warlust, Heroric Charge, and
+Shield of Protection `3` each. These are the initial counters assigned by
+the live engine, not a snapshot's remaining cooldown, a buff/status duration,
+or a client-computed turn of availability. All other published skills, including
+passives, serialize `null` and omit the Gallery Cool Down fact box.
+
+Current audited `targetDependentBaseline` entries are Shadow Word Pain, Sharp
+Blade, Poisoned Dagger, Warrior Weapon Master's Fatal Strike and Armor Crush,
+Warrior Defence's Devastate, Shield Bash and Thunder Pot, and Warrior
+Berserker's Moon Slash and Strike of Meteorite, Paladin Retribution's Hammer of
+Anger, and Paladin Protection's Hammer of Revenge and Heroric Charge.
+Their optional `displayLabel` and `calculation` remain adapter-authored help
+copy; the five Defence/Berserker entries intentionally have empty card notes
+and show their target-Defence-dependent direct formulas in the existing
+calculation popup. Fatal Strike and Armor Crush specify direct damage only,
+with Armor Crush declaring its 55%/65%/75% Armor Breaker bands. Antivenom Potion is
+an available `baseHealing` range of `18–20` for self-healing power before
+modifiers/HP cap, not a damage reference. This updates published catalogue
+values only and does not change the frozen v1 schema.
+
+Warrior Berserker now also publishes `skill.warrior.blood_frenzy` as a fourth,
+`isPassive: true` Gallery inventory item with target `self`, skill type
+`effect`, and damage/healing references `notApplicable`. The same passive
+marker appears in battle skill snapshots for display but is excluded from
+legal actions and previews; its HP-triggered activation and status remain
+engine-owned. This adds a catalogue item without changing the v1 shape or
+turn-command authority.
+
+The same unchanged numeric-reference shape now publishes fixed direct-power
+ranges for Crusader Strike (18–22), Shield of Righteous (18–22), Holy Blast
+(first target 20–25; second target 14–17), Penance against an enemy (17–21),
+and Holy Word Punishment (7–11). Penance also publishes its independent ally
+healing power (21–25). These are skill power before target receipt, not live
+damage/HP changes or periodic damage. The three Paladin target-dependent
+entries use adapter-authored formula copy, including Wrath and eligible
+self-debuff bonus bands where applicable; no client-side formula was added.
 
 Sessions are process-local and disappear on restart. A session stores its own
 Python `random` state; the adapter swaps that state around engine calls under a

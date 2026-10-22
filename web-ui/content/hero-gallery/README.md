@@ -6,9 +6,13 @@ or an optional labelled strategy tip.
 
 Use the stable `definitionId` and `skillId` values already present in the file.
 Do not rename, add, or remove an ID unless the authoritative Python hero
-catalogue changes at the same time. Damage, healing, cooldowns, classifications,
-target rules, and other mechanical or numeric values do **not** belong here;
-those values come from `GET /api/v1/heroes`.
+catalogue changes at the same time. Authoritative structured damage, healing,
+cooldowns, classifications, target rules, and other mechanical facts do **not**
+belong in YAML fields; those values come from `GET /api/v1/heroes`. An
+introduction or tip may describe an audited effect and its numbers (as Blood
+Frenzy does), but that prose is not a source of combat rules. Check it against
+the engine when the skill changes: content-schema validation cannot prove its
+factual accuracy.
 
 Multiline copy uses YAML block syntax:
 

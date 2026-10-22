@@ -75,10 +75,17 @@ def test_roster_publishes_configured_ranges_and_static_skill_inventory():
             "isPassive": True,
         },
     ]
+    berserker = next(
+        hero for hero in heroes
+        if hero["definitionId"] == "hero.warrior.berserker"
+    )
+    assert [skill["skillId"] for skill in berserker["skills"] if skill["isPassive"]] == [
+        "skill.warrior.blood_frenzy"
+    ]
     assert all(
         not skill["isPassive"]
         for hero in heroes
-        if hero["definitionId"] != "hero.paladin.protection"
+        if hero["definitionId"] not in {"hero.paladin.protection", "hero.warrior.berserker"}
         for skill in hero["skills"]
     )
 

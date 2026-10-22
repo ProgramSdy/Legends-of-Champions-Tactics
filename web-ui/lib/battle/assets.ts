@@ -85,6 +85,7 @@ export const skillPresentation: Record<string, SkillPresentation> = {
   "skill.warrior.fatal_strike": { glyph: "⚔", tone: "red", effect: "melee", description: "A decisive strike that can hinder healing.", targetStyle: "Single enemy", impact: "heavy", movement: "lunge" },
   "skill.warrior.armor_crush": { glyph: "⬢", tone: "amber", effect: "melee", description: "A crushing blow that can break armour.", targetStyle: "Single enemy", impact: "armour-break", movement: "lunge" },
   "skill.warrior.antivenom_potion": { glyph: "✚", tone: "green", effect: "healing", description: "Recover and resist poison.", targetStyle: "Self", impact: "healing-glow" },
+  "skill.warrior.blood_frenzy": { glyph: "◆", tone: "red", effect: "status", description: "Passive: low-health frenzy grants agility and calculated-damage healing at a defence cost.", targetStyle: "Passive" },
   "skill.rogue.sharp_blade": { glyph: "⟋", tone: "red", effect: "melee", description: "A swift attack that can cause bleeding.", targetStyle: "Single enemy", impact: "blade", movement: "lunge" },
   "skill.rogue.poisoned_dagger": { glyph: "◆", tone: "green", effect: "status", description: "A poisoned attack that can stack poison.", targetStyle: "Single enemy", projectile: "dagger", impact: "poison" },
   "skill.rogue.shadow_evasion": { glyph: "◒", tone: "violet", effect: "magic", description: "Enter a heightened evasive stance.", targetStyle: "Self", impact: "shadow", movement: "offset" },
@@ -116,7 +117,7 @@ export const statusRegistry: Record<string, { glyph: string; name: string; descr
   "status.shield_of_protection": { glyph: "⬡", name: "Shield of Protection", description: "Prevents all incoming damage while this holy protection persists.", harmful: false },
   "status.warlust": { glyph: "⚔", name: "Warlust", description: "Increases damage and prevents control effects while active.", harmful: false },
   "status.bleeding_moon_slash": { glyph: "◒", name: "Moon Slash Bleeding", description: "Suffers authoritative bleeding damage at round start.", harmful: true },
-  "status.blood_frenzy": { glyph: "◆", name: "Blood Frenzy", description: "Grants agility and lifesteal while reducing defense.", harmful: false },
+  "status.blood_frenzy": { glyph: "◆", name: "Blood Frenzy", description: "For 2 rounds, grants 20 Agility, reduces Defence by a rounded half of its activation value, and restores whole HP equal to 30% of calculated direct damage from Moon Slash or Strike of Meteorite.", harmful: false },
   "status.holy_aura": { glyph: "✦", name: "Holy Aura", description: "A living Paladin Protection independently restores 6–8 HP to every living teammate at the start of each round.", harmful: false },
 };
 

@@ -100,5 +100,8 @@ export function buildSkillReferenceRows(reference: HeroSkillReference): HeroGall
     classificationRow("attack-type", "Attack Type", reference.attackType),
     classificationRow("damage-nature", "Damage Nature", reference.damageNature),
     classificationRow("damage-type", "Damage Type", reference.damageType),
+    reference.cooldownRounds != null
+      ? { id: "cooldown", label: "Cool Down", value: `${reference.cooldownRounds} Rounds` }
+      : null,
   ].filter((row): row is HeroGalleryFactRow => row !== null);
 }

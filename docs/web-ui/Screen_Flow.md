@@ -111,7 +111,10 @@ shows all server-authored node previews; only the next unresolved node can
 open its squad-limited Team Builder. The player selects the node-size team and
 friendly formation where applicable; the server supplies its computer enemy.
 Friendly victory commits one node and advances once, while defeat or draw
-retry. A round-limit resolution is an ordinary authoritative victory or draw:
+return to the node builder for an intentional new attempt. Confirmed battle
+resign does the same without advancing. The next Enter Battle gets a new
+server-owned combat seed, while a connection retry during one launch retains
+the same attempt ID and battle. A round-limit resolution is an ordinary authoritative victory or draw:
 only a friendly timeout victory commits. After node twelve, the completion panel
 exposes **OK**; it returns the
 player to Stage Map. Re-entering Arena then opens the intentional six-hero
@@ -280,6 +283,8 @@ flow. Its return link navigates directly to `/game`.
 - Mock fixtures remain test/development data and are not the normal user entry
   flow.
 - Battle sessions are process-local and are not resumed after a browser reload.
+  Reload itself does not launch a new battle; a later explicit Enter Battle
+  creates a new attempt from persisted Arena/stage configuration.
   Completed structured battles, access state, unlocked heroes, and rewards
   persist in the backend active save slot; a new launch reloads that state and
   starts the next permitted battle.

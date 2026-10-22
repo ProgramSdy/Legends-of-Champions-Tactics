@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+import math
 import re
 from types import SimpleNamespace
 
@@ -642,6 +643,103 @@ def test_blood_frenzy_has_one_activation_and_restoration_path(monkeypatch):
     assert berserker.agility_increased_amount_by_blood_frenzy == 0
 
 
+@pytest.mark.parametrize(
+    ("hp", "roll", "activates"),
+    [
+        (51, 1, False),
+        (50, 50, True),
+        (50, 51, False),
+        (25, 75, True),
+        (25, 76, False),
+        (10, 100, True),
+    ],
+)
+def test_blood_frenzy_hp_probability_bands_match_gallery_copy(
+    monkeypatch, hp, roll, activates
+):
+    adapter = BattleAdapter()
+    session, _ = adapter.create_battle(
+        seed=1602,
+        player_team=["hero.warrior.berserker"],
+        enemy_team=["hero.rogue.comprehensiveness"],
+    )
+    berserker = session.game.player_heroes[0]
+    berserker.hp_max = 100
+    berserker.hp = hp
+    monkeypatch.setattr("heroes.warrior.random.randint", lambda _low, _high: roll)
+
+    assert berserker.trigger_blood_frenzy() is activates
+    assert berserker.status["blood_frenzy"] is activates
+
+
+def test_blood_frenzy_passive_is_visible_but_never_a_legal_command():
+    adapter = BattleAdapter()
+    session, envelope = adapter.create_battle(
+        seed=1,
+        player_team=["hero.warrior.berserker"],
+        enemy_team=["hero.paladin.protection"],
+    )
+    snapshot = envelope["data"]["snapshot"]
+    berserker_id = snapshot["sides"][0]["combatantIds"][0]
+    assert snapshot["activeCombatantId"] == berserker_id
+    passive = next(
+        skill for skill in snapshot["combatants"][berserker_id]["skills"]
+        if skill["id"] == "skill.warrior.blood_frenzy"
+    )
+    assert passive["isPassive"] is True
+    assert not any(
+        action["skillId"] == passive["id"] for action in snapshot["legalActions"]
+    )
+
+    before = deepcopy(adapter.snapshot(session))
+    rejection = adapter.submit(
+        session,
+        {
+            "type": "useSkill",
+            "commandId": "cmd.blood-frenzy.passive",
+            "expectedRevision": session.revision,
+            "actorId": berserker_id,
+            "skillId": passive["id"],
+            "targetIds": [],
+        },
+    )
+    assert rejection["accepted"] is False
+    assert rejection["code"] == "illegalSkill"
+    assert adapter.snapshot(session) == before
+
+
+@pytest.mark.parametrize("skill_name", ["moon_slash", "strike_of_meteorite"])
+def test_blood_frenzy_healing_uses_calculated_direct_damage(
+    monkeypatch, skill_name
+):
+    adapter = BattleAdapter()
+    session, _ = adapter.create_battle(
+        seed=1602,
+        player_team=["hero.warrior.berserker"],
+        enemy_team=["hero.rogue.comprehensiveness"],
+    )
+    berserker = session.game.player_heroes[0]
+    enemy = session.game.opponent_heroes[0]
+    berserker.status["blood_frenzy"] = True
+    berserker.hp_max = 1000
+    berserker.hp = 100
+    berserker.damage = 70
+    enemy.defense = 10
+    monkeypatch.setattr(
+        "heroes.warrior.random.randint",
+        lambda low, high: 0 if low <= 0 <= high else low,
+    )
+
+    if skill_name == "moon_slash":
+        direct_damage = max(math.ceil((70 - 10) * 2 / 3), 1)
+        berserker.moon_slash([enemy], attack_type="ranged_instant")
+    else:
+        direct_damage = max(70 - 10, 0)
+        berserker.strike_of_meteorite(enemy, attack_type="melee")
+
+    assert berserker.hp == 100 + int(direct_damage * 0.3)
+
+
 def test_moon_slash_uses_own_duration_and_orders_tick_before_removal(monkeypatch):
     adapter = BattleAdapter()
     session, _ = adapter.create_battle(
@@ -935,7 +1033,10 @@ def test_approved_roster_constructs_with_stable_definition_and_skill_ids():
 
         assert combatant["definitionId"] == definition_id
         assert combatant["isPlayerControlled"] is True
-        expected_skill_count = 4 if definition_id == "hero.paladin.protection" else 3
+        expected_skill_count = (
+            4 if definition_id in {"hero.paladin.protection", "hero.warrior.berserker"}
+            else 3
+        )
         assert len(combatant["skills"]) == expected_skill_count
         assert all(skill["id"].startswith("skill.") for skill in combatant["skills"])
         assert adapter.snapshot(session)["combatants"][friendly_id]["skills"] == combatant["skills"]
@@ -950,7 +1051,8 @@ def test_approved_roster_constructs_with_stable_definition_and_skill_ids():
             {
                 "skill.warrior.moon_slash",
                 "skill.warrior.warlust",
-                    "skill.warrior.strike_of_meteorite",
+                "skill.warrior.strike_of_meteorite",
+                "skill.warrior.blood_frenzy",
             },
         ),
         (

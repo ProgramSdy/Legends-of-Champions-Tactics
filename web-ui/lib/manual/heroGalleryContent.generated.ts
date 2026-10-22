@@ -115,13 +115,16 @@ export const heroGalleryContent = {
     "battleStyle": "Pressures several enemies and turns fury into force.",
     "skills": {
       "skill.warrior.moon_slash": {
-        "introduction": "A sweeping attack against multiple enemies."
+        "introduction": "Move swiftly approaching to enemy and execute a sweeping attack against multiple enemies."
       },
       "skill.warrior.warlust": {
         "introduction": "A self-buff that increases battle aggression."
       },
       "skill.warrior.strike_of_meteorite": {
         "introduction": "A heavy single-enemy attack."
+      },
+      "skill.warrior.blood_frenzy": {
+        "introduction": "Passive. After surviving incoming damage, Blood Frenzy can activate based on remaining HP: 50% chance above 25% through 50% HP; 75% chance above 10% through 25% HP; guaranteed at 10% HP or less. It cannot activate above 50% HP or while already active.\nFor 2 rounds, gain 20 Agility and lose round(current Defence ÷ 2) Defence. While active, Moon Slash and Strike of Meteorite restore whole HP equal to 30% of their calculated direct damage; Moon Slash heals separately for each target."
       }
     }
   },
@@ -145,13 +148,13 @@ export const heroGalleryContent = {
     "battleStyle": "Finishes vulnerable enemies and weakens durable defenders.",
     "skills": {
       "skill.warrior.fatal_strike": {
-        "introduction": "A decisive strike that can reduce healing received."
+        "introduction": "A decisive strike with weapon that attaches a debuff which reduces target's healing by 70% for 2 rounds."
       },
       "skill.warrior.armor_crush": {
-        "introduction": "A crushing strike that can weaken armour."
+        "introduction": "A crushing strike that can weaken targets' armour. Attack attaches a debuff to target which stacks up to 3 times, each stack reduces target's armour by 15% for 2 rounds.\n >> Special Effect:\n   - Debuff stacks two times: activate an extra debuff \"Wound Armor Crush\" which reduces target's agility by 20% for 2 rounds.\n   - Debuff stacks three times: activate an extra debuff \"Bleeding Armor Crush\" which causes 8-12 continuous damage over 3 rounds."
       },
       "skill.warrior.antivenom_potion": {
-        "introduction": "A self-directed recovery and poison-resistance action."
+        "introduction": "Drink an antivenom potion to remove poison effects and recover health. Warrior Weapon Master gains a buff that increases their poison resistance by 45 for 2 rounds."
       }
     }
   }

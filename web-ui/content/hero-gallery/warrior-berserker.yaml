@@ -7,10 +7,14 @@ battleStyle: |-
 skills:
   - skillId: skill.warrior.moon_slash
     introduction: |-
-      A sweeping attack against multiple enemies.
+      Move swiftly approaching to enemy and execute a sweeping attack against multiple enemies.
   - skillId: skill.warrior.warlust
     introduction: |-
       A self-buff that increases battle aggression.
   - skillId: skill.warrior.strike_of_meteorite
     introduction: |-
       A heavy single-enemy attack.
+  - skillId: skill.warrior.blood_frenzy
+    introduction: |-
+      Passive. After surviving incoming damage, Blood Frenzy can activate based on remaining HP: 50% chance above 25% through 50% HP; 75% chance above 10% through 25% HP; guaranteed at 10% HP or less. It cannot activate above 50% HP or while already active.
+      For 2 rounds, gain 20 Agility and lose round(current Defence ÷ 2) Defence. While active, Moon Slash and Strike of Meteorite restore whole HP equal to 30% of their calculated direct damage; Moon Slash heals separately for each target.

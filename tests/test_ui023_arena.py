@@ -389,7 +389,9 @@ def test_openapi_exposes_strict_arena_and_debug_boundaries():
     assert set(create_run["properties"]) == {"squadDefinitionIds"}
     assert create_run["additionalProperties"] is False
     launch = schema["components"]["schemas"]["CreateArenaBattleRequest"]
-    assert set(launch["properties"]) == {"playerTeam", "playerFormation"}
+    assert set(launch["properties"]) == {
+        "playerTeam", "playerFormation", "attemptId"
+    }
     assert not ({"enemyTeam", "seed", "completed", "profileId"} & set(
         launch["properties"]
     ))

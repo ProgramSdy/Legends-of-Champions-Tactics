@@ -915,6 +915,11 @@ class Warrior_Berserker(Warrior):
         self.add_skill(Skill(self, "Moon Slash", self.moon_slash, target_type="multi", skill_type="damage", target_qty=2, attack_type = "ranged_instant", damage_nature = "physical", damage_type = "weapon"))
         self.add_skill(Skill(self, "Warlust", self.warlust, target_type="single", skill_type="buffs", target_qty=0))
         self.add_skill(Skill(self, "Strike of Meteorite", self.strike_of_meteorite, target_type="single", skill_type="damage", attack_type = "melee", damage_nature = "physical", damage_type = "weapon",capable_interrupt_magic_casting=True))
+        self.add_skill(Skill(self, "Blood Frenzy", self.blood_frenzy, target_type="self", skill_type="effect", target_qty=0, is_passive=True))
+
+    def blood_frenzy(self):
+        """Display-only passive marker; damage intake owns activation."""
+        return None
 
     def audited_direct_damage_range(self, skill_name, target):
         """Return the finite pre-formation range used by the live action."""
@@ -1166,7 +1171,7 @@ class Warrior_Berserker(Warrior):
             "skills": {
                 skill.name: skill
                 for skill in self.skills
-                if skill.is_available and not skill.if_cooldown
+                if not skill.is_passive and skill.is_available and not skill.if_cooldown
             },
         }
 

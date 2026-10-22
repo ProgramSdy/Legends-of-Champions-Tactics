@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { BattleScreen } from "./BattleScreen";
 import { ArenaRunExperience } from "./ArenaRunExperience";
 import {
+  createBattleAttemptId,
   fetchHeroRoster,
   fetchPlayerProgression,
   fetchStructuredStages,
@@ -43,6 +44,7 @@ type ResourceState = {
 type ActiveLaunch = {
   configuration: BattleCreateConfiguration | StructuredBattleCreateConfiguration;
   createPath: string;
+  attemptId?: string | null;
 };
 
 export function BattleExperience(props: BattleExperienceProps) {
@@ -167,7 +169,12 @@ function BattleSession({
     : null;
 
   const provider = useMemo(() => activeLaunch
-    ? new LiveBattleProvider(undefined, activeLaunch.configuration, activeLaunch.createPath)
+    ? new LiveBattleProvider(
+        undefined,
+        activeLaunch.configuration,
+        activeLaunch.createPath,
+        activeLaunch.attemptId,
+      )
     : null, [activeLaunch]);
 
   const missingStructuredRosterIds = useMemo(
@@ -309,6 +316,7 @@ function BattleSession({
     setActiveLaunch({
       configuration,
       createPath: `/api/v1/stages/${encodeURIComponent(structuredStage.stageId)}/battles/${serverBattle.displayOrder}`,
+      attemptId: createBattleAttemptId(),
     });
   };
 
