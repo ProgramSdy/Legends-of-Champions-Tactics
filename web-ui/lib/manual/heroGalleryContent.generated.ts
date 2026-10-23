@@ -67,10 +67,10 @@ export const heroGalleryContent = {
   },
   "hero.priest.comprehensiveness": {
     "introduction": "A versatile priest who balances holy restoration with shadow pressure.",
-    "battleStyle": "Supports wounded allies while maintaining ranged pressure.",
+    "battleStyle": "A rear line healer who masters both holy and shadow arts to support allies and weaken enemies.",
     "skills": {
       "skill.priest.holy_smite": {
-        "introduction": "A direct holy attack against one enemy."
+        "introduction": "A direct holy light strike against one enemy."
       },
       "skill.priest.shadow_word_pain": {
         "introduction": "Marks one enemy with a continuing shadow affliction. Debuff attached: Shadow Word: Pain."
@@ -82,16 +82,16 @@ export const heroGalleryContent = {
   },
   "hero.priest.discipline": {
     "introduction": "A disciplined priest who turns holy conviction toward allies or enemies.",
-    "battleStyle": "Adapts between healing, protection, and multi-target pressure.",
+    "battleStyle": "A rear line healer who turns holy damage on enemies into healing for allies.",
     "skills": {
       "skill.priest.penance": {
-        "introduction": "Heals an ally or damages an enemy according to the chosen target."
+        "introduction": "Utilize holy energy to heal an ally or damages an enemy."
       },
       "skill.priest.holy_word_redemption": {
-        "introduction": "Places a restorative holy effect on one ally."
+        "introduction": "Places a restorative holy effect on one ally who receives healing whenever the Priest damages an enemy with one of her other skills."
       },
       "skill.priest.holy_word_punishment": {
-        "introduction": "Pressures multiple enemies with a holy punishment effect."
+        "introduction": "Pressures 2 enemies with a continuous holy damage effect."
       }
     }
   },

@@ -248,6 +248,43 @@ describe("UI-020 authoritative progression boundary", () => {
     expect(launch?.body).not.toHaveProperty("enemyControlMode");
   });
 
+  it.each([
+    ["enemy victory", { kind: "victory", winningSideId: "enemy" }],
+    ["draw", { kind: "draw", winningSideId: null }],
+  ] as const)("starts a fresh structured attempt after %s without progression commit", async (_label, outcome) => {
+    const calls: Array<{ path: string; body?: unknown }> = [];
+    let launchCount = 0;
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const path = String(input);
+      calls.push({ path, body: init?.body ? JSON.parse(String(init.body)) : undefined });
+      if (path.endsWith("/api/v1/heroes")) return json({ contractVersion: "1.0", heroes: roster });
+      if (path.endsWith("/api/v1/progression")) return json(progression());
+      if (path.endsWith("/api/v1/stages")) return json(stagesResponse());
+      if (path.includes("/api/v1/stages/paladins-altar/battles/1")) {
+        launchCount += 1;
+        return json(endedEnvelope(2, outcome, `battle.retry.${launchCount}`));
+      }
+      throw new Error(`Unexpected request ${path}`);
+    });
+
+    render(<BattleExperience selectedStageId="paladins-altar" countdownStepMs={0} />);
+    await screen.findByRole("heading", { name: "Battle 1" });
+    const firstUser = await assignPlayers(["Warrior · Weapon Master", "Mage · Comprehensiveness"]);
+    await firstUser.click(screen.getByRole("button", { name: "ENTER BATTLE" }));
+    await firstUser.click(await screen.findByRole("button", { name: "RETRY BATTLE" }));
+
+    const secondUser = await assignPlayers(["Warrior · Weapon Master", "Mage · Comprehensiveness"]);
+    await secondUser.click(screen.getByRole("button", { name: "ENTER BATTLE" }));
+    await screen.findByRole("button", { name: "RETRY BATTLE" });
+
+    const launches = calls.filter((call) => call.path.includes("/api/v1/stages/paladins-altar/battles/1"));
+    expect(launches).toHaveLength(2);
+    expect(launches[0].body).toMatchObject({ attemptId: expect.any(String) });
+    expect(launches[1].body).toMatchObject({ attemptId: expect.any(String) });
+    expect(launches[0].body).not.toEqual(launches[1].body);
+    expect(calls.filter((call) => call.path.endsWith("/completion"))).toHaveLength(0);
+  });
+
   it("shows player formation choices for structured 2v2 and 3v3 only", async () => {
     const stage = STRUCTURED_STAGE_DEFINITIONS.find((entry) => entry.stageId === "paladins-altar")!;
     const onStart = vi.fn();

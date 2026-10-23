@@ -3,14 +3,14 @@ definitionId: hero.priest.discipline
 introduction: |-
   A disciplined priest who turns holy conviction toward allies or enemies.
 battleStyle: |-
-  Adapts between healing, protection, and multi-target pressure.
+  A rear line healer who turns holy damage on enemies into healing for allies.
 skills:
   - skillId: skill.priest.penance
     introduction: |-
-      Heals an ally or damages an enemy according to the chosen target.
+      Utilize holy energy to heal an ally or damages an enemy.
   - skillId: skill.priest.holy_word_redemption
     introduction: |-
-      Places a restorative holy effect on one ally.
+      Places a restorative holy effect on one ally who receives healing whenever the Priest damages an enemy with one of her other skills.
   - skillId: skill.priest.holy_word_punishment
     introduction: |-
-      Pressures multiple enemies with a holy punishment effect.
+      Pressures 2 enemies with a continuous holy damage effect.

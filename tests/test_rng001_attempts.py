@@ -108,6 +108,36 @@ def test_stage_attempt_id_conflict_does_not_create_or_consume_a_new_attempt(
     assert registry.get(next_attempt.json()["battleId"]).seed == 505
 
 
+def test_attempt_id_cannot_cross_active_save_profiles(
+    progression_client, monkeypatch: pytest.MonkeyPatch
+):
+    client, _store = progression_client
+    seeds = iter((515, 616))
+    monkeypatch.setattr("battle_api.app._fresh_battle_seed", lambda: next(seeds))
+
+    first = client.post(
+        "/api/v1/stages/warriors-barrack/battles/1",
+        json=_stage_payload("profile-bound-attempt"),
+    )
+    switched = client.post("/api/v1/save-slots/2/create")
+    same_id_in_other_profile = client.post(
+        "/api/v1/stages/warriors-barrack/battles/1",
+        json=_stage_payload("profile-bound-attempt"),
+    )
+    new_id_in_other_profile = client.post(
+        "/api/v1/stages/warriors-barrack/battles/1",
+        json=_stage_payload("profile-bound-attempt-new"),
+    )
+
+    assert first.status_code == 200
+    assert switched.status_code == 200
+    assert same_id_in_other_profile.status_code == 409
+    assert same_id_in_other_profile.json()["detail"]["code"] == "battleAttemptConflict"
+    assert new_id_in_other_profile.status_code == 200
+    assert registry.get(first.json()["battleId"]).seed == 515
+    assert registry.get(new_id_in_other_profile.json()["battleId"]).seed == 616
+
+
 def test_arena_new_attempts_are_fresh_but_preserve_node_configuration(
     progression_client, monkeypatch: pytest.MonkeyPatch
 ):
@@ -152,6 +182,33 @@ def test_arena_new_attempts_are_fresh_but_preserve_node_configuration(
         second_snapshot["combatants"][hero_id]["definitionId"]
         for hero_id in second_snapshot["sides"][1]["combatantIds"]
     ] == node["enemyDefinitionIds"]
+
+
+def test_legacy_arena_run_survives_store_reload_without_seed_migration(
+    progression_client, monkeypatch: pytest.MonkeyPatch
+):
+    client, store = progression_client
+    squad = _unlock_six(store)[:6]
+    run = store.create_arena_run(squad, schedule_seed=901)["run"]
+    node = run["nodes"][0]
+    formation = {1: None, 2: "side-by-side", 3: "all-front"}[node["battleSize"]]
+    reloaded_store = ProgressionStore(store.database_path)
+    app.dependency_overrides[get_progression_store] = lambda: reloaded_store
+    monkeypatch.setattr("battle_api.app._fresh_battle_seed", lambda: 919)
+
+    response = client.post(
+        f"/api/v1/arena/runs/{run['runId']}/nodes/1/battles",
+        json={
+            "playerTeam": squad[: node["battleSize"]],
+            "playerFormation": formation,
+            "attemptId": "legacy-reloaded-arena",
+        },
+    )
+
+    assert response.status_code == 200
+    assert reloaded_store.read_arena_state()["run"]["runId"] == run["runId"]
+    assert reloaded_store.read_arena_state()["run"]["nodes"][0] == node
+    assert registry.get(response.json()["battleId"]).seed == 919
 
 
 def test_explicit_stage_seed_remains_reproducible_and_legacy_requests_remain_compatible(

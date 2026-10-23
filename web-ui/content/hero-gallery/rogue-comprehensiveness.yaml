@@ -1,16 +1,16 @@
 schemaVersion: 1
 definitionId: hero.rogue.comprehensiveness
 introduction: |-
-  A quick rogue who uses precision, poison, and evasive movement.
+  A agile rogue who masters assassination with dual daggers and evasion to control the battlefield.
 battleStyle: |-
-  Prioritises vulnerable enemies while avoiding retaliation.
+  An active dps who is flexible in both frontline and backline positions.
 skills:
   - skillId: skill.rogue.sharp_blade
     introduction: |-
       A swift melee dagger strike that has 50% chance to cause bleeding.
   - skillId: skill.rogue.poisoned_dagger
     introduction: |-
-      Rogue sneak to a ranged target and perform a poisoned dagger attack that has 85% chance to apply poison. Poison debuff max 2 stacks.
+      Rogue sneak to a ranged target and perform an attack with poisoned dagger that has 85% chance to apply poison. Poison starts working on the next turn if successful. Poison debuff max 2 stacks.
   - skillId: skill.rogue.shadow_evasion
     introduction: |-
       Enable Rogue to dodge all coming attack in the current round.

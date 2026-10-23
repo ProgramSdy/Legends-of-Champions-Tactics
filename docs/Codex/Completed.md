@@ -5299,3 +5299,40 @@ skill power, such as Binding Heal `22–28`, without reducing it to missing HP.
 The battle engine remains the sole owner of the actual maximum-HP cap. Binding
 Heal's separate Priest self-heal remains outside the popup, which presents only
 the selected target's healing range.
+
+---
+
+## 2026-10-23 — RNG-001: Fresh Randomness for Each Battle Attempt
+
+Intentional Arena and structured-stage launches now create a new opaque attempt
+ID and server-owned battle seed. A transport retry with the same ID reuses the
+original in-memory session; a later deliberate retry uses a new ID. Arena's
+saved schedule, enemies, formations, progress, and legacy node seed remain
+unchanged, while that node seed no longer dictates a new battle's combat RNG.
+Explicit debug/test seeds remain reproducible. No schema migration or combat
+formula change was required.
+
+The project-manager supplied the risk/design gate; game-engine-developer
+implemented the API/session boundary; ui-developer audited the launch and
+retry flows; test-automator added deterministic API and UI retry tests; root
+integrated and validated; independent reviewer approved the final boundary
+after loss/draw evidence. Changes span `battle_api/attempts.py`, `app.py`,
+`adapter.py`, `models.py`, frontend battle launch/provider modules, backend and
+frontend RNG/progression tests, and the applicable GDD, technical, API/contract,
+screen-flow, and UI-architecture documents. The separate startup centering and
+owner Hero Gallery edits in the same worktree are not RNG-001 changes.
+
+Validation: relevant backend suite 127 passed; focused frontend RNG/UI-020
+suite 15 passed; direct TypeScript check, Python compilation, Vinext build,
+and diff check passed. ESLint reported 0 errors and 3 existing warnings.
+Direct full frontend tests: 437 passed, 15 failed; the same 15 failed against
+a pre-RNG source archive. The npm test wrapper remains blocked by unrelated
+owner-edited Hero Gallery content failing `content:check`. An isolated-database
+browser walkthrough confirmed distinct Arena retry attempts/sessions and fresh
+Warrior's Barrack and Paladin's Altar launches; internal seed differences are
+established by automated tests, not claimed from the browser UI. Enemy-victory,
+draw, and resign do not advance progression, and retry uses a new attempt ID.
+
+Limitation: attempt/session idempotency is process-local, not cross-restart or
+cross-worker exactly-once recovery; reload returns to the builder. No related
+follow-up is required for RNG-001 closure. Independent reviewer: approved.

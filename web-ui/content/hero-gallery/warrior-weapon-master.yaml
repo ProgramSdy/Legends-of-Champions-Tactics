@@ -1,9 +1,9 @@
 schemaVersion: 1
 definitionId: hero.warrior.weapon_master
 introduction: |-
-  A seasoned weapon master who pursues decisive physical strikes.
+  A seasoned warrior who masters weapon techniques and pursues decisive physical strikes.
 battleStyle: |-
-  Finishes vulnerable enemies and weakens durable defenders.
+  Front line dps who reduces enemy's healing and armour to secure victory.
 skills:
   - skillId: skill.warrior.fatal_strike
     introduction: |-

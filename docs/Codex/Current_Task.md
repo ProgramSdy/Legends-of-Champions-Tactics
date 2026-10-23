@@ -1,6 +1,6 @@
 # Current Task
 
-**Status:** Ready for Core Team
+**Status:** Completed
 
 **Task:** RNG-001 — Fresh Randomness for Each Arena and Stage Battle Attempt
 
@@ -161,10 +161,38 @@ and concurrency must remain correct. All five roles are selected.
   sessions/progression, data safety, deliberate seeded reproducibility, and
   validation/contract evidence.
 
-## Completion Notes
+## Completion Notes — 2026-10-23
 
-Pending implementation, validation, independent review, and owner-approved
-publication only.
+RNG-001 is complete and independently approved. Each intentional player-facing
+Arena or structured-stage launch uses a new opaque attempt ID and fresh
+server-owned session seed; process-local retries of the same creation request
+reuse its original session. Existing Arena schedules and legacy saved node
+seeds remain loadable without forcing combat retries to repeat. Explicitly
+seeded debug/test launches remain reproducible. No persistence migration or
+combat-formula change was needed.
+
+The project-manager established the pre-code boundary; game-engine-developer
+owned API/session identity and profile-safe idempotency; ui-developer audited
+the intentional launch/retry boundary; test-automator supplied deterministic
+backend and frontend coverage, including loss/draw retry; root integrated,
+validated, and manually checked Arena and both structured stages. The
+independent reviewer approved closure after the final loss/draw test.
+
+Validation: backend Arena/stage/adapter/API suite 127 passed; focused frontend
+RNG/UI-020 suite 15 passed; direct TypeScript check, ESLint (0 errors, 3
+existing warnings), Vinext production build, Python compilation, and diff
+check passed. A direct full frontend run had 437 passes and 15 failures;
+comparison against a pre-RNG source archive reproduced the same 15 failures.
+The npm wrapper's `content:check` is blocked by separately owner-edited Hero
+Gallery YAML/generated content. Manual walkthrough on an isolated copy of the
+progression database confirmed distinct Arena retry IDs/sessions and fresh
+Warrior/Paladin stage launches; it did not claim direct browser visibility of
+internal seed values. Automated checks cover those seed values and non-victory
+progression behavior.
+
+Remaining limitation: attempt idempotency and live sessions are process-local;
+they are not durable across server restart or multiple workers. A browser
+reload returns to the builder rather than recovering the in-memory session.
 
 ## Project-manager pre-code gate — 2026-10-20
 
@@ -208,9 +236,10 @@ size, enemy definitions, formations, squad, completion, and legacy
 combat attempts. Ordinary structured launches remain unseeded from the UI and
 use the generic stage route, including future stages.
 
-**Process-local retry safety:** Atomically bind each `(active profile,
-attemptId)` to a canonical route/context/configuration fingerprint and the
-original session/envelope. The same ID and fingerprint returns the original
+**Process-local retry safety:** The final implementation atomically binds each
+`attemptId` globally to its original active profile, canonical
+route/context/configuration fingerprint, and session/envelope. The same ID,
+profile, and fingerprint returns the original
 battle without another entropy draw. Reuse of an ID with a different route,
 run/node/stage, ordered team, formation, or explicit seed yields a typed
 conflict rather than an unrelated session. Do not mutate progression during
