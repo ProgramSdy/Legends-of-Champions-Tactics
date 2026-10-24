@@ -278,8 +278,9 @@ _To be documented._
   selectable roster cards on the left, selected aspect-preserving figure art
   and factual profile content on the right. Narrow layouts stack in reading
   order and use vertical, never horizontal, card-pane scrolling.
-- Gallery values are labelled **Base Range** and remain authoritative catalogue
-  ranges, not combat predictions. Active/passive skill controls use keyboard
+- Gallery property values remain authoritative catalogue ranges, not combat
+  predictions, while the visible section heading stays simply **Properties**.
+  Active/passive skill controls use keyboard
   accessible tabs and expose only registered skills. Keep the tab/panel area
   anchored when switching between Active and Passive rather than letting
   different content heights unexpectedly move the controls. Unavailable
@@ -288,11 +289,18 @@ _To be documented._
   places the editable introduction before a compact semantic facts grid. The
   grid uses two readable columns where space permits and one column at narrow
   widths; long unavailable explanations wrap without horizontal scrolling.
-- Order applicable facts as **Base Damage**, **Base Healing**, **Target Type**,
-  **Skill Type**, **Attack Type**, **Damage Nature**, **Damage Type**, then
-  **Cool Down** last. Omit inapplicable entries; remaining boxes flow in that
-  order rather than reserving empty positions. Keep separate damage and healing
-  rows for hybrid skills and separate conditions/ordered targets where needed.
+- Order applicable facts as **Base Damage**, **Continuous Damage**, **Base
+  Healing**, **Target Type**, **Skill Type**, **Attack Type**, **Damage Nature**,
+  **Damage Type**, then **Cool Down** last. Omit inapplicable entries; remaining
+  boxes flow in that order rather than reserving empty positions. Keep separate
+  damage and healing rows for hybrid skills and separate conditions/ordered
+  targets where needed.
+- Show **Continuous Damage** only when the typed catalogue supplies an audited
+  applicable reference. Holy Word Punishment's box shows only `9–16` beneath
+  its label: no suffix, note, or branch conditions. The number represents
+  per-activation baseline power, not guaranteed lifetime damage or actual HP
+  loss. The row uses the existing responsive facts grid with no skill-specific
+  layout or browser-side formula.
 - Mechanical facts come only from the typed catalogue `reference` block.
   Present values with player-friendly labels; use **Unavailable** with its
   concise supplied reason, show **Unclassified** when applicable information is

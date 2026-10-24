@@ -49,6 +49,7 @@ const unavailableReference = {
   damageNature: { state: "classified" as const, value: "physical" as const },
   damageType: { state: "unclassified" as const, reasonId: "definitionMissing" as const },
   baseDamage: { state: "unavailable" as const, reasonId: "notAudited" as const, note: "Reference power has not yet been audited." },
+  continuousDamage: { state: "notApplicable" as const },
   baseHealing: { state: "notApplicable" as const },
 };
 
@@ -71,6 +72,7 @@ const gallery: HeroGalleryDefinition[] = ids.map(([definitionId, displayName, fa
         damageNature: { state: "notApplicable" as const },
         damageType: { state: "notApplicable" as const },
         baseDamage: { state: "notApplicable" as const },
+        continuousDamage: { state: "notApplicable" as const },
         baseHealing: { state: "unavailable" as const, reasonId: "notAudited" as const, note: "Reference power has not yet been audited." },
       }
       : unavailableReference,
@@ -136,8 +138,11 @@ describe("UI-027 Manual and Gallery", () => {
     render(<HeroGalleryPage />);
     const cards = await screen.findByRole("region", { name: "Approved heroes" });
     expect(within(cards).getAllByRole("button")).toHaveLength(10);
-    expect(screen.getByText("Starting values are randomized within these configured ranges, not fixed battle results.")).toBeVisible();
-    expect(screen.getByText("Owned in the active save slot.")).toBeVisible();
+    expect(screen.queryByText("Starting values are randomized within these configured ranges, not fixed battle results.")).not.toBeInTheDocument();
+    expect(screen.queryByText("Owned in the active save slot.")).not.toBeInTheDocument();
+    const properties = screen.getByRole("heading", { name: "Properties" }).closest("section");
+    expect(properties).not.toBeNull();
+    expect(within(properties!).getByText("10–20")).toBeVisible();
     await userEvent.setup().click(screen.getByRole("button", { name: "Paladin" }));
     expect(within(screen.getByRole("region", { name: "Approved heroes" })).getAllByRole("button")).toHaveLength(3);
     await userEvent.setup().click(screen.getByRole("button", { name: /Protection/ }));
@@ -218,6 +223,29 @@ describe("UI-027 Manual and Gallery", () => {
     await expect(fetchHeroGalleryRoster()).resolves.toHaveLength(10);
 
     delete apiRoster[0].skills[2].reference.baseHealing.note;
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(json({ contractVersion: "1.0", heroes: apiRoster }));
+    await expect(fetchHeroGalleryRoster()).rejects.toMatchObject({ kind: "adapter" });
+  });
+
+  it("accepts an audited continuous-damage value and rejects missing or malformed facts", async () => {
+    const apiRoster = JSON.parse(JSON.stringify(gallery)) as Array<{
+      skills: Array<{ reference: { continuousDamage?: Record<string, unknown> } }>;
+    }>;
+    apiRoster[8].skills[2].reference.continuousDamage = {
+      state: "available",
+      amountRange: { minimum: 9, maximum: 16 },
+      basis: "baselinePower",
+      note: "",
+      conditions: [],
+    };
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(json({ contractVersion: "1.0", heroes: apiRoster }));
+    await expect(fetchHeroGalleryRoster()).resolves.toHaveLength(10);
+
+    apiRoster[8].skills[2].reference.continuousDamage!.amountRange = { minimum: 16, maximum: 8 };
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(json({ contractVersion: "1.0", heroes: apiRoster }));
+    await expect(fetchHeroGalleryRoster()).rejects.toMatchObject({ kind: "adapter" });
+
+    delete apiRoster[8].skills[2].reference.continuousDamage;
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(json({ contractVersion: "1.0", heroes: apiRoster }));
     await expect(fetchHeroGalleryRoster()).rejects.toMatchObject({ kind: "adapter" });
   });

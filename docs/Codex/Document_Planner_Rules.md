@@ -138,7 +138,10 @@ following are true:
 The handoff message must be concise. It should identify the prepared task and
 tell `Core Project Team` that `Current_Task.md` is ready and implementation may
 start. The planner must send the message only after the documentation update
-and its checks have completed successfully.
+and its checks have completed successfully. The planner does not send repeated
+progress requests. Core reports back once with the result, or earlier only
+when a real blocker requires the owner's decision. A direct owner request for
+status is the exception.
 
 This automatic handoff does not apply to:
 
@@ -170,8 +173,7 @@ Every prepared `Current_Task.md` must include:
 - measurable acceptance criteria;
 - exact or clearly defined validation requirements;
 - a complexity/risk assessment and clear assignments for every selected agent;
-- for an official task using fewer than all five agents, a brief rationale for
-  each non-participating role;
+- a brief rationale for omitted roles, proportional to the task;
 - completion-note instructions where task-specific evidence is required.
 
 Tasks must not prescribe speculative implementation details as fact. They may
@@ -205,6 +207,13 @@ Completion history belongs in `docs/Codex/Completed.md`.
 - State material assumptions clearly and minimise them through investigation.
 - Do not invent requirements, priorities, approvals, or completed work.
 - Do not expand a request merely to fill every agent's implementation role.
+- Keep task scope, selected roles, tests, and review proportional to the actual
+  change. A simple appearance or documentation task must not become a broad
+  multi-agent audit.
+- Avoid unnecessary cross-chat traffic with Core. Send one concise handoff and
+  receive one concise completion report; do not relay internal agent updates.
+- When the owner asks for a status check, answer from the latest available
+  evidence with a single check rather than repeated polling.
 - Preserve unrelated user changes and existing documents.
 - Report conflicts between the request, current task, implementation, or
   authoritative documentation instead of resolving them silently.

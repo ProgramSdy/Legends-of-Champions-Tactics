@@ -90,6 +90,10 @@ unlock. The browser must render ranges as ranges, obtain actual ownership from
 `GET /api/v1/progression`, and must not infer a missing unlock route.
 An available numeric reference keeps a required string `note`; an empty string
 means the Gallery shows only the audited range and no explanatory line.
+Every reference also carries the additive `continuousDamage` numeric-reference
+field. It is `notApplicable` unless an ongoing-damage value has been audited;
+it uses the same discriminated numeric-reference shape as `baseDamage` and
+`baseHealing`.
 
 The adapter maps target presentation from its audited legal-target semantics,
 not raw engine `target_type` alone. Reference metadata is static and never
@@ -117,7 +121,14 @@ Shield of Righteous each publish fixed direct power 18–22; Holy Blast publishe
 20–25 for its first target and 14–17 for the second. Priest Discipline's
 Penance publishes enemy damage power 17–21 and ally healing power 21–25;
 Holy Word Punishment publishes immediate damage power 7–11, excluding its
-periodic effect. None of these are final receipt/HP predictions.
+periodic effect. Holy Word Punishment separately publishes Continuous Damage
+9–16 per activation. Its Gallery box contains only that range, with no note or
+branch conditions, because both new and recycled debuffs use the same
+`ceil(1.3 × direct roll)` stored effect and later ±1 tick variation. An
+already-active debuff is not refreshed. The three later round-start
+activations remain engine-owned; the catalogue does not publish a lifetime
+total. None of these are final receipt/HP
+predictions.
 The roster display name is catalogue metadata. Each non-summoned battle
 combatant receives a runtime name from its class's `HeroGenerator` faculty pool
 during session creation.

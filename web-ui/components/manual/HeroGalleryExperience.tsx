@@ -116,6 +116,17 @@ export function HeroGalleryExperience() {
   const active = hero?.skills.filter((skill) => !skill.isPassive) ?? [];
   const passive = hero?.skills.filter((skill) => skill.isPassive) ?? [];
   const panelId = `hero-skill-panel-${skillTab}`;
+  const ownershipCopy = !hero
+    ? null
+    : state.owned === null
+      ? "Ownership unavailable without an active save slot."
+      : state.owned.has(hero.definitionId)
+        ? null
+        : hero.unlockSource?.kind === "stageReward"
+          ? `Locked · Reward from ${hero.unlockSource.stageDisplayName}, Battle ${hero.unlockSource.battleIndex}.`
+          : hero.unlockSource?.kind === "starter"
+            ? "Starter definition for a new save slot."
+            : "Locked · No current unlock route.";
 
   function onSkillTabKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
     if (event.key !== "ArrowLeft" && event.key !== "ArrowRight" && event.key !== "Home" && event.key !== "End") return;
@@ -139,9 +150,7 @@ export function HeroGalleryExperience() {
         <div className="gallery-compendium">
           <section className="gallery-browser">
             <header>
-              <small>GAME MANUAL</small>
               <h1>Hero Gallery</h1>
-              <p>Meet the champions. Explore their battle styles and find your favourites.</p>
             </header>
             <div className="manual-filter" aria-label="Filter heroes by faculty">
               {faculties.map((value) => (
@@ -151,15 +160,15 @@ export function HeroGalleryExperience() {
             <section className="gallery-cards" aria-label="Approved heroes">
               {heroes.map((item) => {
                 const ownership = state.owned === null ? "Ownership unavailable" : state.owned.has(item.definitionId) ? "Owned" : "Locked";
+                const ownershipState = state.owned === null ? "unavailable" : state.owned.has(item.definitionId) ? "owned" : "locked";
                 return (
                   <button key={item.definitionId} type="button" aria-pressed={hero?.definitionId === item.definitionId} onClick={() => setSelected(item.definitionId)}>
-                    <AssetImage request={{ kind: "portrait", key: item.definitionId, name: item.displayName, className: item.faculty }} />
-                    <span><strong>{item.faculty}</strong><small>{item.specialization}</small><em>{ownership}</em></span>
+                    <AssetImage request={{ kind: "sidebarPortrait", key: item.definitionId, name: item.displayName, className: item.faculty }} />
+                    <span><strong>{item.faculty}</strong><small>{item.specialization}</small><em className={ownershipState}>{ownership}</em></span>
                   </button>
                 );
               })}
             </section>
-            <blockquote>“Different paths. A greater purpose.”</blockquote>
           </section>
           {hero && content && (
             <article className="hero-profile" aria-live="polite">
@@ -168,8 +177,7 @@ export function HeroGalleryExperience() {
                 <small>{hero.faculty}</small><h2>{hero.specialization}</h2><p>{content.introduction}</p>
                 <section className="battle-style"><h3>Battle Style</h3><p>{content.battleStyle}</p></section>
                 <section className="base-properties">
-                  <h3>Properties <span>(Base Range)</span></h3>
-                  <p className="range-note">Starting values are randomized within these configured ranges, not fixed battle results.</p>
+                  <h3>Properties</h3>
                   <dl>{hero.startingStatRanges.map((range) => <div key={range.id}><dt>{range.label}</dt><dd>{range.minimum}–{range.maximum}</dd></div>)}</dl>
                   <h4>Magic Resistance Schools</h4>
                   <dl>{hero.startingResistanceRanges.map((range) => <div key={range.id}><dt>{range.label}</dt><dd>{range.minimum}–{range.maximum}</dd></div>)}</dl>
@@ -187,7 +195,7 @@ export function HeroGalleryExperience() {
                       ? passive.map((skill) => <SkillReferenceCard key={skill.skillId} skill={skill} content={content.skills[skill.skillId]} />)
                       : <p className="manual-na">N/A</p>}
                 </div>
-                <p className="ownership-copy">{state.owned === null ? "Ownership unavailable without an active save slot." : state.owned.has(hero.definitionId) ? "Owned in the active save slot." : hero.unlockSource?.kind === "stageReward" ? `Locked · Reward from ${hero.unlockSource.stageDisplayName}, Battle ${hero.unlockSource.battleIndex}.` : hero.unlockSource?.kind === "starter" ? "Starter definition for a new save slot." : "Locked · No current unlock route."}</p>
+                {ownershipCopy && <p className="ownership-copy">{ownershipCopy}</p>}
               </section>
             </article>
           )}

@@ -14,9 +14,9 @@ The configured agent definitions are:
 - `.codex/agents/test-automator.toml`
 - `.codex/agents/reviewer.toml`
 
-Read all five current definitions before conducting a task. Those files provide
-the configured execution instructions. This document provides the authoritative
-project-specific ownership, coordination, and completion workflow.
+Read the current definitions for roles selected for the task. Consult another
+role's definition when its boundary is relevant. Those files provide execution
+instructions; this document provides the project-specific coordination rules.
 
 ## Golden Rule
 
@@ -28,22 +28,22 @@ The project has five configured agents available for task assignment:
 - `test-automator`
 - `reviewer`
 
-Not every task requires all five agents. Before work begins, the
-`project-manager` must analyse the task type, affected ownership boundaries,
-complexity, risk, and validation needs, then select one or more relevant
-agents. Agent involvement grows with complexity and risk. Agents must not be
-activated merely to manufacture work, expand the authorised scope, or create
-unnecessary no-change reports.
+Not every task requires all five agents. Before work begins, the Core lead
+briefly assesses the task type, affected ownership boundaries, complexity,
+risk, and validation needs, then selects only the relevant roles. Assign a
+separate `project-manager` when coordination actually needs one. Agent
+involvement grows with complexity and risk. Agents must not be activated merely
+to manufacture work, expand the authorised scope, or create no-change reports.
 
-An official task assigned through `docs/Codex/Current_Task.md` will normally
-use all five agents, especially for bug fixes. A narrower official task may use
-fewer agents only when the project manager documents why the reduced assignment
-is appropriate. Codex must follow the announced selection and must not silently
-omit a selected agent.
+An official task assigned through `docs/Codex/Current_Task.md` does not
+automatically require all five agents, including for bug fixes. Select the
+smallest effective team and briefly record ownership and omitted-role reasons.
+Codex must follow the announced selection and must not silently omit a selected
+agent.
 
 ## Selection and Dispatch Gate
 
-A role is selected only when the project manager gives it a concrete ownership
+A role is selected only when Core gives it a concrete ownership
 assignment and dispatches it, or records an environment/tool availability
 failure that prevents dispatch. A generic `Agent Assignments` section copied
 into a task is not evidence of participation. Before any implementation edit
@@ -67,7 +67,7 @@ completion reporting.
 
 - Read the active task and all relevant project documentation before assigning
   work.
-- Read all five configured agent definitions before work begins.
+- Read the definitions for the roles selected for the task.
 - Inspect the repository structure and identify the affected ownership
   boundaries.
 - Select the relevant agent or agents in proportion to task type, complexity,
@@ -112,8 +112,8 @@ Next.js execution boundaries, and frontend integration.
 - Preserve serialization, hydration, cache, session, runtime, and deployment
   boundaries where relevant.
 - Add or update frontend tests for important changed behaviour.
-- Report changed modules, assumptions, integration requirements, compatibility
-  concerns, validation, and unresolved UI risks to the `project-manager`.
+- Report changed modules, validation, and unresolved UI risks to Core (or the
+  `project-manager` when selected) in one concise handoff.
 
 ## Game Engine Developer
 
@@ -144,8 +144,8 @@ ordering, adapters, backend API behaviour, and engine-facing data contracts.
   behaviour, APIs, and contracts.
 - Update authoritative technical or contract documentation when behaviour or
   interfaces change.
-- Report contract changes, compatibility risks, assumptions, validation, and
-  unresolved engine issues to the `project-manager`.
+- Report contract changes, validation, and unresolved engine risks to Core (or
+  the `project-manager` when selected) in one concise handoff.
 
 FastAPI and API-contract work are part of this role, not its complete scope.
 
@@ -171,8 +171,8 @@ integrated implementation works.
   commands.
 - Record exact commands and their actual results.
 - Never claim a validation step passed when it was not run.
-- Report failures to the responsible implementation agent and
-  `project-manager`.
+- Report actionable failures to the responsible implementation agent and Core
+  (or the `project-manager` when selected) without routine progress traffic.
 - Re-run affected validation after fixes.
 - Identify gaps that still require manual or environment-level testing.
 
@@ -204,11 +204,11 @@ documentation, test quality, and residual risk.
 
 ## Required Workflow
 
-1. The `project-manager` confirms the repository root and reads the task,
-   startup documentation, and all five configured agent definitions.
-2. The `project-manager` identifies affected boundaries, assesses complexity
-   and risk, and announces explicit scoped assignments for the selected agent
-   or agents.
+1. Core confirms the repository root and reads the task, relevant startup
+   documentation, and selected agent definitions.
+2. Core identifies affected boundaries, assesses complexity and risk briefly,
+   and assigns only the roles with distinct necessary work. Dispatch a
+   `project-manager` only when separate coordination is warranted.
 3. Selected implementation specialists inspect and change only their approved
    ownership areas.
 4. When selected, the `test-automator` validates the integrated result and
@@ -217,31 +217,30 @@ documentation, test quality, and residual risk.
    affected re-validation.
 6. When selected, the `reviewer` performs an independent review after
    validation.
-7. The `project-manager` resolves findings, consolidates the outcome, updates
-   authoritative documentation, and records task completion.
+7. Core resolves findings, consolidates the outcome, updates authoritative
+   documentation, and records task completion.
 
-Official `Current_Task.md` work should default to all five roles, and bug fixes
-should strongly default to all five because they require implementation,
-regression testing, cross-boundary impact assessment, and independent review.
-The project manager may document a narrower selection when the task clearly
-does not need that breadth. If concurrency or tool limits prevent simultaneous
-activation, selected agents may run in coordinated waves.
+Official `Current_Task.md` work should default to the smallest effective team.
+Use more roles only when the task's actual boundaries or risks justify their
+distinct contributions. A narrow UI change may use one frontend implementer
+and, if useful, a brief reviewer check; it does not need all five roles. If
+concurrency or tool limits prevent selected roles from running together, they
+may work in coordinated waves.
 
 This selection-and-dispatch gate applies even when work later proves small. It
-prevents a role list from becoming a substitute for actual coordination,
-testing, or independent review.
+prevents a role list from becoming a substitute for real task work. It must not
+be used to add agents, tests, or review cycles without a specific need.
 
 ## Assignment and Completion Requirements
 
-Before implementation, `docs/Codex/Current_Task.md` must record the complexity
-and risk assessment, identify each selected agent's responsibility, and list
-non-participating roles with a brief rationale when an official task uses fewer
-than all five.
+Before implementation, `docs/Codex/Current_Task.md` must briefly record
+complexity and risk, identify each selected role's responsibility, and give a
+short rationale for omitted roles. Keep this proportional to the task.
 
 The final completion record must include:
 
 - each participating agent's contribution;
-- the selection rationale when fewer than all five agents participated;
+- the short role-selection rationale;
 - implementation and documentation files changed;
 - exact validation performed and actual results;
 - reviewer findings and disposition when the reviewer participated;

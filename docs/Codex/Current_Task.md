@@ -2,263 +2,107 @@
 
 **Status:** Completed
 
-**Task:** RNG-001 — Fresh Randomness for Each Arena and Stage Battle Attempt
+**Task:** UI-032 — Holy Word Punishment Continuous Damage Gallery Fact
 
-**Owner decision date:** 2026-10-20
+**Owner request date:** 2026-10-24
 
 ## Objective
 
-The owner chose fresh battle randomness for every new player-facing attempt:
-each battle should feel like a fresh one. Apply this to Arena, Warrior's
-Barrack, Paladin's Altar, and the common structured-stage launch path used by
-future stages. A retry after defeat, draw, or resignation must not replay the
-same random sequence merely because it is the same node and the player repeats
-the same actions.
+In the expanded Hero Gallery card for Priest Discipline's **Holy Word Punishment**, add a **Continuous Damage** fact box immediately after **Base Damage** in the existing responsive facts grid. It must describe the skill's audited ongoing damage separately from its existing 7–11 immediate Base Damage. Keep the established Gallery presentation and authoritative-data pattern.
 
-Keep the existing authoritative battle rules and predetermined Arena/stage
-configuration. This changes the random seed of a **new attempt**, not the
-ability to reproduce a deliberately seeded debug/test battle.
+## Background and Confirmed State
 
-## Background and Evidence
+`Current_Task.md` previously held completed UI-031, recorded in `Completed.md`; no active task is being displaced. Holy Word Punishment currently has an engine-authored 7–11 immediate-damage reference but no structured ongoing-damage fact. The Gallery's generic row builder renders typed catalogue facts, not YAML-derived mechanics. Live skill code attaches the debuff only when the target's Punishment status is inactive; a new or recycled debuff derives its stored effect from the direct-damage roll with different rounding, and the round-start status code then adds a separate random variation per activation. The effect lasts across later round starts, and an already-active target can still receive direct damage without refreshing the debuff. These details make a guessed fixed number or total misleading.
 
-Core's read-only investigation reproduced the owner's report: Arena retained
-one persisted `battleSeed` per node, so identical retries produced identical
-hero rolls, decisions, and a second Strike of Meteorite evade. The Mage's
-11% ordinary agility-based evasion was legitimate; the problem is the retry
-experience, not an incorrectly reported attack or a broken evade formula.
-
-Arena launch currently passes the node seed to the battle registry. The normal
-structured-stage Team Builder does not pass a seed; its backend accepts an
-optional seed, and the unseeded adapter already creates fresh entropy. Verify
-the complete live path and preserve existing working fresh behavior rather
-than rewriting it unnecessarily.
+The owner calls this a debuff skill because of its ongoing effect. That request does **not** itself authorise changing the current engine `skill_type="damage"`, attack classifications, status behaviour, or battle rules.
 
 ## Requirements
 
-1. Trace Arena and structured-stage creation, defeat/draw/resign/retry,
-   replay of completed stages, reload and existing save-slot/run data. Record
-   a concise design describing attempt creation, seed ownership, and relevant
-   compatibility before implementation.
-2. Ensure each deliberate new Arena node attempt receives a fresh,
-   server-owned battle seed, including retry after loss, draw, or resignation.
-   A changed seed must govern the battle's normal session RNG, including
-   construction and combat randomness; do not reroll only evasion.
-3. Verify the normal player-facing Warrior and Paladin structured-stage paths
-   start each new attempt with fresh server-owned randomness, and ensure new
-   stages using the shared structured launch path inherit that policy. Fix any
-   path that accidentally reuses a seed. Do not apply this only to two named
-   stage IDs or depend on a hard-coded hero/skill.
-4. Preserve Arena's locked squad, persisted schedule, current node, enemy hero
-   definitions, size and formations, as well as structured stages' fixed
-   enemy definitions, formations, access/progression and rewards. Fresh
-   battle randomness may naturally change generated hero names/stats and
-   combat rolls; it does not guarantee every roll, name, or outcome differs.
-5. Keep each individual running session internally deterministic for its own
-   seed and event order. Preserve explicitly seeded debug/automated-test and
-   intentional developer/API reproducibility as opt-in tools; the ordinary
-   player-facing Arena/stage flow must not silently reuse a seed across new
-   attempts. Keep server seed ownership and do not expose new player seed UI.
-6. Do not treat ordinary updates, battle commands, render/reload of an already
-   running session, or a mere transport retry as a new player-intended
-   attempt. Audit current launch/error/retry behavior and use the smallest
-   compatible safe approach to avoid unintended duplicate launches or
-   progression; document any existing limitation or contract change. Do not
-   silently claim exactly-once behavior that is not implemented.
-7. Existing active/completed Arena runs and all save slots must remain
-   loadable and retain their schedules, progress, rewards, and ownership. If a
-   persistence migration is genuinely needed, make it safe, non-destructive,
-   tested against existing schemas, and document it. The saved node seed must
-   not continue to force identical combat retries.
-8. Preserve server-side validation, victory-only/once-only progression,
-   authoritative reward receipts, profile/slot isolation, cross-mode boundary,
-   session RNG isolation, and concurrency locking. No changes to combat
-   formulas, evasion chances, AI rules, or battle presentation are authorised.
+1. Audit the live Holy Word Punishment application and round-start activation paths, including first application versus recycled debuff, rounding, per-activation variation, target receipt/mitigation, status duration, and already-active status. Establish the truthful **per-target, per-activation baseline power range** if possible. Do not infer it solely from 7–11 or random sampling. If the branches cannot be expressed as one reliable range, use an explicit unavailable/conditional presentation instead of inventing a number; explain the branch distinction concisely.
+2. Extend the existing read-only hero catalogue with a typed, additive ongoing/continuous-damage reference for this skill. Prefer the existing numeric-reference conventions where suitable. Keep mechanics and formulas engine-owned; React and editable YAML must not calculate or define this value. Catalogue reads must remain deterministic, non-mutating, and RNG-free.
+3. Render a **Continuous Damage** box directly after **Base Damage** in the generic Gallery fact order, but only when an authoritative applicable continuous-damage reference is supplied. Preserve the current two-column flow and narrow-screen collapse. Label the value as damage **per activation/tick**, not a guaranteed total or actual HP lost. Use a short note or formula popup if needed to make conditional/new-versus-reused behaviour honest; do not overload the box with a multi-round total.
+4. Preserve the existing Base Damage 7–11, Target Type, Skill Type, Attack Type, Damage Nature, Damage Type, and Cool Down conventions. Do not show Continuous Damage for unrelated skills without an audited reference, and do not change combat, status, RNG, or battle-preview behaviour to satisfy a static Gallery display.
+5. Update only directly affected GDD/web-UI/API contract documentation and add a concise completion note stating the audited presentation and any limitation. Preserve unrelated dirty owner YAML/generated content and the read-only `UI_Review_Human.md`.
 
 ## Out of Scope
 
-- Altering Arena enemy schedule or stage curriculum, reset/abandon semantics,
-  difficulty, hero definitions, unlocks, rewards, battle rules, or damage.
-- Guaranteeing that a repeated attack hits or that every random result differs.
-- Removing deliberate seeded debugging/reproducibility, exposing server seeds
-  to players, client-owned combat RNG, or broad refactoring unrelated to
-  attempt identity/seed generation.
-- Commits, pushes, PRs, or other publication without separate owner approval.
+- Damage-balancing or correction of the live skill's different new/recycled rounding rules; flag a true mechanics defect separately instead of silently changing gameplay.
+- Aggregate damage across the debuff's lifetime, guaranteed application to an already-affected target, battle-scene transparency preview, or new boxes for other periodic skills.
+- A Gallery redesign, editorial introduction rewrite, commits, pushes, or PRs without a separate owner request.
 
-## Relevant Files
+## Relevant Files and Boundaries
 
-- `battle_api/app.py`, `battle_api/adapter.py`, `battle_api/progression.py`,
-  `battle_api/models.py` — Arena/stage launch, session RNG, seed input,
-  persistence and profile-bound progression.
-- `web-ui/components/battle/ArenaRunExperience.tsx`,
-  `web-ui/components/battle/TeamBuilder.tsx`, structured-stage flow and
-  `web-ui/lib/battle/liveProvider.ts` — intentional launch/retry/resign and
-  client/server request boundaries.
-- `tests/test_ui023_arena.py`, `tests/test_ui020_progression.py`,
-  `tests/test_battle_adapter.py`, and relevant UI Arena/stage suites — update
-  old same-node-same-seed retry assertions to the owner-approved fresh-attempt
-  behaviour while retaining deterministic seeded tests.
-- `docs/GDD/Game_Design_Document.md`, `docs/GDD/Combat_System.md`,
-  `docs/Technical/Architecture.md`, `docs/Technical/Networking.md`,
-  `docs/Technical/Player_Data_and_Save_System.md`,
-  `docs/web-ui/BATTLE_DATA_CONTRACT_V1.md`,
-  `docs/web-ui/PYTHON_ADAPTER_API.md`, `docs/web-ui/Screen_Flow.md`, and
-  `docs/web-ui/WEB_UI_ARCHITECTURE.md` — update applicable stable rules,
-  replacing claims that Arena combat seeds stay identical on retry.
+- Engine truth: `heroes/priest.py` (`holy_word_punishment`) and `game/status_effect_manager.py` (Punishment tick).
+- Read-only catalogue: `battle_api/adapter.py` reference generation and `battle_api/models.py` typed reference; affected focused Python catalogue tests.
+- Client contract and display: `web-ui/lib/battle/types.ts`, strict catalogue decoding in `web-ui/lib/battle/liveProvider.ts`, `web-ui/lib/manual/heroGalleryPresentation.ts`, `web-ui/components/manual/HeroGalleryExperience.tsx`, and focused Gallery tests. CSS only if existing grid cannot present the new row cleanly.
+- Documentation: `docs/GDD/Skill_System.md`, `docs/web-ui/PYTHON_ADAPTER_API.md`, `docs/web-ui/WEB_UI_ARCHITECTURE.md`, `docs/web-ui/Style_Guide.md`, and the relevant catalogue contract if its schema is documented there. Update only what actually changes.
+- Historical status: `docs/Codex/Completed.md`; current task: this file.
 
 ## Acceptance Criteria
 
-1. Intentional Arena retry after defeat, draw, and resign starts a new attempt
-   with fresh server-side battle randomness, without regenerating the node's
-   prescribed enemy definitions, battle size, formation, or run schedule.
-2. Warrior Stage, Paladin Stage, and a representative shared/future-stage
-   configuration use fresh randomness for each ordinary new attempt. Existing
-   already-correct behavior remains intact.
-3. Repeated use of a deliberately supplied identical test/debug seed remains
-   reproducible, and distinct commands in a single battle advance the same
-   session's existing RNG rather than reseeding every action.
-4. Defeat/resign/draw do not advance or reset progress; victory and rewards
-   remain authoritative and idempotent. Existing runs, saves, and unrelated
-   profiles retain their data; intentional run abandonment remains separate.
-5. Randomness is fresh per attempt, not a guarantee that any particular attack
-   changes from miss to hit. No combat mechanic or evasion rule changes.
-6. Documentation teaches this same player-facing policy for future stages,
-   and precisely distinguishes session reproducibility/debug from retries.
+- Expanding Holy Word Punishment shows **Base Damage 7–11** followed immediately by **Continuous Damage**, with truthful per-activation wording and an audited value or explicit unavailable/conditional explanation.
+- Other facts and the existing responsive layout remain intact; unrelated skills do not gain an unjustified box.
+- Typed API/client validation accepts the additive field and rejects malformed supplied values. Catalogue evaluation remains read-only and RNG-free.
+- Focused tests cover new/recycled and already-active cases, range boundaries/rounding or the reason for an unavailable state, row order/conditional rendering, and no change to live combat outcomes.
 
 ## Validation Required
 
-- Add deterministic tests that control/observe seed generation rather than
-  relying on statistically different outcomes: two intentional retries get
-  distinct attempt seeds and stable node configuration; test loss, draw,
-  resign, ordinary reload/launch failure/transport-retry behavior and the
-  original Warrior-versus-Mage scenario where feasible.
-- Verify player-facing fresh behavior for both existing structured stages and
-  their shared future-stage route; prove explicit equal-seed debug/test
-  sessions are reproducible and per-session/global RNG isolation remains.
-- Exercise active legacy Arena runs/save slots, migration if any, profile
-  isolation, reward idempotency, completion concurrency and no progression on
-  non-victory; ensure invalid launch does not corrupt state or consume a
-  successful attempt unexpectedly.
-- Run affected Arena/stage/progression, battle adapter/API/RNG, and frontend
-  retry/resign suites, Python compilation, frontend typecheck/lint/build,
-  `git diff --check`, and a meaningful manual Arena plus stage walkthrough if
-  the environment permits. Record exact evidence and untested limitations.
+Run focused backend catalogue/skill-reference tests and focused frontend Gallery presentation tests, plus TypeScript typecheck and a scoped diff check. Inspect one expanded card at desktop and a narrow width if the local Gallery is available. Do not run broad combat suites or repeat extensive review for this narrow static-reference addition. Record any existing unrelated content-check limitation without rewriting owner content.
 
-## Agent Assignments
+## Complexity and Agent Assignments
 
-**Complexity/risk:** High cross-boundary gameplay/progression work: retry
-identity, live RNG, persisted Arena nodes, stage launches, save compatibility,
-and concurrency must remain correct. All five roles are selected.
+**Assessment:** Small cross-boundary typed-data/UI change with moderate numeric-truth risk. Use only three roles, in sequence where needed.
 
-- **project-manager:** coordinate design/attempt identity, role gate, scope,
-  save and retry risk, documentation, and closure evidence.
-- **game-engine-developer:** own seed lifecycle, session/adapter authority,
-  API/progression compatibility and any minimal safe persistence change.
-- **ui-developer:** audit Arena and structured-stage intentional launch,
-  retry/resign/reload behavior and implement only necessary UI changes.
-- **test-automator:** own deterministic retry/seed, save/progression,
-  isolation/concurrency, and relevant frontend integration coverage.
-- **reviewer:** independently assess fresh-attempt semantics, no duplicate
-  sessions/progression, data safety, deliberate seeded reproducibility, and
-  validation/contract evidence.
+- **game-engine-developer:** Audit authoritative skill/status formulas and branches; own the additive typed catalogue reference and a focused backend test. No gameplay changes.
+- **ui-developer:** Consume the typed fact in the existing generic row builder/client contract; own focused UI coverage, responsive check, and directly affected UI docs.
+- **reviewer:** One targeted independent check of numeric truth, typed compatibility, row order, scope, and validation evidence.
+- **Omitted:** `project-manager` is unnecessary for this small handoff; `test-automator` is unnecessary because each implementation specialist owns the few focused tests at their boundary. Core still records the role-selection gate and final completion evidence.
 
-## Completion Notes — 2026-10-23
+Core should report only completion or a genuine owner-decision blocker; avoid intermediate cross-chat traffic.
 
-RNG-001 is complete and independently approved. Each intentional player-facing
-Arena or structured-stage launch uses a new opaque attempt ID and fresh
-server-owned session seed; process-local retries of the same creation request
-reuse its original session. Existing Arena schedules and legacy saved node
-seeds remain loadable without forcing combat retries to repeat. Explicitly
-seeded debug/test launches remain reproducible. No persistence migration or
-combat-formula change was needed.
+## Completion — 2026-10-24
 
-The project-manager established the pre-code boundary; game-engine-developer
-owned API/session identity and profile-safe idempotency; ui-developer audited
-the intentional launch/retry boundary; test-automator supplied deterministic
-backend and frontend coverage, including loss/draw retry; root integrated,
-validated, and manually checked Arena and both structured stages. The
-independent reviewer approved closure after the final loss/draw test.
+Holy Word Punishment now publishes an engine-authored, per-activation
+Continuous Damage reference immediately after Base Damage in the Gallery.
+The original UI-032 audit recorded 8–16 because new/recycled debuffs had
+different rounding. The owner subsequently changed the recycled path to
+`math.ceil`, so the current baseline power is 9–16 for both paths after the
+tick's ±1 variation. The displayed fact is not guaranteed HP loss or a
+multi-round total; an already-active target receives direct damage without
+refreshing the debuff. Other skills publish not-applicable references and do
+not gain a box. Live mechanics and RNG are unchanged.
 
-Validation: backend Arena/stage/adapter/API suite 127 passed; focused frontend
-RNG/UI-020 suite 15 passed; direct TypeScript check, ESLint (0 errors, 3
-existing warnings), Vinext production build, Python compilation, and diff
-check passed. A direct full frontend run had 437 passes and 15 failures;
-comparison against a pre-RNG source archive reproduced the same 15 failures.
-The npm wrapper's `content:check` is blocked by separately owner-edited Hero
-Gallery YAML/generated content. Manual walkthrough on an isolated copy of the
-progression database confirmed distinct Arena retry IDs/sessions and fresh
-Warrior/Paladin stage launches; it did not claim direct browser visibility of
-internal seed values. Automated checks cover those seed values and non-victory
-progression behavior.
+The game-engine-developer owned the formula audit, additive typed catalogue,
+focused backend tests, and engine/API/contract documentation. The ui-developer
+owned the strict client type/decoder, generic Gallery row, focused frontend
+tests, UI documentation, and desktop/narrow inspection. The reviewer
+independently approved the numeric truth, compatibility, scope, and row order
+with no blocking finding. PM and test-automator were omitted because this
+small handoff had focused validation at each specialist boundary.
 
-Remaining limitation: attempt idempotency and live sessions are process-local;
-they are not durable across server restart or multiple workers. A browser
-reload returns to the builder rather than recovering the in-memory session.
+Focused backend catalogue tests: 47 passed; focused Gallery tests: 25 passed;
+Python compilation, TypeScript typecheck, and scoped diff-check passed.
+Browser inspection at 1440×900 and 390×844 confirmed first-two fact order,
+two-/one-column layouts, and no horizontal overflow. The normal npm test
+wrapper remains blocked by pre-existing stale owner-generated Gallery content;
+direct Vitest passed without rewriting it. Unrelated dirty owner files were
+preserved. No commit or push was performed.
 
-## Project-manager pre-code gate — 2026-10-20
+**Owner follow-up:** The engine change to recycled rounding was owner-authored.
+The catalogue, box, focused tests, and authoritative documentation were
+aligned to 9–16; the box now displays only the range, without a suffix,
+explanatory note, or new/recycled conditions.
 
-**Complexity and risk:** High. This crosses the browser launch lifecycle,
-FastAPI creation contracts, process-local battle sessions, persisted Arena
-nodes, structured-stage launches, save-slot isolation, and deterministic RNG.
-The main risks are a lost creation response accidentally starting another
-battle, a deliberate retry reusing the old seed, changing fixed schedules or
-legacy saves, weakening explicit-seed reproducibility, and claiming durable
-exactly-once recovery that the current architecture does not provide.
+## Core pre-code dispatch gate — 2026-10-24
 
-**Actual role dispatch and ownership:** Wave 1 dispatched project-manager
-(`rng001_pm`) for the design/risk/closure gate, game-engine-developer
-(`rng001_engine`) for API/seed/idempotency authority, and ui-developer
-(`rng001_ui`) for player launch identity and retry/resign/reload behavior.
-All three began with read-only audits. The root coordinator owns integration,
-documentation, and validation. After the project-manager delivered the gate
-and freed a slot, wave 2 dispatched test-automator (`rng001_test`) for
-deterministic backend/frontend tests. The four-slot concurrency limit requires
-an independent reviewer wave. Wave 3 dispatched reviewer (`rng001_review`)
-after the backend/UI changes landed; it owns read-only independent assessment
-of the integrated boundary, tests, and documentation. Its findings remain
-required for sign-off.
-
-**Attempt boundary:** One intentional Enter Battle action creates one browser
-`LiveBattleProvider` with one opaque `attemptId`. Creation retries by that
-provider reuse the ID. After defeat, draw, or confirmed resign, the builder
-returns; another intentional Enter creates a new provider and ID. Commands,
-renders, presentation playback, and completion retries do not create an
-attempt. A browser reload currently returns to the builder without restoring
-the previous in-memory battle.
-
-**Contract and seed ownership:** Add optional, backward-compatible request-body
-`attemptId` to Arena-node and structured-stage creation; the normal player UI
-always supplies it. Explicit developer/test stage or debug seeds remain
-opt-in and reproducible. On the first accepted player-facing attempt, the
-server draws fresh entropy once and passes that seed into the existing
-session-isolated adapter RNG. Arena's persisted schedule, node index, battle
-size, enemy definitions, formations, squad, completion, and legacy
-`battle_seed` rows remain unchanged; the stored node seed ceases to drive new
-combat attempts. Ordinary structured launches remain unseeded from the UI and
-use the generic stage route, including future stages.
-
-**Process-local retry safety:** The final implementation atomically binds each
-`attemptId` globally to its original active profile, canonical
-route/context/configuration fingerprint, and session/envelope. The same ID,
-profile, and fingerprint returns the original
-battle without another entropy draw. Reuse of an ID with a different route,
-run/node/stage, ordered team, formation, or explicit seed yields a typed
-conflict rather than an unrelated session. Do not mutate progression during
-launch or alter victory-only/idempotent completion. Requests lacking
-`attemptId` retain legacy per-POST behavior for API compatibility, so this is
-not a universal exactly-once guarantee.
-
-**Boundaries and gates:** The engine and UI roles must agree on the
-`attemptId` field, fingerprint, conflict error, and process-local cache before
-implementation. Tests must prove same-ID/same-config reuse without a second
-seed draw, mismatch conflict, new-ID fresh seeds, loss/draw/resign new IDs,
-and render/command/transport retry stability. Existing Arena rows and save
-slots need no schema migration; preserve fixed node/stage configuration,
-profile isolation, explicit-seed reproducibility, and rewards. Final sign-off
-requires affected backend/frontend suites, compilation, typecheck, lint,
-build, diff check, feasible manual walkthrough, documentation reconciliation,
-and independent review.
-
-**Honest limitation:** Sessions and attempt-idempotency cache are process-local.
-Browser reload does not recover an old battle; server restart or multi-worker
-deployment does not preserve this retry guarantee. Durable cross-restart or
-cross-process exactly-once launch is not part of RNG-001.
+This is a small additive catalogue/UI change with moderate risk of misstating
+the two live Punishment rounding branches. The game-engine-developer owns the
+read-only audited reference, typed server model, focused backend tests, and
+directly affected engine/API documentation. The ui-developer owns typed client
+decoding, generic Gallery row placement, focused frontend tests, responsive
+inspection, and directly affected UI documentation. The reviewer independently
+checks numeric truth, compatibility, row order, scope, and evidence after both
+changes land. Project-manager and test-automator are omitted for the narrow
+handoff because each specialist can validate its own boundary. Core owns the
+final task and completion record. All prior dirty Gallery, owner review, and
+rule-document edits remain outside UI-032 and must be preserved.

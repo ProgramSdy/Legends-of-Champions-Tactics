@@ -202,6 +202,7 @@ class HeroSkillReference(StrictApiModel):
     damage_nature: HeroSkillDamageNatureReference = Field(alias="damageNature")
     damage_type: HeroSkillDamageTypeReference = Field(alias="damageType")
     base_damage: HeroSkillNumericReference = Field(alias="baseDamage")
+    continuous_damage: HeroSkillNumericReference = Field(alias="continuousDamage")
     base_healing: HeroSkillNumericReference = Field(alias="baseHealing")
 
 

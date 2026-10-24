@@ -1963,3 +1963,35 @@ CENTER/RIGHT
 The implementation should look recognizably like the approved concept rather than merely containing the same information.
 
 At the same time, project architecture and authoritative gameplay data take precedence over visual mockup assumptions.
+
+# Date
+
+2026-10-24
+
+### Screenshot name
+
+N/A
+
+### Task List
+
+Below tasks are all related with Hero Gallery UI update. This task is pure UI, Only need UI engineer and Reviewer agent involvement.
+
+1. Currently, when picking a hero from left list, right side shows Hero details, On the top, there is a line of text shows hero SCHOOL (such as Warrior, Rogue, etc..) in gold and second line of text show hero MAJOR (such as weapon master, berserker, etc..) in white, now the text of school is too small and major text is too big. I want to change the School text to the size the current Major text size and change Major size to smaller.
+
+2. Now left size hero picking area, owned hero is showing OWNED in gold color, I want to change to green color. 
+
+3. Hero picking area, change hero SCOOL text from white to gold same as right side hero detail.
+
+4. On the right side hero details area, in PROPERTIES box, remove below text.
+    - (Base Range)
+    - Starting values are randomized within these configured ranges, not fixed battle results.
+
+5. On the right side hero details area, remove below text at the bottom
+    - Owned in the active save slot.
+
+6. On the left side near "Hero Gallery" text, remove below text
+    - GAME MANUAL
+    - Meet the champions. Explore their battle styles and find your favourites. 
+
+7. On the left side hero details area, Remove the below text at the Bottom.
+    - “Different paths. A greater purpose.”

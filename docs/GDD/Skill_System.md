@@ -182,8 +182,14 @@ respectively. Crusader Strike and Shield of Righteous instead deal fixed
 direct power 18–22. Holy Blast deals 20–25 to the first selected target and
 14–17 to the second. Priest Discipline's Penance has separate enemy direct
 damage power 17–21 and ally healing power 21–25; Holy Word Punishment has
-immediate direct power 7–11. All are pre-receipt references, not promises of
-final HP change, status application, or periodic damage.
+immediate direct power 7–11. Holy Word Punishment separately publishes
+continuous power per later round-start activation: 9–16 for both a newly
+created and a recycled debuff. Both paths now use `ceil(1.3 × direct roll)`
+for the stored effect, followed by per-activation ±1 variation. A duration of four
+therefore produces three later activations; casting into an already-active
+Punishment deals its immediate damage without attaching or refreshing the
+debuff. These values are pre-receipt power, not promises of final HP change,
+status application, or lifetime total damage.
 
 Warrior Berserker's **Blood Frenzy** is an engine-triggered passive, not a
 player/AI command. After surviving a damage resolution, it cannot activate

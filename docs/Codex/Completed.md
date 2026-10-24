@@ -5336,3 +5336,72 @@ draw, and resign do not advance progression, and retry uses a new attempt ID.
 Limitation: attempt/session idempotency is process-local, not cross-restart or
 cross-worker exactly-once recovery; reload returns to the builder. No related
 follow-up is required for RNG-001 closure. Independent reviewer: approved.
+
+---
+
+## 2026-10-24 — UI-031: Hero Gallery Visual Hierarchy and Copy Cleanup
+
+Implemented the seven owner-requested Gallery changes: prominent gold profile
+school with smaller light major; gold picker schools and green Owned labels;
+removed the visible Properties qualifier/note, owned footer, Manual eyebrow
+and intro, and left footer quote. Numeric property ranges, locked/unavailable
+explanations, filtering, selection, and skill controls remain intact.
+
+The ui-developer changed `web-ui/components/manual/HeroGalleryExperience.tsx`,
+`web-ui/app/globals.css`, the focused
+`web-ui/tests/ui-027-manual-gallery.test.tsx`, and
+`docs/web-ui/Style_Guide.md`. Core updated the task and this completion record.
+Project-manager, game-engine-developer, and test-automator were intentionally
+omitted for this presentation-only task. The reviewer independently approved
+the final scoped diff with no findings.
+
+Validation: direct TypeScript typecheck and focused Gallery tests (12/12)
+passed. Desktop 1440×900 and tablet 768×900 browser smoke checks verified the
+computed hierarchy, colours, removed copy, property ranges, filter/selection,
+Passive tab and skill expansion, and no horizontal overflow. Scoped
+`git diff --check` passed. Full-worktree diff-check still flags only two
+pre-existing trailing spaces in owner-controlled `UI_Review_Human.md`; that
+file and unrelated owner YAML/generated content were not edited. No commit or
+push was performed.
+
+---
+
+## 2026-10-24 — UI-032: Holy Word Punishment Continuous Damage Gallery Fact
+
+The Hero Gallery now places an authoritative **Continuous Damage** box
+immediately after Holy Word Punishment's Base Damage 7–11. It shows **8–16 per
+activation** baseline power, with backend-authored conditional ranges **New
+debuff 9–16** and **Recycled debuff 8–15**. A fresh object uses
+`ceil(1.3 × direct roll)`; a recycled one uses Python `round(1.3 × direct
+roll)`; each later tick adds `-1…+1`. The four-round duration yields three
+later round-start activations while applicable. Re-casting on an already
+affected target does not refresh or reattach the debuff. This is not a
+guaranteed HP-loss amount or lifetime total.
+
+The game-engine-developer changed `battle_api/models.py`, `battle_api/adapter.py`,
+`tests/test_ui028_skill_reference_metadata.py`, `docs/GDD/Skill_System.md`,
+`docs/web-ui/PYTHON_ADAPTER_API.md`, and
+`docs/web-ui/BATTLE_DATA_CONTRACT_V1.md`. The ui-developer changed
+`web-ui/lib/battle/types.ts`, `web-ui/lib/battle/liveProvider.ts`,
+`web-ui/lib/manual/heroGalleryPresentation.ts`, focused Gallery tests, and
+`docs/web-ui/WEB_UI_ARCHITECTURE.md` / `Style_Guide.md`. Core updated the task
+and this completion record. PM and test-automator were intentionally omitted
+for this small typed-data/UI handoff. The independent reviewer approved with
+no blocking findings.
+
+Validation: focused Python catalogue tests **47 passed**; focused Gallery
+Vitest tests **25 passed**; Python compilation, direct TypeScript typecheck,
+and scoped diff-check passed. Browser inspection at 1440×900 and 390×844
+confirmed fact order and readable responsive two-/one-column presentation
+without horizontal overflow. The npm test wrapper is blocked by pre-existing
+stale owner-generated Gallery content; direct focused Vitest passed. No live
+combat, status, or RNG code changed. Unrelated dirty owner files were
+preserved. No commit or push was performed.
+
+**Owner follow-up — unified Punishment rounding:** The owner changed the
+recycled-debuff calculation to `math.ceil`, matching new debuffs. Both paths
+now produce a 9–16 per-activation baseline range. The catalogue and Gallery
+box were updated accordingly; the box shows only `9–16`, without a suffix,
+note, or branch rows. Focused engine and Gallery tests were updated to the
+same boundary. The historical 8–16 audit above describes the earlier code,
+not the current rule.

@@ -14,37 +14,38 @@ Project work uses these five configured Codex roles:
 5. `reviewer`
 
 Before conducting each task, read `docs/Codex/Agent_Roles.md` and the current
-definitions for all five agents under `.codex/agents/`.
+definitions for the roles selected under `.codex/agents/`. Consult other role
+definitions only when task boundaries make them relevant.
 
-The `project-manager` coordinates every task. Before work begins, it must assess
-the request's type, complexity, affected systems, ownership boundaries, and
-risk, then explicitly assign one or more relevant configured agents. Agent
-involvement must be proportional: simple and low-risk work needs fewer roles;
-complex, high-risk, or cross-system work needs broader cooperation.
+The Core lead briefly assesses the request's type, affected systems, and risk,
+then assigns only the roles needed. Dispatch the `project-manager` when
+sequencing or coordination across workstreams needs a separate owner; a simple
+task does not require a project-manager subagent. Agent involvement must be
+proportional: simple and low-risk work needs fewer roles; complex, high-risk,
+or cross-system work may need broader cooperation.
 
-An official task assigned through `docs/Codex/Current_Task.md` will normally
-involve all five configured agents, especially when it is a bug fix. The
-project manager may use fewer agents when the official task is genuinely
-narrow or low risk, but the assignment must state why each omitted role is not
-needed. Non-participating agents do not need to produce artificial no-change
-reports.
+An official task assigned through `docs/Codex/Current_Task.md` does not by
+itself require all five agents. Select roles by the actual work and risk, even
+for bug fixes. A simple appearance change can use the frontend engineer alone
+or with a brief reviewer check. State selected ownership and a short reason
+for omitted roles; non-participating agents do not produce reports.
 
 Selected implementation specialists work within their ownership boundaries.
 When selected, the `test-automator` validates the integrated result and the
-`reviewer` performs an independent review. The `project-manager` resolves
+`reviewer` performs an independent review. Core resolves
 findings, consolidates the outcome, updates documentation, and records
 completion in proportion to the task.
 
 If concurrency or tool limits prevent simultaneous activation, selected agents
 may work in coordinated waves.
 
-Codex must never silently bypass the project manager's agent-selection step or
-omit a role that the documented assignment selected.
+Codex must never silently bypass the role-selection step or omit a role that
+the documented assignment selected.
 
 A listed role counts as selected only after it has concrete ownership and is
 actually dispatched. An unavailable agent must be recorded as a blocker, not
 represented as having participated. Do not begin implementation on an official
-task from a generic assignment list alone: record the project manager's
+task from a generic assignment list alone: record Core's
 risk/complexity assessment, selected roles, and omitted-role rationales first.
 If the selected team cannot run because of concurrency or service limits, use
 documented coordinated waves or obtain owner approval for a temporary fallback.
@@ -54,12 +55,11 @@ documented coordinated waves or obtain owner approval for a temporary fallback.
 1. Read `docs/README.md`.
 2. Read `docs/onboarding/ONBOARDING_SUMMARY.md`.
 3. Read `docs/Codex/Project_Rules.md`.
-4. Read `docs/Codex/Agent_Roles.md` and all five definitions in
+4. Read `docs/Codex/Agent_Roles.md` and the selected role definitions in
    `.codex/agents/`.
 5. Read `docs/Codex/Current_Task.md`.
-6. Have the `project-manager` assess complexity and risk, then assign explicit
-   responsibilities to the relevant agent or agents. For an official task,
-   record any justified departure from the normal five-agent involvement.
+6. Have Core assess complexity and risk, then assign explicit responsibilities
+   to only the relevant agent or agents.
 7. Read the relevant onboarding, GDD, Technical, and web-ui documents.
 8. Inspect the actual repository files related to the task.
 9. State material assumptions in the task completion report.
@@ -80,11 +80,33 @@ documented coordinated waves or obtain owner approval for a temporary fallback.
 
 ## Validation Rules
 
-- Run the relevant automated tests.
-- Run type checks, linting, builds, or project validation where applicable.
+- Use the smallest check that can establish the changed behaviour. For a
+  low-risk appearance or documentation edit, a focused visual/diff check may
+  be enough; do not add tests that only mirror the edit.
+- Add or run focused automated tests when behaviour, contracts, or regression
+  risk warrants them. Run broader suites, type checks, linting, or builds only
+  when the affected boundary or a concrete failure warrants that extra scope.
+- Do not repeat passing checks or extend a manual walkthrough without a
+  specific unresolved risk. If an unrelated baseline failure blocks a broad
+  suite, identify it once, report it, and stop retesting it for this task.
+- Keep review proportional: a small change may need only a brief targeted
+  inspection, while high-risk or cross-system work may need independent review.
 - Report commands run and their results honestly.
 - Do not claim validation that was not performed.
 - Record blockers and unresolved risks.
+
+## Time and Communication Discipline
+
+- Work toward the requested outcome with the smallest effective team and
+  shortest useful validation path. Do not turn a simple UI adjustment into a
+  multi-agent or multi-hour audit.
+- Core reports to the Documentation Planner once when the task is finished, or
+  sooner only for a real blocker or owner decision. Do not send routine agent
+  progress, test-by-test updates, or repeated status messages across chats.
+- The planner sends one concise handoff and does not repeatedly poll or relay
+  Core's internal progress. An owner-requested status check is an exception.
+- When a check reveals a specific defect, fix it and verify that defect. Do
+  not expand the task into unrelated cleanup or additional investigations.
 
 ## New Hero and Status Integration Gate
 
@@ -142,8 +164,7 @@ is not sufficient.
 When a task is complete, update `docs/Codex/Completed.md` with:
 
 - the completion date and task title;
-- each participating agent's contribution and the project manager's selection
-  rationale where fewer than all five agents were used;
+- each participating agent's contribution and a brief role-selection rationale;
 - a summary and files changed;
 - validation performed and its actual results;
 - reviewer findings and disposition when the reviewer participated;

@@ -1,9 +1,9 @@
 schemaVersion: 1
 definitionId: hero.rogue.comprehensiveness
 introduction: |-
-  A agile rogue who masters assassination with dual daggers and evasion to control the battlefield.
+  An agile rogue who masters assassination with dual daggers and evasion to control the battlefield.
 battleStyle: |-
-  An active dps who is flexible in both frontline and backline positions.
+  An active Dpser who is flexible in both frontline and backline positions.
 skills:
   - skillId: skill.rogue.sharp_blade
     introduction: |-

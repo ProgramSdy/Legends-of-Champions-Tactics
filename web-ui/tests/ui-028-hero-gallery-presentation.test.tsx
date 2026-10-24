@@ -18,6 +18,7 @@ const skill: HeroSkillInventoryItem = {
     damageNature: { state: "unclassified", reasonId: "definitionMissing" },
     damageType: { state: "notApplicable" },
     baseDamage: { state: "unavailable", reasonId: "targetDependentBaseline", note: "Depends on the selected target." },
+    continuousDamage: { state: "notApplicable" },
     baseHealing: {
       state: "available",
       amountRange: { minimum: 22, maximum: 28 },
@@ -29,6 +30,45 @@ const skill: HeroSkillInventoryItem = {
 };
 
 describe("UI-028 expanded skill reference card", () => {
+  it("places audited Continuous Damage directly after Base Damage and omits it when inapplicable", async () => {
+    const punishment: HeroSkillInventoryItem = {
+      ...skill,
+      skillId: "skill.priest.holy_word_punishment",
+      displayName: "Holy Word Punishment",
+      reference: {
+        ...skill.reference,
+        skillType: "damage",
+        baseDamage: {
+          state: "available",
+          amountRange: { minimum: 7, maximum: 11 },
+          basis: "baselinePower",
+          note: "",
+          conditions: [],
+        },
+        continuousDamage: {
+          state: "available",
+          amountRange: { minimum: 9, maximum: 16 },
+          basis: "baselinePower",
+          note: "",
+          conditions: [],
+        },
+        baseHealing: { state: "notApplicable" },
+      },
+    };
+    render(<SkillReferenceCard skill={punishment} content={{ introduction: "Punishes multiple enemies." }} />);
+    await userEvent.setup().click(screen.getByText("Holy Word Punishment"));
+
+    const labels = screen.getAllByRole("term").map((term) => term.textContent);
+    expect(labels.slice(0, 2)).toEqual(["Base Damage", "Continuous Damage"]);
+    expect(screen.getByText("7–11")).toBeVisible();
+    expect(screen.getByText("9–16")).toBeVisible();
+    expect(screen.queryByText(/per activation/i)).not.toBeInTheDocument();
+    expect(screen.queryByText("New debuff")).not.toBeInTheDocument();
+    expect(screen.queryByText("Recycled debuff")).not.toBeInTheDocument();
+
+    expect(buildSkillReferenceRows(skill.reference).some((row) => row.id === "continuous-damage")).toBe(false);
+  });
+
   it("shows the audited Cool Down box only for skills with an engine cooldown", async () => {
     const user = userEvent.setup();
     const { rerender } = render(<SkillReferenceCard

@@ -69,7 +69,11 @@ function amountLabel(range: { minimum: number; maximum: number }): string {
   return range.minimum === range.maximum ? String(range.minimum) : `${range.minimum}–${range.maximum}`;
 }
 
-function numericRow(id: string, label: string, reference: HeroSkillNumericReference): HeroGalleryFactRow | null {
+function numericRow(
+  id: string,
+  label: string,
+  reference: HeroSkillNumericReference,
+): HeroGalleryFactRow | null {
   if (reference.state === "notApplicable") return null;
   if (reference.state === "unavailable") {
     return {
@@ -94,6 +98,7 @@ function numericRow(id: string, label: string, reference: HeroSkillNumericRefere
 export function buildSkillReferenceRows(reference: HeroSkillReference): HeroGalleryFactRow[] {
   return [
     numericRow("base-damage", "Base Damage", reference.baseDamage),
+    numericRow("continuous-damage", "Continuous Damage", reference.continuousDamage),
     numericRow("base-healing", "Base Healing", reference.baseHealing),
     { id: "target", label: "Target Type", value: targetLabel(reference.target) },
     { id: "skill-type", label: "Skill Type", value: SKILL_TYPE_LABELS[reference.skillType] },

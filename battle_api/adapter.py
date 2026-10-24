@@ -541,6 +541,7 @@ class BattleAdapter:
             )
         else:
             base_damage = dict(not_applicable)
+        continuous_damage: dict[str, Any] = dict(not_applicable)
         if definition.skill_type in {"healing", "damage_healing"}:
             base_healing: dict[str, Any] = cls._catalogue_unavailable_numeric(
                 "A deterministic baseline healing range has not yet been audited for this skill."
@@ -818,6 +819,13 @@ class BattleAdapter:
                 "note": "",
                 "conditions": [],
             }
+            continuous_damage = {
+                "state": "available",
+                "amountRange": {"minimum": 9, "maximum": 16},
+                "basis": "baselinePower",
+                "note": "",
+                "conditions": [],
+            }
 
         return {
             "target": target,
@@ -833,6 +841,7 @@ class BattleAdapter:
                 definition.damage_type, applicable=damage_capable
             ),
             "baseDamage": base_damage,
+            "continuousDamage": continuous_damage,
             "baseHealing": base_healing,
         }
 

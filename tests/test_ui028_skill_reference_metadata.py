@@ -488,6 +488,125 @@ def test_paladin_and_discipline_fixed_direct_power_ranges(
         assert reference["baseHealing"] == {"state": "notApplicable"}
 
 
+def test_holy_word_punishment_continuous_damage_reference_matches_live_branches():
+    body = client.get("/api/v1/heroes").json()
+    reference = _skill(
+        body,
+        "hero.priest.discipline",
+        "skill.priest.holy_word_punishment",
+    )["reference"]
+
+    assert reference["continuousDamage"] == {
+        "state": "available",
+        "amountRange": {"minimum": 9, "maximum": 16},
+        "basis": "baselinePower",
+        "note": "",
+        "conditions": [],
+    }
+
+    unrelated = _skill(
+        body,
+        "hero.priest.discipline",
+        "skill.priest.penance",
+    )["reference"]
+    assert unrelated["continuousDamage"] == {"state": "notApplicable"}
+
+
+@pytest.mark.parametrize(
+    ("direct_variation", "tick_variation", "stored_effect", "tick_power"),
+    [(-2, -1, 10, 9), (2, 1, 15, 16)],
+)
+def test_holy_word_punishment_new_debuff_rounding_and_tick_bounds(
+    monkeypatch, direct_variation, tick_variation, stored_effect, tick_power
+):
+    adapter = BattleAdapter()
+    session, _ = adapter.create_battle(
+        seed=32001,
+        player_team=["hero.priest.discipline"],
+        enemy_team=["hero.warrior.weapon_master"],
+        enemy_control_mode="player",
+    )
+    source = session.game.player_heroes[0]
+    target = session.game.opponent_heroes[0]
+
+    monkeypatch.setattr(random, "randint", lambda _minimum, _maximum: direct_variation)
+    source.holy_word_punishment(target)
+    debuff = next(item for item in target.debuffs if item.name == "Holy Word Punishment")
+    assert debuff.effect == stored_effect
+    assert debuff.duration == 4
+
+    received = []
+    target.take_damage = lambda amount, *_args, **_kwargs: received.append(amount) or "captured"
+    monkeypatch.setattr(random, "randint", lambda _minimum, _maximum: tick_variation)
+    session.game.status_manager.check_heroes_status_effects(target)
+
+    assert received == [tick_power]
+    assert debuff.duration == 3
+
+
+@pytest.mark.parametrize(
+    ("direct_variation", "tick_variation", "stored_effect", "tick_power"),
+    [(-2, -1, 10, 9), (2, 1, 15, 16)],
+)
+def test_holy_word_punishment_recycled_debuff_matches_new_tick_bounds(
+    monkeypatch, direct_variation, tick_variation, stored_effect, tick_power
+):
+    from skills.skill import Debuff
+
+    adapter = BattleAdapter()
+    session, _ = adapter.create_battle(
+        seed=32002,
+        player_team=["hero.priest.discipline"],
+        enemy_team=["hero.warrior.weapon_master"],
+        enemy_control_mode="player",
+    )
+    source = session.game.player_heroes[0]
+    target = session.game.opponent_heroes[0]
+    recycled = Debuff("Holy Word Punishment", 0, source, 999)
+    target.buffs_debuffs_recycle_pool.append(recycled)
+
+    monkeypatch.setattr(random, "randint", lambda _minimum, _maximum: direct_variation)
+    source.holy_word_punishment(target)
+    assert recycled in target.debuffs
+    assert recycled not in target.buffs_debuffs_recycle_pool
+    assert recycled.effect == stored_effect
+    assert recycled.duration == 4
+
+    received = []
+    target.take_damage = lambda amount, *_args, **_kwargs: received.append(amount) or "captured"
+    monkeypatch.setattr(random, "randint", lambda _minimum, _maximum: tick_variation)
+    session.game.status_manager.check_heroes_status_effects(target)
+
+    assert received == [tick_power]
+    assert recycled.duration == 3
+
+
+def test_holy_word_punishment_already_active_does_not_refresh_debuff(monkeypatch):
+    adapter = BattleAdapter()
+    session, _ = adapter.create_battle(
+        seed=32003,
+        player_team=["hero.priest.discipline"],
+        enemy_team=["hero.warrior.weapon_master"],
+        enemy_control_mode="player",
+    )
+    source = session.game.player_heroes[0]
+    target = session.game.opponent_heroes[0]
+
+    monkeypatch.setattr(random, "randint", lambda _minimum, _maximum: 2)
+    source.holy_word_punishment(target)
+    debuff = next(item for item in target.debuffs if item.name == "Holy Word Punishment")
+    assert (debuff.effect, debuff.duration) == (15, 4)
+
+    monkeypatch.setattr(random, "randint", lambda _minimum, _maximum: -2)
+    source.holy_word_punishment(target)
+
+    punishment_debuffs = [
+        item for item in target.debuffs if item.name == "Holy Word Punishment"
+    ]
+    assert punishment_debuffs == [debuff]
+    assert (debuff.effect, debuff.duration) == (15, 4)
+
+
 def test_berserker_blood_frenzy_is_a_passive_self_effect_not_an_action():
     body = client.get("/api/v1/heroes").json()
     passive = _skill(
@@ -504,6 +623,7 @@ def test_berserker_blood_frenzy_is_a_passive_self_effect_not_an_action():
         "damageNature": {"state": "notApplicable"},
         "damageType": {"state": "notApplicable"},
         "baseDamage": {"state": "notApplicable"},
+        "continuousDamage": {"state": "notApplicable"},
         "baseHealing": {"state": "notApplicable"},
     }
 
@@ -669,6 +789,16 @@ def test_http_catalogue_does_not_create_battle_sessions():
                 minimum=30, maximum=20
             ),
             ("reference", "baseDamage", "available", "amountRange"),
+        ),
+        (
+            lambda value: value["reference"]["continuousDamage"].update(
+                state="available",
+                amountRange={"minimum": 17, "maximum": 16},
+                basis="baselinePower",
+                note="",
+                conditions=[],
+            ),
+            ("reference", "continuousDamage", "available", "amountRange"),
         ),
         (
             lambda value: value["reference"]["damageNature"].update(

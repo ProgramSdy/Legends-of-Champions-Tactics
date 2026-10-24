@@ -613,7 +613,7 @@ legal actions and previews; its HP-triggered activation and status remain
 engine-owned. This adds a catalogue item without changing the v1 shape or
 turn-command authority.
 
-The same unchanged numeric-reference shape now publishes fixed direct-power
+The same numeric-reference shape publishes fixed direct-power
 ranges for Crusader Strike (18–22), Shield of Righteous (18–22), Holy Blast
 (first target 20–25; second target 14–17), Penance against an enemy (17–21),
 and Holy Word Punishment (7–11). Penance also publishes its independent ally
@@ -621,6 +621,15 @@ healing power (21–25). These are skill power before target receipt, not live
 damage/HP changes or periodic damage. The three Paladin target-dependent
 entries use adapter-authored formula copy, including Wrath and eligible
 self-debuff bonus bands where applicable; no client-side formula was added.
+
+Each Gallery skill reference now also includes the additive required
+`continuousDamage` field using the existing numeric-reference union. It is
+`notApplicable` for unaudited/unrelated skills. Holy Word Punishment alone
+currently supplies an available 9–16 per-activation range with an empty note
+and no branch conditions. Both new and recycled paths use `ceil` for the stored
+effect before the later ±1 tick variation; this is not a lifetime total or
+guaranteed HP loss. An already-active target
+receives the immediate hit but does not receive or refresh this debuff.
 
 Sessions are process-local and disappear on restart. A session stores its own
 Python `random` state; the adapter swaps that state around engine calls under a

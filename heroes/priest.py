@@ -598,7 +598,7 @@ class Priest_Discipline(Priest):
                   if debuff.name == "Holy Word Punishment" and debuff.initiator == self:
                       opponent.buffs_debuffs_recycle_pool.remove(debuff)
                       debuff.duration = 4   # Effect lasts for 3 rounds
-                      debuff.effect = round(1.3 * damage_dealt) # continuous damage equal to 1.3 times first damage
+                      debuff.effect = math.ceil(1.3 * damage_dealt) # continuous damage equal to 1.3 times first damage
                       opponent.add_debuff(debuff)
                       results.append(f"{self.name} uses Holy Word Punishment on {opponent.name}. {opponent.name} is under punishment")
                       break

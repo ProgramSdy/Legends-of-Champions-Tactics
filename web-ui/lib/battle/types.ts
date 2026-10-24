@@ -131,6 +131,7 @@ export interface HeroSkillReference {
   damageNature: HeroSkillClassificationReference;
   damageType: HeroSkillClassificationReference;
   baseDamage: HeroSkillNumericReference;
+  continuousDamage: HeroSkillNumericReference;
   baseHealing: HeroSkillNumericReference;
 }
 

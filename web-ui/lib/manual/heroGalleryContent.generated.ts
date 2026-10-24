@@ -73,7 +73,7 @@ export const heroGalleryContent = {
         "introduction": "A direct holy light strike against one enemy."
       },
       "skill.priest.shadow_word_pain": {
-        "introduction": "Marks one enemy with a continuing shadow affliction. Debuff attached: Shadow Word: Pain."
+        "introduction": "Marks one enemy with a continuing shadow affliction."
       },
       "skill.priest.binding_heal": {
         "introduction": "Restores an ally and also heals the caster."
@@ -96,14 +96,14 @@ export const heroGalleryContent = {
     }
   },
   "hero.rogue.comprehensiveness": {
-    "introduction": "A quick rogue who uses precision, poison, and evasive movement.",
-    "battleStyle": "Prioritises vulnerable enemies while avoiding retaliation.",
+    "introduction": "A agile rogue who masters assassination with dual daggers and evasion to control the battlefield.",
+    "battleStyle": "An active dps who is flexible in both frontline and backline positions.",
     "skills": {
       "skill.rogue.sharp_blade": {
         "introduction": "A swift melee dagger strike that has 50% chance to cause bleeding."
       },
       "skill.rogue.poisoned_dagger": {
-        "introduction": "Rogue sneak to a ranged target and perform a poisoned dagger attack that has 85% chance to apply poison. Poison debuff max 2 stacks."
+        "introduction": "Rogue sneak to a ranged target and perform an attack with poisoned dagger that has 85% chance to apply poison. Poison starts working on the next turn if successful. Poison debuff max 2 stacks."
       },
       "skill.rogue.shadow_evasion": {
         "introduction": "Enable Rogue to dodge all coming attack in the current round."
@@ -144,8 +144,8 @@ export const heroGalleryContent = {
     }
   },
   "hero.warrior.weapon_master": {
-    "introduction": "A seasoned weapon master who pursues decisive physical strikes.",
-    "battleStyle": "Finishes vulnerable enemies and weakens durable defenders.",
+    "introduction": "A seasoned warrior who masters weapon techniques and pursues decisive physical strikes.",
+    "battleStyle": "Front line dps who reduces enemy's healing and armour to secure victory.",
     "skills": {
       "skill.warrior.fatal_strike": {
         "introduction": "A decisive strike with weapon that attaches a debuff which reduces target's healing by 70% for 2 rounds."

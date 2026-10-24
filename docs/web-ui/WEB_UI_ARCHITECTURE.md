@@ -258,6 +258,15 @@ client decoder accepts their required empty string while still requiring the
 reason, label, and calculation fields. Antivenom Potion's available
 self-healing range uses the ordinary facts-grid row.
 
+The typed skill reference also requires a `continuousDamage` numeric reference.
+Most skills supply `notApplicable`; when the adapter supplies an audited value,
+the generic row builder renders **Continuous Damage** immediately after
+**Base Damage**. Holy Word Punishment's box shows only the engine-authored
+9–16 range, with no note or branch rows now that new and recycled debuffs share
+the same rounding rule. This catalogue value is per activation before target
+receipt, not guaranteed total damage or actual HP loss; React does not
+reconstruct the formula.
+
 The Gallery facts grid also renders the adapter's nullable `cooldownRounds`
 as a **Cool Down** box with `N Rounds` only when a positive counter is present.
 It never derives a cooldown from active battle snapshots, effect duration,

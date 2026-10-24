@@ -652,6 +652,7 @@ function isGallerySkillReference(value: unknown): boolean {
     && isGalleryClassification(value.damageNature)
     && isGalleryClassification(value.damageType)
     && isGalleryNumericReference(value.baseDamage)
+    && isGalleryNumericReference(value.continuousDamage)
     && isGalleryNumericReference(value.baseHealing);
 }
 
