@@ -288,6 +288,10 @@ engine-triggered Blood Frenzy marker under Passive. Its editorial explanation
 comes from the Berserker YAML, while the typed adapter reference supplies
 only self/effect and inapplicable numeric states. No Gallery formula or
 activation probability is calculated in React.
+Priest Discipline likewise shows Holy Concentration under Passive from the
+read-only catalogue and its editorial YAML. That Gallery-only marker describes
+the existing low-HP Holy Word Redemption extra-recipient behavior; it does not
+add a selectable battle action or a frontend activation calculation.
 
 UI-020 additionally loads `GET /api/v1/progression` for selectable definition
 IDs and `GET /api/v1/stages` for the two curricula and step access. Structured

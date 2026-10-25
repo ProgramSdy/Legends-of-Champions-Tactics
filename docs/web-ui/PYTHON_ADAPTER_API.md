@@ -77,7 +77,7 @@ Healing availability.
 The optional nullable `cooldownRounds` reference reports the engine's
 initial cooldown counter only for skills that assign one: Shadow Evasion `2`;
 Shield Bash, Thunder Pot, Antivenom Potion, Warlust, Heroric Charge, and
-Shield of Protection `3`. The other 25 published skills return `null`.
+Shield of Protection `3`. The other 26 published skills return `null`.
 It is not the live `cooldownRemaining` snapshot field or buff duration.
 Numerical results are either audited baseline-power
 bounds, an explicit unavailable reason/note (optionally with an
@@ -139,6 +139,12 @@ item. Its runtime `Skill` is a non-interactive marker; the existing
 The Gallery receives a static self/effect reference with damage and healing
 numbers not applicable. Battle snapshots may display the passive, but the
 adapter excludes it from legal commands and battle previews.
+
+Priest Discipline's Holy Concentration is a fourth `isPassive` Gallery
+inventory item with a static self/effect reference and inapplicable numeric
+facts. It documents the existing low-HP Holy Word Redemption extra-recipient
+branch in `Skill.execute`; there is no corresponding selectable runtime Skill,
+and battle commands and mechanics are unchanged.
 
 The current roster includes Priest Comprehensiveness and Discipline; Paladin
 Retribution, Protection, and Holy; Mage Comprehensiveness; Warrior Defence,

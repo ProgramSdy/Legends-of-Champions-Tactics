@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties, type KeyboardEvent } from "react";
 import Link from "next/link";
 import { AssetImage } from "@/components/battle/AssetImage";
+import { heroFigureScaleFor } from "@/lib/battle/assets";
 import { fetchHeroGalleryRoster, fetchPlayerProgression } from "@/lib/battle/liveProvider";
 import type { HeroGalleryDefinition, HeroSkillInventoryItem } from "@/lib/battle/types";
 import { heroGalleryContent } from "@/lib/manual/heroGalleryContent";
@@ -171,7 +172,7 @@ export function HeroGalleryExperience() {
             </section>
           </section>
           {hero && content && (
-            <article className="hero-profile" aria-live="polite">
+            <article className="hero-profile" aria-live="polite" style={{ "--hero-figure-scale": heroFigureScaleFor(hero.definitionId) } as CSSProperties}>
               <AssetImage request={{ kind: "figure", key: hero.definitionId, name: hero.displayName, className: hero.faculty }} className="hero-profile-art" />
               <div className="hero-profile-copy">
                 <small>{hero.faculty}</small><h2>{hero.specialization}</h2><p>{content.introduction}</p>

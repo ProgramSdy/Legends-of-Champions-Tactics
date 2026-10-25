@@ -129,6 +129,7 @@ HERO_SKILL_INVENTORY: dict[str, tuple[tuple[str, str, bool], ...]] = {
         ("skill.priest.penance", "Penance", False),
         ("skill.priest.holy_word_redemption", "Holy Word Redemption", False),
         ("skill.priest.holy_word_punishment", "Holy Word Punishment", False),
+        ("skill.priest.holy_concentration", "Holy Concentration", True),
     ),
     "hero.paladin.retribution": (
         ("skill.paladin.hammer_of_anger", "Hammer of Anger", False),
@@ -207,6 +208,11 @@ HERO_SKILL_REFERENCE_DEFINITIONS: dict[str, _HeroSkillReferenceDefinition] = {
     "skill.priest.holy_word_punishment": _HeroSkillReferenceDefinition(
         "damage", target_type="multi", target_quantity=2, attack_type="ranged_instant",
         damage_nature="magical", damage_type="holy"
+    ),
+    # This is Gallery-only metadata for the existing low-HP Redemption branch
+    # in Skill.execute; it does not add a selectable runtime Skill.
+    "skill.priest.holy_concentration": _HeroSkillReferenceDefinition(
+        "effect", target_type="self", target_quantity=0
     ),
     "skill.paladin.hammer_of_anger": _HeroSkillReferenceDefinition(
         "damage", attack_type="ranged_projectile", damage_nature="physical", damage_type="weapon"

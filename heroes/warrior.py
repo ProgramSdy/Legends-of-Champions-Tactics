@@ -1087,9 +1087,9 @@ class Warrior_Berserker(Warrior):
         # 打断施法
         if other_hero.status['magic_casting']:
             result = self.interrupt_magic_casting(other_hero)
-            self.game.display_battle_info(f"{self.name} smashes {other_hero.name} with Hammer of the Meteorite! {result}")
+            self.game.display_battle_info(f"{self.name} smashes {other_hero.name} with Strike of the Meteorite! {result}")
         else:
-            self.game.display_battle_info(f"{self.name} smashes {other_hero.name} with Hammer of the Meteorite!")
+            self.game.display_battle_info(f"{self.name} smashes {other_hero.name} with Strike of the Meteorite!")
 
         # 随机触发附加效果
         roll = random.randint(1, 100)
@@ -1102,10 +1102,10 @@ class Warrior_Berserker(Warrior):
                   other_hero.defense = other_hero.defense - defense_reduced_amount_by_armor_breaker_single  # Reduce target's defense by 15%
                   other_hero.armor_breaker_stacks += 1
                   other_hero.armor_breaker_duration = 2  # Effect lasts for 2 rounds
-                  self.game.display_battle_info(f"{other_hero.name} suffers Armor Break from Hammer of the Meteorite!, their defense reduce from {defense_before_reducing} to {other_hero.defense}.")
+                  self.game.display_battle_info(f"{other_hero.name} suffers Armor Break from Strike of the Meteorite!, their defense reduce from {defense_before_reducing} to {other_hero.defense}.")
               else:
                   other_hero.armor_breaker_duration = 2  # Refresh armor breaker effect
-                  self.game.display_battle_info(f"{other_hero.name} suffers Armor Break from Hammer of the Meteorite!, but their Armor Breaker effect cannot be further stacked. Armor Breaker duration refreshed")
+                  self.game.display_battle_info(f"{other_hero.name} suffers Armor Break from Strike of the Meteorite!, but their Armor Breaker effect cannot be further stacked. Armor Breaker duration refreshed")
             else:
               other_hero.status['armor_breaker'] = True
               defense_before_reducing = other_hero.defense
@@ -1114,7 +1114,7 @@ class Warrior_Berserker(Warrior):
               other_hero.defense = other_hero.defense - defense_reduced_amount_by_armor_breaker_single  # Reduce target's defense by 15%
               other_hero.armor_breaker_stacks += 1
               other_hero.armor_breaker_duration = 2  # Effect lasts for 2 rounds
-              self.game.display_battle_info(f"{other_hero.name} suffers Armor Break from Hammer of the Meteorite, their defense reduce from {defense_before_reducing} to {other_hero.defense}.")
+              self.game.display_battle_info(f"{other_hero.name} suffers Armor Break from Strike of the Meteorite, their defense reduce from {defense_before_reducing} to {other_hero.defense}.")
 
         if self.status['blood_frenzy']:
                blood_drain = int(damage_dealt * 0.3)

@@ -5405,3 +5405,20 @@ box were updated accordingly; the box shows only `9–16`, without a suffix,
 note, or branch rows. Focused engine and Gallery tests were updated to the
 same boundary. The historical 8–16 audit above describes the earlier code,
 not the current rule.
+
+---
+
+## 2026-10-24 — Hero Gallery: Priest Discipline Holy Concentration
+
+Registered `skill.priest.holy_concentration` as a read-only passive Gallery
+item and added the owner-provided introduction to Priest Discipline's YAML.
+The generated editorial module and focused Gallery fixture were synchronized.
+Its catalogue reference is a self/effect with inapplicable numerical facts;
+it is not a selectable runtime skill. The existing low-HP Holy Word Redemption
+extra-recipient branch in `skills/skill.py` was not changed.
+
+Core handled this small follow-up directly; no agent roles were dispatched.
+Focused backend catalogue tests passed 48/48, Gallery tests passed 13/13,
+content build/check and direct TypeScript typecheck passed. The catalogue,
+content-schema registry, editorial YAML, generated content, focused tests, and
+GDD/API/contract/UI architecture notes changed. No commit or push was made.

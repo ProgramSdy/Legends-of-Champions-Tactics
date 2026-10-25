@@ -42,7 +42,7 @@ def test_reference_registry_and_response_cover_every_approved_skill_exactly():
         for skills in HERO_SKILL_INVENTORY.values()
         for skill_id, _display_name, _passive in skills
     }
-    assert len(expected_ids) == 32
+    assert len(expected_ids) == 33
     assert set(HERO_SKILL_REFERENCE_DEFINITIONS) == expected_ids
 
     response = client.get("/api/v1/heroes")
@@ -57,7 +57,7 @@ def test_reference_registry_and_response_cover_every_approved_skill_exactly():
     assert all(
         "reference" in skill for hero in body["heroes"] for skill in hero["skills"]
     )
-    assert sum(len(hero["skills"]) for hero in body["heroes"]) == 32
+    assert sum(len(hero["skills"]) for hero in body["heroes"]) == 33
 
 
 def test_gallery_cooldowns_match_the_seven_audited_engine_counters():
@@ -78,7 +78,7 @@ def test_gallery_cooldowns_match_the_seven_audited_engine_counters():
         for hero in body["heroes"]
         for skill in hero["skills"]
     }
-    assert len(actual) == 32
+    assert len(actual) == 33
     assert actual == {skill_id: expected.get(skill_id) for skill_id in actual}
 
 
@@ -626,6 +626,41 @@ def test_berserker_blood_frenzy_is_a_passive_self_effect_not_an_action():
         "continuousDamage": {"state": "notApplicable"},
         "baseHealing": {"state": "notApplicable"},
     }
+
+
+def test_priest_holy_concentration_is_gallery_passive_not_a_command():
+    body = client.get("/api/v1/heroes").json()
+    passive = _skill(
+        body, "hero.priest.discipline", "skill.priest.holy_concentration"
+    )
+    assert passive["displayName"] == "Holy Concentration"
+    assert passive["isPassive"] is True
+    assert passive["reference"] == {
+        "target": {"mode": "self"},
+        "skillType": "effect",
+        "cooldownRounds": None,
+        "attackType": {"state": "notApplicable"},
+        "damageNature": {"state": "notApplicable"},
+        "damageType": {"state": "notApplicable"},
+        "baseDamage": {"state": "notApplicable"},
+        "continuousDamage": {"state": "notApplicable"},
+        "baseHealing": {"state": "notApplicable"},
+    }
+
+    adapter = BattleAdapter()
+    session, _ = adapter.create_battle(
+        seed=32801,
+        player_team=["hero.priest.discipline"],
+        enemy_team=["hero.warrior.weapon_master"],
+        enemy_control_mode="player",
+    )
+    assert all(skill.name != "Holy Concentration" for skill in session.game.player_heroes[0].skills)
+    assert all(
+        action["skillId"] != "skill.priest.holy_concentration"
+        for action in adapter._legal_actions(
+            session, session.game.player_heroes[0], include_computer=True
+        )
+    )
 
 
 @pytest.mark.parametrize(

@@ -42,9 +42,8 @@ export const heroPresentation: Record<string, { className: string; tone: string;
   "hero.rogue.comprehensiveness": { className: "Rogue", tone: "violet", assets: { portrait: "/game-images/heroes/Rogue-Comprehensiveness/portraits/Avatar_Rogue_Comprehensiveness.png", sidebarPortrait: "/game-images/heroes/Rogue-Comprehensiveness/portraits_sidebar/Avatar_Rogue_Comprehensiveness_Sidebar.png", figure: "/game-images/heroes/Rogue-Comprehensiveness/figures/Rogue_Comprehensiveness.png" }, placeholder: false, animation: { idle: "idle", active: "shadow-ready", defeated: "defeated" } },
 };
 
-// Battlefield-only visual tuning. Keep a definition at 1.0 to preserve its
-// current intrinsic-art size; adjust individual values when visual direction
-// calls for a larger or smaller hero without affecting portraits or game rules.
+// Shared battlefield/Gallery full-body figure tuning. Keep a definition at 1.0
+// to preserve its intrinsic-art size; portraits and game rules are unaffected.
 export const DEFAULT_HERO_FIGURE_SCALE = 1;
 export const heroFigureScales: Record<string, number> = {
   "hero.paladin.protection": 1.2,

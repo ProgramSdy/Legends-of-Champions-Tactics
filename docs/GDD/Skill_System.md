@@ -18,7 +18,11 @@ Implemented broad types include `damage`, `healing`, `damage_healing`, `summon`,
 and `buffs`. `Skill.is_passive` explicitly distinguishes engine-triggered
 passives from selectable commands. Holy Aura and Blood Frenzy are registered
 passives in the approved web roster; their activation and lifecycle remain
-engine-owned rather than player commands.
+engine-owned rather than player commands. Priest Discipline's Holy
+Concentration is a read-only Gallery passive reference for the existing Holy
+Word Redemption branch in `Skill.execute`: when the Priest's HP is at or below
+`round(0.75 × max HP)` and more than one ally exists, Redemption also protects
+another ally. It adds no selectable runtime skill or new combat rule.
 
 ## Activation and Targeting
 

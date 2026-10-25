@@ -613,6 +613,13 @@ legal actions and previews; its HP-triggered activation and status remain
 engine-owned. This adds a catalogue item without changing the v1 shape or
 turn-command authority.
 
+Priest Discipline's `skill.priest.holy_concentration` is also an additive
+`isPassive: true` Gallery inventory item with target `self`, skill type
+`effect`, and numeric/classification references `notApplicable`. Unlike the
+Blood Frenzy marker, this is catalogue-only: the existing low-HP Redemption
+branch executes without a separate runtime Skill or battle command. The v1
+response shape and combat authority are unchanged.
+
 The same numeric-reference shape publishes fixed direct-power
 ranges for Crusader Strike (18–22), Shield of Righteous (18–22), Holy Blast
 (first target 20–25; second target 14–17), Penance against an enemy (17–21),

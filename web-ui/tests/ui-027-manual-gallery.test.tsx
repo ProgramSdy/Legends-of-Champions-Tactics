@@ -6,6 +6,7 @@ import { SoundPreferenceProvider, useSoundPreference } from "@/components/audio/
 import HeroGalleryPage from "@/app/manual/heroes/page";
 import BattleInstructionPage from "@/app/manual/battle-instruction/page";
 import { fetchHeroGalleryRoster } from "@/lib/battle/liveProvider";
+import { heroFigureScaleFor } from "@/lib/battle/assets";
 import type { HeroGalleryDefinition } from "@/lib/battle/types";
 
 const push = vi.fn();
@@ -38,7 +39,7 @@ const skillIds: Record<string, string[]> = {
   "hero.paladin.protection": ["skill.paladin.hammer_of_revenge", "skill.paladin.shield_of_righteous", "skill.paladin.heroric_charge", "skill.paladin.holy_aura"],
   "hero.paladin.holy": ["skill.paladin.purify_healing", "skill.paladin.holy_blast", "skill.paladin.shield_of_protection"],
   "hero.priest.comprehensiveness": ["skill.priest.holy_smite", "skill.priest.shadow_word_pain", "skill.priest.binding_heal"],
-  "hero.priest.discipline": ["skill.priest.penance", "skill.priest.holy_word_redemption", "skill.priest.holy_word_punishment"],
+  "hero.priest.discipline": ["skill.priest.penance", "skill.priest.holy_word_redemption", "skill.priest.holy_word_punishment", "skill.priest.holy_concentration"],
   "hero.rogue.comprehensiveness": ["skill.rogue.sharp_blade", "skill.rogue.poisoned_dagger", "skill.rogue.shadow_evasion"],
 };
 
@@ -62,9 +63,20 @@ const gallery: HeroGalleryDefinition[] = ids.map(([definitionId, displayName, fa
   startingResistanceRanges: ["Fire", "Frost", "Arcane", "Shadow", "Death", "Poison", "Nature"].map((label) => ({ id: label.toLowerCase(), label, minimum: 1, maximum: 5 })),
   skills: skillIds[definitionId].map((skillId) => ({
     skillId,
-    displayName: skillId === "skill.paladin.holy_aura" ? "Holy Aura" : skillId === "skill.warrior.blood_frenzy" ? "Blood Frenzy" : skillId.split(".").at(-1)?.replaceAll("_", " ") ?? skillId,
-    isPassive: skillId === "skill.paladin.holy_aura" || skillId === "skill.warrior.blood_frenzy",
-    reference: skillId === "skill.paladin.holy_aura" || skillId === "skill.warrior.blood_frenzy"
+    displayName: skillId === "skill.paladin.holy_aura" ? "Holy Aura" : skillId === "skill.warrior.blood_frenzy" ? "Blood Frenzy" : skillId === "skill.priest.holy_concentration" ? "Holy Concentration" : skillId.split(".").at(-1)?.replaceAll("_", " ") ?? skillId,
+    isPassive: skillId === "skill.paladin.holy_aura" || skillId === "skill.warrior.blood_frenzy" || skillId === "skill.priest.holy_concentration",
+    reference: skillId === "skill.priest.holy_concentration"
+      ? {
+        target: { mode: "self" as const },
+        skillType: "effect" as const,
+        attackType: { state: "notApplicable" as const },
+        damageNature: { state: "notApplicable" as const },
+        damageType: { state: "notApplicable" as const },
+        baseDamage: { state: "notApplicable" as const },
+        continuousDamage: { state: "notApplicable" as const },
+        baseHealing: { state: "notApplicable" as const },
+      }
+      : skillId === "skill.paladin.holy_aura" || skillId === "skill.warrior.blood_frenzy"
       ? {
         target: { mode: "multipleAllies" as const, maximumTargets: 3 },
         skillType: "healing" as const,
@@ -159,6 +171,9 @@ describe("UI-027 Manual and Gallery", () => {
     expect(screen.getByText(/Moon Slash heals separately for each target/)).toBeVisible();
     await userEvent.setup().click(screen.getByRole("button", { name: "Priest" }));
     await userEvent.setup().click(screen.getByRole("button", { name: /Discipline/ }));
+    expect(screen.getByRole("tab", { name: "Passive (1)" })).toBeVisible();
+    await userEvent.setup().click(screen.getByText("Holy Concentration"));
+    expect(screen.getByText("Priest concentrate on the guide from holy light. Holy Word Redemption will protect an extra hero if priest's hp is equal to or less than 75%.")).toBeVisible();
     expect(screen.getByText("Locked · No current unlock route.")).toBeVisible();
   });
 
@@ -171,6 +186,26 @@ describe("UI-027 Manual and Gallery", () => {
     expect(screen.getByRole("heading", { name: "Victory and Formations" })).toBeVisible();
     expect(screen.getByText(/Tips are suggestions, not extra combat rules/)).toBeVisible();
     expect(screen.getByRole("link", { name: /Back to Game Manual/ })).toHaveAttribute("href", "/stages?manual=open");
+  });
+
+  it("uses the shared battle figure scale for the selected full-body Gallery art", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => String(input).endsWith("/heroes")
+      ? json({ contractVersion: "1.0", heroes: gallery })
+      : json(progression()));
+    render(<HeroGalleryPage />);
+    await screen.findByRole("region", { name: "Approved heroes" });
+
+    const profileScale = () => document.querySelector<HTMLElement>(".hero-profile")?.style.getPropertyValue("--hero-figure-scale");
+    expect(profileScale()).toBe(String(heroFigureScaleFor("hero.warrior.weapon_master")));
+    expect(document.querySelector(".hero-profile .hero-profile-art")).toBeInTheDocument();
+
+    await userEvent.setup().click(screen.getByRole("button", { name: "Paladin" }));
+    await userEvent.setup().click(screen.getByRole("button", { name: /Protection/ }));
+    expect(profileScale()).toBe(String(heroFigureScaleFor("hero.paladin.protection")));
+
+    await userEvent.setup().click(screen.getByRole("button", { name: "Mage" }));
+    await userEvent.setup().click(screen.getByRole("button", { name: /Comprehensiveness/ }));
+    expect(profileScale()).toBe(String(heroFigureScaleFor("hero.mage.comprehensiveness")));
   });
 
   it("accepts null optional calculation metadata emitted by the Python roster model", async () => {

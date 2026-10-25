@@ -14,3 +14,6 @@ skills:
   - skillId: skill.priest.holy_word_punishment
     introduction: |-
       Pressures 2 enemies with a continuous holy damage effect.
+  - skillId: skill.priest.holy_concentration
+    introduction: |-
+      Priest concentrate on the guide from holy light. Holy Word Redemption will protect an extra hero if priest's hp is equal to or less than 75%.

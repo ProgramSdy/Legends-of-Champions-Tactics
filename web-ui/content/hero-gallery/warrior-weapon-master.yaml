@@ -3,14 +3,14 @@ definitionId: hero.warrior.weapon_master
 introduction: |-
   A seasoned warrior who masters weapon techniques and pursues decisive physical strikes.
 battleStyle: |-
-  Front line Dpser who reduces enemy's healing and armour to secure victory.
+  Front line Tank-Dpser who reduces enemy's healing and armour to secure victory.
 skills:
   - skillId: skill.warrior.fatal_strike
     introduction: |-
       A decisive strike with weapon that attaches a debuff which reduces target's healing by 70% for 2 rounds.
   - skillId: skill.warrior.armor_crush
     introduction: |-
-      A crushing strike that can weaken targets' armour. Attack attaches a debuff to target which stacks up to 3 times, each stack reduces target's armour by 15% for 2 rounds.
+      A crushing strike that can weaken targets' armour. Attack attaches an Armor Breaker debuff to target which stacks up to 3 times, each stack reduces target's armour by 15% for 2 rounds.
        >> Special Effect:
          - Debuff stacks two times: activate an extra debuff "Wound Armor Crush" which reduces target's agility by 20% for 2 rounds.
          - Debuff stacks three times: activate an extra debuff "Bleeding Armor Crush" which causes 8-12 continuous damage over 3 rounds.

@@ -92,12 +92,15 @@ export const heroGalleryContent = {
       },
       "skill.priest.holy_word_punishment": {
         "introduction": "Pressures 2 enemies with a continuous holy damage effect."
+      },
+      "skill.priest.holy_concentration": {
+        "introduction": "Priest concentrate on the guide from holy light. Holy Word Redemption will protect an extra hero if priest's hp is equal to or less than 75%."
       }
     }
   },
   "hero.rogue.comprehensiveness": {
-    "introduction": "A agile rogue who masters assassination with dual daggers and evasion to control the battlefield.",
-    "battleStyle": "An active dps who is flexible in both frontline and backline positions.",
+    "introduction": "An agile rogue who masters assassination with dual daggers and evasion to control the battlefield.",
+    "battleStyle": "An active Dpser who is flexible in both frontline and backline positions.",
     "skills": {
       "skill.rogue.sharp_blade": {
         "introduction": "A swift melee dagger strike that has 50% chance to cause bleeding."
@@ -112,16 +115,16 @@ export const heroGalleryContent = {
   },
   "hero.warrior.berserker": {
     "introduction": "A relentless warrior who thrives on aggressive momentum.",
-    "battleStyle": "Pressures several enemies and turns fury into force.",
+    "battleStyle": "Front line Dpser who master the art of relentless attacks and self-buffing to overwhelm enemies.",
     "skills": {
       "skill.warrior.moon_slash": {
         "introduction": "Move swiftly approaching to enemy and execute a sweeping attack against multiple enemies."
       },
       "skill.warrior.warlust": {
-        "introduction": "A self-buff that increases battle aggression."
+        "introduction": "A self-buff that increases Berserker's damage by 1/3 and enable berserker to immune to control effects for 2 rounds."
       },
       "skill.warrior.strike_of_meteorite": {
-        "introduction": "A heavy single-enemy attack."
+        "introduction": "A heavy single-enemy strike that can weaken targets' armour. Attack attaches an Armor Breaker debuff to target which stacks up to 2 times, each stack reduces target's armour by 15% for 2 rounds."
       },
       "skill.warrior.blood_frenzy": {
         "introduction": "Passive. After surviving incoming damage, Blood Frenzy can activate based on remaining HP: 50% chance above 25% through 50% HP; 75% chance above 10% through 25% HP; guaranteed at 10% HP or less. It cannot activate above 50% HP or while already active.\nFor 2 rounds, gain 20 Agility and lose round(current Defence ÷ 2) Defence. While active, Moon Slash and Strike of Meteorite restore whole HP equal to 30% of their calculated direct damage; Moon Slash heals separately for each target."
@@ -145,13 +148,13 @@ export const heroGalleryContent = {
   },
   "hero.warrior.weapon_master": {
     "introduction": "A seasoned warrior who masters weapon techniques and pursues decisive physical strikes.",
-    "battleStyle": "Front line dps who reduces enemy's healing and armour to secure victory.",
+    "battleStyle": "Front line Dpser who reduces enemy's healing and armour to secure victory.",
     "skills": {
       "skill.warrior.fatal_strike": {
         "introduction": "A decisive strike with weapon that attaches a debuff which reduces target's healing by 70% for 2 rounds."
       },
       "skill.warrior.armor_crush": {
-        "introduction": "A crushing strike that can weaken targets' armour. Attack attaches a debuff to target which stacks up to 3 times, each stack reduces target's armour by 15% for 2 rounds.\n >> Special Effect:\n   - Debuff stacks two times: activate an extra debuff \"Wound Armor Crush\" which reduces target's agility by 20% for 2 rounds.\n   - Debuff stacks three times: activate an extra debuff \"Bleeding Armor Crush\" which causes 8-12 continuous damage over 3 rounds."
+        "introduction": "A crushing strike that can weaken targets' armour. Attack attaches an Armor Breaker debuff to target which stacks up to 3 times, each stack reduces target's armour by 15% for 2 rounds.\n >> Special Effect:\n   - Debuff stacks two times: activate an extra debuff \"Wound Armor Crush\" which reduces target's agility by 20% for 2 rounds.\n   - Debuff stacks three times: activate an extra debuff \"Bleeding Armor Crush\" which causes 8-12 continuous damage over 3 rounds."
       },
       "skill.warrior.antivenom_potion": {
         "introduction": "Drink an antivenom potion to remove poison effects and recover health. Warrior Weapon Master gains a buff that increases their poison resistance by 45 for 2 rounds."
