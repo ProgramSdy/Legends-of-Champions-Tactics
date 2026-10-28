@@ -115,11 +115,19 @@ self-healing power before modifiers and the HP cap, with damage fields not
 applicable. These are static catalogue facts, not a new API shape or preview.
 The three Paladin entries likewise publish direct-damage formula copy with no
 card note: Hammer of Anger includes the active Wrath of Crusader bonus bands,
-Hammer of Revenge includes distinct eligible self-debuff bonus bands, and
-Heroric Charge includes the engine's one-damage floor. Crusader Strike and
+Hammer of Revenge names its self-debuff bonus without listing bands, and
+Heroic Charge includes the engine's one-damage floor. Heroic Charge retains
+the historical `skill.paladin.heroric_charge` ID but uses the corrected Gallery
+display name. It publishes Base Healing 28–32 on hit, evasion, and prevention
+paths alike. Holy Aura publishes 6–8 Base Healing per living
+recipient at round start. Crusader Strike and
 Shield of Righteous each publish fixed direct power 18–22; Holy Blast publishes
 20–25 for its first target and 14–17 for the second. Priest Discipline's
 Penance publishes enemy damage power 17–21 and ally healing power 21–25;
+Flash of Light publishes unbuffed Base Healing 19–21 and Purify Healing
+publishes Base Healing 23–27. These static power ranges do not include live
+Wrath stacks, target healing modifiers, or the recipient's remaining HP;
+those remain battle-preview/engine concerns.
 Holy Word Punishment publishes immediate damage power 7–11, excluding its
 periodic effect. Holy Word Punishment separately publishes Continuous Damage
 9–16 per activation. Its Gallery box contains only that range, with no note or
@@ -145,6 +153,12 @@ inventory item with a static self/effect reference and inapplicable numeric
 facts. It documents the existing low-HP Holy Word Redemption extra-recipient
 branch in `Skill.execute`; there is no corresponding selectable runtime Skill,
 and battle commands and mechanics are unchanged.
+
+Paladin Retribution's `skill.paladin.wrath_of_crusader` is also a fourth,
+catalogue-only `isPassive` entry. Its self/effect reference has inapplicable
+damage/healing/classification fields because the existing Crusader Strike buff
+supplies Hammer of Anger and Flash of Light bonuses through their live skills.
+It is not a separate runtime `Skill`, legal command, or new mechanic.
 
 The current roster includes Priest Comprehensiveness and Discipline; Paladin
 Retribution, Protection, and Holy; Mage Comprehensiveness; Warrior Defence,
@@ -183,7 +197,8 @@ profile data.
 
 Returns the active slot's opaque stable `profileId`,
 `unlockedHeroDefinitionIds`, per-stage values (`highestCompletedBattle`,
-`unlockedBattle`, `completed`), and granted reward IDs/counts. Fresh slots own
+`unlockedBattle`, `completed`, and campaign-specific mode availability and
+one-based completed battle indices), and granted reward IDs/counts. Fresh slots own
 exactly Warrior Weapon Master, Mage Comprehensiveness, Priest
 Comprehensiveness, and Rogue Comprehensiveness. With no active slot it returns
 409 `noActiveSaveSlot`. A schema-v1 default profile migrates once into active
@@ -195,15 +210,22 @@ than resetting or selecting another slot.
 
 Returns the two authoritative nine-battle curricula, including each fixed
 enemy definition order, battle size, formation, optional reward metadata, and
-server-computed `unlocked`/`completed` flags. The UI may compare this to its
-presentation config, but must not calculate access or rewards itself.
+server-computed `unlocked`/`completed` Learner flags. Each stage also exposes
+`modes.learner` and `modes.tactics`, each with `available`, `completed`, and
+`completedBattleIndices` (one-based display orders). Tactics unlocks per
+campaign only when all configured Learner battles are complete; its completion
+is independent and nonsequential. The UI may compare this to its presentation
+config, but must not calculate access or rewards itself.
 
 ### `POST /api/v1/stages/{stageId}/battles/{battleIndex}`
 
 Creates one accessible structured battle. Its body contains the player team,
 a player-selected formation when the size is 2v2/3v3, an optional deliberately
-supplied reproducibility `seed`, and optional opaque `attemptId`. The normal
-player UI supplies `attemptId` and omits `seed`; a new intentional launch gets
+supplied reproducibility `seed`, and optional opaque `attemptId`. It accepts
+`mode: "learner" | "tactics"` with Learner as the default when omitted by a
+legacy structured-stage caller. The normal player UI supplies explicit mode
+and `attemptId`, omitting `seed`; an unknown mode fails typed validation, and
+locked Tactics returns a stage access conflict. A new intentional launch gets
 fresh server-owned entropy. The route owns the exact size, fixed computer enemy definition order,
 and fixed enemy formation; locked player definitions are rejected but locked
 static enemies are allowed. The player formation uses the same size-specific
@@ -221,7 +243,7 @@ and enemy formation, but its legacy stored battle seed does not drive new
 attempts. For either player-facing creation route, the same `attemptId` and
 identical active profile/route/configuration replays the original battle
 envelope in the same process without drawing another seed. A changed profile,
-route, or configuration under the same ID returns HTTP 409
+route, structured mode, or configuration under the same ID returns HTTP 409
 `battleAttemptConflict`. Without `attemptId`, each valid POST is a separate
 launch for compatibility. A duplicate ID can replay its original session
 even if another tab has since advanced or abandoned the Arena run; such an
@@ -233,8 +255,11 @@ tests; free-form debug creation is unchanged.
 ### `POST /api/v1/battles/{battleId}/completion`
 
 Commits a structured session only after its authoritative snapshot has ended in
-a friendly victory. One SQLite transaction records the battle receipt, advances
-the stage, and applies its unlock/item-card reward. The response includes
+a friendly victory. For Learner, one SQLite transaction records the battle
+receipt, advances sequential stage progress, and applies its unlock/item-card
+reward. For Tactics, it records only that campaign/battle's Tactics completion,
+without Learner progress or rewards. Completion reads the immutable session
+mode, never a client-supplied completion mode. The response includes
 `alreadyCommitted`, `newlyGrantedRewards`, and refreshed progression. Replays,
 retries, and duplicate callbacks return the committed state without granting
 again. Completion is bound to the profile active when the structured session
@@ -304,6 +329,19 @@ that snapshot, plays the returned events in order, then reconciles to the
 returned final snapshot and revision. Player-first openings retain
 `playOpening: false`; their ordinary initial snapshot remains immediately
 usable after the entry overlay.
+
+Every serialized combatant now includes additive `stats`: Damage, Defence,
+Agility, and Fire/Frost/Arcane/Shadow/Death/Poison/Nature resistance entries,
+each with finite `current` and signed `delta` numbers. A frozen per-instance
+Hero baseline is captured after property generation/resistance compensation,
+before opening effects; summoned heroes capture their own baseline at
+construction. Python alone subtracts baseline from current values and
+normalizes exact zero without rounding nonzero fractions. Snapshot inspection
+does not mutate a hero/session, consume RNG, issue a command, or advance a
+revision. The battle envelope remains an untyped dictionary at the HTTP/OpenAPI
+level, so its published OpenAPI schema is unchanged; existing clients can
+ignore the additional combatant field. See `BATTLE_DATA_CONTRACT_V1.md` for
+the exact nested shape and presentation-timing rule.
 
 ### `GET /api/v1/battles/{battleId}`
 

@@ -102,6 +102,7 @@ combat.
 | Hero `front`/`rear` position | Python adapter/engine |
 | 2v2/3v3 formation selection input | Team Builder; validated and resolved by Python |
 | Snapshot formation/position data | Python adapter |
+| Per-combatant starting stat baseline, current battle stats, and signed net deltas | Python Hero instance / adapter |
 | Figure anchors, scale, stacking, UI effects, accessibility | Next.js presentation registry |
 | Browser display mode and shared actor browser-size rate | Next.js battle presentation configuration |
 | Five-slot selection, training unlocks, stage progress, generic reward counts, Arena Run state | SQLite progression store / FastAPI |
@@ -121,6 +122,14 @@ together with the catalogue.
 The formation registry must never assign combat positions or decide legal
 targets. Conversely, visual 3v3 depth is formation-, side-, and slot-specific
 presentation data, not an additional Python gameplay state.
+
+For read-only Battle Hero Stats inspection, each constructed Hero (including a
+summon) retains a frozen, per-instance baseline after stat generation and
+resistance compensation, before opening effects. The adapter serializes finite
+current Damage, Defence, Agility, seven school resistances, and their signed
+net differences without consuming RNG or altering combat. This presentation
+baseline is separate from rule-bearing `original_*` fields. The browser never
+recalculates those differences or queries a later combat state for inspection.
 
 ### Battle Scene responsive presentation
 
@@ -151,13 +160,14 @@ Team Builder configuration
 ```
 
 Structured training uses a separate route: the UI obtains progression and the
-server-owned curriculum, then posts only friendly selection/required friendly
-formation to a stage-battle route. The adapter supplies the fixed computer
-team/formation and attaches stage plus launch-profile context to the session.
-After an ended, authoritative friendly victory, a completion route performs the
-active-profile SQLite transaction that records the step and any one-time reward
-before returning updated progression. A slot switch invalidates completion of
-the old session. No slot/stage/profile/reward field is added to
+server-owned curriculum/mode availability, then posts friendly selection,
+required friendly formation, and its chosen `learner` or `tactics` mode to a
+stage-battle route. The adapter supplies the fixed computer team/formation and
+attaches stage, launch-profile, and immutable mode context to the session.
+After an ended, authoritative friendly victory, a completion route performs
+the active-profile SQLite transaction: Learner updates the sequential step
+and any one-time reward; Tactics records only its separate battle completion.
+A slot switch invalidates completion of the old session. No slot/stage/profile/reward field is added to
 `BattleCreateConfiguration`.
 
 Arena Run uses separate state, create, node-launch, and completion routes. The
@@ -183,6 +193,17 @@ adapter's seeded selection. 1v1 has no formation fields.
 
 ## Architectural Decisions
 
+- The structured mode is a stage-route/session decision, not a stat, formation,
+  or combat-rule variant. For a computer-controlled **enemy** in Learner, the
+  adapter samples only its authoritative legal actions and valid target IDs
+  with the session RNG; forced/skip paths remain governed by the engine.
+  Tactics preserves the existing hero AI and legality reconciliation. Generic,
+  Arena Run, Debug, and friendly automatic actors retain their prior policies.
+- Structured stage access, per-campaign Tactics unlock, and per-mode completion
+  are SQLite/backend authority. Existing stage records represent Learner
+  history. The launch attempt fingerprint includes mode so one attempt ID
+  cannot replay as a different mode; completion uses the session's mode rather
+  than a client-supplied completion field.
 - The creation/snapshot/event contract remains version `1.0`; formation fields
   are additive, size-discriminated values inside that contract.
 - `Hero.position` defaults to `front` for legacy constructors, simulations,
@@ -207,6 +228,9 @@ adapter's seeded selection. 1v1 has no formation fields.
 
 ## Change Log
 
+- 2026-10-27 — Added immutable structured Learner/Tactics mode ownership,
+  legal random enemy AI boundary, mode-specific persistence, and mode-bound
+  attempt identity.
 - 2026-08-15 — Documented the implemented UI-018/UI-019 cross-boundary
   formation architecture and the visual-depth ownership boundary.
 - 2026-08-19 — Added the minimal SQLite-backed default-profile training

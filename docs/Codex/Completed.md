@@ -5422,3 +5422,142 @@ Focused backend catalogue tests passed 48/48, Gallery tests passed 13/13,
 content build/check and direct TypeScript typecheck passed. The catalogue,
 content-schema registry, editorial YAML, generated content, focused tests, and
 GDD/API/contract/UI architecture notes changed. No commit or push was made.
+
+---
+
+## 2026-10-26 — UI-033: Read-Only Hero Stats Popup During Battle
+
+Each occupied friendly/enemy side card, including a defeated combatant or
+summon, now exposes a small gold bar-chart **View Hero Stats** button. The
+responsive native modal shows runtime identity, current HP only, ten current
+attributes/resistances with engine-authored signed net deltas against a frozen
+per-instance starting-battle baseline, and active effects. Positive and
+negative values use colour plus a signed delta; exact zero is neutral. Hero
+Stats inspection sends no command, consumes no RNG, and does not pause or
+reset battle presentation. It resolves the hero by runtime ID from the queue's
+`visibleSnapshot`. During opening or ordinary event playback, attributes and
+uncertain effect counters show `Updating…` until final reconciliation, while
+authoritative ordered HP/status identity changes remain visible.
+
+**Roles and ownership:** This high-risk engine/API/client/playback/accessibility
+boundary justified all five roles. The project-manager mapped sequencing and
+the no-future-state gate; the game-engine-developer owned the frozen baseline,
+typed additive snapshot fields, and Python authority tests; the ui-developer
+owned the occupied-card control, modal, typed frontend consumption, fixture,
+responsive styles, and focused component tests; the test-automator owned the
+cross-boundary playback, repeated-hero, summon, defeated-card, selection, and
+no-command regression tests; the independent reviewer approved the integrated
+result with no blocking findings. The UI agent hit a usage limit after its
+implementation and initial focused tests; Core performed the final integrated
+validation and documentation. The reviewer identified a non-blocking opening
+test gap (identical opening/final stats); Core added distinct values and
+verified future values stay hidden until reconciliation.
+
+**Files:** `heroes/hero.py`, `battle_api/adapter.py`, `battle_api/models.py`,
+`tests/test_ui033_battle_stats.py`; `web-ui/components/battle/BattleScreen.tsx`,
+`HeroCard.tsx`, `HeroStatsDialog.tsx`, `StatusIcon.tsx`,
+`web-ui/lib/battle/types.ts`, `fixture.ts`, `web-ui/app/globals.css`,
+`web-ui/tests/ui-033-hero-stats-unit.test.tsx`, and
+`ui-033-battle-stats-integration.test.tsx`. Stable documentation changed in
+`docs/Technical/Architecture.md`, `docs/web-ui/BATTLE_DATA_CONTRACT_V1.md`,
+`PYTHON_ADAPTER_API.md`, `WEB_UI_ARCHITECTURE.md`, and `Style_Guide.md`.
+`Current_Task.md` and this completion record were reconciled. No GDD rule
+changed: the new baseline is presentation-only and combat formulas remain
+unchanged. Unrelated dirty work, including the owner's Gallery changes, was
+preserved; owner-controlled `UI_Review_Human.md` was not edited.
+
+**Validation:** relevant backend suite **146 passed** (one existing Starlette
+deprecation warning); six focused frontend battle/status/audio/UI-033 files
+**49 passed**. After strengthening the opening-boundary test, its focused
+integration file passed **6/6** and TypeScript typecheck passed again.
+Production Vinext build, Python compilation, and `git diff --check` passed.
+ESLint reported **0 errors, 3 pre-existing warnings**. An isolated ego-browser
+debug battle at **1613×838** confirmed both sides' buttons, current-HP-only
+dialog, status content, Escape closure, and focus restoration; at **390×844**
+the dialog stayed within the viewport and the document had no horizontal
+overflow. The browser walkthrough used a live **1v1** only; repeated heroes,
+summons, defeated cards, and playback boundaries were verified by automated
+tests, not claimed as manual 2v2/3v3 checks. No commit or push was performed.
+
+---
+
+## 2026-10-28 — MODE-001: Learner and Tactics Structured Campaign Modes
+
+Warrior's Barrack and Paladin's Altar now offer a default Learner mode and a
+campaign-specific unlockable Tactics mode. Both modes use the same generated
+heroes, stats, skills, formations, targeting and combat rules. Only enemy
+computer decisions differ: Learner samples an authoritative legal action and
+exact distinct valid targets using the battle session RNG; Tactics preserves
+existing hero strategy and legality reconciliation. Forced/skipped actions,
+friendly automatic actors, generic battles, Arena, and Debug keep their prior
+paths. Stage create defaults an omitted mode to Learner for legacy callers,
+binds the chosen mode immutably to the session and attempt fingerprint, and
+rejects invalid or locked Tactics launches.
+
+SQLite schema v4 persists per-profile/campaign/battle/mode completions. The
+existing sequential stage progress and once-only hero/item rewards remain
+Learner-only. A completed Learner curriculum unlocks Tactics only for that
+campaign; unlocked Tactics battles can launch in any order and record their
+completion idempotently without granting Learner progress or rewards. Legacy
+stage completion migrates as Learner history without replaying grants. The
+structured Team Builder consumes backend mode authority, keeps its choice
+across battle selection within one profile/campaign, and places the accessible
+Learner/Tactics selector at the footer's left. No selector appears in Arena or
+Debug.
+
+**Roles and ownership:** All five roles were required by the cross-system
+AI/save/API/UI risk and actually dispatched in coordinated waves. The
+project-manager defined the pre-code sequence, authority decisions, and
+documentation map. The game-engine-developer owned adapter policy, stage
+request/session/attempt authority, schema migration, completion, and focused
+backend tests. The ui-developer owned typed client decoding, structured
+selection/launch/return, accessible responsive footer, and frontend checks.
+The test-automator owned cross-boundary backend/frontend regression coverage
+and legacy fixture/schema expectation updates. The independent reviewer found
+one blocking dynamic-curriculum decoder limit (hard-coded two stages/nine
+battles); the UI developer removed it, added a two-battle decoder regression,
+and the reviewer re-reviewed and approved with no remaining blocking finding.
+
+**MODE-001 files:** `battle_api/adapter.py`, `app.py`, `models.py`,
+`progression.py`; `web-ui/components/battle/BattleExperience.tsx`,
+`TeamBuilder.tsx`, `web-ui/lib/battle/liveProvider.ts`, `types.ts`,
+`web-ui/app/globals.css`; new `tests/test_mode001_engine.py`,
+`tests/test_mode001_integration.py`, and
+`web-ui/tests/mode-001-integration.test.tsx`. Existing backend
+`test_ui020_progression.py`, `test_ui021_save_slots.py`, and
+`test_ui023_arena.py` expectations; `web-ui/lib/battle/fixture.ts` and
+`web-ui/tests/battle-backgrounds.test.tsx`, `ui-002-team-builder.test.tsx`,
+`ui-018-formations.test.tsx`, `ui-019-formations.test.tsx`,
+`ui-020-progression.test.tsx`, `ui-021-save-slots-and-previews.test.tsx`,
+`ui-023-arena-debug.test.tsx`, and `ui-027-manual-gallery.test.tsx` were
+updated for the additive typed mode fields. Core updated
+`docs/GDD/Game_Design_Document.md`,
+`docs/Technical/Architecture.md`, `Player_Data_and_Save_System.md`,
+`docs/web-ui/BATTLE_DATA_CONTRACT_V1.md`, `PYTHON_ADAPTER_API.md`,
+`WEB_UI_ARCHITECTURE.md`, `Style_Guide.md`, `Screen_Flow.md`, this record, and
+`Current_Task.md`. `docs/GDD/Hero_System.md` and `Skill_System.md` needed no
+MODE-001 change because hero generation/ownership/reward definitions and skill
+mechanics were not changed; unrelated pre-existing edits were preserved.
+
+**Validation:** A final relevant backend run of MODE, progression, save-slot,
+Arena, attempt, adapter, formation, and AI strategy tests passed **214/214**
+(one existing Starlette/httpx deprecation warning). Six relevant frontend
+files passed **69/69** tests. TypeScript typecheck, ESLint (0 errors, 3
+pre-existing warnings), Vinext production build, Python compilation, Gallery
+content check, and `git diff --check` passed. In an isolated temporary-save
+browser walkthrough, a new Warrior campaign defaulted to Learner with Tactics
+disabled; after seeding that temporary profile's Warrior Learner completions,
+all nine Tactics battles became selectable, Battle 1 retained Tactics across
+the builder remount and launched into a live 2v2 scene, while Paladin Tactics
+remained locked. At 720×650, the footer selector and Enter Battle remained
+within the viewport width with no horizontal overflow. The walkthrough did
+not play nine victories manually; persistence, rewards, retry, and mode
+security are covered by automated tests. An additional broader frontend probe
+found two pre-existing `battle-backgrounds` tests that still click disabled
+Enter Battle without assigning the now-empty player slot; these are unrelated
+stale fixtures, not MODE-001 failures. The temporary servers were stopped.
+
+**Residual boundary:** The currently registered stage IDs still require an
+explicit backend/frontend registry expansion when a future campaign is added;
+the MODE-001 decoder no longer assumes exactly two stages or nine battles.
+No owner-controlled review file was edited. No commit or push was performed.

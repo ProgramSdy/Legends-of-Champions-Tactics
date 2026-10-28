@@ -12,7 +12,7 @@ export const APPROVED_HERO_SKILLS = Object.freeze({
   "hero.mage.comprehensiveness": ["skill.mage.fireball", "skill.mage.arcane_missiles", "skill.mage.frost_bolt"],
   "hero.paladin.holy": ["skill.paladin.purify_healing", "skill.paladin.holy_blast", "skill.paladin.shield_of_protection"],
   "hero.paladin.protection": ["skill.paladin.hammer_of_revenge", "skill.paladin.shield_of_righteous", "skill.paladin.heroric_charge", "skill.paladin.holy_aura"],
-  "hero.paladin.retribution": ["skill.paladin.hammer_of_anger", "skill.paladin.crusader_strike", "skill.paladin.flash_of_light"],
+  "hero.paladin.retribution": ["skill.paladin.hammer_of_anger", "skill.paladin.crusader_strike", "skill.paladin.flash_of_light", "skill.paladin.wrath_of_crusader"],
   "hero.priest.comprehensiveness": ["skill.priest.holy_smite", "skill.priest.shadow_word_pain", "skill.priest.binding_heal"],
   "hero.priest.discipline": ["skill.priest.penance", "skill.priest.holy_word_redemption", "skill.priest.holy_word_punishment", "skill.priest.holy_concentration"],
   "hero.rogue.comprehensiveness": ["skill.rogue.sharp_blade", "skill.rogue.poisoned_dagger", "skill.rogue.shadow_evasion"],

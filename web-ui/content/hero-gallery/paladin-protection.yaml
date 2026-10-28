@@ -1,19 +1,22 @@
 schemaVersion: 1
 definitionId: hero.paladin.protection
 introduction: |-
-  A resilient paladin who withstands harm and protects the line.
+  A resilient paladin who provides regular restore to team, withstands harm and protects the line.
 battleStyle: |-
-  Absorbs pressure, disrupts enemies, and supports the team over time.
+  A control tank who supports team by providing small amount of regular healing over time. Scoff high threatening target and retaliating to debuffs.
 skills:
   - skillId: skill.paladin.hammer_of_revenge
     introduction: |-
-      A ranged holy retaliation that responds to the caster's debuffs.
+      Paladin through his hammer to a target, applies distant physical damage.
+      >> Special Effect:
+           - Based on the quantity of debuff that is activated on Paladin, Hammer of Revenge applies extra holy damage towards target. 1 debuff: 3-5, 2 debuffs: 6-8, 3 or more debuffs: 9-11.
+           - If Paladin is in Shield of Righteous status, Hammer of Revenge applies a debuff on target that reduces target damage by 20%.
   - skillId: skill.paladin.shield_of_righteous
     introduction: |-
-      A melee shield strike that strengthens the caster's defence.
+      Paladin bash a nearby enemy with his grand shield. This attack will build Shield of Righteous buff on paladin which stacks max 2 times. Each stack increases paladin's defence by 15%. Keep using this skill will refresh buff duration.
   - skillId: skill.paladin.heroric_charge
     introduction: |-
-      A ranged charge that can disrupt and draw hostility.
+      A ranged charge that can applies scoff status and disrupt target casting. Providing a immediate healing effect to Paladin.
   - skillId: skill.paladin.holy_aura
     introduction: |-
       Passive: while alive, restores each living teammate at round start.

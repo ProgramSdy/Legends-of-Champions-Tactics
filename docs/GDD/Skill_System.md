@@ -23,6 +23,10 @@ Concentration is a read-only Gallery passive reference for the existing Holy
 Word Redemption branch in `Skill.execute`: when the Priest's HP is at or below
 `round(0.75 × max HP)` and more than one ally exists, Redemption also protects
 another ally. It adds no selectable runtime skill or new combat rule.
+Paladin Retribution's Wrath of Crusader is likewise a read-only Gallery passive
+reference for Crusader Strike's existing self-buff. At one/two stacks, the
+engine's Hammer of Anger bonus is 3–5/6–8 damage and Flash of Light's bonus
+roll is 5–7/11–13 healing. It adds no separately executable skill.
 
 ## Activation and Targeting
 
@@ -183,7 +187,9 @@ Revenge and Heroric Charge, are also Target-dependent in the Gallery: their
 direct damage depends on target Defence. The first two retain their
 engine-defined bonus bands from Wrath of Crusader and eligible caster debuffs,
 respectively. Crusader Strike and Shield of Righteous instead deal fixed
-direct power 18–22. Holy Blast deals 20–25 to the first selected target and
+direct power 18–22. Heroric Charge heals its caster for base power 28–32
+whether it lands, is evaded, or is prevented; healing modifiers and HP cap
+still apply to actual HP gained. Holy Blast deals 20–25 to the first selected target and
 14–17 to the second. Priest Discipline's Penance has separate enemy direct
 damage power 17–21 and ally healing power 21–25; Holy Word Punishment has
 immediate direct power 7–11. Holy Word Punishment separately publishes

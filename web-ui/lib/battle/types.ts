@@ -9,8 +9,11 @@ export type DuoFormationId = "front-rear" | "side-by-side";
 export type TrioFormationId = "one-front-two-rear" | "two-front-one-rear" | "all-front";
 export type BattleFormationId = DuoFormationId | TrioFormationId;
 export type CombatantPosition = "front" | "rear";
+export type StructuredBattleMode = "learner" | "tactics";
 
 export type StructuredBattleCreateConfiguration = {
+  /** Structured campaigns send this explicitly; omitted legacy callers default to Learner server-side. */
+  mode?: StructuredBattleMode;
   playerTeam: string[];
   playerFormation?: BattleFormationId;
   seed?: number;
@@ -153,6 +156,7 @@ export interface StageProgress {
   highestCompletedBattle: number;
   unlockedBattle: number;
   completed: boolean;
+  modes: Record<StructuredBattleMode, StructuredStageModeProgress>;
 }
 
 export interface GrantedReward {
@@ -189,10 +193,17 @@ export interface AuthoritativeStageBattleDefinition {
   completed: boolean;
 }
 
+export interface StructuredStageModeProgress {
+  available: boolean;
+  completed: boolean;
+  completedBattleIndices: number[];
+}
+
 export interface AuthoritativeStructuredStageDefinition {
   stageId: StructuredStageId;
   displayName: string;
   progress: StageProgress;
+  modes: Record<StructuredBattleMode, StructuredStageModeProgress>;
   battles: AuthoritativeStageBattleDefinition[];
 }
 
@@ -295,6 +306,26 @@ export interface SkillState {
   resourceCost: null | { kind: string; amount: number };
 }
 
+export interface CombatantStatValue {
+  current: number;
+  delta: number;
+}
+
+export interface CombatantStats {
+  damage: CombatantStatValue;
+  defence: CombatantStatValue;
+  agility: CombatantStatValue;
+  resistances: {
+    fire: CombatantStatValue;
+    frost: CombatantStatValue;
+    arcane: CombatantStatValue;
+    shadow: CombatantStatValue;
+    death: CombatantStatValue;
+    poison: CombatantStatValue;
+    nature: CombatantStatValue;
+  };
+}
+
 export interface CombatantState {
   id: string;
   definitionId: string;
@@ -310,6 +341,7 @@ export interface CombatantState {
   isPlayerControlled: boolean;
   alive: boolean;
   hp: { current: number; maximum: number };
+  stats: CombatantStats;
   resource: null | { kind: string; current: number; maximum: number };
   statuses: StatusState[];
   skills: SkillState[];

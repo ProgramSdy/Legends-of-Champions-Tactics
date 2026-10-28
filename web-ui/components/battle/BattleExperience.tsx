@@ -18,6 +18,7 @@ import type {
   HeroDefinitionSummary,
   PlayerProgressionResponse,
   StageReward,
+  StructuredBattleMode,
   StructuredBattleCreateConfiguration,
   VictoryCommitResponse,
 } from "@/lib/battle/types";
@@ -119,6 +120,7 @@ function BattleSession({
   onStructuredStageComplete?: () => void;
 }) {
   const [currentBattleIndex, setCurrentBattleIndex] = useState<number | null>(null);
+  const [structuredBattleMode, setStructuredBattleMode] = useState<StructuredBattleMode>("learner");
   const [activeLaunch, setActiveLaunch] = useState<ActiveLaunch | null>(null);
   const [sessionKey, setSessionKey] = useState(0);
   const [resources, setResources] = useState<ResourceState | null>(null);
@@ -128,6 +130,7 @@ function BattleSession({
   const [rewardNotification, setRewardNotification] = useState<StageReward[] | null>(null);
   const pendingContinueRef = useRef<(() => void) | null>(null);
   const pendingCommitRef = useRef<VictoryCommitResponse | null>(null);
+  const modeContextRef = useRef<string | null>(null);
 
   useEffect(() => {
     let current = true;
@@ -145,7 +148,14 @@ function BattleSession({
             (stage) => stage.stageId === structuredStage.stageId,
           );
           if (serverStage) {
-            setCurrentBattleIndex((index) => index ?? serverStage.progress.unlockedBattle - 1);
+            const modeContext = `${progression.profileId}.${structuredStage.stageId}`;
+            if (modeContextRef.current !== modeContext) {
+              modeContextRef.current = modeContext;
+              setStructuredBattleMode("learner");
+              setCurrentBattleIndex(serverStage.progress.unlockedBattle - 1);
+            } else {
+              setCurrentBattleIndex((index) => index ?? serverStage.progress.unlockedBattle - 1);
+            }
           }
         }
         setResourceError(null);
@@ -199,8 +209,14 @@ function BattleSession({
   const continueAfterCommit = (
     refreshedStage: AuthoritativeStructuredStageDefinition,
     completedBattleIndex: number,
+    completedMode: StructuredBattleMode,
   ) => {
-    if (completedBattleIndex === 8 && refreshedStage.progress.completed) {
+    if (completedMode === "tactics") {
+      setCurrentBattleIndex(completedBattleIndex);
+      return;
+    }
+    if (completedBattleIndex === refreshedStage.battles.length - 1
+      && refreshedStage.modes.learner.completed) {
       setCurrentBattleIndex(null);
       onStructuredStageComplete?.();
       return;
@@ -213,7 +229,8 @@ function BattleSession({
   };
 
   const completeBattle = async (outcome: BattleOutcome) => {
-    if (!structuredStage || !currentStructuredBattle || !provider || currentBattleIndex === null) {
+    if (!structuredStage || !currentStructuredBattle || !provider || !activeLaunch
+      || currentBattleIndex === null) {
       closeLiveBattle();
       return;
     }
@@ -225,6 +242,9 @@ function BattleSession({
     }
 
     const completedBattleIndex = currentBattleIndex;
+    const completedMode = "mode" in activeLaunch.configuration
+      ? activeLaunch.configuration.mode ?? "learner"
+      : "learner";
     const commit = pendingCommitRef.current ?? await provider.commitStageVictory();
     pendingCommitRef.current = commit;
     const [progression, stagesResponse] = await Promise.all([
@@ -243,8 +263,12 @@ function BattleSession({
     pendingCommitRef.current = null;
     closeLiveBattle();
 
-    const continueTraining = () => continueAfterCommit(refreshedStage, completedBattleIndex);
-    if (commit.newlyGrantedRewards.length > 0) {
+    const continueTraining = () => continueAfterCommit(
+      refreshedStage,
+      completedBattleIndex,
+      completedMode,
+    );
+    if (completedMode === "learner" && commit.newlyGrantedRewards.length > 0) {
       pendingContinueRef.current = continueTraining;
       setRewardNotification(commit.newlyGrantedRewards);
       return;
@@ -264,7 +288,10 @@ function BattleSession({
     if (outcome.kind !== "victory" || outcome.winningSideId !== "friendly") {
       return "RETRY BATTLE";
     }
-    return "CONTINUE TRAINING";
+    return activeLaunch && "mode" in activeLaunch.configuration
+      && activeLaunch.configuration.mode === "tactics"
+      ? "RETURN TO TEAM BUILDER"
+      : "CONTINUE TRAINING";
   };
 
   if (!provider && resourceError) return (
@@ -310,7 +337,11 @@ function BattleSession({
   const startStructuredBattle = (configuration: StructuredBattleCreateConfiguration) => {
     if (!structuredStage || !authoritativeStage || currentBattleIndex === null) return;
     const serverBattle = authoritativeStage.battles[currentBattleIndex];
-    if (!serverBattle?.unlocked) return;
+    const requestedMode = configuration.mode ?? "learner";
+    const canLaunch = requestedMode === "tactics"
+      ? authoritativeStage.modes.tactics.available
+      : serverBattle?.unlocked;
+    if (!serverBattle || !canLaunch) return;
     setSessionKey((key) => key + 1);
     setBattleBackground(BATTLE_BACKGROUND);
     setActiveLaunch({
@@ -332,8 +363,23 @@ function BattleSession({
             battle={currentStructuredBattle}
             highestCompletedBattle={authoritativeStage.progress.highestCompletedBattle}
             highestUnlockedBattle={authoritativeStage.progress.unlockedBattle}
+            battleMode={structuredBattleMode}
+            modeProgress={authoritativeStage.modes}
+            onBattleModeChange={(mode) => {
+              if (mode === "tactics" && !authoritativeStage.modes.tactics.available) return;
+              setStructuredBattleMode(mode);
+              if (mode === "learner") {
+                setCurrentBattleIndex((index) => index !== null
+                  && authoritativeStage.battles[index]?.unlocked
+                    ? index
+                    : authoritativeStage.progress.unlockedBattle - 1);
+              }
+            }}
             onSelectBattle={(index) => {
-              if (authoritativeStage.battles[index]?.unlocked) setCurrentBattleIndex(index);
+              const selectable = structuredBattleMode === "tactics"
+                ? authoritativeStage.modes.tactics.available
+                : authoritativeStage.battles[index]?.unlocked;
+              if (selectable) setCurrentBattleIndex(index);
             }}
             onStart={startStructuredBattle}
           />

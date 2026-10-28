@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { BattleExperience } from "@/components/battle/BattleExperience";
@@ -49,6 +49,25 @@ const initialUnlocked = [
   "hero.rogue.comprehensiveness",
 ];
 
+function campaignModes(highestCompletedBattle: number) {
+  const learnerComplete = highestCompletedBattle === 9;
+  return {
+    learner: {
+      available: true,
+      completed: learnerComplete,
+      completedBattleIndices: Array.from(
+        { length: highestCompletedBattle },
+        (_, index) => index + 1,
+      ),
+    },
+    tactics: {
+      available: learnerComplete,
+      completed: false,
+      completedBattleIndices: [],
+    },
+  };
+}
+
 function progression(
   paladinCompleted = 0,
   paladinUnlocked = 1,
@@ -64,12 +83,14 @@ function progression(
         highestCompletedBattle: paladinCompleted,
         unlockedBattle: paladinUnlocked,
         completed: paladinCompleted === 9,
+        modes: campaignModes(paladinCompleted),
       },
       {
         stageId: "warriors-barrack",
         highestCompletedBattle: 0,
         unlockedBattle: 1,
         completed: false,
+        modes: campaignModes(0),
       },
     ],
     grantedRewards: [],
@@ -89,6 +110,22 @@ function serverStage(
       highestCompletedBattle,
       unlockedBattle,
       completed: highestCompletedBattle === 9,
+      modes: campaignModes(highestCompletedBattle),
+    },
+    modes: {
+      learner: {
+        available: true,
+        completed: highestCompletedBattle === stage.battles.length,
+        completedBattleIndices: Array.from(
+          { length: highestCompletedBattle },
+          (_, index) => index + 1,
+        ),
+      },
+      tactics: {
+        available: highestCompletedBattle === stage.battles.length,
+        completed: false,
+        completedBattleIndices: [],
+      },
     },
     battles: stage.battles.map((battle) => ({
       id: battle.id,
@@ -240,6 +277,7 @@ describe("UI-020 authoritative progression boundary", () => {
     await screen.findByRole("button", { name: "RETRY BATTLE" });
     const launch = calls.find((call) => call.path.includes("/stages/paladins-altar/battles/1"));
     expect(launch?.body).toEqual({
+      mode: "learner",
       playerTeam: ["hero.warrior.weapon_master", "hero.mage.comprehensiveness"],
       playerFormation: "side-by-side",
       attemptId: expect.any(String),
@@ -300,13 +338,13 @@ describe("UI-020 authoritative progression boundary", () => {
       />
     );
     const { rerender } = render(builder(0));
-    expect(screen.getAllByRole("radio")).toHaveLength(2);
+    expect(within(screen.getByRole("group", { name: "Your formation" })).getAllByRole("radio")).toHaveLength(2);
 
     rerender(builder(1));
-    expect(screen.queryByRole("radio")).not.toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Your formation" })).not.toBeInTheDocument();
 
     rerender(builder(2));
-    expect(screen.getAllByRole("radio")).toHaveLength(3);
+    expect(within(screen.getByRole("group", { name: "Your formation" })).getAllByRole("radio")).toHaveLength(3);
     const user = await assignPlayers([
       "Warrior · Weapon Master",
       "Mage · Comprehensiveness",
@@ -315,6 +353,7 @@ describe("UI-020 authoritative progression boundary", () => {
     await user.click(screen.getByRole("radio", { name: /All Front/i }));
     await user.click(screen.getByRole("button", { name: "ENTER BATTLE" }));
     expect(onStart).toHaveBeenLastCalledWith({
+      mode: "learner",
       playerTeam: [
         "hero.warrior.weapon_master",
         "hero.mage.comprehensiveness",

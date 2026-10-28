@@ -6,6 +6,7 @@ import { usePresentationQueue } from "@/lib/battle/usePresentationQueue";
 import type { BattleEvent, BattleEventType, BattleOutcome, BattlePreviewSelf, BattlePreviewTarget, BattleProvider, CombatantState, LegalAction, PresentationScript, SideId } from "@/lib/battle/types";
 import { AssetImage } from "./AssetImage";
 import { HeroCard, Meter } from "./HeroCard";
+import { HeroStatsDialog } from "./HeroStatsDialog";
 import { NoFourthSkillCard, SkillCard } from "./SkillCard";
 import { formationFor, getBattleFormat } from "@/lib/battle/formations";
 import { BATTLE_BACKGROUND } from "@/lib/battle/battleBackgrounds";
@@ -45,12 +46,12 @@ function createCommandId(): string {
   return `cmd.${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
-function TeamPanel({ side, heroes, activeId, highlightedTargetIds }: { side: "friendly" | "enemy"; heroes: Array<CombatantState | null>; activeId: string | null; highlightedTargetIds: readonly string[] }) {
+function TeamPanel({ side, heroes, activeId, highlightedTargetIds, onViewStats }: { side: "friendly" | "enemy"; heroes: Array<CombatantState | null>; activeId: string | null; highlightedTargetIds: readonly string[]; onViewStats: (hero: CombatantState, trigger: HTMLButtonElement) => void }) {
   return (
     <aside className={`team-panel ${side}`} aria-label={`${side === "friendly" ? "Your" : "Enemy"} team`}>
       <header><span>{side === "friendly" ? "◈" : "◆"}</span>{side === "friendly" ? "YOUR TEAM" : "ENEMY TEAM"}<small>{heroes.filter(Boolean).length}/3</small></header>
       <div className="team-cards">
-        {heroes.map((hero, index) => hero ? <HeroCard key={hero.id} hero={hero} active={hero.id === activeId} targetHighlighted={highlightedTargetIds.includes(hero.id)} /> : <div className="empty-slot" key={`empty-${index}`}><span>◇</span><small>OPEN SLOT</small></div>)}
+        {heroes.map((hero, index) => hero ? <HeroCard key={hero.id} hero={hero} active={hero.id === activeId} targetHighlighted={highlightedTargetIds.includes(hero.id)} onViewStats={(trigger) => onViewStats(hero, trigger)} /> : <div className="empty-slot" key={`empty-${index}`}><span>◇</span><small>OPEN SLOT</small></div>)}
       </div>
     </aside>
   );
@@ -414,6 +415,8 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
   const [completionPending, setCompletionPending] = useState(false);
   const [completionError, setCompletionError] = useState<string | null>(null);
   const [resignConfirmationOpen, setResignConfirmationOpen] = useState(false);
+  const [statsCombatantId, setStatsCombatantId] = useState<string | null>(null);
+  const statsTriggerRef = useRef<HTMLButtonElement | null>(null);
   const logListRef = useRef<HTMLOListElement>(null);
   const completionButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -438,6 +441,7 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
   }, [entryCountdown, isOpening, snapshot?.phase]);
 
   const combatants = snapshot?.combatants ?? {};
+  const inspectedHero = statsCombatantId ? combatants[statsCombatantId] ?? null : null;
   const active = snapshot?.activeCombatantId ? combatants[snapshot.activeCombatantId] : null;
   const entryLocked = entryCountdown !== null || isOpening;
   const acceptsCommands = Boolean(
@@ -531,6 +535,18 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
     && activeEvent.sourceId !== undefined
     && combatants[activeEvent.sourceId]?.faculty === "Paladin";
 
+  const openHeroStats = (hero: CombatantState, trigger: HTMLButtonElement) => {
+    statsTriggerRef.current = trigger;
+    setStatsCombatantId(hero.id);
+  };
+  const closeHeroStats = () => {
+    setStatsCombatantId(null);
+    window.requestAnimationFrame(() => {
+      if (statsTriggerRef.current?.isConnected) statsTriggerRef.current.focus();
+      statsTriggerRef.current = null;
+    });
+  };
+
   if (!snapshot) return <main className="loading-screen" aria-live="polite">
     {error ? <section className={`connection-state ${errorKind ?? "adapter"}`} role="alert"><strong>{errorKind === "disconnected" ? "BATTLE SERVICE OFFLINE" : "BATTLE COULD NOT OPEN"}</strong><p>{error}</p><button onClick={retry}>Retry connection</button></section> : <><span className="loading-rune">◇</span>Opening the battlefield…</>}
   </main>;
@@ -616,7 +632,7 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
       </header>
 
       <section className="battle-layout">
-        <TeamPanel side="friendly" heroes={sideHeroes("friendly")} activeId={snapshot.activeCombatantId} highlightedTargetIds={highlightedTargetIds} />
+        <TeamPanel side="friendly" heroes={sideHeroes("friendly")} activeId={snapshot.activeCombatantId} highlightedTargetIds={highlightedTargetIds} onViewStats={openHeroStats} />
         <section
           className={`battlefield ${activeEvent ? "event-active" : ""}`}
           aria-label="Battlefield"
@@ -684,7 +700,7 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
           </aside> : null}
           <div className="battlefield-caption"><span>THE FALLEN CITADEL</span><small>{getBattleFormat(snapshot).toUpperCase()} FORMATION</small></div>
         </section>
-        <TeamPanel side="enemy" heroes={sideHeroes("enemy")} activeId={snapshot.activeCombatantId} highlightedTargetIds={highlightedTargetIds} />
+        <TeamPanel side="enemy" heroes={sideHeroes("enemy")} activeId={snapshot.activeCombatantId} highlightedTargetIds={highlightedTargetIds} onViewStats={openHeroStats} />
       </section>
 
       {presentationConfig.orientation === "portrait" ? <aside className="battle-orientation-guard" role="alert">
@@ -790,6 +806,7 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
           </section>
         </div>
       ) : null}
+      {inspectedHero ? <HeroStatsDialog hero={inspectedHero} updating={isPlaying} onClose={closeHeroStats} /> : null}
       {mode === "mock" && <p className="fixture-note">FIXTURE PREVIEW · Outcomes are scripted; Python remains gameplay authority.</p>}
     </main>
   );

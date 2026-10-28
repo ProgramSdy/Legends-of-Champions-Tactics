@@ -2,107 +2,109 @@
 
 **Status:** Completed
 
-**Task:** UI-032 — Holy Word Punishment Continuous Damage Gallery Fact
+**Completed:** 2026-10-28. All five roles participated in coordinated waves;
+the independent reviewer approved after its dynamic-curriculum decoder finding
+was fixed. Final relevant backend tests: 214 passed; frontend tests: 69 passed;
+typecheck, lint (0 errors), production build, Python compilation, and diff
+check passed. Locked/unlocked campaign and 720×650 browser paths were checked
+against an isolated temporary save. Full evidence and the unrelated stale
+background-test limitation are recorded in `docs/Codex/Completed.md`. No
+commit or push was performed.
 
-**Owner request date:** 2026-10-24
+**Task:** MODE-001 — Learner and Tactics Modes for Structured Campaign Battles
+
+**Owner request date:** 2026-10-27
 
 ## Objective
 
-In the expanded Hero Gallery card for Priest Discipline's **Holy Word Punishment**, add a **Continuous Damage** fact box immediately after **Base Damage** in the existing responsive facts grid. It must describe the skill's audited ongoing damage separately from its existing 7–11 immediate Base Damage. Keep the established Gallery presentation and authoritative-data pattern.
+Introduce **Learner** and **Tactics** modes for the current structured campaigns, Warrior's Barrack and Paladin's Altar, and the shared structured-campaign path for future campaigns. Both modes use identical heroes, starting-stat generation, skills, damage/status/cooldown rules, enemy formations, and player team restrictions. Only the computer enemy's decision policy changes: Learner chooses randomly among legal actions/targets; Tactics retains the existing hero-specific strategic AI unchanged.
 
-## Background and Confirmed State
+Learner is available and selected by default for a new save. Each campaign unlocks its own Tactics mode after that campaign's required Learner battles are complete. Unlocked Tactics battles may be entered in any order. Keep mode-specific completion records for future badges without implementing badges now.
 
-`Current_Task.md` previously held completed UI-031, recorded in `Completed.md`; no active task is being displaced. Holy Word Punishment currently has an engine-authored 7–11 immediate-damage reference but no structured ongoing-damage fact. The Gallery's generic row builder renders typed catalogue facts, not YAML-derived mechanics. Live skill code attaches the debuff only when the target's Punishment status is inactive; a new or recycled debuff derives its stored effect from the direct-damage roll with different rounding, and the round-start status code then adds a separate random variation per activation. The effect lasts across later round starts, and an already-active target can still receive direct damage without refreshing the debuff. These details make a guessed fixed number or total misleading.
+## Current State and Scope Boundary
 
-The owner calls this a debuff skill because of its ongoing effect. That request does **not** itself authorise changing the current engine `skill_type="damage"`, attack classifications, status behaviour, or battle rules.
+The previous task, UI-033, is **Completed** in `Current_Task.md` and `Completed.md`; it is not being overwritten while active. `battle_api/progression.py` currently has two authoritative `STAGE_BATTLES` curricula, profile-scoped SQLite `stage_progress`, completion receipts, and five existing hero unlock rewards. Stage access and `GET /api/v1/stages` currently use one sequential progress path. The stage creation route in `battle_api/app.py` creates a fixed computer enemy and stores stage/profile context; the completion route calls `commit_victory` for every friendly stage victory. `battle_api/adapter.py::_drain_automatic_turns` currently calls `actor.ai_choose_skill`/`ai_choose_target`, reconciles to `_legal_actions` and `_valid_target_ids`, and uses random fallback for invalid strategy output. `TeamBuilder.tsx` has a structured variant and a bottom footer with Enter Battle on the right; `BattleExperience.tsx` owns stage selection, launch, and completion. The attached owner screenshot marks the empty **bottom-left of that footer** for the new selector.
+
+For this task, “campaign” means the backend-registered structured-stage curricula. **Arena Run and Engineering Test & Debugging are separate flows and retain their existing AI/default behavior and UI**; do not accidentally switch them to Learner. The normal generic battle API must remain backward-compatible. Preserve all unrelated uncommitted work.
+
+## Pre-code Gate and Architectural Risks
+
+**Core gate (2026-10-27, before implementation):** High-risk backend/UI/save
+contract change; all five configured roles are selected for coordinated
+dispatch: PM (sequence/contracts), engine developer (authority and
+persistence), UI developer (typed structured flow/selector), test automator
+(cross-boundary regression), reviewer (independent final gate). No role is
+omitted. Sequence: (1) add a typed, session-bound mode and profile-scoped
+campaign access/completion with existing stage rows interpreted as Learner;
+(2) branch only the enemy computer decision policy at the adapter's legal
+action boundary, using session RNG and preserving Tactics' existing path;
+(3) consume server mode availability in structured Team Builder and bind mode
+to launch/return/attempt identity; (4) validate migration, legality, rewards,
+API security, UI accessibility, and unchanged Arena/Debug before review.
+Risks/decisions: no client-derived unlocks, no stat/formula fork, no universal
+campaign length; mode is immutable after stage launch and completion reads the
+session, while Learner remains the compatibility default for legacy stage
+create requests. Existing dirty files are preserved; no commit/push.
+
+Before implementation edits, Core should write a **concise** implementation sequence and risk decisions in this task record: (1) mode field, stage access, save migration/completion ownership; (2) AI policy boundary and legal fallback; (3) selector/launch/return flow; (4) focused validation. No separate lengthy study or owner approval wait is required unless a real design ambiguity blocks safe implementation.
+
+Key risks to resolve explicitly:
+
+- The current adapter mixes hero-strategy selection with legality repair. Learner must skip the hero-specific strategy entirely and sample from the **already-authoritative legal actions and valid target IDs**, with the required distinct target count; forced turns, skips, casting, summons, and no-action cases must keep a legal resolution path. Do not introduce a client-side combat rule. Apply Learner to computer-controlled **enemy** decisions, not friendly auto-controlled summons or other player-side automatic behavior.
+- The current stage/progression contract is sequential. Tactics needs campaign-scoped unlock and nonsequential per-battle completion, while Learner retains sequential access and all current rewards. Use the actual `STAGE_BATTLES[stage_id]` required set/count, not a new universal “nine battles” constant. Existing completed stage records represent Learner history and should unlock Tactics on migration/read without replay or data loss.
+- A mode must be bound to the stage battle session/profile and included in the process-local `attemptId` fingerprint. A transport retry reuses the same mode/session; the same attempt ID cannot silently return or create a different mode. The completion route must use the **server session's mode**, not a mode supplied at completion time.
+- `TeamBuilder` remounts when the selected stage battle changes. Keep the selected mode stable while navigating battles within a campaign entry, but default to Learner on entering a new campaign/save context. Do not let a stale UI state launch a locked Tactics battle.
 
 ## Requirements
 
-1. Audit the live Holy Word Punishment application and round-start activation paths, including first application versus recycled debuff, rounding, per-activation variation, target receipt/mitigation, status duration, and already-active status. Establish the truthful **per-target, per-activation baseline power range** if possible. Do not infer it solely from 7–11 or random sampling. If the branches cannot be expressed as one reliable range, use an explicit unavailable/conditional presentation instead of inventing a number; explain the branch distinction concisely.
-2. Extend the existing read-only hero catalogue with a typed, additive ongoing/continuous-damage reference for this skill. Prefer the existing numeric-reference conventions where suitable. Keep mechanics and formulas engine-owned; React and editable YAML must not calculate or define this value. Catalogue reads must remain deterministic, non-mutating, and RNG-free.
-3. Render a **Continuous Damage** box directly after **Base Damage** in the generic Gallery fact order, but only when an authoritative applicable continuous-damage reference is supplied. Preserve the current two-column flow and narrow-screen collapse. Label the value as damage **per activation/tick**, not a guaranteed total or actual HP lost. Use a short note or formula popup if needed to make conditional/new-versus-reused behaviour honest; do not overload the box with a multi-round total.
-4. Preserve the existing Base Damage 7–11, Target Type, Skill Type, Attack Type, Damage Nature, Damage Type, and Cool Down conventions. Do not show Continuous Damage for unrelated skills without an audited reference, and do not change combat, status, RNG, or battle-preview behaviour to satisfy a static Gallery display.
-5. Update only directly affected GDD/web-UI/API contract documentation and add a concise completion note stating the audited presentation and any limitation. Preserve unrelated dirty owner YAML/generated content and the read-only `UI_Review_Human.md`.
+### AI and shared combat rules
+
+1. Add a shared authoritative decision-policy boundary at the adapter/engine layer without duplicating the battle engine. In Learner, randomly select one currently legal skill action and, where required, a legal distinct target set of the exact published cardinality from that action's `validTargetIds` (including 0-target and multi-target skills). Use the session's isolated RNG. Do not optimize skill choice, heal targets, status combinations, or tactical priorities. Honor all existing cooldown, availability, target, forced-action, and control restrictions. If no ordinary action is legal, audit and use the existing lawful skip/fallback path; never fabricate an illegal command.
+2. Tactics must run the present hero-specific strategy and its existing legality reconciliation unchanged. Do not rewrite or rebalance those hero strategies. Preserve initial stat generation and all combat formulas/rules in both modes. With the same seed/configuration, mode selection itself must not alter hero construction or stats before AI decisions; divergent decisions/results afterward are expected. Preserve established fresh per-attempt randomness and explicit seeded debug/test reproducibility.
+3. Preserve the selected stage mode immutably for the whole session, including opening automatic turns, later turns, completion, and retries. Generic, Arena, and Debug creation retain their existing behavior unless a narrow compatibility field is required; do not expose an unlocked Tactics bypass via another route.
+
+### Campaign progression and persistence
+
+4. New save slots expose Learner as available/default and Tactics as locked **per campaign**. Completing every required battle in one campaign's Learner progression unlocks only that campaign's Tactics. Learner remains playable afterward. In an unlocked Tactics campaign, any listed battle may launch in any order, while Learner remains sequential. Backend stage access and stage-list/progression responses must publish/validate mode-specific availability; React must not infer unlock authority from a local counter.
+5. Extend the profile-scoped SQLite save system with durable mode unlock/completion state and safe migration/backward-compatible handling for existing schema versions and save slots. Existing stage completion is Learner completion. Completed legacy campaigns must gain Tactics access without altering their hero/reward records; incomplete ones remain locked. New slot creation/overwrite, reload, and switching slots must preserve isolation. Do not hardcode one campaign's completion count into new mode logic.
+6. On authoritative friendly Learner victory, retain exactly the current sequential progress, hero unlocks, item-card reward, once-only grants, and profile-switch protection. A Tactics friendly victory records only that campaign/battle's Tactics completion, safely and idempotently, without increasing Learner progress or granting/duplicating hero or item rewards. Defeat, draw, resign, repeated completion, transport retry, and slot switch must not grant or leak progress. Persist enough stage/battle/profile/mode completion identity for later badge work, but do not implement badges. Priest Discipline remains without an unlock route; Hero Gallery and existing hero ownership rules remain unchanged.
+
+### Typed API and UI
+
+7. Add a typed `learner`/`tactics` mode field to the structured-stage battle-create request and immutable server session. Validate unknown values and locked Tactics launches server-side, including manipulated requests. Provide a safe Learner default for omitted mode on legacy **structured-stage** callers; do not let a default bypass Tactics authorization. Expose typed campaign-specific mode availability/completion to the frontend through the existing authoritative progression/stage response, and update strict client decoding/contracts. Bind mode into the attempt fingerprint and authoritative completion path; retain compatible 1v1/2v2/3v3 launch and fixed enemy configuration.
+8. In the **structured Team Builder footer only**, place a compact horizontal `[ Learner ] [ Tactics ]` segmented selector at the screenshot's bottom-left, with Enter Battle remaining on the right. Use dark charcoal/near-black, thin muted gold/bronze edge, subtle premium fantasy treatment, compact typography, a small book icon for Learner and crossed swords for Tactics. Selected mode is clearly gold. A locked Tactics option has a small lock, muted disabled styling, and cannot select or launch. Use accessible radio/segmented semantics, focus and keyboard/touch behavior, and clear selected/locked state without relying only on colour. No descriptions, tooltips, instructional text, confirmation dialogs, or additional modes. Keep the two options and footer usable on the project's responsive sizes without disturbing hero assignment, formation, validation, stage selection, or Enter Battle.
+9. When Tactics is selected and unlocked, stage battle selection offers **every** battle in that campaign regardless of Learner sequence; Learner keeps its existing access and completion display. Carry the selected mode through the existing Team Builder → battle provider → stage-create API path; switching mode or battle before launch must not create a session. On return from a battle, preserve a coherent mode/selection state and never mislabel Tactics completion as a Learner reward. Do not display a new reward screen for Tactics.
 
 ## Out of Scope
 
-- Damage-balancing or correction of the live skill's different new/recycled rounding rules; flag a true mechanics defect separately instead of silently changing gameplay.
-- Aggregate damage across the debuff's lifetime, guaranteed application to an already-affected target, battle-scene transparency preview, or new boxes for other periodic skills.
-- A Gallery redesign, editorial introduction rewrite, commits, pushes, or PRs without a separate owner request.
+- Stat/HP/resistance/skill/damage/cooldown/formation balance changes, AI strategy rewrites, hero-unlock changes, or a new Priest Discipline reward.
+- Arena/Debug mode selectors or difficulty changes; Hero Gallery changes; additional difficulty tiers.
+- Badge art, inventory, badge reward grants/screens, or unrelated progression systems.
+- Commits, pushes, or PRs without a separate explicit owner request.
 
-## Relevant Files and Boundaries
+## Relevant Files and Documentation
 
-- Engine truth: `heroes/priest.py` (`holy_word_punishment`) and `game/status_effect_manager.py` (Punishment tick).
-- Read-only catalogue: `battle_api/adapter.py` reference generation and `battle_api/models.py` typed reference; affected focused Python catalogue tests.
-- Client contract and display: `web-ui/lib/battle/types.ts`, strict catalogue decoding in `web-ui/lib/battle/liveProvider.ts`, `web-ui/lib/manual/heroGalleryPresentation.ts`, `web-ui/components/manual/HeroGalleryExperience.tsx`, and focused Gallery tests. CSS only if existing grid cannot present the new row cleanly.
-- Documentation: `docs/GDD/Skill_System.md`, `docs/web-ui/PYTHON_ADAPTER_API.md`, `docs/web-ui/WEB_UI_ARCHITECTURE.md`, `docs/web-ui/Style_Guide.md`, and the relevant catalogue contract if its schema is documented there. Update only what actually changes.
-- Historical status: `docs/Codex/Completed.md`; current task: this file.
+- Engine/AI: `battle_api/adapter.py` (`BattleSession`, `_drain_automatic_turns`, `_legal_actions`, `_valid_target_ids`), approved hero strategy methods under `heroes/`, and existing seeded AI/formation tests.
+- Campaign/API/save: `battle_api/progression.py` (`STAGE_BATTLES`, migration, access, `commit_victory`, stage response), `battle_api/app.py` (stage create/completion and route boundaries), `battle_api/models.py`, `battle_api/attempts.py`, and focused progression/migration/API tests.
+- Client: `web-ui/components/battle/TeamBuilder.tsx`, `BattleExperience.tsx`, `web-ui/lib/battle/types.ts`, `liveProvider.ts`, `web-ui/app/globals.css`, and focused Team Builder/structured-stage tests. Attached screenshot is placement reference, not a source of game rules.
+- Stable docs to reconcile: `docs/GDD/Hero_System.md`, `Skill_System.md`, `Game_Design_Document.md` (as affected); `docs/Technical/Architecture.md`, `Player_Data_and_Save_System.md`; `docs/web-ui/WEB_UI_ARCHITECTURE.md`, `Style_Guide.md`, `Screen_Flow.md`, `BATTLE_DATA_CONTRACT_V1.md`, `PYTHON_ADAPTER_API.md`. Completion evidence belongs in `docs/Codex/Completed.md` and this task's status.
 
-## Acceptance Criteria
+## Acceptance and Validation
 
-- Expanding Holy Word Punishment shows **Base Damage 7–11** followed immediately by **Continuous Damage**, with truthful per-activation wording and an audited value or explicit unavailable/conditional explanation.
-- Other facts and the existing responsive layout remain intact; unrelated skills do not gain an unjustified box.
-- Typed API/client validation accepts the additive field and rejects malformed supplied values. Catalogue evaluation remains read-only and RNG-free.
-- Focused tests cover new/recycled and already-active cases, range boundaries/rounding or the reason for an unavailable state, row order/conditional rendering, and no change to live combat outcomes.
-
-## Validation Required
-
-Run focused backend catalogue/skill-reference tests and focused frontend Gallery presentation tests, plus TypeScript typecheck and a scoped diff check. Inspect one expanded card at desktop and a narrow width if the local Gallery is available. Do not run broad combat suites or repeat extensive review for this narrow static-reference addition. Record any existing unrelated content-check limitation without rewriting owner content.
+- New and migrated saves have correct campaign-specific Learner/Tactics access; Tactics unlocks only after the corresponding Learner curriculum, persists across restart, and never leaks across slots. Direct API attempts at locked Tactics and invalid modes are rejected. Any-order Tactics selection works; Learner remains sequential.
+- Learner choices are random among only authoritative legal actions/targets, including no-target and multi-target actions, and cannot produce an invalid command. Forced/skip/no-action cases remain lawful. Tactics seeded action/target behavior matches its pre-change path. Both modes share all combat data and rules; no difficulty stat modifiers appear.
+- Learner victory grants existing rewards once. Tactics victory records its own mode/battle completion once and grants no Learner progress, hero unlock, item card, or badge. Defeat/draw/resign/duplicate completion and profile switch behave safely. Attempt-ID retries cannot cross modes.
+- Structured footer matches the marked bottom-left area and stays responsive; locked Tactics is visibly disabled, accessible, and non-selectable; unlocked switching is exclusive and sent to backend. Arena/Debug remain unchanged.
+- Test new-save defaults, legacy migration and completed/incomplete profiles, both campaign unlock paths, save isolation/reload/overwrite, direct-route security, mode-bound retries/session/completion, randomized legal targeting and strategic parity, unchanged stat/formula/hero rewards, and UI pointer/touch/keyboard/responsive flows. Run relevant backend/frontend regressions, typecheck, lint, production build, and diff check. Use a concise browser walkthrough for one locked and one unlocked campaign if feasible; report unavailable cases honestly. Avoid unrelated full-suite repetition.
 
 ## Complexity and Agent Assignments
 
-**Assessment:** Small cross-boundary typed-data/UI change with moderate numeric-truth risk. Use only three roles, in sequence where needed.
+**Assessment:** High-risk cross-system feature affecting AI legality, profile migrations/rewards, API security, and campaign UI. All five configured roles have concrete ownership, with coordinated waves if concurrency is limited.
 
-- **game-engine-developer:** Audit authoritative skill/status formulas and branches; own the additive typed catalogue reference and a focused backend test. No gameplay changes.
-- **ui-developer:** Consume the typed fact in the existing generic row builder/client contract; own focused UI coverage, responsive check, and directly affected UI docs.
-- **reviewer:** One targeted independent check of numeric truth, typed compatibility, row order, scope, and validation evidence.
-- **Omitted:** `project-manager` is unnecessary for this small handoff; `test-automator` is unnecessary because each implementation specialist owns the few focused tests at their boundary. Core still records the role-selection gate and final completion evidence.
+- **project-manager:** Own brief pre-code sequence/risk gate and cross-boundary contract decision, track mode/progression/attempt invariants and agent dispatch, coordinate final documentation and completion record.
+- **game-engine-developer:** Own policy branching, mode-bound session/API authority, stage access/save migration/completion isolation, and focused backend tests; preserve Tactics strategy and all combat rules.
+- **ui-developer:** Own mode selector and mode-aware structured-stage flow, typed provider consumption, responsive/accessibility behavior, and focused frontend checks; no client AI or unlock calculation.
+- **test-automator:** Own targeted cross-boundary seeded/legal-AI, persistence/migration/profile/reward/security, and UI integration regressions without duplicating specialist unit tests.
+- **reviewer:** Independently inspect fairness/parity, legal fallback, migration and reward safety, mode-locked API, attempt identity, UI accessibility, and validation evidence; actionable findings only.
 
-Core should report only completion or a genuine owner-decision blocker; avoid intermediate cross-chat traffic.
-
-## Completion — 2026-10-24
-
-Holy Word Punishment now publishes an engine-authored, per-activation
-Continuous Damage reference immediately after Base Damage in the Gallery.
-The original UI-032 audit recorded 8–16 because new/recycled debuffs had
-different rounding. The owner subsequently changed the recycled path to
-`math.ceil`, so the current baseline power is 9–16 for both paths after the
-tick's ±1 variation. The displayed fact is not guaranteed HP loss or a
-multi-round total; an already-active target receives direct damage without
-refreshing the debuff. Other skills publish not-applicable references and do
-not gain a box. Live mechanics and RNG are unchanged.
-
-The game-engine-developer owned the formula audit, additive typed catalogue,
-focused backend tests, and engine/API/contract documentation. The ui-developer
-owned the strict client type/decoder, generic Gallery row, focused frontend
-tests, UI documentation, and desktop/narrow inspection. The reviewer
-independently approved the numeric truth, compatibility, scope, and row order
-with no blocking finding. PM and test-automator were omitted because this
-small handoff had focused validation at each specialist boundary.
-
-Focused backend catalogue tests: 47 passed; focused Gallery tests: 25 passed;
-Python compilation, TypeScript typecheck, and scoped diff-check passed.
-Browser inspection at 1440×900 and 390×844 confirmed first-two fact order,
-two-/one-column layouts, and no horizontal overflow. The normal npm test
-wrapper remains blocked by pre-existing stale owner-generated Gallery content;
-direct Vitest passed without rewriting it. Unrelated dirty owner files were
-preserved. No commit or push was performed.
-
-**Owner follow-up:** The engine change to recycled rounding was owner-authored.
-The catalogue, box, focused tests, and authoritative documentation were
-aligned to 9–16; the box now displays only the range, without a suffix,
-explanatory note, or new/recycled conditions.
-
-## Core pre-code dispatch gate — 2026-10-24
-
-This is a small additive catalogue/UI change with moderate risk of misstating
-the two live Punishment rounding branches. The game-engine-developer owns the
-read-only audited reference, typed server model, focused backend tests, and
-directly affected engine/API documentation. The ui-developer owns typed client
-decoding, generic Gallery row placement, focused frontend tests, responsive
-inspection, and directly affected UI documentation. The reviewer independently
-checks numeric truth, compatibility, row order, scope, and evidence after both
-changes land. Project-manager and test-automator are omitted for the narrow
-handoff because each specialist can validate its own boundary. Core owns the
-final task and completion record. All prior dirty Gallery, owner review, and
-rule-document edits remain outside UI-032 and must be preserved.
+Core should report one concise completion result or a genuine owner-decision blocker. Do not send routine internal progress across chats, and do not commit or push without explicit owner instruction.

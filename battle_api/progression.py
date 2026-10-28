@@ -16,13 +16,14 @@ import uuid
 
 
 DEFAULT_PROFILE_ID = "profile.local.default"
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 ARENA_RUN_SCHEMA_VERSION = 1
 ARENA_NODE_COUNT = 12
 ARENA_REQUIRED_HERO_COUNT = 6
 SAVE_SLOT_IDS = (1, 2, 3, 4, 5)
 ITEM_CARD_REWARD_ID = "reward.item-card.basic"
 StageId = Literal["paladins-altar", "warriors-barrack"]
+StageMode = Literal["learner", "tactics"]
 STAGE_DISPLAY_NAMES: dict[StageId, str] = {
     "paladins-altar": "Paladin's Altar",
     "warriors-barrack": "Warrior's Barrack",
@@ -310,8 +311,18 @@ class ProgressionStore:
                     profile_id TEXT NOT NULL REFERENCES profiles(profile_id),
                     battle_id TEXT NOT NULL,
                     stage_id TEXT NOT NULL,
-                    battle_index INTEGER NOT NULL CHECK (battle_index BETWEEN 1 AND 9),
+                    battle_index INTEGER NOT NULL CHECK (battle_index >= 1),
                     PRIMARY KEY (profile_id, battle_id)
+                );
+                CREATE TABLE stage_mode_completions (
+                    profile_id TEXT NOT NULL REFERENCES profiles(profile_id),
+                    stage_id TEXT NOT NULL,
+                    battle_index INTEGER NOT NULL CHECK (battle_index >= 1),
+                    mode TEXT NOT NULL CHECK (mode IN ('learner', 'tactics')),
+                    completion_battle_id TEXT,
+                    completed_at TEXT NOT NULL,
+                    PRIMARY KEY (profile_id, stage_id, battle_index, mode),
+                    UNIQUE (profile_id, completion_battle_id)
                 );
                 CREATE TABLE arena_runs (
                     run_id TEXT PRIMARY KEY,
@@ -382,11 +393,14 @@ class ProgressionStore:
                 row = {"value": "2"}
             if row["value"] == "2":
                 self._migrate_v2(connection)
+                row = {"value": "3"}
+            if row["value"] == "3":
+                self._migrate_v3(connection)
             elif row["value"] != str(SCHEMA_VERSION):
                 raise ProgressionStoreError(
                     "Persistent progression has an unsupported schema. Retry later."
                 )
-            self._validate_v3(connection)
+            self._validate_v4(connection)
         finally:
             connection.close()
 
@@ -494,7 +508,56 @@ class ProgressionStore:
                 "Arena progression migration could not preserve the profiles. Retry later."
             ) from exc
 
-    def _validate_v3(self, connection: sqlite3.Connection) -> None:
+    def _migrate_v3(self, connection: sqlite3.Connection) -> None:
+        """Add mode-specific completion history and preserve Learner progress."""
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            connection.execute(
+                """CREATE TABLE IF NOT EXISTS stage_mode_completions (
+                    profile_id TEXT NOT NULL REFERENCES profiles(profile_id),
+                    stage_id TEXT NOT NULL,
+                    battle_index INTEGER NOT NULL CHECK (battle_index >= 1),
+                    mode TEXT NOT NULL CHECK (mode IN ('learner', 'tactics')),
+                    completion_battle_id TEXT,
+                    completed_at TEXT NOT NULL,
+                    PRIMARY KEY (profile_id, stage_id, battle_index, mode),
+                    UNIQUE (profile_id, completion_battle_id)
+                )"""
+            )
+            migrated_at = self._timestamp()
+            rows = connection.execute(
+                """SELECT profile_id, stage_id, highest_completed_battle
+                   FROM stage_progress"""
+            ).fetchall()
+            connection.executemany(
+                """INSERT OR IGNORE INTO stage_mode_completions(
+                       profile_id, stage_id, battle_index, mode,
+                       completion_battle_id, completed_at
+                   ) VALUES (?, ?, ?, 'learner', NULL, ?)""",
+                (
+                    (row["profile_id"], row["stage_id"], battle_index, migrated_at)
+                    for row in rows
+                    for battle_index in range(1, row["highest_completed_battle"] + 1)
+                ),
+            )
+            connection.execute(
+                "UPDATE metadata SET value = '4' WHERE key = 'schema_version'"
+            )
+            connection.commit()
+        except sqlite3.Error as exc:
+            connection.rollback()
+            raise ProgressionStoreError(
+                "Campaign-mode migration could not preserve the profiles. Retry later."
+            ) from exc
+
+    def _validate_v4(self, connection: sqlite3.Connection) -> None:
+        if connection.execute(
+            """SELECT 1 FROM sqlite_master
+               WHERE type = 'table' AND name = 'stage_mode_completions'"""
+        ).fetchone() is None:
+            raise ProgressionStoreError(
+                "The campaign-mode progression schema is incomplete. Retry later."
+            )
         slots = connection.execute(
             "SELECT slot_id, profile_id FROM save_slots ORDER BY slot_id"
         ).fetchall()
@@ -635,6 +698,7 @@ class ProgressionStore:
                 )
             if old_profile_id is not None:
                 for table in (
+                    "stage_mode_completions",
                     "battle_completions",
                     "granted_rewards",
                     "stage_progress",
@@ -778,12 +842,65 @@ class ProgressionStore:
                 "The stored stage progression is incomplete or corrupt. Retry later."
             )
         if any(
-            bool(row["completed"]) != (row["highest_completed_battle"] == 9)
+            bool(row["completed"])
+            != (row["highest_completed_battle"] == len(STAGE_BATTLES[row["stage_id"]]))
             for row in progress_rows
         ):
             raise ProgressionStoreError(
                 "The stored stage completion state is corrupt. Retry later."
             )
+        has_mode_table = connection.execute(
+            """SELECT 1 FROM sqlite_master
+               WHERE type = 'table' AND name = 'stage_mode_completions'"""
+        ).fetchone()
+        mode_rows = (
+            connection.execute(
+                """SELECT stage_id, battle_index, mode
+                   FROM stage_mode_completions
+                   WHERE profile_id = ?
+                   ORDER BY stage_id, mode, battle_index""",
+                (profile_id,),
+            ).fetchall()
+            if has_mode_table is not None
+            else [
+                {
+                    "stage_id": row["stage_id"],
+                    "battle_index": battle_index,
+                    "mode": "learner",
+                }
+                for row in progress_rows
+                for battle_index in range(1, row["highest_completed_battle"] + 1)
+            ]
+        )
+        completed_by_stage_mode: dict[tuple[str, str], list[int]] = {}
+        for row in mode_rows:
+            battles = STAGE_BATTLES.get(row["stage_id"])
+            if (
+                battles is None
+                or row["mode"] not in {"learner", "tactics"}
+                or row["battle_index"] < 1
+                or row["battle_index"] > len(battles)
+            ):
+                raise ProgressionStoreError(
+                    "The stored campaign-mode completion is corrupt. Retry later."
+                )
+            completed_by_stage_mode.setdefault(
+                (row["stage_id"], row["mode"]), []
+            ).append(row["battle_index"])
+        for row in progress_rows:
+            expected_learner = list(range(1, row["highest_completed_battle"] + 1))
+            if completed_by_stage_mode.get((row["stage_id"], "learner"), []) != expected_learner:
+                raise ProgressionStoreError(
+                    "The stored Learner completion history is corrupt. Retry later."
+                )
+            if (
+                completed_by_stage_mode.get((row["stage_id"], "tactics"), [])
+                and row["highest_completed_battle"]
+                != len(STAGE_BATTLES[row["stage_id"]])
+            ):
+                raise ProgressionStoreError(
+                    "The stored Tactics completion history is locked or corrupt. Retry later."
+                )
         if not set(unlocked).issubset(ALL_HERO_IDS):
             raise ProgressionStoreError(
                 "The stored hero progression is corrupt. Retry later."
@@ -804,19 +921,43 @@ class ProgressionStore:
             "profileId": profile_id,
             "unlockedHeroDefinitionIds": unlocked,
             "stageProgress": [
-                self._progress_row(row["stage_id"], row["highest_completed_battle"])
+                self._progress_row(
+                    row["stage_id"],
+                    row["highest_completed_battle"],
+                    completed_by_stage_mode,
+                )
                 for row in progress_rows
             ],
             "grantedRewards": rewards,
         }
 
     @staticmethod
-    def _progress_row(stage_id: str, highest_completed: int) -> dict[str, Any]:
+    def _progress_row(
+        stage_id: str,
+        highest_completed: int,
+        completed_by_stage_mode: dict[tuple[str, str], list[int]],
+    ) -> dict[str, Any]:
+        required_count = len(STAGE_BATTLES[stage_id])  # type: ignore[index]
+        learner_completed = completed_by_stage_mode.get((stage_id, "learner"), [])
+        tactics_completed = completed_by_stage_mode.get((stage_id, "tactics"), [])
+        modes = {
+            "learner": {
+                "available": True,
+                "completed": len(learner_completed) == required_count,
+                "completedBattleIndices": learner_completed,
+            },
+            "tactics": {
+                "available": len(learner_completed) == required_count,
+                "completed": len(tactics_completed) == required_count,
+                "completedBattleIndices": tactics_completed,
+            },
+        }
         return {
             "stageId": stage_id,
             "highestCompletedBattle": highest_completed,
-            "unlockedBattle": min(highest_completed + 1, 9),
-            "completed": highest_completed == 9,
+            "unlockedBattle": min(highest_completed + 1, required_count),
+            "completed": highest_completed == required_count,
+            "modes": modes,
         }
 
     def assert_player_team_unlocked(
@@ -1276,7 +1417,10 @@ class ProgressionStore:
         stage_id: str,
         battle_index: int,
         expected_profile_id: str | None = None,
+        mode: StageMode = "learner",
     ) -> StageBattle:
+        if mode not in {"learner", "tactics"}:
+            raise StageAccessError("invalidStageMode", "Unknown structured-stage mode.")
         battle = stage_battle(stage_id, battle_index)
         connection: sqlite3.Connection | None = None
         try:
@@ -1296,7 +1440,15 @@ class ProgressionStore:
                 raise ProgressionStoreError(
                     "The stored stage progression is incomplete. Retry later."
                 )
-            if battle_index > min(row["highest_completed_battle"] + 1, 9):
+            required_count = len(STAGE_BATTLES[battle.stage_id])
+            if mode == "tactics" and row["highest_completed_battle"] != required_count:
+                raise StageAccessError(
+                    "stageModeLocked",
+                    "Complete this campaign in Learner mode before starting Tactics.",
+                )
+            if mode == "learner" and battle_index > min(
+                row["highest_completed_battle"] + 1, required_count
+            ):
                 raise StageAccessError(
                     "stageBattleLocked",
                     "Complete the preceding battle before starting this battle.",
@@ -1318,8 +1470,11 @@ class ProgressionStore:
         battle_id: str,
         stage_id: str,
         battle_index: int,
+        mode: StageMode = "learner",
         expected_profile_id: str | None = None,
     ) -> dict[str, Any]:
+        if mode not in {"learner", "tactics"}:
+            raise StageAccessError("invalidStageMode", "Unknown structured-stage mode.")
         battle = stage_battle(stage_id, battle_index)
         connection = self._connection()
         try:
@@ -1331,8 +1486,13 @@ class ProgressionStore:
                     "The active save slot changed; start the battle again.",
                 )
             duplicate = connection.execute(
-                """SELECT 1 FROM battle_completions
-                   WHERE profile_id = ? AND battle_id = ?""",
+                (
+                    """SELECT 1 FROM battle_completions
+                       WHERE profile_id = ? AND battle_id = ?"""
+                    if mode == "learner"
+                    else """SELECT 1 FROM stage_mode_completions
+                       WHERE profile_id = ? AND completion_battle_id = ?"""
+                ),
                 (profile_id, battle_id),
             ).fetchone()
             if duplicate is not None:
@@ -1354,27 +1514,68 @@ class ProgressionStore:
                     "The stored stage progression is incomplete. Retry later."
                 )
             highest = row["highest_completed_battle"]
-            if battle_index > min(highest + 1, 9):
+            required_count = len(STAGE_BATTLES[battle.stage_id])
+            if mode == "tactics" and highest != required_count:
+                raise StageAccessError(
+                    "stageModeLocked",
+                    "Complete this campaign in Learner mode before committing Tactics.",
+                )
+            if mode == "learner" and battle_index > min(highest + 1, required_count):
                 raise StageAccessError(
                     "stageBattleLocked",
                     "Complete the preceding battle before committing this victory.",
                 )
 
-            connection.execute(
-                """INSERT INTO battle_completions(
-                       profile_id, battle_id, stage_id, battle_index
-                   ) VALUES (?, ?, ?, ?)""",
-                (profile_id, battle_id, stage_id, battle_index),
-            )
-            if battle_index == highest + 1:
+            if mode == "tactics":
+                existing_completion = connection.execute(
+                    """SELECT 1 FROM stage_mode_completions
+                       WHERE profile_id = ? AND stage_id = ?
+                         AND battle_index = ? AND mode = 'tactics'""",
+                    (profile_id, stage_id, battle_index),
+                ).fetchone()
+                if existing_completion is not None:
+                    progression = self._read_progression(connection, profile_id)
+                    connection.commit()
+                    return {
+                        "alreadyCommitted": True,
+                        "newlyGrantedRewards": [],
+                        "progression": progression,
+                    }
                 connection.execute(
-                    """UPDATE stage_progress SET highest_completed_battle = ?,
-                           completed = ? WHERE profile_id = ? AND stage_id = ?""",
-                    (battle_index, int(battle_index == 9), profile_id, stage_id),
+                    """INSERT INTO stage_mode_completions(
+                           profile_id, stage_id, battle_index, mode,
+                           completion_battle_id, completed_at
+                       ) VALUES (?, ?, ?, 'tactics', ?, ?)""",
+                    (profile_id, stage_id, battle_index, battle_id, self._timestamp()),
                 )
+            else:
+                connection.execute(
+                    """INSERT INTO battle_completions(
+                           profile_id, battle_id, stage_id, battle_index
+                       ) VALUES (?, ?, ?, ?)""",
+                    (profile_id, battle_id, stage_id, battle_index),
+                )
+                connection.execute(
+                    """INSERT OR IGNORE INTO stage_mode_completions(
+                           profile_id, stage_id, battle_index, mode,
+                           completion_battle_id, completed_at
+                       ) VALUES (?, ?, ?, 'learner', ?, ?)""",
+                    (profile_id, stage_id, battle_index, battle_id, self._timestamp()),
+                )
+                if battle_index == highest + 1:
+                    connection.execute(
+                        """UPDATE stage_progress SET highest_completed_battle = ?,
+                               completed = ? WHERE profile_id = ? AND stage_id = ?""",
+                        (
+                            battle_index,
+                            int(battle_index == required_count),
+                            profile_id,
+                            stage_id,
+                        ),
+                    )
 
             newly_granted: list[dict[str, Any]] = []
-            reward = battle.reward
+            reward = battle.reward if mode == "learner" else None
             if reward is not None:
                 cursor = connection.execute(
                     """INSERT OR IGNORE INTO granted_rewards(profile_id, reward_id, count)
@@ -1442,6 +1643,7 @@ def stages_response(progression: dict[str, Any]) -> dict[str, Any]:
             "stageId": stage_id,
             "displayName": STAGE_DISPLAY_NAMES[stage_id],
             "progress": stage_progress,
+            "modes": stage_progress["modes"],
             "battles": [
                 {
                     "id": battle.battle_id,

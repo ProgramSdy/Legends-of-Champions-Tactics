@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from datetime import datetime
+import math
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 HeroDefinitionId = Literal[
@@ -46,6 +47,39 @@ class ApiModel(BaseModel):
 
 class StrictApiModel(ApiModel):
     model_config = ConfigDict(populate_by_name=True, extra="forbid")
+
+
+class BattleCombatantStatValue(StrictApiModel):
+    """One authoritative current stat and its signed starting-battle delta."""
+
+    current: int | float
+    delta: int | float
+
+    @field_validator("current", "delta", mode="before")
+    @classmethod
+    def validate_finite_number(cls, value):
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise ValueError("battle stat values must be numbers")
+        if not math.isfinite(value):
+            raise ValueError("battle stat values must be finite")
+        return value
+
+
+class BattleCombatantResistanceStats(StrictApiModel):
+    fire: BattleCombatantStatValue
+    frost: BattleCombatantStatValue
+    arcane: BattleCombatantStatValue
+    shadow: BattleCombatantStatValue
+    death: BattleCombatantStatValue
+    poison: BattleCombatantStatValue
+    nature: BattleCombatantStatValue
+
+
+class BattleCombatantStats(StrictApiModel):
+    damage: BattleCombatantStatValue
+    defence: BattleCombatantStatValue
+    agility: BattleCombatantStatValue
+    resistances: BattleCombatantResistanceStats
 
 
 class HeroConfiguredRange(StrictApiModel):
@@ -691,6 +725,7 @@ class RetryableHttpErrorResponse(ApiModel):
 
 
 StageId = Literal["paladins-altar", "warriors-barrack"]
+StageMode = Literal["learner", "tactics"]
 RewardKind = Literal["heroUnlock", "itemCard"]
 
 
@@ -699,11 +734,23 @@ class GrantedReward(ApiModel):
     count: int = Field(ge=1)
 
 
+class CampaignModeProgress(ApiModel):
+    available: bool
+    completed: bool
+    completed_battle_indices: list[int] = Field(alias="completedBattleIndices")
+
+
+class CampaignModes(ApiModel):
+    learner: CampaignModeProgress
+    tactics: CampaignModeProgress
+
+
 class StageProgress(ApiModel):
     stage_id: StageId = Field(alias="stageId")
-    highest_completed_battle: int = Field(alias="highestCompletedBattle", ge=0, le=9)
-    unlocked_battle: int = Field(alias="unlockedBattle", ge=1, le=9)
+    highest_completed_battle: int = Field(alias="highestCompletedBattle", ge=0)
+    unlocked_battle: int = Field(alias="unlockedBattle", ge=1)
     completed: bool
+    modes: CampaignModes
 
 
 class PlayerProgression(ApiModel):
@@ -728,7 +775,7 @@ class StageReward(ApiModel):
 
 class StageBattleDefinition(ApiModel):
     id: str
-    display_order: int = Field(alias="displayOrder", ge=1, le=9)
+    display_order: int = Field(alias="displayOrder", ge=1)
     battle_size: Literal[1, 2, 3] = Field(alias="battleSize")
     formation: FormationId | None
     enemy_definition_ids: list[HeroDefinitionId] = Field(alias="enemyDefinitionIds")
@@ -741,6 +788,7 @@ class StructuredStageDefinition(ApiModel):
     stage_id: StageId = Field(alias="stageId")
     display_name: str = Field(alias="displayName")
     progress: StageProgress
+    modes: CampaignModes
     battles: list[StageBattleDefinition]
 
 
@@ -756,6 +804,7 @@ class CreateStageBattleRequest(ApiModel):
     player_formation: FormationId | None = Field(
         default=None, alias="playerFormation"
     )
+    mode: StageMode = "learner"
     seed: int | None = None
     attempt_id: str | None = Field(
         default=None,

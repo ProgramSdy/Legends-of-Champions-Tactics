@@ -35,7 +35,7 @@ const skillIds: Record<string, string[]> = {
   "hero.warrior.defence": ["skill.warrior.devastate", "skill.warrior.shield_bash", "skill.warrior.thunder_pot"],
   "hero.warrior.berserker": ["skill.warrior.moon_slash", "skill.warrior.warlust", "skill.warrior.strike_of_meteorite", "skill.warrior.blood_frenzy"],
   "hero.mage.comprehensiveness": ["skill.mage.fireball", "skill.mage.arcane_missiles", "skill.mage.frost_bolt"],
-  "hero.paladin.retribution": ["skill.paladin.hammer_of_anger", "skill.paladin.crusader_strike", "skill.paladin.flash_of_light"],
+  "hero.paladin.retribution": ["skill.paladin.hammer_of_anger", "skill.paladin.crusader_strike", "skill.paladin.flash_of_light", "skill.paladin.wrath_of_crusader"],
   "hero.paladin.protection": ["skill.paladin.hammer_of_revenge", "skill.paladin.shield_of_righteous", "skill.paladin.heroric_charge", "skill.paladin.holy_aura"],
   "hero.paladin.holy": ["skill.paladin.purify_healing", "skill.paladin.holy_blast", "skill.paladin.shield_of_protection"],
   "hero.priest.comprehensiveness": ["skill.priest.holy_smite", "skill.priest.shadow_word_pain", "skill.priest.binding_heal"],
@@ -63,9 +63,9 @@ const gallery: HeroGalleryDefinition[] = ids.map(([definitionId, displayName, fa
   startingResistanceRanges: ["Fire", "Frost", "Arcane", "Shadow", "Death", "Poison", "Nature"].map((label) => ({ id: label.toLowerCase(), label, minimum: 1, maximum: 5 })),
   skills: skillIds[definitionId].map((skillId) => ({
     skillId,
-    displayName: skillId === "skill.paladin.holy_aura" ? "Holy Aura" : skillId === "skill.warrior.blood_frenzy" ? "Blood Frenzy" : skillId === "skill.priest.holy_concentration" ? "Holy Concentration" : skillId.split(".").at(-1)?.replaceAll("_", " ") ?? skillId,
-    isPassive: skillId === "skill.paladin.holy_aura" || skillId === "skill.warrior.blood_frenzy" || skillId === "skill.priest.holy_concentration",
-    reference: skillId === "skill.priest.holy_concentration"
+    displayName: skillId === "skill.paladin.holy_aura" ? "Holy Aura" : skillId === "skill.paladin.wrath_of_crusader" ? "Wrath of Crusader" : skillId === "skill.warrior.blood_frenzy" ? "Blood Frenzy" : skillId === "skill.priest.holy_concentration" ? "Holy Concentration" : skillId.split(".").at(-1)?.replaceAll("_", " ") ?? skillId,
+    isPassive: skillId === "skill.paladin.holy_aura" || skillId === "skill.paladin.wrath_of_crusader" || skillId === "skill.warrior.blood_frenzy" || skillId === "skill.priest.holy_concentration",
+    reference: skillId === "skill.priest.holy_concentration" || skillId === "skill.paladin.wrath_of_crusader"
       ? {
         target: { mode: "self" as const },
         skillType: "effect" as const,
@@ -98,8 +98,8 @@ function json(body: unknown, status = 200) {
 
 function progression() {
   return { contractVersion: "1.0", profileId: "profile.1", unlockedHeroDefinitionIds: ids.slice(0, 4).map(([id]) => id), stageProgress: [
-    { stageId: "paladins-altar", highestCompletedBattle: 0, unlockedBattle: 1, completed: false },
-    { stageId: "warriors-barrack", highestCompletedBattle: 0, unlockedBattle: 1, completed: false },
+    { stageId: "paladins-altar", highestCompletedBattle: 0, unlockedBattle: 1, completed: false, modes: { learner: { available: true, completed: false, completedBattleIndices: [] }, tactics: { available: false, completed: false, completedBattleIndices: [] } } },
+    { stageId: "warriors-barrack", highestCompletedBattle: 0, unlockedBattle: 1, completed: false, modes: { learner: { available: true, completed: false, completedBattleIndices: [] }, tactics: { available: false, completed: false, completedBattleIndices: [] } } },
   ], grantedRewards: [] };
 }
 
@@ -157,6 +157,11 @@ describe("UI-027 Manual and Gallery", () => {
     expect(within(properties!).getByText("10–20")).toBeVisible();
     await userEvent.setup().click(screen.getByRole("button", { name: "Paladin" }));
     expect(within(screen.getByRole("region", { name: "Approved heroes" })).getAllByRole("button")).toHaveLength(3);
+    await userEvent.setup().click(screen.getByRole("button", { name: /Retribution/ }));
+    await userEvent.setup().click(screen.getByRole("tab", { name: "Passive (1)" }));
+    await userEvent.setup().click(screen.getByText("Wrath of Crusader"));
+    expect(screen.getByText(/Hammer of Anger applies extra 3-5 holy damage/)).toBeVisible();
+    expect(screen.getByText(/Flash of Light applies extra 11-13 healing/)).toBeVisible();
     await userEvent.setup().click(screen.getByRole("button", { name: /Protection/ }));
     await userEvent.setup().click(screen.getByRole("tab", { name: /Passive/ }));
     expect(screen.getByText("Holy Aura")).toBeVisible();

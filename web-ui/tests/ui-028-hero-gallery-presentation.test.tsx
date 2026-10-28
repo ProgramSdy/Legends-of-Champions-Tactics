@@ -30,6 +30,38 @@ const skill: HeroSkillInventoryItem = {
 };
 
 describe("UI-028 expanded skill reference card", () => {
+  it("places Protection healing after damage for Heroic Charge and before target for Holy Aura", () => {
+    const chargeRows = buildSkillReferenceRows({
+      ...skill.reference,
+      baseDamage: { state: "unavailable", reasonId: "targetDependentBaseline", note: "" },
+      baseHealing: {
+        state: "available",
+        amountRange: { minimum: 28, maximum: 32 },
+        basis: "baselinePower",
+        note: "",
+        conditions: [],
+      },
+    });
+    expect(chargeRows.map((row) => row.id).slice(0, 3)).toEqual(["base-damage", "base-healing", "target"]);
+    expect(chargeRows[1].value).toBe("28–32");
+
+    const auraRows = buildSkillReferenceRows({
+      ...skill.reference,
+      target: { mode: "self" },
+      skillType: "effect",
+      baseDamage: { state: "notApplicable" },
+      baseHealing: {
+        state: "available",
+        amountRange: { minimum: 6, maximum: 8 },
+        basis: "baselinePower",
+        note: "",
+        conditions: [],
+      },
+    });
+    expect(auraRows.map((row) => row.id).slice(0, 2)).toEqual(["base-healing", "target"]);
+    expect(auraRows[0].value).toBe("6–8");
+  });
+
   it("places audited Continuous Damage directly after Base Damage and omits it when inapplicable", async () => {
     const punishment: HeroSkillInventoryItem = {
       ...skill,

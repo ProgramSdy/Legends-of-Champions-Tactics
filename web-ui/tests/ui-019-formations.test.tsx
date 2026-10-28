@@ -134,6 +134,7 @@ describe("UI-019 size-specific Team Builder formation contract", () => {
     await user.click(screen.getByRole("button", { name: "ENTER BATTLE" }));
 
     expect(onStart).toHaveBeenCalledWith({
+      mode: "learner",
       playerFormation: "all-front",
       playerTeam: ["hero.warrior.weapon_master", "hero.mage.comprehensiveness", "hero.priest.comprehensiveness"],
     });

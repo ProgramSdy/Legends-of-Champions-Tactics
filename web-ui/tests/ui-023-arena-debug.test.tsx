@@ -47,8 +47,8 @@ function progression(ids = unlockedIds): PlayerProgressionResponse {
     profileId: "profile.slot.1",
     unlockedHeroDefinitionIds: ids,
     stageProgress: [
-      { stageId: "paladins-altar", highestCompletedBattle: 0, unlockedBattle: 1, completed: false },
-      { stageId: "warriors-barrack", highestCompletedBattle: 0, unlockedBattle: 1, completed: false },
+      { stageId: "paladins-altar", highestCompletedBattle: 0, unlockedBattle: 1, completed: false, modes: { learner: { available: true, completed: false, completedBattleIndices: [] }, tactics: { available: false, completed: false, completedBattleIndices: [] } } },
+      { stageId: "warriors-barrack", highestCompletedBattle: 0, unlockedBattle: 1, completed: false, modes: { learner: { available: true, completed: false, completedBattleIndices: [] }, tactics: { available: false, completed: false, completedBattleIndices: [] } } },
     ],
     grantedRewards: [],
   };

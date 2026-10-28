@@ -47,6 +47,28 @@ class TurnDirective:
     consume_statuses: tuple[str, ...] = ()
 
 
+@dataclass(frozen=True)
+class BattleStatBaseline:
+    """Immutable per-instance stats before any opening battle effects.
+
+    This is deliberately separate from the engine's long-standing
+    ``original_*`` fields.  Those fields remain part of combat formulas, while
+    this read-only record gives API presentation a stable comparison point
+    without changing any rule-bearing calculation.
+    """
+
+    damage: int | float
+    defence: int | float
+    agility: int | float
+    fire: int | float
+    frost: int | float
+    arcane: int | float
+    shadow: int | float
+    death: int | float
+    poison: int | float
+    nature: int | float
+
+
 class Hero:
     # Class variables for ranges and skills - no specific values here
     # Magic resistance will be broken into: fire, frost, arcane, shadow, death, poison, nature,
@@ -183,6 +205,23 @@ class Hero:
         self.original_death_resistance = self.death_resistance # store the original death resistance
         self.original_poison_resistance = self.poison_resistance # store the original poison resistance
         self.original_nature_resistance = self.nature_resistance # store the original nature resistance
+
+        # Property generation and resistance compensation are complete here,
+        # while Game.game_initialization has not yet installed the combatant
+        # into a battle and no opening/round effects can have resolved.  Every
+        # normal hero and summon reaches this same constructor exactly once.
+        self.battle_stat_baseline = BattleStatBaseline(
+            damage=self.damage,
+            defence=self.defense,
+            agility=self.agility,
+            fire=self.fire_resistance,
+            frost=self.frost_resistance,
+            arcane=self.arcane_resistance,
+            shadow=self.shadow_resistance,
+            death=self.death_resistance,
+            poison=self.poison_resistance,
+            nature=self.nature_resistance,
+        )
 
         self.hp = self.hp_max
         self.evasion_capability = 0
@@ -967,7 +1006,9 @@ class Hero:
       return f"The healing {self.name} receives is boost."
 
     def independent_heroric_charge(self, skill):
-      healing = 22 + random.randint(-2, 2)
+      # The independent (evaded/prevented) effect heals with the same base
+      # power as a landed Heroric Charge.
+      healing = 30 + random.randint(-2, 2)
       skill.if_cooldown = True
       skill.cooldown = 3
       return f"Holy light showers {self.name}. {self.take_healing(healing)}."

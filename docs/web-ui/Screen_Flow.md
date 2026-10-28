@@ -185,7 +185,7 @@ returns its seeded choice through the snapshot formation and combatant
 positions. Formation controls and fields remain absent in 1v1.
 
 Structured training uses the same Team Builder in a persisted, backend-owned
-mode. Warrior's Barrack and Paladin's Altar each use a nine-battle curriculum,
+campaign flow. Warrior's Barrack and Paladin's Altar each use a nine-battle curriculum,
 fixed enemy teams and formations, and server-authoritative access and rewards.
 The builder exposes only the player heroes unlocked for the active save slot,
 its fixed battle format, and an accessible immutable predefined enemy summary.
@@ -201,6 +201,15 @@ configuration before revealing the builder; a mismatch or missing roster
 definition shows a retryable configuration/roster error rather than a
 substitute hero.
 
+For each campaign entry and active save profile, Learner is selected by
+default. A bottom-left segmented selector keeps the chosen mode while the
+player navigates battles in that campaign; a new campaign/profile entry resets
+it to Learner. Tactics remains disabled until that campaign's configured
+Learner battles are complete. The backend supplies mode availability and
+mode-specific battle completions; the UI does not infer unlocks from a local
+count. Learner battle access stays sequential, while unlocked Tactics battles
+may be selected in any order. Arena and Debug have no such selector.
+
 ### UI-020 Persistent Structured Training
 
 Warrior's Barrack and Paladin's Altar each render the approved nine-battle curriculum,
@@ -210,14 +219,15 @@ and nine accessible completed/available/locked steps. The player Matrix uses
 only `unlockedHeroDefinitionIds` from progression; fixed enemies continue to
 resolve through the full static roster even while player-locked.
 
-Launch uses the one-based stage route and sends only the chosen player team,
-the selected player formation when applicable, and optional seed. A friendly
-victory is committed through the backend completion route, followed by fresh
-progression/stage fetches. A non-victory retries the same step. A newly granted
-reward opens a focus-contained notification with the backend message; Continue
-then opens the next permitted step or Stage Map. Replay with no new grant does
-not reopen the notification. Storage, contract, launch, commit, and refetch
-failures remain visible and retryable.
+Launch uses the one-based stage route and sends the chosen mode, player team,
+selected player formation when applicable, and optional seed. The backend
+revalidates mode and battle access at launch. A friendly victory is committed
+using the session's immutable mode, followed by fresh progression/stage
+fetches. A non-victory retries without a completion grant. Learner continues
+its sequential steps and existing reward notifications; Tactics records only
+that battle's own completion, without a reward notification or Learner
+progression change. Storage, contract, launch, commit, and refetch failures
+remain visible and retryable.
 
 ### Battle Screen
 
@@ -312,6 +322,8 @@ flow. Its return link navigates directly to `/game`.
 
 ## Change Log
 
+- 2026-10-27 — Added per-campaign Learner/Tactics selection, stage access,
+  launch, and mode-specific return/reward behavior.
 - 2026-07-29 — Documented UI-002 Team Builder, live multi-team battle, and
   return/reset flow.
 - 2026-07-26 — Initial document created.

@@ -17,6 +17,8 @@ import type {
   EnemyControlMode,
   HeroDefinitionSummary,
   StructuredBattleCreateConfiguration,
+  StructuredBattleMode,
+  StructuredStageModeProgress,
   TrioFormationId,
 } from "@/lib/battle/types";
 import { AssetImage } from "./AssetImage";
@@ -43,6 +45,9 @@ interface StructuredTeamBuilderProps extends TeamBuilderBaseProps {
   battle: StructuredStageBattleDefinition;
   highestCompletedBattle?: number;
   highestUnlockedBattle?: number;
+  battleMode?: StructuredBattleMode;
+  modeProgress?: Record<StructuredBattleMode, StructuredStageModeProgress>;
+  onBattleModeChange?: (mode: StructuredBattleMode) => void;
   onSelectBattle?: (battleIndex: number) => void;
   onStart: (configuration: StructuredBattleCreateConfiguration) => void;
 }
@@ -76,6 +81,10 @@ type StagePreviewStyle = CSSProperties & {
 
 const FIXED_SLOT_INDICES = [0, 1, 2] as const;
 const MATRIX_PAGE_SIZE = 6;
+const DEFAULT_STRUCTURED_MODE_PROGRESS: Record<StructuredBattleMode, StructuredStageModeProgress> = {
+  learner: { available: true, completed: false, completedBattleIndices: [] },
+  tactics: { available: false, completed: false, completedBattleIndices: [] },
+};
 type FormationChoice<T extends BattleFormationId> = { id: T; name: string; positions: string };
 
 const DUO_FORMATIONS: ReadonlyArray<FormationChoice<DuoFormationId>> = [
@@ -91,6 +100,18 @@ const TRIO_FORMATIONS: ReadonlyArray<FormationChoice<TrioFormationId>> = [
 
 function professionLabel(hero: HeroDefinitionSummary) {
   return `${hero.faculty} · ${hero.specialization}`;
+}
+
+function StructuredModeIcon({ mode }: { mode: StructuredBattleMode }) {
+  return mode === "learner" ? (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M3.5 5.5c3.2-1 5.8-.6 8.5 1.2v12c-2.7-1.8-5.3-2.2-8.5-1.2zM20.5 5.5c-3.2-1-5.8-.6-8.5 1.2v12c2.7-1.8 5.3-2.2 8.5-1.2z" />
+    </svg>
+  ) : (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="m5 4 15 15M19 4 4 19M4 4l3 1-2 2zm16 0-3 1 2 2zM3 20l4-1-2-2zm18 0-4-1 2-2z" />
+    </svg>
+  );
 }
 
 function portraitRequest(hero: HeroDefinitionSummary) {
@@ -196,6 +217,13 @@ export function TeamBuilder(props: TeamBuilderProps) {
     ? (props.highestUnlockedBattle ?? props.battle.displayOrder)
     : 0;
   const selectStructuredBattle = props.mode === "structured" ? props.onSelectBattle : undefined;
+  const structuredMode = props.mode === "structured" ? props.battleMode ?? "learner" : "learner";
+  const structuredModes = props.mode === "structured"
+    ? props.modeProgress ?? DEFAULT_STRUCTURED_MODE_PROGRESS
+    : DEFAULT_STRUCTURED_MODE_PROGRESS;
+  const structuredModeProgress = props.mode === "structured"
+    ? structuredModes[structuredMode]
+    : null;
   const selectedStage = resolveEnabledStage(
     structuredStage?.stageId ?? (props.mode === undefined || props.mode === "arena" ? props.selectedStageId : undefined),
   );
@@ -272,6 +300,7 @@ export function TeamBuilder(props: TeamBuilderProps) {
     if (validation) return;
     if (props.mode === "structured" || props.mode === "arena-run") {
       const structuredConfiguration = {
+        ...(props.mode === "structured" ? { mode: props.battleMode ?? "learner" } : {}),
         playerTeam,
         ...(battleSize === 2 ? { playerFormation: playerDuoFormation } : {}),
         ...(battleSize === 3 ? { playerFormation: playerTrioFormation } : {}),
@@ -401,16 +430,22 @@ export function TeamBuilder(props: TeamBuilderProps) {
                 ? `Fixed enemy ${structuredBattle.enemyFormation.replaceAll("-", " ")} formation`
                 : "Predefined enemy team"}
             </span>
-            <p className="structured-reward-context">
-              {structuredBattle.completionReward
-                ? `${highestCompletedBattle >= structuredBattle.displayOrder ? "Earned" : "Victory reward"}: ${structuredBattle.completionReward.notificationMessage}`
-                : "Victory advances training; no reward for this battle."}
-            </p>
+            {structuredMode === "learner" ? (
+              <p className="structured-reward-context">
+                {structuredBattle.completionReward
+                  ? `${highestCompletedBattle >= structuredBattle.displayOrder ? "Earned" : "Victory reward"}: ${structuredBattle.completionReward.notificationMessage}`
+                  : "Victory advances training; no reward for this battle."}
+              </p>
+            ) : null}
           </section>
           <nav className="structured-battle-steps" aria-label={`${structuredStage.displayName} battle progression`}>
             {structuredStage.battles.map((battle, index) => {
-              const locked = battle.displayOrder > highestUnlockedBattle;
-              const completed = battle.displayOrder <= highestCompletedBattle;
+              const locked = structuredMode === "learner"
+                ? battle.displayOrder > highestUnlockedBattle
+                : !structuredModeProgress?.available;
+              const completed = props.mode === "structured" && props.modeProgress
+                ? structuredModeProgress?.completedBattleIndices.includes(battle.displayOrder) ?? false
+                : battle.displayOrder <= highestCompletedBattle;
               const current = battle.id === structuredBattle.id;
               return (
                 <button
@@ -629,6 +664,35 @@ export function TeamBuilder(props: TeamBuilderProps) {
 
       <footer className="builder-footer">
         {props.mode === "arena-run" ? <button type="button" className="arena-give-up" onClick={props.onGiveUpCurrentRun}>GIVE UP CURRENT RUN</button> : null}
+        {props.mode === "structured" ? (
+          <fieldset className="structured-mode-selector">
+            <legend className="sr-only">Training mode</legend>
+            <label>
+              <input
+                type="radio"
+                name="structured-battle-mode"
+                value="learner"
+                checked={(props.battleMode ?? "learner") === "learner"}
+                onChange={() => props.onBattleModeChange?.("learner")}
+              />
+              <span><StructuredModeIcon mode="learner" /> Learner</span>
+            </label>
+            <label className={!structuredModes.tactics.available ? "locked" : undefined}>
+              <input
+                type="radio"
+                name="structured-battle-mode"
+                value="tactics"
+                checked={props.battleMode === "tactics"}
+                disabled={!structuredModes.tactics.available}
+                onChange={() => props.onBattleModeChange?.("tactics")}
+              />
+              <span>
+                <StructuredModeIcon mode="tactics" /> Tactics
+                {!structuredModes.tactics.available ? <><i aria-hidden="true">🔒</i><span className="sr-only"> Locked</span></> : null}
+              </span>
+            </label>
+          </fieldset>
+        ) : null}
         <p className={validation ? "validation-error" : ""} aria-live="polite">{validation ?? `${battleSize}v${battleSize} configuration ready.`}</p>
         <button type="button" onClick={launch} disabled={Boolean(validation)}>ENTER BATTLE</button>
       </footer>

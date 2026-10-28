@@ -16,13 +16,16 @@ import random
 import re
 import secrets
 import threading
+from types import SimpleNamespace
 import uuid
 from typing import Any, Literal
 
 import pandas as pd
 
 from .models import (
+    BattleCombatantStats,
     FormationId,
+    StageMode,
     THREE_HERO_FORMATION_IDS,
     TWO_HERO_FORMATION_IDS,
     TwoHeroFormationId,
@@ -135,11 +138,12 @@ HERO_SKILL_INVENTORY: dict[str, tuple[tuple[str, str, bool], ...]] = {
         ("skill.paladin.hammer_of_anger", "Hammer of Anger", False),
         ("skill.paladin.crusader_strike", "Crusader Strike", False),
         ("skill.paladin.flash_of_light", "Flash of Light", False),
+        ("skill.paladin.wrath_of_crusader", "Wrath of Crusader", True),
     ),
     "hero.paladin.protection": (
         ("skill.paladin.hammer_of_revenge", "Hammer of Revenge", False),
         ("skill.paladin.shield_of_righteous", "Shield of Righteous", False),
-        ("skill.paladin.heroric_charge", "Heroric Charge", False),
+        ("skill.paladin.heroric_charge", "Heroic Charge", False),
         ("skill.paladin.holy_aura", "Holy Aura", True),
     ),
     "hero.paladin.holy": (
@@ -221,6 +225,11 @@ HERO_SKILL_REFERENCE_DEFINITIONS: dict[str, _HeroSkillReferenceDefinition] = {
         "damage", attack_type="melee", damage_nature="physical", damage_type="holy"
     ),
     "skill.paladin.flash_of_light": _HeroSkillReferenceDefinition("healing"),
+    # Gallery-only reference for Crusader Strike's existing Wrath buff and its
+    # Hammer/Flash bonuses; this is not a separately executable battle skill.
+    "skill.paladin.wrath_of_crusader": _HeroSkillReferenceDefinition(
+        "effect", target_type="self", target_quantity=0
+    ),
     "skill.paladin.hammer_of_revenge": _HeroSkillReferenceDefinition(
         "damage", attack_type="ranged_instant", damage_nature="physical", damage_type="weapon"
     ),
@@ -461,6 +470,7 @@ class BattleSession:
     enemy_formation: FormationId | None = None
     stage_id: str | None = None
     stage_battle_index: int | None = None
+    stage_mode: StageMode | None = None
     progression_profile_id: str | None = None
     arena_run_id: str | None = None
     arena_node_index: int | None = None
@@ -753,6 +763,16 @@ class BattleAdapter:
                 "note": "",
                 "conditions": [],
             }
+        elif skill_id == "skill.paladin.flash_of_light":
+            # The unbuffed 19 + randint(0, 2) power; live Wrath stacks are
+            # reflected by the separate revision-bound battle preview.
+            base_healing = {
+                "state": "available",
+                "amountRange": {"minimum": 19, "maximum": 21},
+                "basis": "baselinePower",
+                "note": "",
+                "conditions": [],
+            }
         elif skill_id == "skill.paladin.hammer_of_revenge":
             base_damage = cls._catalogue_unavailable_numeric(
                 "",
@@ -762,9 +782,7 @@ class BattleAdapter:
                     "title": "Damage Calculation",
                     "formula": (
                         "Direct damage = max(Caster Damage + Skill Variation "
-                        "− Target Defence, 0) + self-debuff bonus\n"
-                        "Self-debuff bonus (distinct eligible active statuses): "
-                        "0 = 0; 1 = 3–5; 2 = 6–8; 3 or more = 9–11"
+                        "− Target Defence, 0) + self-debuff bonus"
                     ),
                 },
             )
@@ -789,6 +807,23 @@ class BattleAdapter:
                     ),
                 },
             )
+            base_healing = {
+                "state": "available",
+                "amountRange": {"minimum": 28, "maximum": 32},
+                "basis": "baselinePower",
+                "note": "",
+                "conditions": [],
+            }
+        elif skill_id == "skill.paladin.holy_aura":
+            # StatusEffectManager rolls this amount independently per living
+            # recipient; the older buff effect field is not the healing power.
+            base_healing = {
+                "state": "available",
+                "amountRange": {"minimum": 6, "maximum": 8},
+                "basis": "baselinePower",
+                "note": "",
+                "conditions": [],
+            }
         elif skill_id == "skill.paladin.holy_blast":
             base_damage = {
                 "state": "available",
@@ -801,6 +836,15 @@ class BattleAdapter:
                         "amountRange": {"minimum": 14, "maximum": 17},
                     }
                 ],
+            }
+        elif skill_id == "skill.paladin.purify_healing":
+            # 25 + randint(-2, 2) before recipient modifiers and HP cap.
+            base_healing = {
+                "state": "available",
+                "amountRange": {"minimum": 23, "maximum": 27},
+                "basis": "baselinePower",
+                "note": "",
+                "conditions": [],
             }
         elif skill_id == "skill.priest.penance":
             base_damage = {
@@ -866,6 +910,7 @@ class BattleAdapter:
         fixed_computer_formation: bool = False,
         stage_id: str | None = None,
         stage_battle_index: int | None = None,
+        stage_mode: StageMode | None = None,
         progression_profile_id: str | None = None,
         arena_run_id: str | None = None,
         arena_node_index: int | None = None,
@@ -966,6 +1011,7 @@ class BattleAdapter:
                     enemy_formation=enemy_formation,
                     stage_id=stage_id,
                     stage_battle_index=stage_battle_index,
+                    stage_mode=stage_mode,
                     progression_profile_id=progression_profile_id,
                     arena_run_id=arena_run_id,
                     arena_node_index=arena_node_index,
@@ -2419,7 +2465,6 @@ class BattleAdapter:
                 )
             elif skill.name == "Heroric Charge":
                 target = targets[0]
-                prevented = self._deterministic_prevention(skill, target) is not None
                 control_prevented = bool(target.is_immunity_condition_control)
                 # A manually inconsistent legacy state (the boolean without
                 # Warlust) reaches the hit action's early return and therefore
@@ -2427,13 +2472,9 @@ class BattleAdapter:
                 # always keeps the two fields aligned.
                 if control_prevented and not target.status.get("warlust", False):
                     return None
-                hit_chance = self._direct_hit_chance_percent(target)
-                if prevented or control_prevented:
-                    raw_healing_range = (20, 24)
-                elif hit_chance == 100:
-                    raw_healing_range = (28, 32)
-                else:
-                    raw_healing_range = (20, 32)
+                # The hit and independent-effect branches now roll identical
+                # healing power, including evasion and prevention outcomes.
+                raw_healing_range = (28, 32)
                 minimum, maximum = self._audited_healing_receipt_range(
                     actor, raw_healing_range
                 )
@@ -3208,51 +3249,74 @@ class BattleAdapter:
                 break
             actions = self._legal_actions(session, actor, include_computer=True)
             if not actions:
-                raise RuntimeError(f"{actor.name} has no legal computer action")
-            # Use the specialization's existing engine AI when it returns a
-            # currently legal skill. Fall back only when legacy strategy code
-            # selects a cooldown/unavailable action.
-            chosen_skill = actor.ai_choose_skill(actor.opponents, actor.allies)
-            chosen_skill_id = self._skill_id(actor, chosen_skill)
-            action = next(
-                (
-                    candidate
-                    for candidate in actions
-                    if candidate["skillId"] == chosen_skill_id
-                ),
-                None,
+                events.extend(
+                    self._skip_turn(
+                        session,
+                        actor,
+                        SimpleNamespace(
+                            reason_id="noLegalAction",
+                            message="had no legal action",
+                        ),
+                    )
+                )
+                turns += 1
+                continue
+            learner_enemy = (
+                session.stage_mode == "learner" and actor.group == "Group_B"
             )
-            if action is None:
+            if learner_enemy:
                 action = random.choice(actions)
-            chosen_skill = self._skill_by_id(actor, action["skillId"])
-            assert chosen_skill is not None
+                chosen_skill = self._skill_by_id(actor, action["skillId"])
+                assert chosen_skill is not None
+            else:
+                # Tactics and all non-campaign computer turns retain the
+                # specialization's existing strategy and legality repair.
+                chosen_skill = actor.ai_choose_skill(actor.opponents, actor.allies)
+                chosen_skill_id = self._skill_id(actor, chosen_skill)
+                action = next(
+                    (
+                        candidate
+                        for candidate in actions
+                        if candidate["skillId"] == chosen_skill_id
+                    ),
+                    None,
+                )
+                if action is None:
+                    action = random.choice(actions)
+                chosen_skill = self._skill_by_id(actor, action["skillId"])
+                assert chosen_skill is not None
             target_count = action["minimumTargets"]
             target_ids: list[str] = []
             if target_count:
-                chosen_targets = actor.ai_choose_target(
-                    chosen_skill, actor.opponents, actor.allies
-                )
-                if not isinstance(chosen_targets, list):
-                    chosen_targets = [chosen_targets]
-                for target in chosen_targets:
-                    if target == "none":
-                        continue
-                    target_id = self._combatant_id(session, target)
-                    if (
-                        target_id in action["validTargetIds"]
-                        and target_id not in target_ids
-                    ):
-                        target_ids.append(target_id)
-                remaining = [
-                    target_id
-                    for target_id in action["validTargetIds"]
-                    if target_id not in target_ids
-                ]
-                target_ids = target_ids[:target_count]
-                if len(target_ids) < target_count:
-                    target_ids.extend(
-                        random.sample(remaining, target_count - len(target_ids))
+                if learner_enemy:
+                    target_ids = random.sample(
+                        action["validTargetIds"], target_count
                     )
+                else:
+                    chosen_targets = actor.ai_choose_target(
+                        chosen_skill, actor.opponents, actor.allies
+                    )
+                    if not isinstance(chosen_targets, list):
+                        chosen_targets = [chosen_targets]
+                    for target in chosen_targets:
+                        if target == "none":
+                            continue
+                        target_id = self._combatant_id(session, target)
+                        if (
+                            target_id in action["validTargetIds"]
+                            and target_id not in target_ids
+                        ):
+                            target_ids.append(target_id)
+                    remaining = [
+                        target_id
+                        for target_id in action["validTargetIds"]
+                        if target_id not in target_ids
+                    ]
+                    target_ids = target_ids[:target_count]
+                    if len(target_ids) < target_count:
+                        target_ids.extend(
+                            random.sample(remaining, target_count - len(target_ids))
+                        )
             result = self._resolve(
                 session,
                 {
@@ -3672,6 +3736,7 @@ class BattleAdapter:
             "isPlayerControlled": bool(hero.is_player_controlled),
             "alive": hero.hp > 0,
             "hp": {"current": hero.hp, "maximum": hero.hp_max},
+            "stats": self._serialize_combatant_stats(hero),
             "resource": None,
             "statuses": list(self._active_statuses(session, hero).values()),
             "skills": [
@@ -3692,6 +3757,41 @@ class BattleAdapter:
                 for skill in hero.skills
             ],
         }
+
+    @staticmethod
+    def _serialize_combatant_stats(hero) -> dict[str, Any]:
+        """Return validated current stats and engine-authored baseline deltas.
+
+        Values are serialized without display rounding so small non-zero
+        changes remain non-zero.  Exact zero (including ``-0.0``) is
+        normalized for a stable neutral UI state.
+        """
+
+        baseline = hero.battle_stat_baseline
+
+        def stat(current: int | float, starting: int | float) -> dict[str, int | float]:
+            delta = current - starting
+            if delta == 0:
+                delta = 0
+            return {"current": current, "delta": delta}
+
+        stats = BattleCombatantStats.model_validate(
+            {
+                "damage": stat(hero.damage, baseline.damage),
+                "defence": stat(hero.defense, baseline.defence),
+                "agility": stat(hero.agility, baseline.agility),
+                "resistances": {
+                    "fire": stat(hero.fire_resistance, baseline.fire),
+                    "frost": stat(hero.frost_resistance, baseline.frost),
+                    "arcane": stat(hero.arcane_resistance, baseline.arcane),
+                    "shadow": stat(hero.shadow_resistance, baseline.shadow),
+                    "death": stat(hero.death_resistance, baseline.death),
+                    "poison": stat(hero.poison_resistance, baseline.poison),
+                    "nature": stat(hero.nature_resistance, baseline.nature),
+                },
+            }
+        )
+        return stats.model_dump(by_alias=True)
 
     def _active_statuses(self, session: BattleSession, hero) -> dict[str, dict[str, Any]]:
         result = {}
@@ -3978,6 +4078,7 @@ class BattleRegistry:
         fixed_computer_formation: bool = False,
         stage_id: str | None = None,
         stage_battle_index: int | None = None,
+        stage_mode: StageMode | None = None,
         progression_profile_id: str | None = None,
         arena_run_id: str | None = None,
         arena_node_index: int | None = None,
@@ -3994,6 +4095,7 @@ class BattleRegistry:
             fixed_computer_formation=fixed_computer_formation,
             stage_id=stage_id,
             stage_battle_index=stage_battle_index,
+            stage_mode=stage_mode,
             progression_profile_id=progression_profile_id,
             arena_run_id=arena_run_id,
             arena_node_index=arena_node_index,

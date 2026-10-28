@@ -133,8 +133,13 @@ equivalent recorded replay contract.
 Paladin's Altar and Warrior's Barrack use the existing 1v1, 2v2, and 3v3
 combat formats with predefined computer enemy teams and fixed enemy formations.
 Their 2v2 and 3v3 friendly formations remain player-selected; 1v1 has none.
-They do not add combat rules or a campaign system. Their completion only
-changes the minimal persisted training progression described below.
+Each structured campaign offers Learner and Tactics modes. Both use identical
+heroes, generated starting stats, skills, formations, targeting, damage,
+statuses, cooldowns, and team restrictions. Only enemy computer decisions
+differ: Learner samples an available legal action and valid targets without
+strategic preference; Tactics retains each hero's existing battle strategy.
+This mode choice does not apply to Arena Run, Engineering Test & Debugging, or
+generic battles.
 
 ## Progression and Meta-Game
 
@@ -151,8 +156,17 @@ Warrior's Barrack Battle 6 grants the single persistent generic reward ID
 `reward.item-card.basic`; it has no art, combat effect, inventory, equipment,
 economy, or item name. The backend persists each first friendly-victory reward
 atomically with the stage update and exposes availability to the UI. XP, levels,
-attributes, inventory/equipment, campaign, accounts, cloud sync, and active
+attributes, inventory/equipment, broader campaigns, accounts, cloud sync, and active
 battle recovery remain unimplemented.
+
+Learner is the default and available in a new save. Its stage battles retain
+sequential access and the existing once-only hero and item-card rewards. When
+all battles defined for one campaign have Learner completions, that campaign's
+Tactics mode unlocks; another campaign remains independent. Unlocked Tactics
+battles may be played in any order. Their completion is recorded per battle
+for future badge work, but grants no Learner progress or rewards. Legacy
+structured completions count as Learner history. Defeat, draw, and resign do
+not complete either mode.
 
 Arena Run is the implemented limited meta-game extension. Each occupied save
 slot can retain one active or completed twelve-node run. Starting one requires
@@ -186,6 +200,9 @@ branches, elites, bosses, or difficulty changes.
 
 ## Change Log
 
+- 2026-10-27 — Added campaign-specific Learner/Tactics decision modes and
+  separate completion, while retaining identical combat rules and Learner-only
+  rewards.
 - 2026-08-15 — Added the implemented 2v2/3v3 formation milestone, including
   size-specific pre-battle selection and Python-owned Warrior position rules.
 - 2026-08-19 — Replaced the temporary Warrior's Barrack sequence with the two

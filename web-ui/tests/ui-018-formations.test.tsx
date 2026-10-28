@@ -104,6 +104,7 @@ describe("UI-018 Team Builder formation contract", () => {
     await user.click(screen.getByRole("button", { name: "ENTER BATTLE" }));
 
     expect(onStart).toHaveBeenCalledWith({
+      mode: "learner",
       playerTeam: ["hero.warrior.weapon_master", "hero.mage.comprehensiveness"],
       playerFormation: "side-by-side",
     });

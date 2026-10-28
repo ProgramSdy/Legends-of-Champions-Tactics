@@ -201,12 +201,19 @@ def test_purify_multiple_candidates_is_uncertain_and_never_specific():
 @pytest.mark.parametrize("immune,casting", [(False, False), (False, True), (True, False), (True, True)])
 def test_heroric_charge_control_and_casting_boundaries(immune, casting):
     adapter, session = _session("hero.paladin.protection")
+    actor = session.game.player_heroes[0]
+    actor.hp = actor.hp_max - 40
     target = session.game.opponent_heroes[0]
     target.is_immunity_condition_control = immune
     target.status["warlust"] = immune
     target.status["magic_casting"] = casting
     target_id = adapter._combatant_id(session, target)
     result = adapter.preview(session, _request(adapter, session, "skill.paladin.heroric_charge", [target_id]))
+    healing = next(
+        item for item in result["selfPreview"]["consequences"]
+        if item["kind"] == "secondaryHealing"
+    )
+    assert healing["amountRange"] == {"min": 28, "max": 32}
     kinds = {item["kind"] for item in result["targets"][0]["consequences"]}
     if not immune:
         assert "scoff" in kinds

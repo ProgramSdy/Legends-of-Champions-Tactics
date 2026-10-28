@@ -329,7 +329,7 @@ def test_heroric_charge_evade_preserves_independent_caster_heal():
 
     assert target.hp == target_hp_before
     assert target.status["scoff"] is False
-    assert source.hp > source_hp_before
+    assert 28 <= source.hp - source_hp_before <= 32
     assert skill.if_cooldown is True
     assert skill.cooldown == 3
 
@@ -401,7 +401,7 @@ def test_heroric_charge_control_immunity_suppresses_scoff_but_keeps_caster_heal(
 
     target_id = adapter._combatant_id(session, target)
     assert target.status["scoff"] is False
-    assert source.hp > source_hp_before
+    assert 28 <= source.hp - source_hp_before <= 32
     assert skill.if_cooldown is True
     assert skill.cooldown == 3
     assert not any(

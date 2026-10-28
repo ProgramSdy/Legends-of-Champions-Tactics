@@ -334,7 +334,7 @@ def test_schema_v2_migrates_without_fabricating_arena_history(tmp_path: Path):
     with sqlite3.connect(database) as connection:
         assert connection.execute(
             "SELECT value FROM metadata WHERE key = 'schema_version'"
-        ).fetchone()[0] == "3"
+        ).fetchone()[0] == "4"
 
 
 def test_arena_create_failure_rolls_back_run_and_nodes(tmp_path: Path):

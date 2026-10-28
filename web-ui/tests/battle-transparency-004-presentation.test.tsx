@@ -269,10 +269,10 @@ describe("BATTLE-TRANSPARENCY-004 Paladin presentation", () => {
       skillId: "skill.paladin.heroric_charge",
       displayName: "Heroric Charge",
       consequences: [
-        { kind: "secondaryHealing", certainty: "always", recipientId: "friendly.arthas", amountRange: { min: 20, max: 32 } },
+        { kind: "secondaryHealing", certainty: "always", recipientId: "friendly.arthas", amountRange: { min: 28, max: 32 } },
         { kind: "cooldown", certainty: "always", recipientId: "friendly.arthas", rounds: 3 },
       ] satisfies BattlePreviewConsequence[],
-      expected: "Self Healing20–32Cooldown3 rounds",
+      expected: "Self Healing28–32Cooldown3 rounds",
     },
   ])("shows $displayName actor facts beside the target preview", async ({ skillId, displayName, consequences, expected }) => {
     const { provider, actorId } = await paladinProvider({

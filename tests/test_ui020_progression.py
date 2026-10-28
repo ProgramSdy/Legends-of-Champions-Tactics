@@ -30,6 +30,23 @@ def _progress(progress, stage_id):
     return next(item for item in progress["stageProgress"] if item["stageId"] == stage_id)
 
 
+def _modes(completed_indices=()):
+    completed_indices = list(completed_indices)
+    complete = len(completed_indices) == 9
+    return {
+        "learner": {
+            "available": True,
+            "completed": complete,
+            "completedBattleIndices": completed_indices,
+        },
+        "tactics": {
+            "available": complete,
+            "completed": False,
+            "completedBattleIndices": [],
+        },
+    }
+
+
 def _launch_stage_battle(client, stage_id, index, player_team, formation=None):
     payload = {"playerTeam": player_team, "seed": index}
     if formation is not None:
@@ -63,12 +80,14 @@ def test_active_slot_initialization_is_typed_persistent_and_uses_exact_fresh_ros
             "highestCompletedBattle": 0,
             "unlockedBattle": 1,
             "completed": False,
+            "modes": _modes(),
         },
         {
             "stageId": "warriors-barrack",
             "highestCompletedBattle": 0,
             "unlockedBattle": 1,
             "completed": False,
+            "modes": _modes(),
         },
     ]
     restarted = ProgressionStore(store.database_path).read_progression()
@@ -257,6 +276,7 @@ def test_only_authoritative_friendly_victory_commits_and_replay_is_idempotent(
         "highestCompletedBattle": 1,
         "unlockedBattle": 2,
         "completed": False,
+        "modes": _modes([1]),
     }
 
 

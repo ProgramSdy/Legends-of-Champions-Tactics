@@ -1,16 +1,25 @@
 schemaVersion: 1
 definitionId: hero.paladin.retribution
 introduction: |-
-  A battle-ready paladin who builds crusading momentum.
+  A versatile paladin who pressures enemies and heals allies with holy power.
 battleStyle: |-
-  Alternates steady melee pressure with empowered holy attacks and support.
+  A front line role who is a combination of a healer and a Dpser.
 skills:
   - skillId: skill.paladin.hammer_of_anger
     introduction: |-
-      A ranged holy attack that benefits from crusader momentum.
+      Summons a holy hammer from the sky to smash on any target in the battle field.
   - skillId: skill.paladin.crusader_strike
     introduction: |-
-      A melee strike that builds Wrath of Crusader.
+      Paladin wields his huge hammer and applies a melee strike on a target. This attack will build Wrath of Crusader buff on paladin which stacks max 2 times. Each stack increases paladin's agility by 75%. Keep using this skill will refresh buff duration.
   - skillId: skill.paladin.flash_of_light
     introduction: |-
-      Restores an ally, strengthened by Wrath of Crusader.
+      Holy light shines on an ally restores their Hp.
+  - skillId: skill.paladin.wrath_of_crusader
+    introduction: |-
+      When Paladin is buffed with Wrath of Crusader, Hammer of Anger and Flash of Light apply extra damage/healing to the target.
+      1 stack Wrath of Crusader:
+       - Hammer of Anger applies extra 3-5 holy damage.
+       - Flash of Light applies extra 5-7 healing.
+      2 stack Wrath of Crusader:
+       - Hammer of Anger applies extra 6-8 holy damage.
+       - Flash of Light applies extra 11-13 healing.

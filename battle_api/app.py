@@ -539,13 +539,16 @@ async def create_battle(
 )
 async def create_stage_battle(
     stage_id: StageId,
-    battle_index: Annotated[int, ApiPath(ge=1, le=9)],
+    battle_index: Annotated[int, ApiPath(ge=1)],
     request: CreateStageBattleRequest,
     store: Annotated[ProgressionStore, Depends(get_progression_store)],
 ) -> dict:
     def create_attempt(profile_id: str) -> tuple[object, dict]:
         battle = store.assert_stage_battle_access(
-            stage_id, battle_index, profile_id
+            stage_id,
+            battle_index,
+            expected_profile_id=profile_id,
+            mode=request.mode,
         )
         store.assert_player_team_unlocked(list(request.player_team), profile_id)
 
@@ -585,6 +588,7 @@ async def create_stage_battle(
             fixed_computer_formation=True,
             stage_id=stage_id,
             stage_battle_index=battle_index,
+            stage_mode=request.mode,
             progression_profile_id=profile_id,
         )
 
@@ -598,6 +602,7 @@ async def create_stage_battle(
                 "stage",
                 stage_id,
                 battle_index,
+                request.mode,
                 tuple(request.player_team),
                 request.player_formation,
                 request.seed,
@@ -744,6 +749,7 @@ async def commit_battle_completion(
                 battle_id=battle_id,
                 stage_id=session.stage_id,
                 battle_index=session.stage_battle_index,
+                mode=session.stage_mode or "learner",
                 expected_profile_id=session.progression_profile_id,
             )
 

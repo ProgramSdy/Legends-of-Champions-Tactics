@@ -13,7 +13,7 @@ export function Meter({ value, maximum, kind, label }: { value: number; maximum:
   );
 }
 
-export function HeroCard({ hero, active = false, targetHighlighted = false }: { hero: CombatantState; active?: boolean; targetHighlighted?: boolean }) {
+export function HeroCard({ hero, active = false, targetHighlighted = false, onViewStats }: { hero: CombatantState; active?: boolean; targetHighlighted?: boolean; onViewStats?: (trigger: HTMLButtonElement) => void }) {
   const profession = hero.isSummon
     ? `${hero.specialization} · Summon`
     : `${hero.faculty} · ${hero.specialization}`;
@@ -26,6 +26,23 @@ export function HeroCard({ hero, active = false, targetHighlighted = false }: { 
         {hero.resource && <Meter value={hero.resource.current} maximum={hero.resource.maximum} kind="resource" label={hero.resource.kind} />}
         <div className="status-row">{hero.statuses.map((status) => <StatusIcon key={status.instanceId} status={status} />)}{hero.isSummon && <span className="summon-rounds">{hero.summonRoundsRemaining}R</span>}</div>
       </div>
+      {onViewStats ? <button
+        className="hero-stats-button"
+        type="button"
+        data-audio-feedback="interactive"
+        title="View Hero Stats"
+        aria-label={`View Hero Stats for ${hero.displayName}, ${hero.sideId} slot ${hero.slot + 1}`}
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          onViewStats(event.currentTarget);
+        }}
+        onKeyDown={(event) => event.stopPropagation()}
+      >
+        <svg aria-hidden="true" viewBox="0 0 20 20" focusable="false">
+          <path d="M3 17V9h3v8H3Zm5.5 0V3h3v14h-3Zm5.5 0V6h3v11h-3Z" />
+        </svg>
+      </button> : null}
     </article>
   );
 }

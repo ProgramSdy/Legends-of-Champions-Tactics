@@ -119,11 +119,23 @@ function isStageProgress(value: unknown): boolean {
     && (value.stageId === "paladins-altar" || value.stageId === "warriors-barrack")
     && Number.isInteger(value.highestCompletedBattle)
     && Number(value.highestCompletedBattle) >= 0
-    && Number(value.highestCompletedBattle) <= 9
     && Number.isInteger(value.unlockedBattle)
     && Number(value.unlockedBattle) >= 1
-    && Number(value.unlockedBattle) <= 9
-    && typeof value.completed === "boolean";
+    && typeof value.completed === "boolean"
+    && isRecord(value.modes)
+    && isStructuredStageModeProgress(value.modes.learner)
+    && isStructuredStageModeProgress(value.modes.tactics);
+}
+
+function isStructuredStageModeProgress(value: unknown, battleCount?: number): boolean {
+  return isRecord(value)
+    && typeof value.available === "boolean"
+    && typeof value.completed === "boolean"
+    && Array.isArray(value.completedBattleIndices)
+    && new Set(value.completedBattleIndices).size === value.completedBattleIndices.length
+    && value.completedBattleIndices.every((index) => Number.isInteger(index)
+      && Number(index) >= 1
+      && (battleCount === undefined || Number(index) <= battleCount));
 }
 
 function isStageReward(value: unknown): boolean {
@@ -792,18 +804,27 @@ export async function fetchStructuredStages(
   const valid = isRecord(body)
     && body.contractVersion === "1.0"
     && Array.isArray(body.stages)
-    && body.stages.length === 2
+    && body.stages.length > 0
+    && new Set(body.stages.map((stage) => isRecord(stage) ? stage.stageId : null)).size
+      === body.stages.length
     && body.stages.every((stage) => isRecord(stage)
       && (stage.stageId === "paladins-altar" || stage.stageId === "warriors-barrack")
       && typeof stage.displayName === "string"
       && isStageProgress(stage.progress)
+      && isRecord(stage.progress)
       && Array.isArray(stage.battles)
-      && stage.battles.length === 9
-      && stage.battles.every((battle) => isRecord(battle)
+      && stage.battles.length > 0
+      && Number(stage.progress.highestCompletedBattle) <= stage.battles.length
+      && Number(stage.progress.unlockedBattle) <= stage.battles.length
+      && isRecord(stage.progress.modes)
+      && isStructuredStageModeProgress(stage.progress.modes.learner, stage.battles.length)
+      && isStructuredStageModeProgress(stage.progress.modes.tactics, stage.battles.length)
+      && isRecord(stage.modes)
+      && isStructuredStageModeProgress(stage.modes.learner, stage.battles.length)
+      && isStructuredStageModeProgress(stage.modes.tactics, stage.battles.length)
+      && stage.battles.every((battle, index) => isRecord(battle)
         && typeof battle.id === "string"
-        && Number.isInteger(battle.displayOrder)
-        && Number(battle.displayOrder) >= 1
-        && Number(battle.displayOrder) <= 9
+        && battle.displayOrder === index + 1
         && (battle.battleSize === 1 || battle.battleSize === 2 || battle.battleSize === 3)
         && (battle.formation === null || typeof battle.formation === "string")
         && Array.isArray(battle.enemyDefinitionIds)

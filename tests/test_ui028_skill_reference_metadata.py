@@ -42,7 +42,7 @@ def test_reference_registry_and_response_cover_every_approved_skill_exactly():
         for skills in HERO_SKILL_INVENTORY.values()
         for skill_id, _display_name, _passive in skills
     }
-    assert len(expected_ids) == 33
+    assert len(expected_ids) == 34
     assert set(HERO_SKILL_REFERENCE_DEFINITIONS) == expected_ids
 
     response = client.get("/api/v1/heroes")
@@ -57,7 +57,7 @@ def test_reference_registry_and_response_cover_every_approved_skill_exactly():
     assert all(
         "reference" in skill for hero in body["heroes"] for skill in hero["skills"]
     )
-    assert sum(len(hero["skills"]) for hero in body["heroes"]) == 33
+    assert sum(len(hero["skills"]) for hero in body["heroes"]) == 34
 
 
 def test_gallery_cooldowns_match_the_seven_audited_engine_counters():
@@ -78,7 +78,7 @@ def test_gallery_cooldowns_match_the_seven_audited_engine_counters():
         for hero in body["heroes"]
         for skill in hero["skills"]
     }
-    assert len(actual) == 33
+    assert len(actual) == 34
     assert actual == {skill_id: expected.get(skill_id) for skill_id in actual}
 
 
@@ -307,8 +307,11 @@ def test_non_pilot_numeric_states_are_explicit_and_relevant():
         "skill.warrior.strike_of_meteorite",
         "skill.paladin.hammer_of_anger",
         "skill.paladin.crusader_strike",
+        "skill.paladin.flash_of_light",
+        "skill.paladin.purify_healing",
         "skill.paladin.shield_of_righteous",
         "skill.paladin.heroric_charge",
+        "skill.paladin.holy_aura",
         "skill.paladin.holy_blast",
         "skill.priest.penance",
         "skill.priest.holy_word_punishment",
@@ -421,8 +424,7 @@ def test_warrior_defence_and_berserker_damage_references(
         (
             "hero.paladin.protection",
             "skill.paladin.hammer_of_revenge",
-            "Direct damage = max(Caster Damage + Skill Variation − Target Defence, 0) + self-debuff bonus\n"
-            "Self-debuff bonus (distinct eligible active statuses): 0 = 0; 1 = 3–5; 2 = 6–8; 3 or more = 9–11",
+            "Direct damage = max(Caster Damage + Skill Variation − Target Defence, 0) + self-debuff bonus",
         ),
         (
             "hero.paladin.protection",
@@ -444,7 +446,29 @@ def test_paladin_target_dependent_damage_uses_audited_popup(
         "displayLabel": "Target-dependent",
         "calculation": {"title": "Damage Calculation", "formula": formula},
     }
-    assert reference["baseHealing"] == {"state": "notApplicable"}
+    if skill_id != "skill.paladin.heroric_charge":
+        assert reference["baseHealing"] == {"state": "notApplicable"}
+
+
+def test_paladin_protection_gallery_name_and_healing_powers():
+    body = client.get("/api/v1/heroes").json()
+    charge = _skill(body, "hero.paladin.protection", "skill.paladin.heroric_charge")
+    assert charge["displayName"] == "Heroic Charge"
+    assert charge["reference"]["baseHealing"] == {
+        "state": "available",
+        "amountRange": {"minimum": 28, "maximum": 32},
+        "basis": "baselinePower",
+        "note": "",
+        "conditions": [],
+    }
+    aura = _skill(body, "hero.paladin.protection", "skill.paladin.holy_aura")
+    assert aura["reference"]["baseHealing"] == {
+        "state": "available",
+        "amountRange": {"minimum": 6, "maximum": 8},
+        "basis": "baselinePower",
+        "note": "",
+        "conditions": [],
+    }
 
 
 @pytest.mark.parametrize(
@@ -486,6 +510,47 @@ def test_paladin_and_discipline_fixed_direct_power_ranges(
         }
     else:
         assert reference["baseHealing"] == {"state": "notApplicable"}
+
+
+@pytest.mark.parametrize(
+    ("definition_id", "skill_id", "minimum", "maximum"),
+    [
+        ("hero.paladin.retribution", "skill.paladin.flash_of_light", 19, 21),
+        ("hero.paladin.holy", "skill.paladin.purify_healing", 23, 27),
+    ],
+)
+def test_paladin_fixed_base_healing_ranges(
+    definition_id, skill_id, minimum, maximum
+):
+    body = client.get("/api/v1/heroes").json()
+    reference = _skill(body, definition_id, skill_id)["reference"]
+
+    assert reference["baseDamage"] == {"state": "notApplicable"}
+    assert reference["baseHealing"] == {
+        "state": "available",
+        "amountRange": {"minimum": minimum, "maximum": maximum},
+        "basis": "baselinePower",
+        "note": "",
+        "conditions": [],
+    }
+    if skill_id == "skill.paladin.flash_of_light":
+        adapter = BattleAdapter()
+        session, _ = adapter.create_battle(
+            seed=32803,
+            player_team=[definition_id],
+            enemy_team=["hero.warrior.weapon_master"],
+            enemy_control_mode="player",
+        )
+        actor = session.game.player_heroes[0]
+        assert {
+            actor._flash_of_light_base_healing(variation)
+            for variation in range(0, 3)
+        } == set(range(minimum, maximum + 1))
+    else:
+        assert BattleAdapter._paladin_healing_range("Purify Healing") == (
+            minimum,
+            maximum,
+        )
 
 
 def test_holy_word_punishment_continuous_damage_reference_matches_live_branches():
@@ -661,6 +726,50 @@ def test_priest_holy_concentration_is_gallery_passive_not_a_command():
             session, session.game.player_heroes[0], include_computer=True
         )
     )
+
+
+def test_paladin_wrath_of_crusader_is_gallery_passive_not_a_command():
+    body = client.get("/api/v1/heroes").json()
+    passive = _skill(
+        body, "hero.paladin.retribution", "skill.paladin.wrath_of_crusader"
+    )
+    assert passive["displayName"] == "Wrath of Crusader"
+    assert passive["isPassive"] is True
+    assert passive["reference"] == {
+        "target": {"mode": "self"},
+        "skillType": "effect",
+        "cooldownRounds": None,
+        "attackType": {"state": "notApplicable"},
+        "damageNature": {"state": "notApplicable"},
+        "damageType": {"state": "notApplicable"},
+        "baseDamage": {"state": "notApplicable"},
+        "continuousDamage": {"state": "notApplicable"},
+        "baseHealing": {"state": "notApplicable"},
+    }
+
+    adapter = BattleAdapter()
+    session, _ = adapter.create_battle(
+        seed=32802,
+        player_team=["hero.paladin.retribution"],
+        enemy_team=["hero.warrior.weapon_master"],
+        enemy_control_mode="player",
+    )
+    actor = session.game.player_heroes[0]
+    assert all(skill.name != "Wrath of Crusader" for skill in actor.skills)
+    assert all(
+        action["skillId"] != "skill.paladin.wrath_of_crusader"
+        for action in adapter._legal_actions(
+            session, actor, include_computer=True
+        )
+    )
+    actor.status["wrath_of_crusader"] = True
+    for stacks, damage_bonus, healing_bonus in (
+        (1, (3, 5), (5, 7)),
+        (2, (6, 8), (11, 13)),
+    ):
+        actor.wrath_of_crusader_stacks = stacks
+        assert actor.audited_wrath_damage_bonus_range("Hammer of Anger") == damage_bonus
+        assert actor.audited_wrath_healing_bonus_range("Flash of Light") == healing_bonus
 
 
 @pytest.mark.parametrize(

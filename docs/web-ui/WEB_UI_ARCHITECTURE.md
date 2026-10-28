@@ -183,6 +183,18 @@ when an ordered, sanitized `battleLog` line from Python already describes it.
 The client displays `battleLog` prose but never parses it for state, legality,
 identity, or animation decisions.
 
+UI-033 Hero Stats inspection is a read-only projection of the queue's
+`visibleSnapshot`, keyed by runtime combatant ID rather than by hero definition
+or a stored object reference. Occupied cards on either side expose the same
+button, including defeated heroes and summons; empty slots do not. A native
+modal dialog keeps battle controls behind its top-layer input boundary while
+presentation continues. Current HP follows ordered `hpAfter` values. Because
+events lack authoritative intermediate stat values, all attributes/deltas show
+`Updating…` while a script is playing; effect identities follow visible status
+events, but stack/duration details likewise show `Updating…` until the final
+snapshot replaces the visible one. No provider call, command, selection reset,
+or client-side status/stat formula is involved in opening the dialog.
+
 The pre-alpha audio projection follows the same ordered event boundary.
 `battleStarted`, a lunge `characterMoved`, `damageApplied`, `attackEvaded`, and
 `characterDefeated` map respectively to `battle.event`, `battle.skill`,
@@ -251,12 +263,15 @@ not implement a per-hero formula. Weapon Master Fatal Strike and Armor Crush,
 Warrior Defence's three damage skills, and Berserker's Moon Slash and Strike
 of Meteorite therefore reuse the established Shadow Word Pain/Rogue path.
 Paladin Retribution's Hammer of Anger and Protection's Hammer of Revenge and
-Heroric Charge use that same component and backend-authored popup; fixed
+Heroic Charge use that same component and backend-authored popup; fixed
 Paladin/Priest Discipline direct-power ranges use the existing numeric row.
 The Defence/Berserker entries have no explanatory card note; the strict
 client decoder accepts their required empty string while still requiring the
 reason, label, and calculation fields. Antivenom Potion's available
-self-healing range uses the ordinary facts-grid row.
+self-healing range uses the ordinary facts-grid row. Protection's Heroic Charge
+and passive Holy Aura also use the existing Base Healing row. The generic row
+order places it after Base Damage when present and before Target Type; the
+Gallery-corrected Heroic Charge name does not alter its historical skill ID.
 
 The typed skill reference also requires a `continuousDamage` numeric reference.
 Most skills supply `notApplicable`; when the adapter supplies an audited value,
@@ -292,11 +307,20 @@ Priest Discipline likewise shows Holy Concentration under Passive from the
 read-only catalogue and its editorial YAML. That Gallery-only marker describes
 the existing low-HP Holy Word Redemption extra-recipient behavior; it does not
 add a selectable battle action or a frontend activation calculation.
+Paladin Retribution likewise shows Wrath of Crusader in the Passive tab from
+the read-only catalogue and editorial YAML. Its buff and Hammer/Flash bonuses
+remain in the existing Python skills; the Gallery does not add an action or
+calculate those bonuses in React.
 
 UI-020 additionally loads `GET /api/v1/progression` for selectable definition
-IDs and `GET /api/v1/stages` for the two curricula and step access. Structured
-launch posts the player team, a size-valid player-selected formation for
-2v2/3v3, and a per-launch opaque `attemptId` to the one-based stage battle
+IDs and `GET /api/v1/stages` for the two curricula, step access, and
+campaign-specific Learner/Tactics availability and completion. The structured
+experience owns mode state by active profile and campaign so battle-button
+remounts do not reset it. A new profile/campaign entry defaults to Learner.
+The footer selector consumes server availability and cannot locally unlock
+Tactics; the backend revalidates at launch. Structured launch posts the player
+team, selected mode, a size-valid player-selected formation for 2v2/3v3, and
+a per-launch opaque `attemptId` to the one-based stage battle
 route. Normal player launch omits seed; deliberate developer/API seed support
 remains. Python supplies
 the fixed enemies, computer control, and fixed enemy formation.
@@ -314,10 +338,12 @@ restore the old process-local battle session or automatically create a
 replacement. A same-ID replay can return the original session after another
 tab changes Arena progress, but that obsolete session cannot commit progress.
 Friendly victory calls the stage session completion endpoint; React advances
-only after the atomic commit and fresh progression/stage fetch succeed. Newly
-granted rewards open a focus-contained, backend-authored notification before
-continuing to the permitted step or Stage Map. Replay never reopens a reward
-when `newlyGrantedRewards` is empty.
+only after the atomic commit and fresh progression/stage fetch succeed.
+Learner retains sequential continuation and backend-authored reward
+notifications. Unlocked Tactics offers any configured battle, records its own
+completion, and has no reward notification. Replay never reopens a reward
+when `newlyGrantedRewards` is empty. Arena and Debug remain separate and do
+not receive a mode selector or changed computer policy.
 
 After the Team Builder enters a battle, the live `BattleScreen` mounts and
 creates the session while a centered `3 → 2 → 1 → START` overlay keeps the
@@ -458,6 +484,8 @@ deployment boundary.
 
 ## Change Log
 
+- 2026-10-27 — Added structured-only Learner/Tactics mode state, backend-owned
+  availability, immutable launch identity, and mode-specific return flow.
 - 2026-09-15 — Expanded Battle Information Transparency through the typed
   engine/adapter contract to the approved Priest Comprehensiveness and Paladin
   Retribution skills, including healing, Binding's separate recipient, Shadow

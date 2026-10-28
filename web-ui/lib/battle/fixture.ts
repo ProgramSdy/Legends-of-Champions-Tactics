@@ -9,7 +9,19 @@ const skill = (id: string, displayName: string, description: string, cooldownRem
 const combatant = (partial: Partial<CombatantState> & Pick<CombatantState, "id" | "displayName" | "specialization" | "sideId" | "slot">): CombatantState => ({
   definitionId: `fixture.${partial.id}`, faculty: partial.specialization, isSummon: false,
   masterCombatantId: null, summonRoundsRemaining: null, isPlayerControlled: partial.sideId === "friendly",
-  alive: true, position: "front", hp: { current: 80, maximum: 80 }, resource: null, statuses: [], skills: [], ...partial,
+  alive: true, position: "front", hp: { current: 80, maximum: 80 },
+  stats: {
+    damage: { current: 42, delta: 0 },
+    defence: { current: 31, delta: 0 },
+    agility: { current: 27, delta: 0 },
+    resistances: {
+      fire: { current: 10, delta: 0 }, frost: { current: 10, delta: 0 },
+      arcane: { current: 10, delta: 0 }, shadow: { current: 10, delta: 0 },
+      death: { current: 10, delta: 0 }, poison: { current: 10, delta: 0 },
+      nature: { current: 10, delta: 0 },
+    },
+  },
+  resource: null, statuses: [], skills: [], ...partial,
 });
 
 export const fleshPuppet = combatant({

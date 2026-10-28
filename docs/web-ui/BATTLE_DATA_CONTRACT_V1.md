@@ -77,20 +77,34 @@ progression. `GET /api/v1/progression` returns only the backend-selected active
 profile's unlocked definition IDs, per-stage progress, and reward counts.
 `GET /api/v1/stages` returns the
 authoritative two nine-battle curricula with fixed enemy IDs/formations and
-server-computed access flags.
+server-computed access flags. Each stage additionally publishes
+`modes.learner` and `modes.tactics`, each with `available`, `completed`, and
+one-based `completedBattleIndices`. The existing stage `progress` and
+per-battle `unlocked`/`completed` remain Learner compatibility fields.
+Tactics availability is campaign-specific backend authority, not a client
+counter. A new profile has Learner available and Tactics locked; legacy stage
+completions are Learner history.
 
 `POST /api/v1/stages/{stageId}/battles/{battleIndex}` accepts the friendly
 team, a required size-valid player formation for 2v2/3v3, an optional
 deliberate developer/test seed, and an optional opaque `attemptId` for
-transport retry safety. The normal player UI sends `attemptId` and no seed.
+transport retry safety. It also accepts structured-only
+`mode: "learner" | "tactics"`, defaulting to `learner` for an omitted legacy
+stage request. Invalid values and locked Tactics attempts are rejected by the
+server. The normal player UI sends explicit mode and `attemptId`, with no seed.
 It returns the normal `BattleEnvelope<BattleCreateData>` after the backend
 supplies the fixed computer team/formation. The player formation is omitted
 for 1v1. `POST /api/v1/battles/{battleId}/completion` is a
 separate typed response, not a battle envelope: an authoritative friendly
-victory atomically updates progression and returns the first newly granted
-reward(s), or `alreadyCommitted: true` with no new grant on repetition.
+Learner victory atomically updates sequential progression and returns the
+first newly granted reward(s), or `alreadyCommitted: true` with no new grant
+on repetition. An unlocked Tactics victory records only its own campaign and
+battle completion, with no Learner progression or reward. Completion reads
+the session's immutable mode, not a client-supplied mode.
 The session retains its launch profile ID, so switching slots before completion
 causes a typed conflict rather than writing into the newly active profile.
+Mode is part of the process-local `attemptId` fingerprint: replaying one ID
+with a different mode returns a conflict rather than another session.
 
 The client renders availability and reward feedback only from these supplied
 responses. It must not infer an unlock from battle number, text, a static
@@ -232,6 +246,16 @@ type CombatantState = {
   isPlayerControlled: boolean;
   alive: boolean;
   hp: { current: number; maximum: number };
+  stats: {
+    damage: StatValue;
+    defence: StatValue;
+    agility: StatValue;
+    resistances: {
+      fire: StatValue; frost: StatValue; arcane: StatValue;
+      shadow: StatValue; death: StatValue; poison: StatValue;
+      nature: StatValue;
+    };
+  };
   resource: null | {
     kind: string;
     current: number;
@@ -258,6 +282,8 @@ type CombatantState = {
   }>;
 };
 
+type StatValue = { current: number; delta: number };
+
 type LegalAction = {
   skillId: string;
   actorId: string;
@@ -266,6 +292,26 @@ type LegalAction = {
   validTargetIds: string[];
 };
 ```
+
+`combatant.stats` is an additive, required current-snapshot fact. Python
+captures a frozen starting-battle baseline per runtime Hero instance after
+generated stats/resistance compensation and before opening effects; summons
+capture their own baseline at construction. Each `delta` is the signed
+`current − baseline` net change computed by Python, not an effect-attribution
+claim. All ten current/delta pairs are finite numbers; exact zero (including
+negative zero) is normalized to `0`, while fractional nonzero values retain
+their meaningful precision. No combat formula uses this inspection baseline.
+Clients must not compute deltas or infer them from statuses. HP is separate:
+the inspection dialog displays only current HP, with no HP modifier delta.
+
+The Battle Screen resolves an inspected combatant by runtime ID from its
+`visibleSnapshot`. During ordinary or opening event playback, ordered HP and
+status identity events may update visible facts, but current events do not
+provide intermediate attribute/resistance post-values or all status
+stack/duration values. The dialog therefore labels attributes/deltas and
+uncertain effect details `Updating…` until final snapshot reconciliation.
+It must never read the already-returned final command snapshot early. No new
+command, event, RNG, or revision is produced by inspection.
 
 `turnControl.acceptsCommands` is the authoritative command boundary. It must be
 true with disposition `playerCommand`, and its actor must match
@@ -620,14 +666,28 @@ Blood Frenzy marker, this is catalogue-only: the existing low-HP Redemption
 branch executes without a separate runtime Skill or battle command. The v1
 response shape and combat authority are unchanged.
 
+Paladin Retribution also publishes `skill.paladin.wrath_of_crusader` as a
+fourth, catalogue-only `isPassive: true` item. It has a self/effect reference
+with inapplicable numeric/classification fields. The existing Crusader Strike
+buff and Hammer of Anger/Flash of Light bonuses remain engine-owned; no
+separate runtime skill or legal command is introduced. The v1 shape is unchanged.
+
 The same numeric-reference shape publishes fixed direct-power
 ranges for Crusader Strike (18–22), Shield of Righteous (18–22), Holy Blast
 (first target 20–25; second target 14–17), Penance against an enemy (17–21),
 and Holy Word Punishment (7–11). Penance also publishes its independent ally
-healing power (21–25). These are skill power before target receipt, not live
+healing power (21–25). Flash of Light publishes unbuffed Base Healing 19–21;
+Purify Healing publishes Base Healing 23–27. Wrath-dependent Flash power and
+target/HP receipt remain live battle-preview and engine concerns. These are
+skill power before target receipt, not live
 damage/HP changes or periodic damage. The three Paladin target-dependent
-entries use adapter-authored formula copy, including Wrath and eligible
-self-debuff bonus bands where applicable; no client-side formula was added.
+entries use adapter-authored formula copy, including Wrath bonus bands and a
+self-debuff bonus term where applicable; no client-side formula was added.
+Protection's `skill.paladin.heroric_charge` keeps its historical ID but the
+Gallery display name is **Heroic Charge**. Its Base Healing is 28–32 on hit,
+evasion, and prevention paths alike. Passive Holy Aura
+publishes Base Healing 6–8 per living recipient at round start. These use the
+existing numeric-reference shape and card order; there is no schema change.
 
 Each Gallery skill reference now also includes the additive required
 `continuousDamage` field using the existing numeric-reference union. It is

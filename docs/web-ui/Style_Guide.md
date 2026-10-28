@@ -93,6 +93,26 @@ _To be documented._
 - Format-specific spacing must not move the hero figure, formation anchor, or
   target-control hit area.
 
+### Battle Hero Stats Inspection
+
+- Each occupied side Team Information card has a small gold-outline bar-chart
+  **View Hero Stats** button at its bottom-right, including a defeated card.
+  Empty slots have no button. Its accessible name includes the runtime name,
+  side, and slot so repeated names remain distinguishable.
+- Hero Stats uses a centred dark-fantasy native modal with a portrait, runtime
+  identity, current HP only, three attributes, seven resistances, and active
+  effects. Never add maximum HP or an HP bar inside it. Positive current values
+  and signed deltas are green, negative ones red, and exact-zero values neutral
+  with no delta; colour is supplemented by the sign. Small nonzero deltas must
+  remain legible rather than becoming signed zero.
+- During battle-event playback, uncertain attributes and effect counters read
+  `Updating…`; do not show final snapshot values before presentation catches
+  up. The modal traps focus, closes with Escape or `×`, and returns focus to its
+  initiating card button when still present. It blocks underlying input but
+  never pauses animation or changes the selected skill/targets. On narrow
+  viewports its facts stack vertically and the dialog scrolls within the
+  viewport instead of clipping or widening the battle scene.
+
 ### Battle Formations
 
 - The Battle Scene is a non-scrolling landscape presentation. Its responsive
@@ -362,10 +382,19 @@ _To be documented._
 - Team Builder identity is profession-only: show `Faculty · Specialization`,
   never a roster catalogue or runtime hero name. Faculty controls derive from
   the received roster and Matrix navigation pages only the active result set.
-- Structured Team Builder uses nine progression buttons: nine columns at
-  desktop and three at narrow width. Locked buttons are native-disabled with
-  explicit accessible names; completed, available, and current states do not
-  rely on color alone.
+- Structured Team Builder lists each backend-configured campaign battle in
+  display order, using a compact desktop grid and three columns at narrow
+  width. Locked Learner buttons are native-disabled with explicit accessible
+  names; completed, available, and current states do not rely on color alone.
+- Its footer places a compact horizontal Learner/Tactics segmented radio at
+  bottom-left; Enter Battle remains at right. Learner uses a small book icon,
+  Tactics crossed swords. Dark charcoal, a thin muted bronze edge, compact
+  type, and a restrained gold selection fit the existing fantasy treatment.
+  Locked Tactics shows a small lock and disabled styling and cannot receive
+  selection or launch. Labels and accessible checked/disabled state convey
+  the choice without colour alone. Visible focus, keyboard/touch operation,
+  and narrow wrapping preserve a usable footer. Arena and Debug have no
+  selector.
 - Structured 2v2 and 3v3 battles use the same friendly formation radio
   controls as Arena; their predefined enemy formation remains a readable fixed
   note. Structured 1v1 hides formation controls. Only backend-returned
@@ -374,6 +403,8 @@ _To be documented._
 
 ## Change Log
 
+- 2026-10-27 — Added the structured campaign mode selector and mode-aware
+  progression presentation without changing Arena/Debug controls.
 - 2026-10-08 — Completed finite Battle Information Transparency coverage for
   Priest Discipline, and therefore all ten approved web specializations.
   Penance uses server-authored ally Healing or opponent Damage/Hit Chance;

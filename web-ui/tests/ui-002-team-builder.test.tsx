@@ -144,8 +144,8 @@ describe("UI-002 Team Builder", () => {
               profileId: "profile.local.default",
               unlockedHeroDefinitionIds: roster.map((hero) => hero.definitionId),
               stageProgress: [
-                { stageId: "paladins-altar", highestCompletedBattle: 0, unlockedBattle: 1, completed: false },
-                { stageId: "warriors-barrack", highestCompletedBattle: 0, unlockedBattle: 1, completed: false },
+                { stageId: "paladins-altar", highestCompletedBattle: 0, unlockedBattle: 1, completed: false, modes: { learner: { available: true, completed: false, completedBattleIndices: [] }, tactics: { available: false, completed: false, completedBattleIndices: [] } } },
+                { stageId: "warriors-barrack", highestCompletedBattle: 0, unlockedBattle: 1, completed: false, modes: { learner: { available: true, completed: false, completedBattleIndices: [] }, tactics: { available: false, completed: false, completedBattleIndices: [] } } },
               ],
               grantedRewards: [],
             }

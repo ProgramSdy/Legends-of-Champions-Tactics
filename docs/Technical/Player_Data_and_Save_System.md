@@ -86,7 +86,11 @@ as proof that a profile owns/unlocked it.
 The implemented local store contains a schema marker, five slot rows, one
 backend-owned active-slot reference, occupied-slot profile identities and
 creation/last-played timestamps, unlocked definitions, stage state, rewards,
-and completion receipts scoped by profile and battle session. Arena Run adds an
+and completion receipts scoped by profile and battle session. Structured
+campaign mode completion is stored separately per profile, campaign, battle,
+and mode. Existing stage progress remains the sequential Learner authority;
+Tactics availability is derived per campaign from completion of every
+configured Learner battle. Arena Run adds an
 optional profile-scoped immutable squad, twelve persisted nodes, and node
 completion receipts. `BEGIN IMMEDIATE`
 makes each slot initialization/overwrite, active selection, or victory
@@ -94,7 +98,8 @@ receipt/progress/reward change atomic.
 
 New slots start with exactly Warrior Weapon Master, Mage Comprehensiveness,
 Priest Comprehensiveness, and Rogue Comprehensiveness, zero stage progress, and
-no rewards. Confirmed overwrite replaces only the named occupied slot with a
+no rewards. Learner is available by default; Tactics is locked separately in
+each campaign. Confirmed overwrite replaces only the named occupied slot with a
 new stable profile identity and fresh state in one transaction. Cancelling or
 withholding confirmation makes no write.
 
@@ -125,7 +130,10 @@ retry combat randomness. Existing run and save-slot rows need no migration.
 
 Save persistent progression immediately after it successfully changes. Examples
 include stage completion, hero unlocks, and other permanent progression
-rewards. A client-visible success must not be reported before the authoritative
+rewards. Learner victories retain the existing sequential stage and reward
+path. An unlocked Tactics victory records that battle's own completion without
+advancing Learner or granting a hero or item-card reward. A client-visible
+success must not be reported before the authoritative
 backend has committed the corresponding persistent change.
 
 ### Active PvE and Training Battles (Deferred)
@@ -140,9 +148,13 @@ rejected instead of leaking a result into the new active slot.
 ### Battle Completion
 
 After an authoritative friendly structured-battle victory, the completion route
-records a durable receipt, updates the stage, applies a permitted unlock or
-generic item-card reward, and returns the updated profile in one transaction.
-The receipt makes reload/retry/replay calls idempotent. It does not save or
+reads the immutable mode bound to the launched session. Learner records a
+durable receipt, updates the stage, applies a permitted unlock or generic
+item-card reward, and returns the updated profile in one transaction. Tactics
+records only its mode-specific completion, idempotently and without rewards.
+Defeat, draw, and resign do not complete either mode. A slot switch prevents
+the old session from writing to the newly active profile. Receipts make
+reload/retry/replay calls idempotent. Completion does not save or
 finalize an active-battle checkpoint because active-battle recovery is deferred.
 
 ## Load and Recovery Behaviour
@@ -176,6 +188,10 @@ out of scope and requires a separate design.
   clearly.
 - Preserve stable profile IDs, hero definition IDs, stage IDs, and battle
   identity keys; display names are not durable identity.
+- Migrate historical structured stage completions as Learner history without
+  replaying reward grants. An already-completed campaign gains Tactics access;
+  an incomplete one remains locked. Keep profile and slot isolation, including
+  on overwrite and reload.
 - Save only backend-authoritative state. Client preferences may be persisted as
   player data, but never treated as combat authority.
 - Design database access behind backend interfaces so moving from local SQLite
@@ -201,6 +217,8 @@ out of scope and requires a separate design.
 
 ## Change Log
 
+- 2026-10-27 — Added profile/campaign/battle/mode completion ownership,
+  Learner-only rewards, per-campaign Tactics access, and legacy Learner migration.
 - 2026-08-10 — Renamed from `Save_System.md`; documented agreed player-data,
   SQLite-direction, backend-authoritative autosave/recovery, completion, and
   abandonment principles. No persistence implementation was added.
