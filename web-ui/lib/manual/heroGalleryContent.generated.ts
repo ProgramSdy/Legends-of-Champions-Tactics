@@ -18,17 +18,17 @@ export const heroGalleryContent = {
     }
   },
   "hero.paladin.holy": {
-    "introduction": "A holy paladin devoted to resilient protection and restoration.",
-    "battleStyle": "Combines healing, cleansing, protection, and ranged holy pressure.",
+    "introduction": "A paladin who possesses a strong faith in the Holy Light.",
+    "battleStyle": "A flexible front-line role focused on healing, cleansing, protection, and ranged holy pressure.",
     "skills": {
       "skill.paladin.purify_healing": {
-        "introduction": "Restores one ally and can cleanse an eligible harmful effect."
+        "introduction": "Restores one ally and applies a Purify Healing buff to the target. The buff lasts two rounds; on each effective round, it removes one bleeding, disease, or toxic debuff."
       },
       "skill.paladin.holy_blast": {
-        "introduction": "A ranged holy attack that can affect multiple enemies."
+        "introduction": "Her strong faith in the Holy Light allows her to launch a powerful holy missile at up to two enemies."
       },
       "skill.paladin.shield_of_protection": {
-        "introduction": "Protects the caster from incoming damage for a limited time."
+        "introduction": "The Holy Light protects the Paladin from incoming attacks and instantly dispels harmful debuffs. This effect cannot be dispelled."
       }
     }
   },

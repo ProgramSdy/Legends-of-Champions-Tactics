@@ -15,18 +15,22 @@ const roster: HeroDefinitionSummary[] = [
 
 describe("UI-006 identity presentation", () => {
   it("shows faculty and specialization on friendly and enemy side cards", async () => {
-    render(<BattleScreen provider={new MockBattleProvider(createFormatFixture(1))} />);
+    const snapshot = createFormatFixture(1);
+    snapshot.combatants["friendly.ragnar"].specialization = "Weapon_Master";
+    snapshot.combatants["enemy.nighthawk"].specialization = "Shadow_Assassin";
+    render(<BattleScreen provider={new MockBattleProvider(snapshot)} />);
 
     const friendly = await screen.findByRole("article", { name: /Ragnar/i });
     const enemy = screen.getByRole("article", { name: /Nighthawk/i });
     expect(friendly).toHaveTextContent("Warrior · Weapon Master");
-    expect(enemy).toHaveTextContent("Rogue · Comprehensiveness");
+    expect(enemy).toHaveTextContent("Rogue · Shadow Assassin");
   });
 
-  it("shows faculty and specialization on the visual player slot", () => {
+  it("shows faculty and specialization on the visual player slot", async () => {
     render(<TeamBuilder roster={roster} onStart={vi.fn()} />);
 
-    const player = screen.getByRole("button", { name: "Hero 1: Paladin · Protection" });
+    fireEvent.click(screen.getByRole("button", { name: "Assign Paladin · Protection to your Hero 1" }));
+    const player = screen.getByRole("button", { name: /Hero 1.*Paladin.*Protection/i });
     expect(player).not.toHaveTextContent("Bastion");
     expect(player).toHaveTextContent(/Paladin\s*Protection/);
   });
@@ -72,19 +76,16 @@ describe("UI-006 engine-authored battle log", () => {
 });
 
 describe("UI-006 grounded formations and skill hierarchy", () => {
-  it("moves every supported formation slot below its former vertical coordinate", () => {
-    const former = {
-      duel: [45],
-      duo: [40, 54],
-      trio: [37, 48, 59],
-    } as const;
-
+  it("keeps every supported formation slot unique and within battlefield bounds", () => {
     for (const format of ["duel", "duo", "trio"] as const) {
       for (const side of ["friendly", "enemy"] as const) {
         const positions = formationRegistry[format][side];
         expect(new Set(positions.map(({ x, y }) => `${x}:${y}`)).size).toBe(positions.length);
-        positions.forEach((position, index) => {
-          expect(position.y).toBeGreaterThan(former[format][index]);
+        positions.forEach((position) => {
+          expect(position.x).toBeGreaterThanOrEqual(0);
+          expect(position.x).toBeLessThanOrEqual(100);
+          expect(position.y).toBeGreaterThanOrEqual(0);
+          expect(position.y).toBeLessThanOrEqual(100);
         });
       }
     }

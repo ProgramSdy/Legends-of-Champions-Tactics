@@ -6,6 +6,14 @@ import { MockBattleProvider } from "@/lib/battle/fixture";
 import { isAuditedPreviewSkill } from "@/lib/battle/useBattlePreview";
 import type { BattlePreview, BattlePreviewConsequence, BattlePreviewRequest, BattleProvider } from "@/lib/battle/types";
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+}));
+
+vi.mock("@/components/manual/ManualDialog", () => ({
+  ManualDialog: () => null,
+}));
+
 type PreviewingProvider = MockBattleProvider & BattleProvider & {
   previewAction: ReturnType<typeof vi.fn<(request: BattlePreviewRequest, signal?: AbortSignal) => Promise<BattlePreview>>>;
 };
@@ -128,8 +136,8 @@ describe("BATTLE-TRANSPARENCY-003 Warrior presentation", () => {
     expect(isAuditedPreviewSkill("skill.rogue.shadow_evasion")).toBe(false);
   });
 
-  it("requests and renders Antivenom Potion as an explicit targetless self preview", async () => {
-    const { provider, actorId } = await warriorProvider({
+  it("does not render a targetless self preview for Antivenom Potion", async () => {
+    const { provider } = await warriorProvider({
       skillId: "skill.warrior.antivenom_potion",
       displayName: "Antivenom Potion",
       targetMode: "none",
@@ -143,30 +151,15 @@ describe("BATTLE-TRANSPARENCY-003 Warrior presentation", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: /Antivenom Potion/i }));
 
-    const card = await waitFor(() => {
-      const result = document.querySelector<HTMLElement>(".self-preview-card.ready");
-      expect(result).toBeInTheDocument();
-      return result!;
-    });
-    expect(provider.previewAction).toHaveBeenCalledWith({
-      expectedRevision: 1,
-      actorId,
-      skillId: "skill.warrior.antivenom_potion",
-      targetIds: [],
-    }, expect.any(AbortSignal));
-    expect(card).toHaveTextContent("SELF");
-    expect(card).toHaveTextContent("Healing18–20");
-    expect(card).toHaveTextContent("Current HP63 / 97");
-    expect(card).toHaveTextContent("RemovesPoisoned Dagger");
-    expect(card).toHaveTextContent("Poison Resistance+45 · 2 rounds");
-    expect(card).toHaveTextContent("Cooldown3 rounds");
+    expect(document.querySelector(".self-preview-card")).not.toBeInTheDocument();
+    expect(provider.previewAction).not.toHaveBeenCalled();
     expect(screen.queryByRole("button", { name: /selectable target/ })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "CAST SKILL" })).toBeEnabled();
-    expect(screen.getByRole("button", { name: "CAST SKILL" })).toHaveAttribute("aria-describedby", "battle-self-preview");
+    expect(screen.getByRole("button", { name: "CAST SKILL" })).not.toHaveAttribute("aria-describedby", "battle-self-preview");
   });
 
-  it("requests and renders Warlust as an explicit targetless self preview", async () => {
-    const { provider, actorId } = await warriorProvider({
+  it("does not render a targetless self preview for Warlust", async () => {
+    const { provider } = await warriorProvider({
       skillId: "skill.warrior.warlust",
       displayName: "Warlust",
       targetMode: "none",
@@ -179,22 +172,10 @@ describe("BATTLE-TRANSPARENCY-003 Warrior presentation", () => {
     render(<BattleScreen provider={provider} mode="live" />);
     fireEvent.click(await screen.findByRole("button", { name: /Warlust/i }));
 
-    const card = await waitFor(() => {
-      const result = document.querySelector<HTMLElement>(".self-preview-card.ready");
-      expect(result).toBeInTheDocument();
-      return result!;
-    });
-    expect(provider.previewAction).toHaveBeenCalledWith({
-      expectedRevision: 1,
-      actorId,
-      skillId: "skill.warrior.warlust",
-      targetIds: [],
-    }, expect.any(AbortSignal));
-    expect(card).toHaveTextContent("Buff SelfWarlust");
-    expect(card).toHaveTextContent("Damage Increase+12");
-    expect(card).toHaveTextContent("Cooldown3 rounds");
+    expect(document.querySelector(".self-preview-card")).not.toBeInTheDocument();
+    expect(provider.previewAction).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "CAST SKILL" })).toBeEnabled();
-    expect(screen.getByRole("button", { name: "CAST SKILL" })).toHaveAttribute("aria-describedby", "battle-self-preview");
+    expect(screen.getByRole("button", { name: "CAST SKILL" })).not.toHaveAttribute("aria-describedby", "battle-self-preview");
   });
 
   it("renders finite Warrior target consequences without changing target selection", async () => {
@@ -395,7 +376,7 @@ describe("BATTLE-TRANSPARENCY-003 Warrior presentation", () => {
     }
   });
 
-  it("shows an unavailable self preview without blocking the legal targetless command", async () => {
+  it("keeps a legal targetless command available without an unavailable self preview", async () => {
     const { provider } = await warriorProvider({
       skillId: "skill.warrior.antivenom_potion",
       displayName: "Antivenom Potion",
@@ -415,7 +396,9 @@ describe("BATTLE-TRANSPARENCY-003 Warrior presentation", () => {
     render(<BattleScreen provider={provider} mode="live" />);
     fireEvent.click(await screen.findByRole("button", { name: /Antivenom Potion/i }));
 
-    expect(await screen.findByText("Preview unavailable")).toBeVisible();
+    expect(screen.queryByText("Preview unavailable")).not.toBeInTheDocument();
+    expect(document.querySelector(".self-preview-card")).not.toBeInTheDocument();
+    expect(provider.previewAction).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "CAST SKILL" })).toBeEnabled();
   });
 });

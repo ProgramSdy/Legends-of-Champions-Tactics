@@ -203,3 +203,22 @@ return/reset.
 
 Implemented and independently reviewed on 2026-07-29. Detailed requirements,
 acceptance criteria, and evidence are recorded in `UI_Review_002.md`.
+
+### UI-034 — 2026-10-30 Owner Review
+
+The authoritative implementation task is `docs/Codex/Current_Task.md` (UI-034).
+Owner source is the read-only 2026-10-30 section, items 1–8, of
+`docs/web-ui/screenshots_debug/UI_Review_Human.md`, with screenshots
+`UI_30_10_2026-01.png` through `UI_30_10_2026-03.png` in the same folder.
+
+The review requires locked Tactics alignment; target-selection counts in the
+ACTING HERO card instead of an overlapped battlefield popup; removal of that
+card's profession line and targetless effect popup; readable side-card
+specializations; a relocated, functional Game Manual gear without disrupting
+the active battle; Paladin Holy Gallery copy updates; and truthful Base Damage
+references for all three Mage Comprehensiveness skills. Preserve existing
+combat authority and validate each numbered item against the owner evidence.
+
+**Status:** Implemented and independently reviewed on 2026-10-30. Focused
+validation and the separate older full-suite failures are recorded in
+`docs/Codex/Completed.md` and `docs/Codex/Current_Task.md`.

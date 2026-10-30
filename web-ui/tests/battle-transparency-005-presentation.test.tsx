@@ -161,6 +161,8 @@ describe("BATTLE-TRANSPARENCY-005 Priest Discipline presentation", () => {
     // complete ordered draft and the UI does not invent an aggregate total.
     expect(screen.getByText("7–11")).toBeVisible();
     expect(screen.getByText("SELECT 2 TARGETS · 1 SELECTED")).toBeVisible();
+    expect(document.querySelector(".acting-card .turn-intent")).toHaveTextContent("SELECT 2 TARGETS · 1 SELECTED");
+    expect(document.querySelector(".target-preview-selection-status")).not.toBeInTheDocument();
     fireEvent.click(second);
     expect(screen.getByRole("button", { name: "CAST SKILL" })).toBeEnabled();
   });

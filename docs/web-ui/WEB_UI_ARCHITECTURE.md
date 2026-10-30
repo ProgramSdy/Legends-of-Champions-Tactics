@@ -265,6 +265,9 @@ of Meteorite therefore reuse the established Shadow Word Pain/Rogue path.
 Paladin Retribution's Hammer of Anger and Protection's Hammer of Revenge and
 Heroic Charge use that same component and backend-authored popup; fixed
 Paladin/Priest Discipline direct-power ranges use the existing numeric row.
+Mage Comprehensiveness's Fireball, Arcane Missiles, and Frost Bolt also use
+this adapter-authored Target-dependent path; Arcane's formula is explicitly
+per target, not a client-derived pair total.
 The Defence/Berserker entries have no explanatory card note; the strict
 client decoder accepts their required empty string while still requiring the
 reason, label, and calculation fields. Antivenom Potion's available
@@ -452,8 +455,10 @@ Redemption/Holy Word Punishment, and all nine active published Warrior skills.
 Holy Aura is passive-only and excluded. Moon Slash, Holy Blast, Thunder Pot,
 and Holy Word Punishment use the established per-target draft/full path;
 Antivenom Potion,
-Warlust, and Shield of Protection use the same typed,
-revision-bound `selfPreview` path with no fabricated target. Warrior material
+Warlust, and Shield of Protection remain targetless actions but do not present
+an Acting Hero self-preview overlay. The typed revision-bound preview path
+remains available to the provider; targetless UI state clears without leaving
+a stale request or popup. Warrior material
 rows preserve server-authored first/stack/refresh/extension/replacement/already
 active outcomes instead of collapsing them to an "Apply" claim. Paladin
 Protection/Holy status, immunity, actor-side, and Purify-candidate rows are
@@ -468,6 +473,14 @@ unavailable rather than approximated. Hover, focus,
 and target-button touch activation retain the same non-blocking selection path;
 the pointer-transparent presentation clears on departure, abort, stale state,
 unavailable result, automatic turn, or unsupported skill.
+
+Battle's target-count instruction is derived from the selected legal action's
+required cardinality and current selected target IDs, then rendered in ACTING
+HERO rather than under turn order. The Acting Hero profession line is omitted;
+side-card professions remain visible with underscores replaced by spaces at
+the presentation boundary. The battle header opens the same focus-contained
+`ManualDialog` used by Stage Map without navigating or remounting the battle;
+the right fullscreen control remains independent.
 
 ## Runtime Caveat
 

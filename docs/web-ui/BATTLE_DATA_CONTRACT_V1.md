@@ -638,7 +638,8 @@ or a client-computed turn of availability. All other published skills, including
 passives, serialize `null` and omit the Gallery Cool Down fact box.
 
 Current audited `targetDependentBaseline` entries are Shadow Word Pain, Sharp
-Blade, Poisoned Dagger, Warrior Weapon Master's Fatal Strike and Armor Crush,
+Blade, Poisoned Dagger, Mage Comprehensiveness's Fireball, Arcane Missiles, and
+Frost Bolt, Warrior Weapon Master's Fatal Strike and Armor Crush,
 Warrior Defence's Devastate, Shield Bash and Thunder Pot, and Warrior
 Berserker's Moon Slash and Strike of Meteorite, Paladin Retribution's Hammer of
 Anger, and Paladin Protection's Hammer of Revenge and Heroric Charge.
@@ -683,6 +684,10 @@ skill power before target receipt, not live
 damage/HP changes or periodic damage. The three Paladin target-dependent
 entries use adapter-authored formula copy, including Wrath bonus bands and a
 self-debuff bonus term where applicable; no client-side formula was added.
+Mage's three target-dependent entries likewise publish adapter-authored direct
+damage formulas. Arcane Missiles describes each selected target separately,
+using one shared variation and that target's Arcane Resistance; it publishes no
+aggregate damage or invented caster-only range. No schema or combat rule changes.
 Protection's `skill.paladin.heroric_charge` keeps its historical ID but the
 Gallery display name is **Heroic Charge**. Its Base Healing is 28–32 on hit,
 evasion, and prevention paths alike. Passive Holy Aura

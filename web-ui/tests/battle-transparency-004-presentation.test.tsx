@@ -218,8 +218,8 @@ describe("BATTLE-TRANSPARENCY-004 Paladin presentation", () => {
     expect(screen.getByRole("button", { name: "CAST SKILL" })).toBeEnabled();
   });
 
-  it("reuses targetless selfPreview for Shield of Protection without a fake target", async () => {
-    const { provider, actorId } = await paladinProvider({
+  it("keeps Shield of Protection available without a targetless self-preview overlay", async () => {
+    const { provider } = await paladinProvider({
       skillId: "skill.paladin.shield_of_protection",
       displayName: "Shield of Protection",
       targetMode: "self",
@@ -240,19 +240,11 @@ describe("BATTLE-TRANSPARENCY-004 Paladin presentation", () => {
     render(<BattleScreen provider={provider} mode="live" />);
     fireEvent.click(await screen.findByRole("button", { name: /Shield of Protection/i }));
 
-    const card = await readyCard(".self-preview-card.ready");
-    expect(provider.previewAction).toHaveBeenCalledWith({
-      expectedRevision: 1,
-      actorId,
-      skillId: "skill.paladin.shield_of_protection",
-      targetIds: [],
-    }, expect.any(AbortSignal));
-    expect(card).toHaveTextContent("Buff RefreshDamage Immunity · 2 rounds");
-    expect(card).toHaveTextContent("RemovesScoff");
-    expect(card).toHaveTextContent("Cooldown3 rounds");
+    expect(document.querySelector(".self-preview-card")).not.toBeInTheDocument();
+    expect(provider.previewAction).not.toHaveBeenCalled();
     expect(screen.queryByRole("button", { name: /selectable target/i })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "CAST SKILL" })).toBeEnabled();
-    expect(screen.getByRole("button", { name: "CAST SKILL" })).toHaveAttribute("aria-describedby", "battle-self-preview");
+    expect(screen.getByRole("button", { name: "CAST SKILL" })).not.toHaveAttribute("aria-describedby", "battle-self-preview");
   });
 
   it.each([

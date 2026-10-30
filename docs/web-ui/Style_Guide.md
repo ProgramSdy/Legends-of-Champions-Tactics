@@ -395,6 +395,9 @@ _To be documented._
   the choice without colour alone. Visible focus, keyboard/touch operation,
   and narrow wrapping preserve a usable footer. Arena and Debug have no
   selector.
+- The locked Tactics segment keeps its crossed-swords icon, label, and lock
+  vertically centred as one row at supported widths; this is an alignment
+  adjustment, not a change to disabled semantics.
 - Structured 2v2 and 3v3 battles use the same friendly formation radio
   controls as Arena; their predefined enemy formation remains a readable fixed
   note. Structured 1v1 hides formation controls. Only backend-returned
@@ -403,6 +406,15 @@ _To be documented._
 
 ## Change Log
 
+- 2026-10-30 — Battle targeting count lives in ACTING HERO's dynamic
+  instruction instead of a strip beneath turn order; the ACTING HERO card omits
+  profession, while side cards retain a space-formatted profession. Targetless
+  actions retain their controls but show no self-preview overlay; targeted
+  hover/focus transparency remains. Battle's right header uses the existing
+  focus-contained Game Manual dialog in place of the asset link; the left
+  hamburger and gear are removed, with fullscreen retained. The Paladin Holy
+  Gallery introduction is editorial YAML, and Mage's three direct-damage
+  references use adapter-authored Target-dependent calculation help.
 - 2026-10-27 — Added the structured campaign mode selector and mode-aware
   progression presentation without changing Arena/Debug controls.
 - 2026-10-08 — Completed finite Battle Information Transparency coverage for
@@ -418,8 +430,7 @@ _To be documented._
   of these facts.
 
 - 2026-09-20 — Extended Battle Information Transparency to the six approved
-  active Paladin Protection/Holy skills. Targetless Shield of Protection uses
-  the compact anchored self card; Holy Blast follows the existing per-target
+  active Paladin Protection/Holy skills. Holy Blast follows the existing per-target
   draft/full treatment. Protection/Holy facts, including Purify's intentionally
   non-specific random-removal eligibility, remain server-authored rows. Holy
   Aura is passive-only and has no preview. The UI must not show a guessed
@@ -428,8 +439,8 @@ _To be documented._
   to the finite nine-skill published Warrior roster. Targeted rows retain the
   server-authored application, stack, refresh, extension, replacement, or
   already-active outcome rather than claiming every status is newly applied.
-  Moon Slash and Thunder Pot use the existing per-target draft/full treatment;
-  Antivenom Potion and Warlust use an anchored targetless self-preview. No
+  Moon Slash and Thunder Pot use the existing per-target draft/full treatment.
+  Targetless actions no longer display an anchored self-preview. No
   generic roster fallback, formula display, DoT total, or invented target is
   permitted.
 - 2026-09-15 — Expanded the compact Battle Information Transparency treatment

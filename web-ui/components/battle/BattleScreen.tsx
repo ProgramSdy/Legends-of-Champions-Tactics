@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import Link from "next/link";
+import { ManualDialog } from "@/components/manual/ManualDialog";
 import { usePresentationQueue } from "@/lib/battle/usePresentationQueue";
 import type { BattleEvent, BattleEventType, BattleOutcome, BattlePreviewSelf, BattlePreviewTarget, BattleProvider, CombatantState, LegalAction, PresentationScript, SideId } from "@/lib/battle/types";
 import { AssetImage } from "./AssetImage";
@@ -415,10 +415,12 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
   const [completionPending, setCompletionPending] = useState(false);
   const [completionError, setCompletionError] = useState<string | null>(null);
   const [resignConfirmationOpen, setResignConfirmationOpen] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
   const [statsCombatantId, setStatsCombatantId] = useState<string | null>(null);
   const statsTriggerRef = useRef<HTMLButtonElement | null>(null);
   const logListRef = useRef<HTMLOListElement>(null);
   const completionButtonRef = useRef<HTMLButtonElement>(null);
+  const manualTriggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!snapshot || entryCountdown === null || entryCountdownStepMs === undefined) return;
@@ -477,19 +479,6 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
   // button focused. Keyboard focus remains an accessible non-pointer fallback.
   const previewAnchorId = hoveredTargetId ?? (targetInputMode === "keyboard" ? focusedTargetId : null);
   const previewTargetIds = previewTargetsForAnchor(legal, selectedTargets, previewAnchorId);
-  // These audited self actions have no target-selection decision, so their
-  // revision-bound self-preview is anchored at the acting-hero/skill area.
-  const targetlessSelfPreview = Boolean(
-    legal
-    && legal.minimumTargets === 0
-    && legal.maximumTargets === 0
-    && (selectedSkillState?.targetMode === "none" || selectedSkillState?.targetMode === "self")
-    && [
-      "skill.warrior.antivenom_potion",
-      "skill.warrior.warlust",
-      "skill.paladin.shield_of_protection",
-    ].includes(selectedSkill ?? ""),
-  );
   const suppressTargetedSelfPreview = selectedSkill === "skill.warrior.shield_bash"
     || selectedSkill === "skill.warrior.thunder_pot";
   const previewRequest = acceptsCommands
@@ -497,7 +486,7 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
     && snapshot?.activeCombatantId
     && selectedSkill
     && isAuditedPreviewSkill(selectedSkill)
-    && (previewTargetIds.length > 0 || targetlessSelfPreview)
+    && previewTargetIds.length > 0
     ? {
         expectedRevision: revision,
         actorId: snapshot.activeCombatantId,
@@ -506,9 +495,11 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
       }
     : null;
   const { phase: previewPhase, preview } = useBattlePreview(provider, previewRequest);
-  const selfPreviewPhase: TargetPreviewPhase = targetlessSelfPreview
-    ? previewPhase
-    : !suppressTargetedSelfPreview && previewPhase === "ready" && preview?.selfPreview ? "ready" : "idle";
+  const selfPreviewPhase: TargetPreviewPhase = !suppressTargetedSelfPreview
+    && previewPhase === "ready"
+    && preview?.selfPreview
+    ? "ready"
+    : "idle";
   const selfPreviewDescriptionId = selfPreviewPhase === "idle" ? undefined : "battle-self-preview";
   const compactPreview = presentationConfig.mode === "pad"
     || presentationConfig.mode === "pad-mini"
@@ -558,6 +549,12 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
   const completionLabel = snapshot.outcome && completionActionLabel
     ? completionActionLabel(snapshot.outcome)
     : "RETURN TO TEAM BUILDER";
+  const targetSelectionInstruction = acceptsCommands
+    && selectedSkill
+    && legal
+    && legal.minimumTargets > 0
+    ? `SELECT ${legal.minimumTargets} ${legal.minimumTargets === 1 ? "TARGET" : "TARGETS"} · ${selectedTargets.length} SELECTED`
+    : null;
 
   const completeBattle = async () => {
     if (snapshot.outcome && onBattleComplete) {
@@ -618,11 +615,11 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
       style={{ "--browser-size-rate": presentationConfig.browserSizeRate } as CSSProperties}
     >
       <header className="battle-header">
-        <div className="header-tools"><button data-audio-feedback="interactive" aria-label="Open menu">☰</button><button data-audio-feedback="interactive" aria-label="Settings">⚙</button></div>
+        <div className="header-tools" aria-hidden="true" />
         <div className="side-banner friendly"><span className="crest">L</span><strong>YOUR TEAM</strong><i>READY</i></div>
         <div className="round"><strong>ROUND {snapshot.round}</strong><span>TURN {snapshot.turn.index} / {snapshot.turn.total}</span></div>
         <div className="side-banner enemy"><strong>ENEMY TEAM</strong><i>HOSTILE</i><span className="crest">☠</span></div>
-        <div className="header-tools right"><Link data-audio-feedback="interactive" href="/assets" aria-label="Open asset gallery">◆</Link><button data-audio-feedback="interactive" aria-label="Toggle fullscreen" onClick={() => void toggleFullscreen()}>⛶</button></div>
+        <div className="header-tools right"><button ref={manualTriggerRef} data-audio-feedback="interactive" aria-label="Open Game Manual" onClick={() => setManualOpen(true)}>⚙</button><button data-audio-feedback="interactive" aria-label="Toggle fullscreen" onClick={() => void toggleFullscreen()}>⛶</button></div>
         <nav className="turn-order" aria-label="Turn order">
           {snapshot.turnOrder.map((turn, index) => {
             const hero = combatants[turn.combatantId];
@@ -683,12 +680,6 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
               onTargetFocus={(targetId, fromKeyboard) => { setTargetInputMode(fromKeyboard || !hoveredTargetId ? "keyboard" : "pointer"); setFocusedTargetId(targetId); }} />
             </div>;
           })}
-          {selectedSkill && isAuditedPreviewSkill(selectedSkill) && legal && legal.maximumTargets > 1
-            && selectedTargets.length < legal.minimumTargets
-            ? <aside className="target-preview-selection-status" aria-live="polite">
-                SELECT {legal.minimumTargets} TARGETS · {selectedTargets.length} SELECTED
-              </aside>
-            : null}
           {compactPreview && previewPhase !== "idle" && previewAnchorId ? <aside className="target-preview-dock" id="battle-target-preview-dock">
             {previewPhase === "ready" && preview
               ? (() => {
@@ -709,15 +700,15 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
 
       <section className="command-deck">
         {active
-          ? <div className={`acting-card ${selfPreviewPhase !== "idle" ? "showing-self-preview" : ""}`}><AssetImage request={{ kind: "figure", key: active.definitionId, name: active.displayName, className: active.faculty }} className="portrait" /><div><small>ACTING HERO</small><h2>{active.displayName}</h2><p>{active.faculty} · {active.specialization}</p><span className="turn-intent">{
+          ? <div className={`acting-card ${selfPreviewPhase !== "idle" ? "showing-self-preview" : ""}`}><AssetImage request={{ kind: "figure", key: active.definitionId, name: active.displayName, className: active.faculty }} className="portrait" /><div><small>ACTING HERO</small><h2>{active.displayName}</h2><span className="turn-intent">{
             snapshot.turnControl.disposition === "skip"
               ? "ACTION RESTRICTED · TURN SKIPPED"
               : isPlaying && activeEvent
                 ? "RESOLVING AUTHORITATIVE ACTION"
                 : acceptsCommands
-                ? selectedSkill
+                ? targetSelectionInstruction ?? (selectedSkill
                   ? `READYING ${active.skills.find((skill) => skill.id === selectedSkill)?.displayName}`
-                  : "CHOOSE AN AUTHORIZED SKILL"
+                  : "CHOOSE AN AUTHORIZED SKILL")
                 : snapshot.turnControl.disposition === "automaticAction"
                     ? "ACTION RESOLVING AUTOMATICALLY"
                     : "PLAYER COMMANDS UNAVAILABLE"
@@ -758,6 +749,7 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
         {!active ? <button className="end-turn" disabled>BATTLE ENDED</button> : isPlaying ? <button data-audio-feedback="interactive" className="end-turn" onClick={skip} disabled={!canSkip || isOpening}>{isOpening ? "OPENING BATTLE…" : canSkip ? "SKIP EFFECT" : "RESOLVING…"}</button> : !acceptsCommands ? <button className="end-turn" disabled>{entryLocked ? "BATTLE OPENING" : "AUTOMATIC TURN"}</button> : <button data-audio-feedback="interactive" className="end-turn" aria-describedby={selfPreviewDescriptionId} onClick={triggerSkill} disabled={!selectedSkill || !legal || selectedTargets.length < legal.minimumTargets || selectedTargets.length > legal.maximumTargets}>{selectedSkill ? "CAST SKILL" : "SELECT SKILL"}</button>}
         {onResign ? <button data-audio-feedback="interactive" type="button" className="resign-battle" onClick={() => setResignConfirmationOpen(true)}>RESIGN</button> : null}
       </footer>
+      {manualOpen ? <ManualDialog open onClose={() => setManualOpen(false)} triggerRef={manualTriggerRef} /> : null}
       {(error || fullscreenError) && <div className={`ui-error ${errorKind ?? ""}`} role="alert"><strong>{errorKind === "stale" ? "STATE RECONCILED" : errorKind === "rejected" ? "COMMAND REJECTED" : "BATTLE NOTICE"}</strong><span>{error ?? fullscreenError}</span></div>}
       {entryCountdown !== null && (
         <div className="battle-entry-countdown" data-countdown-step={entryCountdown}>

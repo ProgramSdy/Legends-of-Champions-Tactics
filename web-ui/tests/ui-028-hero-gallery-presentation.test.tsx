@@ -356,7 +356,16 @@ describe("UI-028 expanded skill reference card", () => {
           attackType: { state: "classified", value: "rangedProjectile" },
           damageNature: { state: "classified", value: "magical" },
           damageType: { state: "classified", value: "arcane" },
-          baseDamage: { state: "unavailable", reasonId: "notAudited", note: "Reference power has not yet been audited." },
+          baseDamage: {
+            state: "unavailable",
+            reasonId: "targetDependentBaseline",
+            displayLabel: "Target-dependent",
+            note: "",
+            calculation: {
+              title: "Damage Calculation",
+              formula: "Direct damage per target = max(ceil((Caster Damage + Skill Variation − Target Arcane Resistance) × 2 ÷ 3), 0)\nSkill Variation = −3 to +3; one roll is shared by all selected targets.\nEach target is calculated separately before formation and target-side effects.",
+            },
+          },
           baseHealing: { state: "notApplicable" },
         },
       }}
@@ -367,7 +376,50 @@ describe("UI-028 expanded skill reference card", () => {
     expect(screen.getByText("Ranged Projectile")).toBeVisible();
     expect(screen.getByText("Magical")).toBeVisible();
     expect(screen.getByText("Arcane")).toBeVisible();
+    expect(screen.getByText("Target-dependent")).toBeVisible();
+    await userEvent.setup().click(screen.getByRole("button", { name: /open damage calculation/i }));
+    expect(screen.getByRole("dialog", { name: "Damage Calculation" })).toHaveTextContent("Direct damage per target = max(ceil((Caster Damage + Skill Variation − Target Arcane Resistance) × 2 ÷ 3), 0)");
     expect(screen.queryByText("Base Healing")).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ["Fireball", "skill.mage.fireball", "Target Fire Resistance", "Skill Variation = −5 to +5"],
+    ["Frost Bolt", "skill.mage.frost_bolt", "Target Frost Resistance", "Skill Variation = −2 to +2"],
+  ] as const)("renders audited target-dependent Mage calculation for %s", async (displayName, skillId, resistance, variation) => {
+    render(<SkillReferenceCard
+      skill={{
+        ...skill,
+        skillId,
+        displayName,
+        reference: {
+          ...skill.reference,
+          skillType: "damage",
+          attackType: { state: "classified", value: "rangedProjectile" },
+          damageNature: { state: "classified", value: "magical" },
+          damageType: { state: "classified", value: displayName === "Fireball" ? "fire" : "frost" },
+          baseDamage: {
+            state: "unavailable",
+            reasonId: "targetDependentBaseline",
+            displayLabel: "Target-dependent",
+            note: "",
+            calculation: {
+              title: "Damage Calculation",
+              formula: displayName === "Fireball"
+                ? `Direct damage = max(Caster Damage + Skill Variation − ${resistance}, 0)\n${variation}`
+                : `Direct damage = max(ceil((Caster Damage + Skill Variation − ${resistance}) × 4 ÷ 5), 0)\n${variation}`,
+            },
+          },
+          baseHealing: { state: "notApplicable" },
+        },
+      }}
+      content={{ introduction: `${displayName} reference.` }}
+    />);
+    const user = userEvent.setup();
+    await user.click(screen.getByText(displayName));
+    expect(screen.getByText("Target-dependent")).toBeVisible();
+    await user.click(screen.getByRole("button", { name: /open damage calculation/i }));
+    expect(screen.getByRole("dialog", { name: "Damage Calculation" })).toHaveTextContent(resistance);
+    expect(screen.getByRole("dialog", { name: "Damage Calculation" })).toHaveTextContent(variation);
   });
 
   it("keeps responsive facts two-column on wide cards and one-column on narrow cards", () => {

@@ -184,16 +184,22 @@ describe("BATTLE-TRANSPARENCY-001 target preview", () => {
     expect(await screen.findByText("11–19")).toBeVisible();
     expect(document.querySelectorAll(".target-preview-card.ready")).toHaveLength(1);
     expect(screen.getByText("SELECT 2 TARGETS · 0 SELECTED")).toBeVisible();
+    expect(document.querySelector(".acting-card .turn-intent")).toHaveTextContent("SELECT 2 TARGETS · 0 SELECTED");
+    expect(document.querySelector(".target-preview-selection-status")).not.toBeInTheDocument();
 
     fireEvent.click(first);
     fireEvent.mouseLeave(first);
     fireEvent.mouseEnter(second);
     await waitFor(() => expect(provider.previewAction).toHaveBeenCalledTimes(2));
     expect(provider.previewAction.mock.calls[1][0].targetIds).toEqual(["enemy.sashein", "enemy.andonidas"]);
+    expect(screen.getByText("SELECT 2 TARGETS · 1 SELECTED")).toBeVisible();
     expect(screen.getByText("7–14")).toBeVisible();
     expect(screen.queryByText("11–19")).not.toBeInTheDocument();
     expect(document.querySelectorAll(".target-preview-card.ready")).toHaveLength(1);
     expect(screen.queryByText(/total damage/i)).not.toBeInTheDocument();
+
+    fireEvent.click(first);
+    expect(screen.getByText("SELECT 2 TARGETS · 0 SELECTED")).toBeVisible();
   });
 
   it("previews Arcane Missiles for its sole legal 1v1 target", async () => {

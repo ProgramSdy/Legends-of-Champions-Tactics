@@ -32,9 +32,10 @@ describe("UI-028 Hero Gallery editorial content", () => {
     expect(heroGalleryContent["hero.priest.comprehensiveness"].introduction).toBe(
       "A versatile priest who balances holy restoration with shadow pressure.",
     );
-    expect(heroGalleryContent["hero.paladin.protection"].skills["skill.paladin.hammer_of_revenge"].introduction).toBe(
-      "A ranged holy retaliation that responds to the caster's debuffs.",
-    );
+    expect(heroGalleryContent["hero.paladin.protection"].skills["skill.paladin.hammer_of_revenge"].introduction)
+      .toContain("Based on the quantity of debuff that is activated on Paladin");
+    expect(heroGalleryContent["hero.paladin.holy"].skills["skill.paladin.holy_blast"].introduction)
+      .toContain("up to two enemies");
   });
 
   it("rejects duplicate YAML keys and malformed YAML with the source name", () => {

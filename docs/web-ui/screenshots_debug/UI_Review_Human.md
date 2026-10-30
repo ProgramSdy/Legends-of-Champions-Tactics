@@ -1995,3 +1995,41 @@ Below tasks are all related with Hero Gallery UI update. This task is pure UI, O
 
 7. On the left side hero details area, Remove the below text at the Bottom.
     - “Different paths. A greater purpose.”
+
+# Date
+
+2026-10-30
+
+### Screenshot name
+
+UI_30_10_2026-01
+UI_30_10_2026-02
+UI_30_10_2026-03
+
+### Task List
+
+1. See Screenshot UI_30_10_2026-01, the red line highlighted locked TACTICS text in not in line perfet in the box, espacially vertical. Fix this.
+
+2. See Screenshot UI_30_10_2026-02, when mage select arcane missle, there is a strange window in the red rectanble area. It has been mostly covered by the hero round sequence card, but I can barely read it, it says SELECT 2 TARGETS 0 SELECTED. These information are useful, but shall not be dispalyed in a seperated window popup in some strange area. I request these information being displayed in the ACTING HERO card area which is the bottom left area of the battle UI. For example, Current ACTING HERO is Eldoria Mage Comprehensiveness. I requet to remove the hero profession text like the current Mage - Comprehensiveness from this ACTING HERO box. And also replace the current skill dynamic information like the current "READYING Arcane Missiles" into "SELECT 2 TARGETS 0 SELECTED" information which is displayed in a seperated window. If a single target skill is selected, then this shall shhow "SELECT 1 TARGETS 0 SELECTED"
+
+3. Based on item 2 check if similar situation happens on other multiple target skills and fix them all. For the request of remove the hero profession text like the current Mage - Comprehensiveness from this ACTING HERO box. I request this to be applied on all heroes. 
+
+4. When selecting Antivenom Potion skill from warrior Weapon Master, there is a pop up window shows the skill effects like healing amount and etc.. this window is now showed in the ACTING HERO area. I request to completely remove this popup window. Please also check if this situation happens on other non-target skills, and fix those as well.
+
+5. In Hero cards stayed on both side of battle UI, some hero's proffesion contains an unnecessary underscroll. For example, Weapon_Master. This shall be shown as Weapon Master. Please check all proffesion and fix this underscroll issue.
+
+6. See UI_30_10_2026-03. I have marked those button icons in the battle UI 1 2 3 4. I request:
+     - Button 1: Remove
+     - Button 2: Move to the location of button 3
+     - Button 2: currently this button has no function, add a function, click it will show up the Game Manual, this Game Manual is the same one as the one in Stage Map. click cross button will close the window and be back to the game battle without breaking the current battle and allow battle to continue. 
+     - Button 3: Remove
+     - Button 4: Keep with no change.
+
+7. In hero gallery change below text for Paladin Holy:
+     - Hero Introduction: A paladin who possess a strong faith in the Holy Light. 
+     - Battle Style: A flexiable front line role who healing, cleansing, protection, and ranged holy pressure.
+     - Purify Healing: Restores one ally and applies a "Purify Healing" buff to target. The buff lasts for two rounds, for each of it's effective round, the buff will eliminate one debuff which has either a bleeding, a disease or a toxic effect.
+     - Holy Blast: Paladin's strong Holy Light faith allows her to cast a strong holy missile attack against two enemies. 
+     - Shiled of Protection: Holy Light protects Paladin from any incoming attack and instantly dispell any harmful debuff. This effect cannot be dispelled. 
+
+8. In In hero gallery, for Mage Comprehensiveness, all three skill has a Unavailable in BASE DAMAGE, fix this issue.

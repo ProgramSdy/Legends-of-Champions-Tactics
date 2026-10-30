@@ -612,7 +612,7 @@ class Paladin_Holy(Paladin):
 
     def shield_of_protection(self):
         hero_status_activated = [key for key, value in self.status.items() if value == True]
-        set_comb = set(self.list_status_debuff_magic)  | set(self.list_status_debuff_bleeding) | set(self.list_status_debuff_disease) |set(self.list_status_debuff_physical)
+        set_comb = set(self.list_status_debuff_magic)  | set(self.list_status_debuff_bleeding) | set(self.list_status_debuff_disease) | set(self.list_status_debuff_physical) | set(self.list_status_debuff_toxic)
         equal_status = set(hero_status_activated) & set_comb
         status_list_for_action = list(equal_status)
         self.game.display_battle_info(f"{self.name} uses Shield of Protection.")

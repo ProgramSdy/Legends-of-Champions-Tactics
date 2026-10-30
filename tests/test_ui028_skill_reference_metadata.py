@@ -347,6 +347,9 @@ def test_target_dependent_inventory_is_limited_to_formula_audited_skills():
     }
 
     assert target_dependent_ids == {
+        "skill.mage.fireball",
+        "skill.mage.arcane_missiles",
+        "skill.mage.frost_bolt",
         "skill.priest.shadow_word_pain",
         "skill.rogue.sharp_blade",
         "skill.rogue.poisoned_dagger",

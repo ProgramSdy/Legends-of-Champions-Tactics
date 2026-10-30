@@ -3,8 +3,13 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { BattleScreen } from "@/components/battle/BattleScreen";
+import { SoundPreferenceProvider } from "@/components/audio/SoundPreferenceProvider";
 import { MockBattleProvider } from "@/lib/battle/fixture";
 import type { BattleEvent } from "@/lib/battle/types";
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+}));
 
 const demoDefinitions = [
   ["magic", "Magic attack"], ["healing", "Healing"], ["melee", "Melee"],
@@ -13,10 +18,12 @@ const demoDefinitions = [
 
 async function renderBattle(provider: MockBattleProvider = new MockBattleProvider()) {
   render(
-    <BattleScreen
-      provider={provider}
-      mockDemos={demoDefinitions.map(([id, label]) => ({ id, label, run: () => provider.runDemo(id) }))}
-    />,
+    <SoundPreferenceProvider>
+      <BattleScreen
+        provider={provider}
+        mockDemos={demoDefinitions.map(([id, label]) => ({ id, label, run: () => provider.runDemo(id) }))}
+      />
+    </SoundPreferenceProvider>,
   );
   await screen.findByRole("main");
   await screen.findByRole("complementary", { name: "Your team" });
@@ -30,15 +37,27 @@ describe("battle screen integration", () => {
     expect(screen.getByRole("complementary", { name: "Enemy team" })).toBeVisible();
     expect(screen.getByRole("region", { name: "Battlefield" })).toBeVisible();
     expect(screen.getByRole("navigation", { name: "Turn order" })).toBeVisible();
-    expect(screen.getByRole("button", { name: "Settings" })).toBeEnabled();
-    expect(screen.getByRole("link", { name: "Open asset gallery" })).toHaveAttribute("href", "/assets");
+    expect(screen.getByRole("button", { name: "Open Game Manual" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Toggle fullscreen" })).toBeEnabled();
     expect(screen.getByRole("article", { name: /Arthas, Necromancer · Necromancer, active hero/i })).toHaveClass("active");
     expect(screen.queryByText("Choose a demo or select a skill.")).not.toBeInTheDocument();
   });
 
+  it("opens and closes the shared Game Manual without leaving the active battle", async () => {
+    await renderBattle();
+    const user = userEvent.setup();
+    const trigger = screen.getByRole("button", { name: "Open Game Manual" });
+    await user.click(trigger);
+    expect(screen.getByRole("dialog", { name: "Game Manual" })).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Close Game Manual" }));
+    expect(screen.queryByRole("dialog", { name: "Game Manual" })).not.toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Battlefield" })).toBeVisible();
+    expect(screen.getByRole("navigation", { name: "Turn order" })).toBeVisible();
+  });
+
   it("places RESIGN at the end of battle controls and requires confirmation", async () => {
     const resign = vi.fn();
-    render(<BattleScreen provider={new MockBattleProvider()} onResign={resign} />);
+    render(<SoundPreferenceProvider><BattleScreen provider={new MockBattleProvider()} onResign={resign} /></SoundPreferenceProvider>);
     const user = userEvent.setup();
     const button = await screen.findByRole("button", { name: "RESIGN" });
 
@@ -277,11 +296,11 @@ describe("battle screen integration", () => {
         statusId: "status.poisoned_dagger", effectHint: "status", message: "Poison expires.",
       },
     ] satisfies BattleEvent[];
-    render(<BattleScreen provider={provider} mockDemos={[{
+    render(<SoundPreferenceProvider><BattleScreen provider={provider} mockDemos={[{
       id: "stack-update", label: "Stack update", run: async () => ({
         id: "stack-update", label: "Stack update", eventType: "status", events, snapshot: final, revision: 2,
       }),
-    }]} />);
+    }]} /></SoundPreferenceProvider>);
     await screen.findByRole("region", { name: "Battlefield" });
     fireEvent.click(screen.getByRole("button", { name: "×2" }));
     fireEvent.click(screen.getByRole("button", { name: "Stack update" }));
@@ -314,11 +333,11 @@ describe("battle screen integration", () => {
       statusId: "status.poisoned_dagger", roundsRemaining: 1, stacks: 1,
       statusPresentation: "debuff", effectHint: "status", message: "Transient poison stack.",
     } satisfies BattleEvent;
-    render(<BattleScreen provider={provider} mockDemos={[{
+    render(<SoundPreferenceProvider><BattleScreen provider={provider} mockDemos={[{
       id: "stack-final", label: "Stack final", run: async () => ({
         id: "stack-final", label: "Stack final", eventType: "status", events: [event], snapshot: final, revision: 3,
       }),
-    }]} />);
+    }]} /></SoundPreferenceProvider>);
     await screen.findByRole("region", { name: "Battlefield" });
     fireEvent.click(screen.getByRole("button", { name: "×2" }));
     fireEvent.click(screen.getByRole("button", { name: "Stack final" }));
