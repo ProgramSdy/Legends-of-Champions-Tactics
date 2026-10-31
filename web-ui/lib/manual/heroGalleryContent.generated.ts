@@ -3,8 +3,8 @@ import type { HeroGalleryContentRegistry } from "./heroGalleryContentTypes";
 
 export const heroGalleryContent = {
   "hero.mage.comprehensiveness": {
-    "introduction": "An arcane scholar who commands elemental and arcane attacks.",
-    "battleStyle": "Uses ranged magic to exploit opponents and control their pace.",
+    "introduction": "An magic scholar who commands elemental and arcane attacks.",
+    "battleStyle": "A rear line magical Dpser who uses ranged magic to exploit opponents and control their pace.",
     "skills": {
       "skill.mage.fireball": {
         "introduction": "A ranged fire attack against one enemy."
@@ -13,7 +13,7 @@ export const heroGalleryContent = {
         "introduction": "Arcane projectiles directed at multiple enemies."
       },
       "skill.mage.frost_bolt": {
-        "introduction": "A ranged frost attack that can inflict Cold."
+        "introduction": "A ranged frost attack that can inflict Cold debuff on target which reduces target's Agility by 70% for 2 rounds."
       }
     }
   },
@@ -43,7 +43,7 @@ export const heroGalleryContent = {
         "introduction": "Paladin bash a nearby enemy with his grand shield. This attack will build Shield of Righteous buff on paladin which stacks max 2 times. Each stack increases paladin's defence by 15%. Keep using this skill will refresh buff duration."
       },
       "skill.paladin.heroric_charge": {
-        "introduction": "A ranged charge that can applies scoff status and disrupt target casting. Providing a immediate healing effect to Paladin."
+        "introduction": "A ranged charge that can applies Scoff status to target. Providing a immediate [28-32] healing effect to Paladin.\n>> Special Effect:\n   - Interrupts target magic casting."
       },
       "skill.paladin.holy_aura": {
         "introduction": "Passive: while alive, restores each living teammate at round start."
@@ -121,13 +121,13 @@ export const heroGalleryContent = {
     "battleStyle": "Front line Dpser who master the art of relentless attacks and self-buffing to overwhelm enemies.",
     "skills": {
       "skill.warrior.moon_slash": {
-        "introduction": "Move swiftly approaching to enemy and execute a sweeping attack against multiple enemies."
+        "introduction": "Move swiftly approaching to enemy and execute a sweeping attack against multiple enemies.\n>> Special Effect:\n   - If target is under Armor Breaker debuff, Moon Slash will apply a bleeding debuff on target that causes [6-10] continuous damage over 2 rounds."
       },
       "skill.warrior.warlust": {
         "introduction": "A self-buff that increases Berserker's damage by 1/3 and enable berserker to immune to control effects for 2 rounds."
       },
       "skill.warrior.strike_of_meteorite": {
-        "introduction": "A heavy single-enemy strike that weakens targets' armour. Attack attaches an Armor Breaker debuff to target which stacks up to 2 times, each stack reduces target's armour by 15% for 2 rounds."
+        "introduction": "A heavy single-enemy strike that weakens targets' armour. This attack can apply Armor Breaker debuff to a target, stacking up to 2 times, with each stack reducing the target's armor by 15% for 2 rounds, and will refresh the duration of the debuff.\n>> Special Effect:\n   - Interrupts target magic casting."
       },
       "skill.warrior.blood_frenzy": {
         "introduction": "Passive. After surviving incoming damage, Blood Frenzy can activate based on remaining HP: 50% chance above 25% through 50% HP; 75% chance above 10% through 25% HP; guaranteed at 10% HP or less. It cannot activate above 50% HP or while already active.\nFor 2 rounds, gain 20 Agility and lose round(current Defence ÷ 2) Defence. While active, Moon Slash and Strike of Meteorite restore whole HP equal to 30% of their calculated direct damage; Moon Slash heals separately for each target."
@@ -136,16 +136,16 @@ export const heroGalleryContent = {
   },
   "hero.warrior.defence": {
     "introduction": "A shield-bearing warrior built to hold ground under pressure.",
-    "battleStyle": "Breaks armour, disrupts enemies, and reinforces personal defence.",
+    "battleStyle": "A front line control Tank who present excellence in multiple target control skills to master the pace of the battle.",
     "skills": {
       "skill.warrior.devastate": {
-        "introduction": "A forceful attack against one enemy."
+        "introduction": "A forceful attack against one enemy. This attack can apply Armor Breaker debuff to a target, stacking up to 2 times, with each stack reducing the target's armor by 15% for 2 rounds, and will refresh the duration of the debuff."
       },
       "skill.warrior.shield_bash": {
-        "introduction": "A shield attack that can stun."
+        "introduction": "A shield attack that can stun the target for 2 rounds.\n>> Special Effect:\n   - Interrupts target magic casting."
       },
       "skill.warrior.thunder_pot": {
-        "introduction": "A defensive technique with enemy-facing pressure."
+        "introduction": "Throw a thundder pot to two enemies, irritating them and applies a Scoff debuff. Providing a instant boost on multiple resistance.\n>>Resistance boost:\n - fire resistance +45 for 2 rounds\n - frost resistance +45 for 2 rounds\n - death resistance +45 for 2 rounds\n - nature resistance +45 for 2 rounds\n>> Special Effect:\n   - Interrupts target magic casting."
       }
     }
   },
@@ -157,7 +157,7 @@ export const heroGalleryContent = {
         "introduction": "A decisive strike with weapon that attaches a debuff which reduces target's healing by 70% for 2 rounds."
       },
       "skill.warrior.armor_crush": {
-        "introduction": "A crushing strike that can weaken targets' armour. Attack attaches an Armor Breaker debuff to target which stacks up to 3 times, each stack reduces target's armour by 15% for 2 rounds.\n >> Special Effect:\n   - Debuff stacks two times: activate an extra debuff \"Wound Armor Crush\" which reduces target's agility by 20% for 2 rounds.\n   - Debuff stacks three times: activate an extra debuff \"Bleeding Armor Crush\" which causes 8-12 continuous damage over 3 rounds."
+        "introduction": "A crushing strike that can weaken targets' armour. Attack attaches an Armor Breaker debuff to target which stacks up to 3 times, each stack reduces target's armour by 15% for 2 rounds and will refresh the duration of the debuff.\n >> Special Effect:\n   - Debuff stacks two times: activate an extra debuff \"Wound Armor Crush\" which reduces target's agility by 20% for 2 rounds.\n   - Debuff stacks three times: activate an extra debuff \"Bleeding Armor Crush\" which causes 8-12 continuous damage over 3 rounds."
       },
       "skill.warrior.antivenom_potion": {
         "introduction": "Drink an antivenom potion to remove poison effects and recover health. Warrior Weapon Master gains a buff that increases their poison resistance by 45 for 2 rounds."

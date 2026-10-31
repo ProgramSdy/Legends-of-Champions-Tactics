@@ -3,14 +3,23 @@ definitionId: hero.warrior.defence
 introduction: |-
   A shield-bearing warrior built to hold ground under pressure.
 battleStyle: |-
-  Breaks armour, disrupts enemies, and reinforces personal defence.
+  A front line control Tank who present excellence in multiple target control skills to master the pace of the battle.
 skills:
   - skillId: skill.warrior.devastate
     introduction: |-
-      A forceful attack against one enemy.
+      A forceful attack against one enemy. This attack can apply Armor Breaker debuff to a target, stacking up to 2 times, with each stack reducing the target's armor by 15% for 2 rounds, and will refresh the duration of the debuff.
   - skillId: skill.warrior.shield_bash
     introduction: |-
-      A shield attack that can stun.
+      A shield attack that can stun the target for 2 rounds.
+      >> Special Effect:
+         - Interrupts target magic casting.
   - skillId: skill.warrior.thunder_pot
     introduction: |-
-      A defensive technique with enemy-facing pressure.
+      Throw a thundder pot to two enemies, irritating them and applies a Scoff debuff. Providing a instant boost on multiple resistance.
+      >>Resistance boost:
+       - fire resistance +45 for 2 rounds
+       - frost resistance +45 for 2 rounds
+       - death resistance +45 for 2 rounds
+       - nature resistance +45 for 2 rounds
+      >> Special Effect:
+         - Interrupts target magic casting.

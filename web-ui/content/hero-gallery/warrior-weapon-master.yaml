@@ -10,7 +10,7 @@ skills:
       A decisive strike with weapon that attaches a debuff which reduces target's healing by 70% for 2 rounds.
   - skillId: skill.warrior.armor_crush
     introduction: |-
-      A crushing strike that can weaken targets' armour. Attack attaches an Armor Breaker debuff to target which stacks up to 3 times, each stack reduces target's armour by 15% for 2 rounds.
+      A crushing strike that can weaken targets' armour. Attack attaches an Armor Breaker debuff to target which stacks up to 3 times, each stack reduces target's armour by 15% for 2 rounds and will refresh the duration of the debuff.
        >> Special Effect:
          - Debuff stacks two times: activate an extra debuff "Wound Armor Crush" which reduces target's agility by 20% for 2 rounds.
          - Debuff stacks three times: activate an extra debuff "Bleeding Armor Crush" which causes 8-12 continuous damage over 3 rounds.

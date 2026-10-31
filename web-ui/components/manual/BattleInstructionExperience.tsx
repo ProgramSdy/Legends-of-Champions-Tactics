@@ -10,9 +10,8 @@ type BattleInstructionExperienceProps = {
 export function BattleInstructionExperience({ embedded = false, onBackToManual }: BattleInstructionExperienceProps) {
   return <main className={`manual-page instruction-page${embedded ? " manual-page-embedded" : ""}`}>
     {embedded
-      ? <button type="button" className="manual-back" data-manual-back onClick={onBackToManual}>← Back to Game Manual</button>
-      : <Link className="manual-back" href="/stages?manual=open">← Back to Game Manual</Link>}
-    {!embedded && <small>GAME MANUAL</small>}
+      ? <button type="button" className="manual-back" data-manual-back onClick={onBackToManual}>← Back to Manual</button>
+      : <Link className="manual-back" href="/stages?manual=open">← Back to Manual</Link>}
     <h1>Battle Instruction</h1>
     <section>
       <h2>Battle Basics</h2>

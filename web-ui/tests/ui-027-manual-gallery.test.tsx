@@ -213,11 +213,12 @@ describe("UI-027 Manual and Gallery", () => {
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
     render(<HeroGalleryPage />);
     expect(await screen.findByRole("alert")).toHaveTextContent("Hero Gallery data is unavailable");
-    render(<BattleInstructionPage />);
+    const instruction = render(<BattleInstructionPage />);
     expect(screen.getByRole("heading", { name: "Battle Instruction" })).toBeVisible();
     expect(screen.getByRole("heading", { name: "Victory and Formations" })).toBeVisible();
     expect(screen.getByText(/Tips are suggestions, not extra combat rules/)).toBeVisible();
-    expect(screen.getByRole("link", { name: /Back to Game Manual/ })).toHaveAttribute("href", "/stages?manual=open");
+    expect(within(instruction.container).getByRole("link", { name: /Back to Manual/i })).toHaveAttribute("href", "/stages?manual=open");
+    expect(within(instruction.container).queryByText("GAME MANUAL")).not.toBeInTheDocument();
   });
 
   it("uses the shared battle figure scale for the selected full-body Gallery art", async () => {
