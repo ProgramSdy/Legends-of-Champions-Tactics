@@ -12,6 +12,10 @@ import { buildSkillReferenceRows } from "@/lib/manual/heroGalleryPresentation";
 
 type State = { heroes: HeroGalleryDefinition[]; owned: Set<string> | null; error: string | null };
 type SkillTab = "active" | "passive";
+type HeroGalleryExperienceProps = {
+  embedded?: boolean;
+  onBackToManual?: () => void;
+};
 
 const ACTIVE_TAB_ID = "hero-skill-tab-active";
 const PASSIVE_TAB_ID = "hero-skill-tab-passive";
@@ -83,7 +87,7 @@ export function SkillReferenceCard({ skill, content }: { skill: HeroSkillInvento
   );
 }
 
-export function HeroGalleryExperience() {
+export function HeroGalleryExperience({ embedded = false, onBackToManual }: HeroGalleryExperienceProps = {}) {
   const [state, setState] = useState<State>({ heroes: [], owned: null, error: null });
   const [faculty, setFaculty] = useState("All");
   const [selected, setSelected] = useState<string | null>(null);
@@ -138,8 +142,10 @@ export function HeroGalleryExperience() {
   }
 
   return (
-    <main className="manual-page hero-gallery-page">
-      <Link className="manual-back" href="/stages?manual=open">← Back to Manual</Link>
+    <main className={`manual-page hero-gallery-page${embedded ? " manual-page-embedded" : ""}`}>
+      {embedded
+        ? <button type="button" className="manual-back" data-manual-back onClick={onBackToManual}>← Back to Manual</button>
+        : <Link className="manual-back" href="/stages?manual=open">← Back to Manual</Link>}
       {state.error ? (
         <section className="manual-error" role="alert">
           <p>{state.error}</p>

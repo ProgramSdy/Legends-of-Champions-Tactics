@@ -480,7 +480,9 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
   const previewAnchorId = hoveredTargetId ?? (targetInputMode === "keyboard" ? focusedTargetId : null);
   const previewTargetIds = previewTargetsForAnchor(legal, selectedTargets, previewAnchorId);
   const suppressTargetedSelfPreview = selectedSkill === "skill.warrior.shield_bash"
-    || selectedSkill === "skill.warrior.thunder_pot";
+    || selectedSkill === "skill.warrior.thunder_pot"
+    || selectedSkill === "skill.paladin.heroric_charge"
+    || selectedSkill === "skill.paladin.shield_of_righteous";
   const previewRequest = acceptsCommands
     && !autoBattle
     && snapshot?.activeCombatantId
@@ -749,7 +751,7 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
         {!active ? <button className="end-turn" disabled>BATTLE ENDED</button> : isPlaying ? <button data-audio-feedback="interactive" className="end-turn" onClick={skip} disabled={!canSkip || isOpening}>{isOpening ? "OPENING BATTLE…" : canSkip ? "SKIP EFFECT" : "RESOLVING…"}</button> : !acceptsCommands ? <button className="end-turn" disabled>{entryLocked ? "BATTLE OPENING" : "AUTOMATIC TURN"}</button> : <button data-audio-feedback="interactive" className="end-turn" aria-describedby={selfPreviewDescriptionId} onClick={triggerSkill} disabled={!selectedSkill || !legal || selectedTargets.length < legal.minimumTargets || selectedTargets.length > legal.maximumTargets}>{selectedSkill ? "CAST SKILL" : "SELECT SKILL"}</button>}
         {onResign ? <button data-audio-feedback="interactive" type="button" className="resign-battle" onClick={() => setResignConfirmationOpen(true)}>RESIGN</button> : null}
       </footer>
-      {manualOpen ? <ManualDialog open onClose={() => setManualOpen(false)} triggerRef={manualTriggerRef} /> : null}
+      {manualOpen ? <ManualDialog open onClose={() => setManualOpen(false)} triggerRef={manualTriggerRef} navigationMode="embedded" /> : null}
       {(error || fullscreenError) && <div className={`ui-error ${errorKind ?? ""}`} role="alert"><strong>{errorKind === "stale" ? "STATE RECONCILED" : errorKind === "rejected" ? "COMMAND REJECTED" : "BATTLE NOTICE"}</strong><span>{error ?? fullscreenError}</span></div>}
       {entryCountdown !== null && (
         <div className="battle-entry-countdown" data-countdown-step={entryCountdown}>

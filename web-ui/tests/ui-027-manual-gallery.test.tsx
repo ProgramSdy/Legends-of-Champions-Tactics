@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { useRef, useState } from "react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { StageSelectionScreen } from "@/components/stages/StageSelectionScreen";
@@ -8,6 +9,7 @@ import BattleInstructionPage from "@/app/manual/battle-instruction/page";
 import { fetchHeroGalleryRoster } from "@/lib/battle/liveProvider";
 import { heroFigureScaleFor } from "@/lib/battle/assets";
 import type { HeroGalleryDefinition } from "@/lib/battle/types";
+import { ManualDialog } from "@/components/manual/ManualDialog";
 
 const push = vi.fn();
 const replace = vi.fn();
@@ -107,6 +109,16 @@ function renderManual() {
   return render(<SoundPreferenceProvider><StageSelectionScreen /></SoundPreferenceProvider>);
 }
 
+function EmbeddedManualHarness({ revision }: { revision: number }) {
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const [open, setOpen] = useState(true);
+  return <SoundPreferenceProvider>
+    <button ref={triggerRef} type="button">Manual trigger</button>
+    <span>{revision}</span>
+    <ManualDialog open={open} onClose={() => setOpen(false)} triggerRef={triggerRef} navigationMode="embedded" />
+  </SoundPreferenceProvider>;
+}
+
 afterEach(() => {
   vi.restoreAllMocks();
   push.mockReset();
@@ -141,6 +153,21 @@ describe("UI-027 Manual and Gallery", () => {
     fireEvent.keyDown(window, { key: "Escape" });
     await waitFor(() => expect(document.activeElement).toBe(trigger));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("does not steal focus from embedded Manual content when the battle parent rerenders", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => String(input).endsWith("/heroes")
+      ? json({ contractVersion: "1.0", heroes: gallery })
+      : json(progression()));
+    const view = render(<EmbeddedManualHarness revision={1} />);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: /Hero Gallery/ }));
+    await screen.findByRole("region", { name: "Approved heroes" });
+    const warriorFilter = screen.getByRole("button", { name: "Warrior" });
+    warriorFilter.focus();
+
+    view.rerender(<EmbeddedManualHarness revision={2} />);
+    await waitFor(() => expect(warriorFilter).toHaveFocus());
   });
 
   it("renders all ten catalogue definitions, filters by faculty, and shows ownership/profile facts", async () => {

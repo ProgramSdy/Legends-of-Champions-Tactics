@@ -294,6 +294,17 @@ _To be documented._
   primary options: Hero Gallery, Battle Instruction, and Sound On/Off. Initial
   focus belongs on Hero Gallery; Escape and every close path restore the Manual
   trigger.
+- The battle gear opens that same menu, but its Hero Gallery and Battle
+  Instruction are embedded views within the modal. These content views omit
+  the menu's outer Game Manual heading, frame, and gold border; their own
+  heading and reading surface are the visual focus. There is no embedded ×;
+  Escape closes directly to the same battle and restores focus to the gear.
+  Back returns to the framed menu, where the menu × remains available. Keep
+  the expanded view scrollable without
+  letting it obscure or move battle HUD content behind the modal.
+- A highlighted side hero card retains the soft gold halo while status icons,
+  tooltips, portrait/data, and the absolute-positioned Hero Stats button stay
+  in their normal positions and above the halo layer on either team.
 - The Hero Gallery uses a cinematic two-region desktop composition: filters and
   selectable roster cards on the left, selected aspect-preserving figure art
   and factual profile content on the right. Narrow layouts stack in reading
@@ -340,6 +351,9 @@ _To be documented._
   unavailable explanation. Use the owner-approved **Direct damage** wording
   in the formula copy; distinguish its pre-receipt scope in documentation
   without adding unwanted explanatory text to the card.
+- Mage Fireball, Arcane Missiles, and Frost Bolt calculation dialogs use the
+  backend-authored direct-damage equation alone, with no extra variation or
+  formation sentences. Arcane remains explicitly per target.
 - Editorial copy is deliberately distinct from these facts: maintainers edit
   the per-hero YAML content files and run the Gallery content validation/build
   path. Skill introductions preserve authored YAML block line breaks and
@@ -406,6 +420,12 @@ _To be documented._
 
 ## Change Log
 
+- 2026-10-31 — Battle-origin Manual content stays embedded in the mounted
+  battle, and highlighted side-card controls retain their normal coordinates.
+  Heroic Charge and Shield of Righteous keep legal target hover/focus
+  transparency but do not open a separate caster self-preview over Acting Hero;
+  authoritative actor-side effects and combat execution are unchanged. Mage's
+  three Gallery calculation dialogs show only their backend-authored equations.
 - 2026-10-30 — Battle targeting count lives in ACTING HERO's dynamic
   instruction instead of a strip beneath turn order; the ACTING HERO card omits
   profession, while side cards retain a space-formatted profession. Targetless

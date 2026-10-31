@@ -614,9 +614,7 @@ class BattleAdapter:
                     "title": "Damage Calculation",
                     "formula": (
                         "Direct damage = max(Caster Damage + Skill Variation "
-                        "− Target Fire Resistance, 0)\n"
-                        "Skill Variation = −5 to +5\n"
-                        "Formation and target-side effects are applied afterward."
+                        "− Target Fire Resistance, 0)"
                     ),
                 },
             )
@@ -629,9 +627,7 @@ class BattleAdapter:
                     "title": "Damage Calculation",
                     "formula": (
                         "Direct damage per target = max(ceil((Caster Damage + "
-                        "Skill Variation − Target Arcane Resistance) × 2 ÷ 3), 0)\n"
-                        "Skill Variation = −3 to +3; one roll is shared by all selected targets.\n"
-                        "Each target is calculated separately before formation and target-side effects."
+                        "Skill Variation − Target Arcane Resistance) × 2 ÷ 3), 0)"
                     ),
                 },
             )
@@ -644,9 +640,7 @@ class BattleAdapter:
                     "title": "Damage Calculation",
                     "formula": (
                         "Direct damage = max(ceil((Caster Damage + Skill Variation "
-                        "− Target Frost Resistance) × 4 ÷ 5), 0)\n"
-                        "Skill Variation = −2 to +2\n"
-                        "Formation and target-side effects are applied afterward."
+                        "− Target Frost Resistance) × 4 ÷ 5), 0)"
                     ),
                 },
             )

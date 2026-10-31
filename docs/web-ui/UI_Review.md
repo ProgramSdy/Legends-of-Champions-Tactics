@@ -222,3 +222,38 @@ combat authority and validate each numbered item against the owner evidence.
 **Status:** Implemented and independently reviewed on 2026-10-30. Focused
 validation and the separate older full-suite failures are recorded in
 `docs/Codex/Completed.md` and `docs/Codex/Current_Task.md`.
+
+### UI-035 — 2026-10-31 Owner Review
+
+The authoritative implementation task is `docs/Codex/Current_Task.md`
+(UI-035). Owner source is the read-only 2026-10-31 section, items 1–4, of
+`docs/web-ui/screenshots_debug/UI_Review_Human.md` (no screenshot).
+
+The review requires the battle-origin Game Manual to return through Hero
+Gallery or Battle Instruction without losing the active battle; removal of
+three specified supplemental Mage damage-equation sentences; fixed side-card
+status-icon/Stats-button placement during target highlighting; and no Acting
+Hero self-preview overlay for Heroic Charge or Shield of Righteous. Preserve
+the underlying engine facts, target-bound previews, and Stage Map-origin
+Manual behaviour. Validate the complete nested navigation path, not merely
+direct Manual open/close.
+
+**Status:** Implemented and independently reviewed on 2026-10-31. The full
+nested battle-origin Manual path, Stage Map route behavior, Mage copy,
+highlight placement, and Paladin preview presentation were validated;
+evidence and manual limits are recorded in `docs/Codex/Completed.md`.
+
+### UI-036 — Battle-Embedded Manual Content Frame
+
+The owner's 2026-10-31 follow-up screenshot shows a redundant outer Game
+Manual title/header and frame around the embedded Hero Gallery. The owner
+reports the same issue for Battle Instruction, only when opened from the
+battle's Manual icon. `docs/Codex/Current_Task.md` defines the focused fix:
+remove that competing chrome in both embedded views while preserving a direct
+close control, Back to Manual, the mounted battle, and Stage Map-origin
+appearance/navigation.
+
+**Status:** Complete. Both embedded views omit the redundant menu shell. The
+owner's follow-up removes the embedded ×, leaving Back and direct Escape;
+the initial menu still has its ×. Focused tests and live desktop/compact
+browser checks passed; Stage Map still navigates to the standalone pages.

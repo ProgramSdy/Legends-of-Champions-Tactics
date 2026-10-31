@@ -244,10 +244,14 @@ builder validates the fixed hero/skill ID coverage and emits the typed generated
 registry consumed by the browser; the browser neither fetches YAML nor derives
 mechanical values from it. Gallery ownership is independently fetched from
 `GET /api/v1/progression`. The Manual dialog owns its focus trap, Escape and
-return-focus behavior; `/manual/heroes` and `/manual/battle-instruction` are
-read-only routes. `SoundPreferenceProvider` restores its browser-local setting
-only after mount, gates the central `AudioManager`, and never replays events or
-changes battle-event ordering.
+return-focus behavior. Stage Map-origin options continue to use the read-only
+`/manual/heroes` and `/manual/battle-instruction` routes. Battle-origin options
+reuse those content components as embedded Manual views without changing route
+or unmounting `BattleScreen`/its live provider; Back returns to the Manual menu
+and Escape returns to the same battle. The embedded views have no ×; the menu
+retains its ×. `SoundPreferenceProvider` restores its
+browser-local setting only after mount, gates the central `AudioManager`, and
+never replays events or changes battle-event ordering.
 
 `fetchHeroGalleryRoster` additionally compares every catalogue definition ID
 and its exact skill-ID set with that generated editorial registry. A phased or
@@ -267,7 +271,9 @@ Heroic Charge use that same component and backend-authored popup; fixed
 Paladin/Priest Discipline direct-power ranges use the existing numeric row.
 Mage Comprehensiveness's Fireball, Arcane Missiles, and Frost Bolt also use
 this adapter-authored Target-dependent path; Arcane's formula is explicitly
-per target, not a client-derived pair total.
+per target, not a client-derived pair total. Their popup copy contains only
+the audited direct-damage equation; React still renders backend-authored text
+verbatim.
 The Defence/Berserker entries have no explanatory card note; the strict
 client decoder accepts their required empty string while still requiring the
 reason, label, and calculation fields. Antivenom Potion's available
@@ -481,6 +487,12 @@ side-card professions remain visible with underscores replaced by spaces at
 the presentation boundary. The battle header opens the same focus-contained
 `ManualDialog` used by Stage Map without navigating or remounting the battle;
 the right fullscreen control remains independent.
+Within a battle, its Gallery/Instruction options switch to embedded views that
+reuse the standalone content components. Back returns to the local Manual
+menu and Escape closes to the same mounted battle/provider; Stage Map keeps
+its route-mode options and back links. Targeted Heroic Charge and Shield of
+Righteous retain target-bound previews but omit the separate Acting Hero
+self-preview card.
 
 ## Runtime Caveat
 

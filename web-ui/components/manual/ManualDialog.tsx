@@ -1,14 +1,19 @@
 "use client";
 
-import { useEffect, useRef, type KeyboardEvent, type RefObject } from "react";
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type RefObject } from "react";
 import { useRouter } from "next/navigation";
 import { useSoundPreference } from "@/components/audio/SoundPreferenceProvider";
+import { HeroGalleryExperience } from "@/components/manual/HeroGalleryExperience";
+import { BattleInstructionExperience } from "@/components/manual/BattleInstructionExperience";
 
 type ManualDialogProps = {
   open: boolean;
   onClose: () => void;
   triggerRef: RefObject<HTMLButtonElement | null>;
+  navigationMode?: "route" | "embedded";
 };
+
+type ManualView = "menu" | "heroes" | "instruction";
 
 const FOCUSABLE_SELECTOR = "button:not(:disabled), a[href], [tabindex]:not([tabindex='-1'])";
 
@@ -18,11 +23,23 @@ function focusableInManual(dialog: HTMLElement | null): HTMLElement[] {
   return close ? [...focusable.filter((element) => element !== close), close] : focusable;
 }
 
-export function ManualDialog({ open, onClose, triggerRef }: ManualDialogProps) {
+export function ManualDialog({ open, onClose, triggerRef, navigationMode = "route" }: ManualDialogProps) {
   const router = useRouter();
   const dialogRef = useRef<HTMLElement>(null);
   const firstOptionRef = useRef<HTMLButtonElement>(null);
+  const onCloseRef = useRef(onClose);
+  const [view, setView] = useState<ManualView>("menu");
   const { enabled, toggle } = useSoundPreference();
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  const closeAndRestoreFocus = useCallback(() => {
+    setView("menu");
+    onCloseRef.current();
+    window.requestAnimationFrame(() => triggerRef.current?.focus());
+  }, [triggerRef]);
 
   useEffect(() => {
     if (!open) return;
@@ -34,14 +51,15 @@ export function ManualDialog({ open, onClose, triggerRef }: ManualDialogProps) {
     };
     window.addEventListener("keydown", onKeyDown);
     window.requestAnimationFrame(() => {
-      firstOptionRef.current?.focus();
+      if (view === "menu") firstOptionRef.current?.focus();
+      else dialogRef.current?.querySelector<HTMLElement>("[data-manual-back]")?.focus();
     });
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [onClose, open]);
+  }, [closeAndRestoreFocus, open, view]);
 
-  function closeAndRestoreFocus() {
-    onClose();
-    window.requestAnimationFrame(() => triggerRef.current?.focus());
+  function openManualView(nextView: Exclude<ManualView, "menu">, route: string) {
+    if (navigationMode === "embedded") setView(nextView);
+    else router.push(route);
   }
 
   function trapFocus(event: KeyboardEvent<HTMLElement>) {
@@ -66,31 +84,40 @@ export function ManualDialog({ open, onClose, triggerRef }: ManualDialogProps) {
       if (event.target === event.currentTarget) closeAndRestoreFocus();
     }}>
       <section
-        className="manual-dialog"
+        className={view === "menu" ? "manual-dialog" : "manual-dialog-embedded"}
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="manual-heading"
+        aria-labelledby={view === "menu" ? "manual-heading" : undefined}
+        aria-label={view === "menu" ? undefined : "Game Manual"}
         onKeyDown={trapFocus}
       >
-        <header>
-          <div>
-            <small>LEGENDS OF CHAMPIONS TACTICS</small>
-            <h2 id="manual-heading">Game Manual</h2>
+        {view === "menu" ? <>
+          <header>
+            <div>
+              <small>LEGENDS OF CHAMPIONS TACTICS</small>
+              <h2 id="manual-heading">Game Manual</h2>
+            </div>
+            <button type="button" className="manual-close" onClick={closeAndRestoreFocus} aria-label="Close Game Manual">×</button>
+          </header>
+          <div className="manual-options" aria-label="Game Manual options">
+            <button ref={firstOptionRef} type="button" onClick={() => openManualView("heroes", "/manual/heroes")}>
+              <span aria-hidden="true">♜</span><strong>Hero Gallery</strong><small>Browse every approved specialization</small>
+            </button>
+            <button type="button" onClick={() => openManualView("instruction", "/manual/battle-instruction")}>
+              <span aria-hidden="true">⚔</span><strong>Battle Instruction</strong><small>Learn the battlefield fundamentals</small>
+            </button>
+            <button type="button" onClick={toggle} aria-pressed={enabled}>
+              <span aria-hidden="true">♫</span><strong>Sound {enabled ? "On" : "Off"}</strong><small>{enabled ? "UI and battle effects enabled" : "UI and battle effects muted"}</small>
+            </button>
           </div>
-          <button type="button" className="manual-close" onClick={closeAndRestoreFocus} aria-label="Close Game Manual">×</button>
-        </header>
-        <div className="manual-options" aria-label="Game Manual options">
-          <button ref={firstOptionRef} type="button" onClick={() => router.push("/manual/heroes")}>
-            <span aria-hidden="true">♜</span><strong>Hero Gallery</strong><small>Browse every approved specialization</small>
-          </button>
-          <button type="button" onClick={() => router.push("/manual/battle-instruction")}>
-            <span aria-hidden="true">⚔</span><strong>Battle Instruction</strong><small>Learn the battlefield fundamentals</small>
-          </button>
-          <button type="button" onClick={toggle} aria-pressed={enabled}>
-            <span aria-hidden="true">♫</span><strong>Sound {enabled ? "On" : "Off"}</strong><small>{enabled ? "UI and battle effects enabled" : "UI and battle effects muted"}</small>
-          </button>
-        </div>
+        </> : <>
+          <div className="manual-dialog-content">
+              {view === "heroes"
+                ? <HeroGalleryExperience embedded onBackToManual={() => setView("menu")} />
+                : <BattleInstructionExperience embedded onBackToManual={() => setView("menu")} />}
+          </div>
+        </>}
       </section>
     </div>
   );

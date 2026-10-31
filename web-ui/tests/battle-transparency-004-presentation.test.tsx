@@ -266,7 +266,7 @@ describe("BATTLE-TRANSPARENCY-004 Paladin presentation", () => {
       ] satisfies BattlePreviewConsequence[],
       expected: "Self Healing28–32Cooldown3 rounds",
     },
-  ])("shows $displayName actor facts beside the target preview", async ({ skillId, displayName, consequences, expected }) => {
+  ])("keeps $displayName target preview without an Acting Hero self overlay", async ({ skillId, displayName, consequences, expected }) => {
     const { provider, actorId } = await paladinProvider({
       skillId,
       displayName,
@@ -287,8 +287,9 @@ describe("BATTLE-TRANSPARENCY-004 Paladin presentation", () => {
     fireEvent.mouseEnter(target);
 
     await readyCard(".target-preview-card.ready");
-    const selfCard = await readyCard(".self-preview-card.ready");
-    expect(selfCard).toHaveTextContent(expected);
+    expect(await readyCard(".target-preview-card.ready")).toBeVisible();
+    expect(document.querySelector(".self-preview-card")).not.toBeInTheDocument();
+    expect(screen.queryByText(expected)).not.toBeInTheDocument();
     fireEvent.click(target);
     expect(target).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: "CAST SKILL" })).toBeEnabled();

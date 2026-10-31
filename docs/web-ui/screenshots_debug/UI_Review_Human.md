@@ -2033,3 +2033,24 @@ UI_30_10_2026-03
      - Shiled of Protection: Holy Light protects Paladin from any incoming attack and instantly dispell any harmful debuff. This effect cannot be dispelled. 
 
 8. In In hero gallery, for Mage Comprehensiveness, all three skill has a Unavailable in BASE DAMAGE, fix this issue.
+
+# Date
+
+2026-10-31
+
+### Screenshot name
+
+N/A
+
+### Task List
+
+1. Bug fix, when in a battle, if I click manual button in the top right corner, it shows the game manual, then if I click the Cross, it close this window and back to battle, this is good. But if in the Game Manual window, I click Hero Gallery and then click back to manual and then click the Cross, it will go to the stage map and current battle is lost, same thing happened if I click Battle Instruction in the Game Manual and then go back to the game manual and then click cross, it will also go to the stage map and current battle is lost, analysi this bug and then fix it.
+
+2. In Hero Galley, for those skills for mage, BASE DAMAGE box is fixed whih is good. If I click the yellow question mark, popup window shows the damage equation but I want below change.
+   - Fireball: Remove this statement "Skill Variation = −5 to +5. Formation and target-side effects are applied afterward."
+   - Arcane MIssiles: Remove this statement "Skill Variation = −3 to +3; one roll is shared by all selected targets. Each target is calculated separately before formation and target-side effects."
+   - Frost Bolt: Remove this statement "Skill Variation = −2 to +2. Formation and target-side effects are applied afterward."
+
+3. In battle UI, when select on skill and then select a target, target hero card at the side has this bug: debuff/buff icon and status icon (the gold barchart like button) will change position to another strange postion. This bug is happened on both side Hero cards when I test. Fix this bug.
+
+4. For Heroic Charge and Shield of Righteous from Paladin Protection. There is a pop up window shows the skill effects on casting hero this window is now showed in the ACTING HERO area. I request to completely remove this popup window.

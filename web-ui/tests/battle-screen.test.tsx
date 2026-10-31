@@ -55,6 +55,68 @@ describe("battle screen integration", () => {
     expect(screen.getByRole("navigation", { name: "Turn order" })).toBeVisible();
   });
 
+  it.each(["Hero Gallery", "Battle Instruction"])("keeps the live battle mounted through the nested %s manual path", async (destination) => {
+    await renderBattle();
+    const user = userEvent.setup();
+    const skill = screen.getByRole("button", { name: /Life Drain/i });
+    await user.click(skill);
+    expect(skill).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText("SELECT 1 TARGET · 0 SELECTED")).toBeVisible();
+    const trigger = screen.getByRole("button", { name: "Open Game Manual" });
+    const battlefield = screen.getByRole("region", { name: "Battlefield" });
+    const turnOrder = screen.getByRole("navigation", { name: "Turn order" });
+
+    await user.click(trigger);
+    await user.click(screen.getByRole("button", { name: new RegExp(destination) }));
+    const embeddedDialog = screen.getByRole("dialog", { name: "Game Manual" });
+    expect(embeddedDialog).toBeVisible();
+    expect(embeddedDialog).toHaveClass("manual-dialog-embedded");
+    expect(embeddedDialog).not.toHaveClass("manual-dialog");
+    expect(within(embeddedDialog).queryByRole("heading", { name: "Game Manual" })).not.toBeInTheDocument();
+    expect(within(embeddedDialog).queryByText("LEGENDS OF CHAMPIONS TACTICS")).not.toBeInTheDocument();
+    expect(within(embeddedDialog).queryByRole("button", { name: "Close Game Manual" })).not.toBeInTheDocument();
+    // The embedded experience may show its loading/error state while the
+    // battle remains mounted; its back control is still the continuity seam.
+    expect(await screen.findByText(/Back to (Game )?Manual/i)).toBeVisible();
+    const back = within(embeddedDialog).getByRole("button", { name: /Back to (Game )?Manual/i });
+    await waitFor(() => expect(back).toHaveFocus());
+    const embeddedControls = Array.from(embeddedDialog.querySelectorAll<HTMLElement>("button:not(:disabled), a[href], [tabindex]:not([tabindex='-1'])"));
+    fireEvent.keyDown(embeddedDialog, { key: "Tab", shiftKey: true });
+    expect(embeddedControls.at(-1)).toHaveFocus();
+    fireEvent.keyDown(embeddedDialog, { key: "Tab" });
+    expect(back).toHaveFocus();
+    await user.click(back);
+    expect(screen.getByRole("dialog", { name: "Game Manual" })).toHaveClass("manual-dialog");
+    await user.click(screen.getByRole("button", { name: "Close Game Manual" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Game Manual" })).not.toBeInTheDocument());
+    expect(battlefield).toBeVisible();
+    expect(turnOrder).toBeVisible();
+    expect(skill).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText("SELECT 1 TARGET · 0 SELECTED")).toBeVisible();
+
+    // Re-enter the nested view and close it directly via Escape.
+    await user.click(trigger);
+    await user.click(screen.getByRole("button", { name: new RegExp(destination) }));
+    await screen.findByText(/Back to (Game )?Manual/i);
+    fireEvent.keyDown(window, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Game Manual" })).not.toBeInTheDocument());
+    expect(skill).toHaveAttribute("aria-pressed", "true");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Open Game Manual" })).toHaveFocus());
+
+    // Back remains distinct from close: it restores the in-battle Manual menu.
+    await user.click(trigger);
+    await user.click(screen.getByRole("button", { name: new RegExp(destination) }));
+    await screen.findByText(/Back to (Game )?Manual/i);
+    await user.click(screen.getByText(/Back to (Game )?Manual/i));
+    const menuDialog = screen.getByRole("dialog", { name: "Game Manual" });
+    expect(menuDialog).toHaveClass("manual-dialog");
+    expect(within(menuDialog).getByRole("heading", { name: "Game Manual" })).toBeVisible();
+    await user.click(within(menuDialog).getByRole("button", { name: "Close Game Manual" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Game Manual" })).not.toBeInTheDocument());
+    expect(skill).toHaveAttribute("aria-pressed", "true");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Open Game Manual" })).toHaveFocus());
+  });
+
   it("places RESIGN at the end of battle controls and requires confirmation", async () => {
     const resign = vi.fn();
     render(<SoundPreferenceProvider><BattleScreen provider={new MockBattleProvider()} onResign={resign} /></SoundPreferenceProvider>);
@@ -128,6 +190,9 @@ describe("battle screen integration", () => {
 
     fireEvent.mouseEnter(target);
     expect(card).toHaveClass("target-highlighted");
+    const css = readFileSync("app/globals.css", "utf8");
+    expect(css).toMatch(/\.hero-stats-button\{position:absolute/);
+    expect(css).toMatch(/\.hero-card\.target-highlighted > :not\(\.hero-stats-button\)\s*\{\s*position: relative/);
 
     fireEvent.mouseLeave(target);
     expect(card).not.toHaveClass("target-highlighted");
