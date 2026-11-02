@@ -7,7 +7,7 @@ import type { BattleEvent, BattleEventType, BattleOutcome, BattlePreviewSelf, Ba
 import { AssetImage } from "./AssetImage";
 import { HeroCard, Meter } from "./HeroCard";
 import { HeroStatsDialog } from "./HeroStatsDialog";
-import { NoFourthSkillCard, SkillCard } from "./SkillCard";
+import { NoFourthSkillCard, SkillCard, WrathOfCrusaderCard } from "./SkillCard";
 import { formationFor, getBattleFormat } from "@/lib/battle/formations";
 import { BATTLE_BACKGROUND } from "@/lib/battle/battleBackgrounds";
 import { heroFigureScaleFor, statusRegistry } from "@/lib/battle/assets";
@@ -471,10 +471,12 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
     ? active.skills.filter((skill) => !skill.isPassive)
     : [];
   const passiveSkills = active?.skills.filter((skill) => skill.isPassive) ?? [];
+  const showWrathOfCrusader = active?.definitionId === "hero.paladin.retribution"
+    && !active.skills.some((skill) => skill.id === "skill.paladin.wrath_of_crusader");
   // Placeholders carry no fabricated ID or action state. Keep real passive
   // skills at the far right, as requested, while future real skills remain
   // visible even if the total exceeds the four-column baseline.
-  const placeholderCount = Math.max(0, 4 - orderedActiveSkills.length - passiveSkills.length);
+  const placeholderCount = Math.max(0, 4 - orderedActiveSkills.length - passiveSkills.length - Number(showWrathOfCrusader));
   // Mouse departure intentionally clears the panel, even if clicking left the
   // button focused. Keyboard focus remains an accessible non-pointer fallback.
   const previewAnchorId = hoveredTargetId ?? (targetInputMode === "keyboard" ? focusedTargetId : null);
@@ -733,6 +735,7 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
           {passiveSkills.map((item) => (
             <SkillCard key={item.id} skill={item} selected={false} legal={false} disabled onSelect={() => undefined} />
           ))}
+          {showWrathOfCrusader && <WrathOfCrusaderCard />}
         </div>
         <div className="battle-log">
           <header><strong>BATTLE LOG</strong><button data-audio-feedback="interactive" disabled={entryLocked} onClick={() => setLog([])}>Clear</button></header>

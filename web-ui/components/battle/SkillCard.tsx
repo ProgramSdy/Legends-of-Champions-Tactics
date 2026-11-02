@@ -50,3 +50,16 @@ export function NoFourthSkillCard() {
     </article>
   );
 }
+
+/** Presentation-only passive; it never enters the battle skill/action state. */
+export function WrathOfCrusaderCard() {
+  const visual = skillPresentation["skill.paladin.wrath_of_crusader"];
+  return (
+    <article className="skill-card passive passive-display" aria-label="Wrath of Crusader. Passive skill, not selectable.">
+      <SkillGlyph asset={visual.asset} glyph={visual.glyph} />
+      <span className="skill-copy"><strong>Wrath of Crusader</strong><span>Crusader Strike builds Wrath, empowering Hammer of Anger and Flash of Light.</span><em>Passive</em></span>
+      <span className="skill-ornament" aria-hidden="true"><i /><i /><i /></span>
+      <span className="skill-meta">PASSIVE</span>
+    </article>
+  );
+}
