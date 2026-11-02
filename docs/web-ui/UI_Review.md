@@ -342,4 +342,17 @@ image also represents the active `status.wrath_of_crusader` buff produced by
 Crusader Strike; it must not turn the passive into a selectable fourth skill.
 See `docs/Codex/Current_Task.md` for the exact mapping and validation.
 
+**Status:** Completed on 2026-11-02. Core recorded focused integrated and
+browser checks in `docs/Codex/Completed.md`.
+
+### UI-045 — Paladin Protection Skill and Passive Artwork
+
+The owner supplied three active skill images (Hammer of Revenge, Shield of
+Righteous, Heroic Charge) and one Holy Aura passive image. Integrate them in
+Battle and Gallery, with matching art for the applicable Hammer debuff, Shield
+buff, and Holy Aura recipient buff. Keep Holy Aura non-commandable. Heroic
+Charge's Scoff status is shared with other hero skills and retains its generic
+status icon until a source-specific visual rule is approved. See
+`docs/Codex/Current_Task.md` for exact IDs and validation.
+
 **Status:** Ready for Core.

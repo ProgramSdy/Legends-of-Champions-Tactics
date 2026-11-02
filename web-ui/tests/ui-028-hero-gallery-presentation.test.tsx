@@ -222,6 +222,53 @@ describe("UI-028 expanded skill reference card", () => {
     expect(wrathIcon).toHaveTextContent(statusRegistry[wrathStatus.id].glyph);
   });
 
+  it("shares Paladin Protection art across battle, Gallery, and only its own statuses", () => {
+    const definitions = [
+      ["skill.paladin.hammer_of_revenge", "Hammer of Revenge", "Paladin_Protection_Hammer_of_Revenge_128x128.png", false],
+      ["skill.paladin.shield_of_righteous", "Shield of Righteous", "Paladin_Protection_Shield_of_Righteous_128x128.png", false],
+      ["skill.paladin.heroric_charge", "Heroic Charge", "Paladin_Protection_Heroic_Charge_128x128.png", false],
+      ["skill.paladin.holy_aura", "Holy Aura", "Paladin_Protection_Holy_Aura_128x128.png", true],
+    ] as const;
+    const statuses = [
+      ["status.hammer_of_revenge", definitions[0][0], "debuff"],
+      ["status.shield_of_righteous", definitions[1][0], "buff"],
+      ["status.holy_aura", definitions[3][0], "buff"],
+    ] as const;
+    const { container } = render(<>
+      {definitions.map(([id, displayName, , isPassive]) => (
+        <SkillCard key={`battle-${id}`} skill={{
+          id, displayName, isPassive, targetMode: isPassive ? "self" : "singleEnemy",
+          maximumTargets: isPassive ? 0 : 1, cooldownRemaining: 0, available: true,
+          unavailableReason: null, resourceCost: null,
+        }} selected={false} legal={!isPassive} disabled={false} onSelect={() => undefined} />
+      ))}
+      {definitions.map(([skillId, displayName, , isPassive]) => (
+        <SkillReferenceCard key={`gallery-${skillId}`} skill={{ ...skill, skillId, displayName, isPassive }} content={{ introduction: `${displayName} introduction.` }} />
+      ))}
+      {statuses.map(([id, , kind]) => <StatusIcon key={id} status={{
+        id, instanceId: `${id}.art`, kind, roundsRemaining: 2, stacks: 1,
+        sourceCombatantId: "friendly.paladin.1",
+      }} />)}
+    </>);
+
+    const paths = definitions.map(([, , filename]) => `/game-images/heroes/Paladin-Protection/skills/${filename}`);
+    expect([...container.querySelectorAll<HTMLImageElement>(".skill-glyph-art")].map((image) => image.getAttribute("src"))).toEqual(paths);
+    expect([...container.querySelectorAll<HTMLImageElement>(".skill-reference-summary-art img")].map((image) => image.getAttribute("src"))).toEqual(paths);
+    expect(container.querySelectorAll<HTMLButtonElement>(".skill-card:not(.passive)")).toHaveLength(3);
+    expect(container.querySelector<HTMLButtonElement>(".skill-card.passive")).toBeDisabled();
+    expect([...container.querySelectorAll<HTMLImageElement>(".status-icon-art")].map((image) => image.getAttribute("src")))
+      .toEqual([paths[0], paths[1], paths[3]]);
+    for (const [id, skillId, kind] of statuses) {
+      expect(statusRegistry[id].asset).toBe(skillPresentation[skillId].asset);
+      expect(screen.getByLabelText(new RegExp(`${statusRegistry[id].name}.*Stack count: 1.*2 rounds remaining`)))
+        .toHaveClass(kind === "debuff" ? "harmful" : "helpful");
+    }
+    expect(statusRegistry["status.scoff"].asset).toBeUndefined();
+    const aura = screen.getByLabelText(/Holy Aura.*Stack count: 1.*2 rounds remaining/);
+    fireEvent.error(aura.querySelector<HTMLImageElement>(".status-icon-art")!);
+    expect(aura).toHaveTextContent(statusRegistry["status.holy_aura"].glyph);
+  });
+
   it("places Protection healing after damage for Heroic Charge and before target for Holy Aura", () => {
     const chargeRows = buildSkillReferenceRows({
       ...skill.reference,

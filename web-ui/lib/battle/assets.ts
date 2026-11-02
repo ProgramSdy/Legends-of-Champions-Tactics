@@ -89,6 +89,10 @@ export const skillPresentation: Record<string, SkillPresentation> = {
   "skill.paladin.crusader_strike": { glyph: "⚔", tone: "amber", effect: "melee", asset: "/game-images/heroes/Paladin-Retribution/skills/Paladin_Crusader_Strike_128x128_Final.png" },
   "skill.paladin.flash_of_light": { glyph: "✚", tone: "amber", effect: "healing", asset: "/game-images/heroes/Paladin-Retribution/skills/Paladin_Flash_of_Light_128x128.png" },
   "skill.paladin.wrath_of_crusader": { glyph: "⚔", tone: "amber", effect: "status", asset: "/game-images/heroes/Paladin-Retribution/skills/Paladin_Wrath_of_Crusader_Black_BG_128x128.png" },
+  "skill.paladin.hammer_of_revenge": { glyph: "◆", tone: "amber", effect: "magic", asset: "/game-images/heroes/Paladin-Protection/skills/Paladin_Protection_Hammer_of_Revenge_128x128.png" },
+  "skill.paladin.shield_of_righteous": { glyph: "⬡", tone: "amber", effect: "melee", asset: "/game-images/heroes/Paladin-Protection/skills/Paladin_Protection_Shield_of_Righteous_128x128.png" },
+  "skill.paladin.heroric_charge": { glyph: "⚔", tone: "amber", effect: "melee", asset: "/game-images/heroes/Paladin-Protection/skills/Paladin_Protection_Heroic_Charge_128x128.png" },
+  "skill.paladin.holy_aura": { glyph: "✦", tone: "amber", effect: "status", asset: "/game-images/heroes/Paladin-Protection/skills/Paladin_Protection_Holy_Aura_128x128.png" },
   "skill.priest.holy_smite": { glyph: "☀", tone: "amber", effect: "magic", description: "A direct holy light strike against one enemy.", targetStyle: "Single enemy", impact: "holy", asset: "/game-images/heroes/Priest-Comprehensiveness/skills/Holy_Smite_128x128.png" },
   "skill.priest.shadow_word_pain": { glyph: "☾", tone: "violet", effect: "status", description: "Mark one enemy with a continuing shadow affliction.", targetStyle: "Single enemy", impact: "shadow", asset: "/game-images/heroes/Priest-Comprehensiveness/skills/Shadow_Word_Pain_128x128.png" },
   "skill.priest.binding_heal": { glyph: "✚", tone: "green", effect: "healing", description: "Restore an ally and also heal the caster.", targetStyle: "Single ally", impact: "healing-glow", asset: "/game-images/heroes/Priest-Comprehensiveness/skills/Binding_Heal_128x128.png" },
@@ -118,8 +122,8 @@ export const statusRegistry: Record<string, { glyph: string; name: string; descr
   "status.holy_word_redemption": { glyph: "✚", name: "Holy Word: Redemption", description: "Receives healing from a holy effect.", harmful: false },
   "status.holy_word_punishment": { glyph: "☀", name: "Holy Word: Punishment", description: "Suffers punishment from a holy effect.", harmful: true },
   "status.wrath_of_crusader": { glyph: "⚔", name: "Wrath of Crusader", description: "Crusader wrath modifies authoritative combat strength.", harmful: false, asset: skillPresentation["skill.paladin.wrath_of_crusader"].asset },
-  "status.hammer_of_revenge": { glyph: "◆", name: "Hammer of Revenge", description: "Affected by the authoritative Hammer of Revenge effect.", harmful: true },
-  "status.shield_of_righteous": { glyph: "⬡", name: "Shield of Righteous", description: "Protected by an authoritative righteous shield.", harmful: false },
+  "status.hammer_of_revenge": { glyph: "◆", name: "Hammer of Revenge", description: "Affected by the authoritative Hammer of Revenge effect.", harmful: true, asset: skillPresentation["skill.paladin.hammer_of_revenge"].asset },
+  "status.shield_of_righteous": { glyph: "⬡", name: "Shield of Righteous", description: "Protected by an authoritative righteous shield.", harmful: false, asset: skillPresentation["skill.paladin.shield_of_righteous"].asset },
   "status.shield_defence": { glyph: "⌁", name: "Shield Defence", description: "Empowered by the authoritative Shield Defence effect.", harmful: false },
   "status.scoff": { glyph: "!", name: "Scoff", description: "Forced to direct hostility toward the status source.", harmful: true },
   "status.purify_healing": { glyph: "✚", name: "Purify Healing", description: "Removes an eligible bleeding, disease, or toxic effect while this healing buff persists.", harmful: false },
@@ -127,7 +131,7 @@ export const statusRegistry: Record<string, { glyph: string; name: string; descr
   "status.warlust": { glyph: "⚔", name: "Warlust", description: "Increases damage and prevents control effects while active.", harmful: false },
   "status.bleeding_moon_slash": { glyph: "◒", name: "Moon Slash Bleeding", description: "Suffers authoritative bleeding damage at round start.", harmful: true },
   "status.blood_frenzy": { glyph: "◆", name: "Blood Frenzy", description: "For 2 rounds, grants 20 Agility, reduces Defence by a rounded half of its activation value, and restores whole HP equal to 30% of calculated direct damage from Moon Slash or Strike of Meteorite.", harmful: false },
-  "status.holy_aura": { glyph: "✦", name: "Holy Aura", description: "A living Paladin Protection independently restores 6–8 HP to every living teammate at the start of each round.", harmful: false },
+  "status.holy_aura": { glyph: "✦", name: "Holy Aura", description: "A living Paladin Protection independently restores 6–8 HP to every living teammate at the start of each round.", harmful: false, asset: skillPresentation["skill.paladin.holy_aura"].asset },
 };
 
 export const effectRegistry = {
