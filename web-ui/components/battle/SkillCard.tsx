@@ -1,13 +1,36 @@
-import { skillPresentation } from "@/lib/battle/assets";
+import { useState } from "react";
+import { skillPresentation, type SkillPresentation } from "@/lib/battle/assets";
 import type { SkillState } from "@/lib/battle/types";
 
+function SkillGlyph({ asset, glyph }: { asset?: string; glyph: string }) {
+  const [failedAsset, setFailedAsset] = useState<string | null>(null);
+  const visibleAsset = asset && failedAsset !== asset ? asset : null;
+
+  return (
+    <span className="skill-glyph" aria-hidden="true">
+      {visibleAsset ? (
+        // eslint-disable-next-line @next/next/no-img-element -- local game art uses its natural 128px source and a glyph fallback.
+        <img
+          className="skill-glyph-art"
+          src={visibleAsset}
+          alt=""
+          width={128}
+          height={128}
+          decoding="async"
+          onError={() => setFailedAsset(visibleAsset)}
+        />
+      ) : glyph}
+    </span>
+  );
+}
+
 export function SkillCard({ skill, selected, legal, disabled, onSelect }: { skill: SkillState; selected: boolean; legal: boolean; disabled: boolean; onSelect: () => void }) {
-  const visual = skillPresentation[skill.id] ?? { glyph: "?", tone: "violet" };
+  const visual: SkillPresentation = skillPresentation[skill.id] ?? { glyph: "?", tone: "violet", effect: "magic" };
   const passive = Boolean(skill.isPassive);
   const unavailable = passive || disabled || !legal || !skill.available;
   return (
     <button className={`skill-card ${visual.tone} ${passive ? "passive" : ""} ${selected ? "selected" : ""}`} data-audio-feedback="interactive" disabled={unavailable} onClick={onSelect} aria-pressed={selected} aria-describedby={`${skill.id}-detail`}>
-      <span className="skill-glyph" aria-hidden="true">{visual.glyph}</span>
+      <SkillGlyph asset={visual.asset} glyph={visual.glyph} />
       <span className="skill-copy"><strong>{skill.displayName}</strong><span id={`${skill.id}-detail`}>{skill.description || visual.description || "Presentation details unavailable."}</span><em>{visual.targetStyle ?? skill.targetMode.replace(/([A-Z])/g, " $1")}</em></span>
       <span className="skill-ornament" aria-hidden="true"><i /><i /><i /></span>
       <span className="skill-meta">{passive ? "Passive Aura" : skill.cooldownRemaining > 0 ? `Cooldown ${skill.cooldownRemaining}` : skill.resourceCost ? `${skill.resourceCost.amount} ${skill.resourceCost.kind}` : "Ready"}</span>

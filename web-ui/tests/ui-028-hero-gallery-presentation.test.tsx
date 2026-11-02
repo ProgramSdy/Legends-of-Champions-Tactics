@@ -1,11 +1,14 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { readFileSync } from "node:fs";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { SkillReferenceCard } from "@/components/manual/HeroGalleryExperience";
+import { SkillCard } from "@/components/battle/SkillCard";
+import { StatusIcon } from "@/components/battle/StatusIcon";
+import { skillPresentation, statusRegistry } from "@/lib/battle/assets";
 import { fetchHeroGalleryRoster } from "@/lib/battle/liveProvider";
 import { buildSkillReferenceRows } from "@/lib/manual/heroGalleryPresentation";
-import type { HeroSkillInventoryItem } from "@/lib/battle/types";
+import type { HeroSkillInventoryItem, SkillState, StatusState } from "@/lib/battle/types";
 
 const skill: HeroSkillInventoryItem = {
   skillId: "skill.priest.binding_heal",
@@ -30,6 +33,195 @@ const skill: HeroSkillInventoryItem = {
 };
 
 describe("UI-028 expanded skill reference card", () => {
+  it("reuses the complete Priest Comprehensiveness artwork set across battle, Gallery, and Shadow Word Pain status", () => {
+    const definitions = [
+      ["skill.priest.holy_smite", "Holy Smite", "/game-images/heroes/Priest-Comprehensiveness/skills/Holy_Smite_128x128.png"],
+      ["skill.priest.shadow_word_pain", "Shadow Word Pain", "/game-images/heroes/Priest-Comprehensiveness/skills/Shadow_Word_Pain_128x128.png"],
+      ["skill.priest.binding_heal", "Binding Heal", "/game-images/heroes/Priest-Comprehensiveness/skills/Binding_Heal_128x128.png"],
+    ] as const;
+    const skills: SkillState[] = definitions.map(([id, displayName]) => ({
+      id, displayName, targetMode: id === "skill.priest.binding_heal" ? "singleAlly" : "singleEnemy",
+      maximumTargets: 1, cooldownRemaining: 0, available: true,
+      unavailableReason: null, resourceCost: null,
+    }));
+    const gallerySkills = definitions.map(([skillId, displayName]) => ({ ...skill, skillId, displayName }));
+    const shadowStatus: StatusState = {
+      id: "status.shadow_word_pain", instanceId: "status.shadow.art", kind: "debuff",
+      roundsRemaining: 4, stacks: null, sourceCombatantId: "friendly.priest.1",
+    };
+
+    const { container } = render(<>
+      {skills.map((item) => <SkillCard key={`battle-${item.id}`} skill={item} selected={false} legal disabled={false} onSelect={() => undefined} />)}
+      {gallerySkills.map((item) => <SkillReferenceCard key={`gallery-${item.skillId}`} skill={item} content={{ introduction: `${item.displayName} introduction.` }} />)}
+      <StatusIcon status={shadowStatus} />
+    </>);
+
+    const battleArtwork = [...container.querySelectorAll<HTMLImageElement>(".skill-glyph-art")].map((image) => image.getAttribute("src"));
+    const galleryArtwork = [...container.querySelectorAll<HTMLImageElement>(".skill-reference-summary-art img")].map((image) => image.getAttribute("src"));
+    expect(battleArtwork).toEqual(definitions.map(([, , path]) => path));
+    expect(galleryArtwork).toEqual(definitions.map(([, , path]) => path));
+    expect(statusRegistry["status.shadow_word_pain"].asset).toBe(skillPresentation["skill.priest.shadow_word_pain"].asset);
+    expect(statusRegistry["status.holy_smite"]).toBeUndefined();
+    expect(statusRegistry["status.binding_heal"]).toBeUndefined();
+
+    const statusArtwork = container.querySelector<HTMLImageElement>(".status-icon-art");
+    expect(statusArtwork).toHaveAttribute("src", definitions[1][2]);
+    const statusIcon = screen.getByLabelText(/Shadow Word: Pain.*4 rounds remaining/i);
+    expect(statusIcon).toHaveClass("harmful");
+    fireEvent.error(statusArtwork!);
+    expect(statusIcon).toHaveTextContent(statusRegistry[shadowStatus.id].glyph);
+  });
+
+  it("reuses the complete Mage Comprehensiveness artwork set across battle, Gallery, and the shared Cold status", () => {
+    const definitions = [
+      ["skill.mage.fireball", "Fireball", "/game-images/heroes/Mage-Comprehensiveness/skills/Mage_Fireball_128x128.png"],
+      ["skill.mage.arcane_missiles", "Arcane Missiles", "/game-images/heroes/Mage-Comprehensiveness/skills/arcane_missiles_128x128.png"],
+      ["skill.mage.frost_bolt", "Frost Bolt", "/game-images/heroes/Mage-Comprehensiveness/skills/Mage_Frost_Bolt_128x128.png"],
+    ] as const;
+    const skills: SkillState[] = definitions.map(([id, displayName]) => ({
+      id, displayName, targetMode: id === "skill.mage.arcane_missiles" ? "multiEnemy" : "singleEnemy",
+      maximumTargets: id === "skill.mage.arcane_missiles" ? 2 : 1, cooldownRemaining: 0, available: true,
+      unavailableReason: null, resourceCost: null,
+    }));
+    const gallerySkills = definitions.map(([skillId, displayName]) => ({ ...skill, skillId, displayName }));
+    const coldStatus: StatusState = {
+      id: "status.cold", instanceId: "status.cold.art", kind: "debuff",
+      roundsRemaining: 2, stacks: null, sourceCombatantId: "friendly.mage.1",
+    };
+
+    const { container } = render(<>
+      {skills.map((item) => <SkillCard key={`battle-${item.id}`} skill={item} selected={false} legal disabled={false} onSelect={() => undefined} />)}
+      {gallerySkills.map((item) => <SkillReferenceCard key={`gallery-${item.skillId}`} skill={item} content={{ introduction: `${item.displayName} introduction.` }} />)}
+      <StatusIcon status={coldStatus} />
+    </>);
+
+    const battleArtwork = [...container.querySelectorAll<HTMLImageElement>(".skill-glyph-art")].map((image) => image.getAttribute("src"));
+    const galleryArtwork = [...container.querySelectorAll<HTMLImageElement>(".skill-reference-summary-art img")].map((image) => image.getAttribute("src"));
+    expect(battleArtwork).toEqual(definitions.map(([, , path]) => path));
+    expect(galleryArtwork).toEqual(definitions.map(([, , path]) => path));
+    expect(statusRegistry["status.cold"].asset).toBe(skillPresentation["skill.mage.frost_bolt"].asset);
+    expect(statusRegistry["status.fireball"]).toBeUndefined();
+    expect(statusRegistry["status.arcane_missiles"]).toBeUndefined();
+
+    const statusArtwork = container.querySelector<HTMLImageElement>(".status-icon-art");
+    expect(statusArtwork).toHaveAttribute("src", definitions[2][2]);
+    const statusIcon = screen.getByLabelText(/Cold.*2 rounds remaining/i);
+    expect(statusIcon).toHaveClass("harmful");
+    fireEvent.error(statusArtwork!);
+    expect(statusIcon).toHaveTextContent(statusRegistry[coldStatus.id].glyph);
+  });
+
+  it("keeps Warrior Weapon Master skill art separate from its dedicated status-only artwork", () => {
+    const skillDefinitions = [
+      ["skill.warrior.fatal_strike", "Fatal Strike", "/game-images/heroes/Warrior-Weapon-Master/skills/Warrior_Fatal_Strike_128x128.png"],
+      ["skill.warrior.armor_crush", "Armor Crush", "/game-images/heroes/Warrior-Weapon-Master/skills/Warrior_Armor_Crush_128x128.png"],
+      ["skill.warrior.antivenom_potion", "Antivenom Potion", "/game-images/heroes/Warrior-Weapon-Master/skills/Warrior_Antivenom_Potion_128x128.png"],
+    ] as const;
+    const statusDefinitions = [
+      ["status.fatal_strike", "/game-images/heroes/Warrior-Weapon-Master/skills/Warrior_Fatal_Strike_128x128.png", "debuff"],
+      ["status.armor_breaker", "/game-images/heroes/Warrior-Weapon-Master/skills/Warrior_Armor_Break_128x128.png", "debuff"],
+      ["status.wound_armor_crush", "/game-images/heroes/Warrior-Weapon-Master/skills/Warrior_Wound_Armor_Crush_128x128.png", "debuff"],
+      ["status.bleeding_armor_crush", "/game-images/heroes/Warrior-Weapon-Master/skills/Warrior_Bleeding_Armor_Crush_128x128.png", "debuff"],
+      ["status.antivenom_potion", "/game-images/heroes/Warrior-Weapon-Master/skills/Warrior_Antivenom_Potion_128x128.png", "buff"],
+    ] as const;
+    const skills: SkillState[] = skillDefinitions.map(([id, displayName]) => ({
+      id, displayName, targetMode: id === "skill.warrior.antivenom_potion" ? "self" : "singleEnemy",
+      maximumTargets: id === "skill.warrior.antivenom_potion" ? 0 : 1,
+      cooldownRemaining: 0, available: true, unavailableReason: null, resourceCost: null,
+    }));
+    const gallerySkills = skillDefinitions.map(([skillId, displayName]) => ({ ...skill, skillId, displayName }));
+    const statuses: StatusState[] = statusDefinitions.map(([id, , kind], index) => ({
+      id, instanceId: `${id}.art`, kind, roundsRemaining: 2, stacks: index === 1 ? 2 : null,
+      sourceCombatantId: "friendly.warrior.1",
+    }));
+
+    const { container } = render(<>
+      {skills.map((item) => <SkillCard key={`battle-${item.id}`} skill={item} selected={false} legal disabled={false} onSelect={() => undefined} />)}
+      {gallerySkills.map((item) => <SkillReferenceCard key={`gallery-${item.skillId}`} skill={item} content={{ introduction: `${item.displayName} introduction.` }} />)}
+      {statuses.map((status) => <StatusIcon key={status.id} status={status} />)}
+    </>);
+
+    expect([...container.querySelectorAll<HTMLImageElement>(".skill-glyph-art")].map((image) => image.getAttribute("src")))
+      .toEqual(skillDefinitions.map(([, , path]) => path));
+    expect([...container.querySelectorAll<HTMLImageElement>(".skill-reference-summary-art img")].map((image) => image.getAttribute("src")))
+      .toEqual(skillDefinitions.map(([, , path]) => path));
+    expect(statusDefinitions.map(([id]) => statusRegistry[id].asset)).toEqual(statusDefinitions.map(([, path]) => path));
+    expect(statusRegistry["status.fatal_strike"].asset).toBe(skillPresentation["skill.warrior.fatal_strike"].asset);
+    expect(statusRegistry["status.antivenom_potion"].asset).toBe(skillPresentation["skill.warrior.antivenom_potion"].asset);
+    expect(statusRegistry["status.armor_breaker"].asset).not.toBe(skillPresentation["skill.warrior.armor_crush"].asset);
+    expect(Object.values(skillPresentation).map((entry) => entry.asset)).not.toContain(statusDefinitions[1][1]);
+    expect(Object.values(skillPresentation).map((entry) => entry.asset)).not.toContain(statusDefinitions[2][1]);
+    expect(Object.values(skillPresentation).map((entry) => entry.asset)).not.toContain(statusDefinitions[3][1]);
+
+    const armorBreaker = screen.getByLabelText(/Armor Breaker.*Stack count: 2.*2 rounds remaining/i);
+    expect(armorBreaker).toHaveClass("harmful");
+    expect(screen.getByLabelText(/Antivenom Potion.*2 rounds remaining/i)).toHaveClass("helpful");
+    const armorBreakArtwork = armorBreaker.querySelector<HTMLImageElement>(".status-icon-art");
+    expect(armorBreakArtwork).toHaveAttribute("src", statusDefinitions[1][1]);
+    fireEvent.error(armorBreakArtwork!);
+    expect(armorBreaker).toHaveTextContent(statusRegistry["status.armor_breaker"].glyph);
+  });
+
+  it("keeps Paladin Retribution active art separate from the passive Wrath presentation", () => {
+    const activeDefinitions = [
+      ["skill.paladin.hammer_of_anger", "Hammer of Anger", "/game-images/heroes/Paladin-Retribution/skills/Paladin_Hammer_of_Anger_128x128.png"],
+      ["skill.paladin.crusader_strike", "Crusader Strike", "/game-images/heroes/Paladin-Retribution/skills/Paladin_Crusader_Strike_128x128_Final.png"],
+      ["skill.paladin.flash_of_light", "Flash of Light", "/game-images/heroes/Paladin-Retribution/skills/Paladin_Flash_of_Light_128x128.png"],
+    ] as const;
+    const passiveDefinition = [
+      "skill.paladin.wrath_of_crusader",
+      "Wrath of Crusader",
+      "/game-images/heroes/Paladin-Retribution/skills/Paladin_Wrath_of_Crusader_Black_BG_128x128.png",
+    ] as const;
+    const activeSkills: SkillState[] = activeDefinitions.map(([id, displayName]) => ({
+      id, displayName,
+      targetMode: id === "skill.paladin.flash_of_light" ? "singleAlly" : "singleEnemy",
+      maximumTargets: 1, cooldownRemaining: 0, available: true,
+      unavailableReason: null, resourceCost: null,
+    }));
+    const passiveSkill: SkillState = {
+      id: passiveDefinition[0], displayName: passiveDefinition[1], targetMode: "self",
+      maximumTargets: 0, cooldownRemaining: 0, available: true,
+      unavailableReason: null, resourceCost: null, isPassive: true,
+    };
+    const gallerySkills = [
+      ...activeDefinitions.map(([skillId, displayName]) => ({ ...skill, skillId, displayName })),
+      { ...skill, skillId: passiveDefinition[0], displayName: passiveDefinition[1], isPassive: true },
+    ];
+    const wrathStatus: StatusState = {
+      id: "status.wrath_of_crusader", instanceId: "status.wrath_of_crusader.art", kind: "buff",
+      roundsRemaining: 3, stacks: 2, sourceCombatantId: "friendly.paladin.1",
+    };
+
+    const { container } = render(<>
+      {[...activeSkills, passiveSkill].map((item) => (
+        <SkillCard key={`battle-${item.id}`} skill={item} selected={false} legal disabled={false} onSelect={() => undefined} />
+      ))}
+      {gallerySkills.map((item) => (
+        <SkillReferenceCard key={`gallery-${item.skillId}`} skill={item} content={{ introduction: `${item.displayName} introduction.` }} />
+      ))}
+      <StatusIcon status={wrathStatus} />
+    </>);
+
+    const expectedPaths = [...activeDefinitions.map(([, , path]) => path), passiveDefinition[2]];
+    expect([...container.querySelectorAll<HTMLImageElement>(".skill-glyph-art")].map((image) => image.getAttribute("src")))
+      .toEqual(expectedPaths);
+    expect([...container.querySelectorAll<HTMLImageElement>(".skill-reference-summary-art img")].map((image) => image.getAttribute("src")))
+      .toEqual(expectedPaths);
+    expect(container.querySelector<HTMLButtonElement>(".skill-card.passive")).toBeDisabled();
+    expect(statusRegistry[wrathStatus.id].asset).toBe(skillPresentation[passiveDefinition[0]].asset);
+    expect(statusRegistry[wrathStatus.id].asset).not.toBe(skillPresentation["skill.paladin.crusader_strike"].asset);
+    expect(statusRegistry["status.hammer_of_anger"]).toBeUndefined();
+    expect(statusRegistry["status.flash_of_light"]).toBeUndefined();
+
+    const wrathIcon = screen.getByLabelText(/Wrath of Crusader.*Stack count: 2.*3 rounds remaining/i);
+    expect(wrathIcon).toHaveClass("helpful");
+    const wrathArtwork = wrathIcon.querySelector<HTMLImageElement>(".status-icon-art");
+    expect(wrathArtwork).toHaveAttribute("src", passiveDefinition[2]);
+    fireEvent.error(wrathArtwork!);
+    expect(wrathIcon).toHaveTextContent(statusRegistry[wrathStatus.id].glyph);
+  });
+
   it("places Protection healing after damage for Heroic Charge and before target for Holy Aura", () => {
     const chargeRows = buildSkillReferenceRows({
       ...skill.reference,

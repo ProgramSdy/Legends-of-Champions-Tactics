@@ -178,8 +178,9 @@ Composition rules:
 \#\#\# 6.8 Skill icon
 
 \- Aspect ratio: 1:1.  
-\- Master resolution: 1024 x 1024\.  
-\- Runtime targets: 256 x 256, 128 x 128, and 64 x 64\.  
+\- Master resolution: 128 x 128\.  
+\- Runtime targets: 128 x 128 and 64 x 64\.  
+\- Direct creation at 128 x 128 is permitted for skill icons; If the generation tool outputs a larger image, downscale it to 128 x 128 for delivery.  
 \- Transparency: preferred when the UI provides the frame.  
 \- Use one dominant subject or action.  
 \- The icon must remain recognisable at 64 x 64\.  
@@ -210,6 +211,23 @@ Composition rules:
 \- Do not merely resize a complex skill icon without checking readability.  
 \- A skill image may be the source reference, but the status version should normally be simplified and recropped.  
 \- Do not bake duration numbers, stacks, borders, or labels into the image.
+
+\#\#\# 6.10.1 Skill-art integration handoff
+
+When a new skill icon is delivered, provide its stable skill ID and identify any
+buff/debuff status IDs that the skill actually creates. Image delivery is not
+complete UI integration. The same approved art must be considered as one set
+for the battle skill card, the Hero Gallery Skill Introduction summary, and
+each applicable active-status icon in Battle Team Information and Hero Stats.
+Do not create a status-icon mapping for a skill that creates no active status.
+
+At the much smaller status display size, reuse the skill art only if it remains
+recognisable without hiding the stack number. Otherwise prepare a simplified
+status variant derived from the approved skill art. Keep status names,
+helpful/harmful styling, stack counts, durations, and tooltips in UI data and
+code, never baked into the image. The implementation and fallback checklist
+is recorded in `docs/web-ui/WEB_UI_ARCHITECTURE.md` and
+`docs/web-ui/Style_Guide.md`.
 
 \#\#\# 6.11 Status overlay
 
@@ -459,7 +477,7 @@ Before generation, confirm which category specification applies. After generatio
 | Hero full figure | 2:3 | 2048 x 3072 | Yes | 512 px high | Very high |  
 | Hero avatar | 1:1 | 1024 x 1024 | Optional | 64 x 64 | High |  
 | Faction emblem | 1:1 | 1024 x 1024 | Yes | 64 x 64 | Medium |  
-| Skill icon | 1:1 | 1024 x 1024 | Preferred | 64 x 64 | High |  
+| Skill icon | 1:1 | 128 x 128 | Preferred | 64 x 64 | High |  
 | Skill-card image | 4:3 or 3:4 | 2048 x 1536 or 1536 x 2048 | Usually no | 512 px wide | Very high |  
 | Status icon | 1:1 | 512 x 512 | Preferred | 32 x 32 | Medium |  
 | Status overlay | Target-dependent | Match target | Yes | Target-dependent | Low to medium |  
@@ -496,3 +514,4 @@ Before an asset is approved, verify:
 \#\# 15\. Future Revision Rule
 
 Update this document when repeated production experience reveals a better technical standard. Revisions must remain content-independent and must not define individual heroes, skills, environments, or story elements.  
+

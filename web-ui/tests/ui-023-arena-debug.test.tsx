@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import { readFileSync } from "node:fs";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -180,6 +180,12 @@ describe("UI-023 Arena Run frontend authority", () => {
     expect(requestBody).toEqual({ squadDefinitionIds: unlockedIds });
     expect(screen.getByRole("heading", { name: "Battle 1 · 2v2" })).toBeVisible();
     expect(screen.getByRole("radio", { name: /Front and Rear/ })).toBeVisible();
+    const enemyFormation = screen.getByRole("group", { name: "Enemy formation" });
+    expect(within(enemyFormation).getAllByRole("listitem")).toHaveLength(2);
+    expect(within(enemyFormation).queryByRole("radio")).not.toBeInTheDocument();
+    expect(enemyFormation.querySelector("[aria-current='true']")).not.toBeInTheDocument();
+    expect(within(enemyFormation).getByRole("list", { name: /selection unknown/i })).toBeVisible();
+    expect(screen.queryByText("PREDEFINED · NOT EDITABLE")).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Your Team" })).toBeVisible();
     expect(screen.getByRole("heading", { name: "Enemy Team" })).toBeVisible();
     expect(screen.getByText("TOTAL HERO: 6")).toBeVisible();

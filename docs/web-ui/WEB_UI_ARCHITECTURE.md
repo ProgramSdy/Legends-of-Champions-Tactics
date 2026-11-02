@@ -51,7 +51,19 @@ the thin Python adapter. Python remains the sole gameplay authority.
   snapshots, raw provider responses, or the battle log—so initial state,
   reconciliation, rerenders, and skipped pending events cannot replay sound.
 - `lib/battle/assets.ts` owns definition/status presentation and fallback
-  metadata.
+  metadata. Battle skill cards use its optional skill-art path inside the
+  existing square icon; missing or failed artwork falls back to the registered
+  glyph without changing the skill button or combat state.
+  Treat a newly supplied skill image as one presentation integration: map its
+  stable skill ID once, render it in the battle skill card and the Hero Gallery
+  Skill Introduction summary, then map every applicable engine-authored status
+  ID from that skill to approved status art for Team Information and Hero Stats.
+  A skill with no persistent buff/debuff has no status-icon step. Status art may
+  reuse the skill image when legible at status size; otherwise use a simplified
+  approved derivative. The shared status renderer owns image/glyph fallback;
+  it must not change status identity, stacks, duration, tooltip, or combat
+  authority. New icon integration is incomplete until all applicable surfaces
+  have been checked together, including a missing-image fallback.
 - `lib/battle/battleBackgrounds.ts` owns the fixed BG03 battle-scene background
   constant used by presentation only.
 - `components/startup/StartupScreen.tsx` owns the cinematic title presentation
@@ -333,6 +345,15 @@ a per-launch opaque `attemptId` to the one-based stage battle
 route. Normal player launch omits seed; deliberate developer/API seed support
 remains. Python supplies
 the fixed enemies, computer control, and fixed enemy formation.
+Structured Team Builder presents that pre-battle-known enemy formation as a
+read-only selected card among the size-valid enemy cards. Arena Run shows
+read-only enemy cards without a selected value even when its node data carries
+a formation; this is a presentation choice and does not change the stored
+node or battle authority. Free-form computer battles also show no selection
+because Python chooses the formation at battle creation; the browser does not
+infer one from local radio defaults. Player-controlled enemy formation remains
+an editable radio choice. No separate “PREDEFINED · NOT EDITABLE” pseudo-label
+appears below fixed enemy formation cards.
 
 Returning from an ended battle discards the provider and keyed battle
 component. This clears the battle ID, cached snapshot/revision, presentation
@@ -403,6 +424,10 @@ displays a supplied valid stack count in a compact lower-right badge, retaining
 the exact count in its tooltip and accessible name. The presentation queue uses an explicit event count when
 provided, preserves an existing count for legacy events that omit it, and lets
 the final Python snapshot win after playback.
+Hero Stats Active Effects uses the same `StatusIcon`. Its optional status art
+comes from `statusRegistry`, which reuses registered skill artwork for the
+three Rogue statuses; unregistered or failed images keep the status glyph.
+This presentation mapping does not classify or alter status mechanics.
 
 Battle figures use one contained, bottom-aligned, 172px-wide footprint for
 direct final artwork and the fallback renderer. A loaded final image reports

@@ -257,3 +257,89 @@ appearance/navigation.
 owner's follow-up removes the embedded ×, leaving Back and direct Escape;
 the initial menu still has its ×. Focused tests and live desktop/compact
 browser checks passed; Stage Map still navigates to the standalone pages.
+
+### UI-037 — Enemy Formation Cards in Team Builder
+
+The owner's 2026-11-01 screenshot shows a wide predefined-enemy formation note
+beside the existing compact Your Formation cards. Replace that note with
+enemy-themed, size-valid formation cards under **ENEMY FORMATION**. Highlight
+the known fixed computer formation in red; when the computer's formation is
+unknown before battle, highlight none. Preserve editable player-controlled
+enemy formation choices and existing battle configuration. The authoritative
+implementation and validation criteria are in `docs/Codex/Current_Task.md`.
+
+**Status:** Completed on 2026-11-01. Read-only 2v2/3v3 enemy cards use a
+known structured-stage formation for a single red highlight; Arena Run and
+unknown free-form computer formations show no highlight. Editable Player enemy radios
+and 1v1 behavior were preserved. Focused tests, typecheck, and desktop/compact
+browser comparison passed; evidence is in `docs/Codex/Completed.md`.
+The owner follow-up keeps Arena Run enemy cards unselected and removes the
+visible “PREDEFINED · NOT EDITABLE” label beneath fixed enemy formation cards.
+
+### UI-039 — Rogue Skill Icons in Hero Gallery
+
+The owner approved UI-038's three Rogue battle-card skill icons and requests
+the same artwork in the Hero Gallery Skill Introduction cards. The compact
+accordion summary row should show each icon beside its skill name, in both
+collapsed and expanded states. Preserve non-Rogue cards, editorial text,
+reference facts, and accordion interaction. See `docs/Codex/Current_Task.md`.
+
+**Status:** Completed on 2026-11-01. Core recorded the focused Gallery visual
+check and completion details in `docs/Codex/Completed.md`.
+
+### UI-040 — Rogue Status Artwork in Battle and Hero Stats
+
+The owner's 2026-11-01 battle and Hero Stats screenshots show the old Poisoned
+Dagger status glyph despite approved Rogue skill artwork in battle cards and
+Hero Gallery. Use the corresponding artwork for Sharp Blade Bleeding, Poisoned
+Dagger, and Shadow Evasion status IDs through the shared status icon renderer;
+preserve status semantics, tooltip, stacks, and durations. See
+`docs/Codex/Current_Task.md` for acceptance and validation.
+
+**Status:** Completed on 2026-11-01. Core recorded the focused shared-component
+and browser checks in `docs/Codex/Completed.md`.
+
+### UI-041 — Priest Comprehensiveness Skill Artwork
+
+The owner supplied 128×128 icons for Holy Smite, Shadow Word Pain, and Binding
+Heal. Integrate each into Battle skill cards and Hero Gallery skill summaries;
+map only the lasting `status.shadow_word_pain` to the matching art in Team
+Information and Hero Stats. The complete requirements are in
+`docs/Codex/Current_Task.md`.
+
+**Status:** Completed on 2026-11-01. Core recorded the focused integrated and
+browser checks in `docs/Codex/Completed.md`.
+
+### UI-042 — Mage Comprehensiveness Skill Artwork
+
+The owner supplied 128×128 icons for Fireball, Arcane Missiles, and Frost Bolt.
+Integrate each into Battle skill cards and Hero Gallery skill summaries.
+Frost Bolt applies the shared `status.cold`; map its status icon only after
+confirming the artwork is suitable for the shared effect and its tiny display
+size. Fireball and Arcane Missiles have no lasting status to map. See
+`docs/Codex/Current_Task.md` for the exact scope and checks.
+
+**Status:** Completed on 2026-11-02. Core recorded the focused integrated and
+browser checks in `docs/Codex/Completed.md`.
+
+### UI-043 — Warrior Weapon Master Skill and Status Artwork
+
+The owner supplied three skill images (Fatal Strike, Armor Crush, Antivenom
+Potion) and three dedicated Armor Crush debuff images (Armor Break, Wound,
+Bleeding). Armor Crush uses its own image only as a skill; the three dedicated
+debuff images are status-only. Fatal Strike's debuff and Antivenom Potion's
+buff reuse their matching skill images. See `docs/Codex/Current_Task.md` for
+the exact stable-ID mapping, acceptance, and validation.
+
+**Status:** Completed on 2026-11-02. Core recorded the focused integrated and
+browser checks in `docs/Codex/Completed.md`.
+
+### UI-044 — Paladin Retribution Skill and Passive Artwork
+
+The owner supplied three active skill images for Hammer of Anger, Crusader
+Strike, and Flash of Light, plus a Wrath of Crusader passive image. The passive
+image also represents the active `status.wrath_of_crusader` buff produced by
+Crusader Strike; it must not turn the passive into a selectable fourth skill.
+See `docs/Codex/Current_Task.md` for the exact mapping and validation.
+
+**Status:** Ready for Core.

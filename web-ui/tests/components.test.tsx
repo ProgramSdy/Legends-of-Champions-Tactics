@@ -4,7 +4,7 @@ import { AssetImage } from "@/components/battle/AssetImage";
 import { HeroCard, Meter } from "@/components/battle/HeroCard";
 import { NoFourthSkillCard, SkillCard } from "@/components/battle/SkillCard";
 import { StatusIcon } from "@/components/battle/StatusIcon";
-import { statusRegistry } from "@/lib/battle/assets";
+import { skillPresentation, statusRegistry } from "@/lib/battle/assets";
 import { initialSnapshot } from "@/lib/battle/fixture";
 import type { SkillState, StatusState } from "@/lib/battle/types";
 
@@ -100,6 +100,30 @@ describe("battle components", () => {
     const icon = screen.getByLabelText(/Stitch of Agony.*2 rounds remaining/i);
     expect(icon).toHaveAttribute("tabindex", "0");
     expect(screen.getByRole("tooltip")).toHaveTextContent("Suffers authoritative damage at round start.");
+  });
+
+  it("renders registered Rogue status art and falls back to its glyph without losing status metadata", () => {
+    expect(statusRegistry["status.bleeding_sharp_blade"].asset).toBe(skillPresentation["skill.rogue.sharp_blade"].asset);
+    expect(statusRegistry["status.poisoned_dagger"].asset).toBe(skillPresentation["skill.rogue.poisoned_dagger"].asset);
+    expect(statusRegistry["status.shadow_evasion"].asset).toBe(skillPresentation["skill.rogue.shadow_evasion"].asset);
+
+    const status: StatusState = {
+      id: "status.poisoned_dagger", instanceId: "status.poison.art", kind: "debuff",
+      roundsRemaining: 2, stacks: 3, sourceCombatantId: null,
+    };
+    const { container } = render(<StatusIcon status={status} />);
+    const icon = screen.getByLabelText(/Poisoned Dagger.*Stack count: 3.*2 rounds remaining/i);
+    const artwork = container.querySelector<HTMLImageElement>(".status-icon-art");
+
+    expect(icon).toHaveClass("harmful");
+    expect(artwork).toHaveAttribute("src", statusRegistry[status.id].asset);
+    expect(container.querySelector(".status-stack-badge")).toHaveTextContent("3");
+    expect(screen.getByRole("tooltip")).toHaveTextContent("Poison from Poisoned Dagger remains active.");
+
+    fireEvent.error(artwork!);
+    expect(container.querySelector(".status-icon-art")).not.toBeInTheDocument();
+    expect(icon).toHaveTextContent(statusRegistry[status.id].glyph);
+    expect(container.querySelector(".status-stack-badge")).toHaveTextContent("3");
   });
 
   it.each([

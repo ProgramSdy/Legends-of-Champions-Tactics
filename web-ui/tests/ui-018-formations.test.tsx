@@ -37,8 +37,10 @@ describe("UI-018 Team Builder formation contract", () => {
     const friendly = screen.getByRole("group", { name: "Your formation" });
     expect(within(friendly).getByRole("radio", { name: /Front and Rear.*Hero 1 Front.*Hero 2 Rear/i })).toBeChecked();
     expect(within(friendly).getByRole("radio", { name: /Side by Side.*Hero 1 Front.*Hero 2 Front/i })).toBeEnabled();
-    expect(screen.getByRole("note")).toHaveTextContent("The computer will choose Front and Rear or Side by Side");
-    expect(screen.queryByRole("group", { name: "Enemy formation" })).not.toBeInTheDocument();
+    const unknownEnemy = screen.getByRole("group", { name: "Enemy formation" });
+    expect(within(unknownEnemy).getAllByRole("listitem")).toHaveLength(2);
+    expect(within(unknownEnemy).queryByRole("radio")).not.toBeInTheDocument();
+    expect(unknownEnemy.querySelector("[aria-current='true']")).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("radio", { name: "3v3" }));
     const trio = screen.getByRole("group", { name: "Your formation" });
@@ -95,9 +97,11 @@ describe("UI-018 Team Builder formation contract", () => {
     const stage = resolveStructuredStage("warriors-barrack")!;
     render(<TeamBuilder mode="structured" stage={stage} battle={stage.battles[0]} roster={roster} onStart={onStart} />);
     expect(screen.getByRole("group", { name: "Your formation" })).toBeVisible();
-    const enemyFormationNote = screen.getByRole("note");
-    expect(enemyFormationNote).toHaveTextContent(/enemy uses front rear/i);
-    expect(enemyFormationNote.closest(".team-composer.enemy")).not.toBeNull();
+    const enemyFormation = screen.getByRole("group", { name: "Enemy formation" });
+    expect(within(enemyFormation).getAllByRole("listitem")).toHaveLength(2);
+    expect(within(enemyFormation).queryByRole("radio")).not.toBeInTheDocument();
+    expect(within(enemyFormation).getByRole("listitem", { name: /Front and Rear.*Selected enemy formation/i })).toHaveAttribute("aria-current", "true");
+    expect(enemyFormation.closest(".team-composer.enemy")).not.toBeNull();
     expect(screen.getByLabelText(/Predefined enemy team/i)).toBeVisible();
     await user.click(screen.getByRole("radio", { name: /Side by Side/i }));
     await assignTwoPlayers(user);
@@ -202,6 +206,7 @@ describe("UI-018 authoritative duo placement and targeting", () => {
     const css = readFileSync("app/globals.css", "utf8").replace(/\s+/g, "");
     expect(css).toMatch(/@media\(max-width:720px\)[\s\S]*\.formation-choices,\.formation-choices\.options-3\{grid-template-columns:1fr\}/);
     expect(css).toMatch(/\.formation-choices\{[^}]*grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+    expect(css).not.toMatch(/\.fixed-enemy-team::before\{/);
     expect(css).not.toMatch(/\.formation-(?:selector|choices)[^{]*::(?:before|after)\{[^}]*content:["']?[1-4]/);
   });
 });

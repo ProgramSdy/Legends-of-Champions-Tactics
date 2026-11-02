@@ -167,6 +167,41 @@ function FormationSelector<T extends BattleFormationId>({
   );
 }
 
+function ReadOnlyEnemyFormations<T extends BattleFormationId>({
+  choices,
+  value,
+}: {
+  choices: ReadonlyArray<FormationChoice<T>>;
+  value: T | null;
+}) {
+  return (
+    <fieldset className="formation-selector enemy read-only" data-formation-known={value !== null}>
+      <legend>Enemy formation</legend>
+      <div
+        className={`formation-choices options-${choices.length}`}
+        role="list"
+        aria-label={value ? "Known enemy formation" : "Possible enemy formations; selection unknown"}
+      >
+        {choices.map((formation) => {
+          const selected = value === formation.id;
+          return (
+            <div
+              key={formation.id}
+              className={`formation-readonly-card${selected ? " selected" : ""}`}
+              role="listitem"
+              aria-current={selected ? "true" : undefined}
+              aria-label={`${formation.name}. ${formation.positions}${selected ? ". Selected enemy formation" : ""}`}
+            >
+              <strong>{formation.name}</strong>
+              <small>{formation.positions}</small>
+            </div>
+          );
+        })}
+      </div>
+    </fieldset>
+  );
+}
+
 function FixedEnemyTeamSlot({
   index,
   enabled,
@@ -210,6 +245,9 @@ export function TeamBuilder(props: TeamBuilderProps) {
     playerFormation: null,
     completionReward: null,
   } as StructuredStageBattleDefinition : null;
+  // Arena keeps its server-authored node formation for battle creation, but
+  // does not reveal a selected enemy formation during Team Builder.
+  const displayedEnemyFormation = props.mode === "structured" ? structuredBattle?.enemyFormation ?? null : null;
   const highestCompletedBattle = props.mode === "structured"
     ? (props.highestCompletedBattle ?? 0)
     : 0;
@@ -542,22 +580,14 @@ export function TeamBuilder(props: TeamBuilderProps) {
 
       <section className="team-composer enemy" aria-labelledby="enemy-team-heading">
         <header><div><small>{enemyControlMode === "computer" ? "ENGINE CONTROLLED" : "PLAYER CONTROLLED"}</small><h2 id="enemy-team-heading">Enemy Team</h2></div><strong>{enemyCompositionMode === "random" ? "RANDOM" : `${battleSize} HERO${battleSize > 1 ? "ES" : ""}`}</strong></header>
-        {structuredBattle ? (
-          <p className="formation-computer-note fixed-formation-note" role="note">
-            <strong>Predefined enemy formation</strong>
-            <span>{structuredBattle.enemyFormation
-              ? `The enemy uses ${structuredBattle.enemyFormation.replaceAll("-", " ")}.`
-              : "This duel uses no formation selection."}</span>
-          </p>
-        ) : null}
-        {!structuredBattle && (battleSize === 2 || battleSize === 3) && enemyControlMode === "player"
-          ? battleSize === 2
+        {battleSize === 2
+          ? !structuredBattle && enemyControlMode === "player"
             ? <FormationSelector side="enemy" choices={DUO_FORMATIONS} value={enemyDuoFormation} onChange={setEnemyDuoFormation} />
-            : <FormationSelector side="enemy" choices={TRIO_FORMATIONS} value={enemyTrioFormation} onChange={setEnemyTrioFormation} />
-          : !structuredBattle && (battleSize === 2 || battleSize === 3)
-            ? <p className="formation-computer-note" role="note"><strong>Computer formation</strong><span>{battleSize === 2
-              ? "The computer will choose Front and Rear or Side by Side when this battle is created."
-              : "The computer will choose one of three formations when this battle is created: One Front, Two Rear; Two Front, One Rear; or All Front."}</span></p>
+            : <ReadOnlyEnemyFormations choices={DUO_FORMATIONS} value={displayedEnemyFormation as DuoFormationId | null} />
+          : battleSize === 3
+            ? !structuredBattle && enemyControlMode === "player"
+              ? <FormationSelector side="enemy" choices={TRIO_FORMATIONS} value={enemyTrioFormation} onChange={setEnemyTrioFormation} />
+              : <ReadOnlyEnemyFormations choices={TRIO_FORMATIONS} value={displayedEnemyFormation as TrioFormationId | null} />
             : null}
         {structuredBattle
           ? <div

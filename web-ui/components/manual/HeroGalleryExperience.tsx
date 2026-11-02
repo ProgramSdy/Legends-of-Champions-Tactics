@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties, type KeyboardEvent } from "react";
 import Link from "next/link";
 import { AssetImage } from "@/components/battle/AssetImage";
-import { heroFigureScaleFor } from "@/lib/battle/assets";
+import { heroFigureScaleFor, skillPresentation } from "@/lib/battle/assets";
 import { fetchHeroGalleryRoster, fetchPlayerProgression } from "@/lib/battle/liveProvider";
 import type { HeroGalleryDefinition, HeroSkillInventoryItem } from "@/lib/battle/types";
 import { heroGalleryContent } from "@/lib/manual/heroGalleryContent";
@@ -22,10 +22,24 @@ const PASSIVE_TAB_ID = "hero-skill-tab-passive";
 
 export function SkillReferenceCard({ skill, content }: { skill: HeroSkillInventoryItem; content: HeroGallerySkillContent }) {
   const rows = buildSkillReferenceRows(skill.reference);
+  const visual = skillPresentation[skill.skillId];
+  const [failedArtwork, setFailedArtwork] = useState(false);
   const [calculation, setCalculation] = useState<{ title: string; formula: string } | null>(null);
   return (
     <details>
-      <summary>{skill.displayName}</summary>
+      <summary>
+        <span className="skill-reference-summary-content">
+          {visual?.asset && (
+            <span className="skill-reference-summary-art" aria-hidden="true">
+              {failedArtwork
+                ? visual.glyph
+                // eslint-disable-next-line @next/next/no-img-element -- local registered game art needs a synchronous glyph fallback.
+                : <img src={visual.asset} alt="" width={128} height={128} onError={() => setFailedArtwork(true)} />}
+            </span>
+          )}
+          <span>{skill.displayName}</span>
+        </span>
+      </summary>
       <div className="skill-reference-copy">
         <p>{content.introduction}</p>
         <dl className="skill-reference-grid">

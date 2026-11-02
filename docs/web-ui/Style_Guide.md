@@ -191,6 +191,11 @@ _To be documented._
   for `99+`. Show valid counts including `1`; suppress zero, absent, or invalid
   counts. The status tooltip and accessible name retain the exact authoritative
   count in both overhead and Team Information icon sizes.
+- Registered Rogue status artwork uses the existing compact icon frame in Team
+  Information and Hero Stats: Sharp Blade Bleeding, Poisoned Dagger, and Shadow
+  Evasion reuse their corresponding skill art. Harmful/helpful borders, stack
+  badge, tooltip, and keyboard focus stay visible; unregistered or failed art
+  retains the status glyph.
 - Formation layers follow the approved presentation-depth registry. For 3v3:
   One Front, Two Rear is friendly 2/1/3 and enemy 3/1/2 nearest-to-furthest;
   Two Front, One Rear is friendly 2/3/1 and enemy 1/3/2; All Front is friendly
@@ -320,6 +325,17 @@ _To be documented._
   places the editable introduction before a compact semantic facts grid. The
   grid uses two readable columns where space permits and one column at narrow
   widths; long unavailable explanations wrap without horizontal scrolling.
+- A Gallery skill with registered battle-card artwork shows a compact square,
+  decorative icon beside its name in the accordion summary. Skills without art
+  remain text-only; failed artwork falls back to its registered glyph. The
+  summary keeps its native disclosure marker and full toggle area.
+- New skill artwork is checked as one visual set: battle skill-card icon,
+  Gallery Skill Introduction summary icon, and—only for statuses actually
+  produced by the skill—the battle Team Information and Hero Stats active-effect
+  icons. Keep the same visual identity across surfaces. At status size, use the
+  skill image only when it stays legible; otherwise use an approved simplified
+  variant. The status frame still communicates helpful/harmful meaning, and
+  artwork must not obscure stack numbers, duration, focus, or tooltip content.
 - Order applicable facts as **Base Damage**, **Continuous Damage**, **Base
   Healing**, **Target Type**, **Skill Type**, **Attack Type**, **Damage Nature**,
   **Damage Type**, then **Cool Down** last. Omit inapplicable entries; remaining
@@ -368,9 +384,14 @@ _To be documented._
 - Show distinct formation selectors for 2v2 and 3v3, never a mixed option set.
   They use native radio inputs, visible focus, blue friendly and red enemy
   selected treatments, and explicit ordered Hero `Front`/`Rear` labels. A
-  computer-controlled enemy shows a readable size-specific non-editable
-  explanation instead of a selected-looking control. Three-option controls use
-  three columns when space permits and stack to one column at 720px or below.
+  computer-controlled enemy shows the same size-valid cards as a read-only
+  ENEMY FORMATION display. Highlight only an authoritative structured-stage
+  formation known before battle. Arena Run and unknown free-form computer
+  formations show no selected card. The fixed enemy team needs no separate
+  “PREDEFINED · NOT EDITABLE” label below this row. Never style read-only cards
+  as editable controls. Three-option
+  rows use three columns when space permits and stack to one column at 720px
+  or below; 1v1 shows no formation row.
 - Use blue player-slot treatment and red enemy-slot treatment. The active
   player or specified-enemy slot has a visible side-appropriate selected state;
   Hero Selection Matrix cards visibly indicate the hero assigned to that slot.
@@ -413,8 +434,8 @@ _To be documented._
   vertically centred as one row at supported widths; this is an alignment
   adjustment, not a change to disabled semantics.
 - Structured 2v2 and 3v3 battles use the same friendly formation radio
-  controls as Arena; their predefined enemy formation remains a readable fixed
-  note. Structured 1v1 hides formation controls. Only backend-returned
+  controls as Arena; their fixed enemy formation is the sole red-highlighted
+  read-only enemy card. Structured 1v1 hides formation controls. Only backend-returned
   `newlyGrantedRewards` opens the focus-contained reward
   notification, which announces the backend message and focuses Continue.
 

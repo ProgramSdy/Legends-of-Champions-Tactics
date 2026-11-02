@@ -62,7 +62,11 @@ describe("UI-019 size-specific Team Builder formation contract", () => {
     expect(within(friendly).getByRole("radio", { name: /Two Front, One Rear.*Hero 1 Front.*Hero 2 Front.*Hero 3 Rear/i })).toBeEnabled();
     expect(within(friendly).getByRole("radio", { name: /All Front.*Hero 1 Front.*Hero 2 Front.*Hero 3 Front/i })).toBeEnabled();
     expect(within(friendly).queryByRole("radio", { name: /Side by Side/i })).not.toBeInTheDocument();
-    expect(screen.getByRole("note")).toHaveTextContent(/choose one of three formations/i);
+    const unknownEnemy = screen.getByRole("group", { name: "Enemy formation" });
+    expect(within(unknownEnemy).getAllByRole("listitem")).toHaveLength(3);
+    expect(within(unknownEnemy).queryByRole("radio")).not.toBeInTheDocument();
+    expect(unknownEnemy.querySelector("[aria-current='true']")).not.toBeInTheDocument();
+    expect(within(unknownEnemy).getByRole("list", { name: /selection unknown/i })).toBeVisible();
 
     await user.click(screen.getByRole("radio", { name: "Player" }));
     const enemy = screen.getByRole("group", { name: "Enemy formation" });
@@ -120,14 +124,26 @@ describe("UI-019 size-specific Team Builder formation contract", () => {
     const stage = resolveStructuredStage("warriors-barrack")!;
     const battleTwo = render(<TeamBuilder mode="structured" stage={stage} battle={stage.battles[1]} roster={roster} onStart={vi.fn()} />);
     expect(screen.queryByRole("group", { name: /formation/i })).not.toBeInTheDocument();
-    expect(screen.getByRole("note")).toHaveTextContent(/duel uses no formation selection/i);
+    expect(screen.queryByRole("note")).not.toBeInTheDocument();
     battleTwo.unmount();
+
+    const knownDuo = render(<TeamBuilder mode="structured" stage={stage} battle={stage.battles[0]} roster={roster} onStart={vi.fn()} />);
+    const duoEnemy = screen.getByRole("group", { name: "Enemy formation" });
+    expect(within(duoEnemy).getAllByRole("listitem")).toHaveLength(2);
+    expect(within(duoEnemy).queryByRole("radio")).not.toBeInTheDocument();
+    expect(duoEnemy.querySelectorAll("[aria-current='true']")).toHaveLength(1);
+    expect(within(duoEnemy).getByRole("listitem", { name: /Front and Rear.*Selected enemy formation/i })).toHaveAttribute("aria-current", "true");
+    knownDuo.unmount();
 
     const user = userEvent.setup();
     const onStart = vi.fn();
     render(<TeamBuilder mode="structured" stage={stage} battle={stage.battles[2]} roster={roster} onStart={onStart} />);
     expect(screen.getByRole("group", { name: "Your formation" })).toBeVisible();
-    expect(screen.getByRole("note")).toHaveTextContent(/enemy uses two front one rear/i);
+    const trioEnemy = screen.getByRole("group", { name: "Enemy formation" });
+    expect(within(trioEnemy).getAllByRole("listitem")).toHaveLength(3);
+    expect(within(trioEnemy).queryByRole("radio")).not.toBeInTheDocument();
+    expect(trioEnemy.querySelectorAll("[aria-current='true']")).toHaveLength(1);
+    expect(within(trioEnemy).getByRole("listitem", { name: /Two Front, One Rear.*Selected enemy formation/i })).toHaveAttribute("aria-current", "true");
     expect(screen.getByLabelText(/Predefined enemy team/i)).toHaveTextContent(/Warrior.*Berserker.*Rogue.*Comprehensiveness.*Mage.*Comprehensiveness/i);
     await assignThreePlayers(user);
     await user.click(screen.getByRole("radio", { name: /All Front/i }));
