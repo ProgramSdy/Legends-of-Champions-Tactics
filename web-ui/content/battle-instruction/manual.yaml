@@ -1,0 +1,98 @@
+schemaVersion: 1
+title: Battle Instruction
+subtitle: Read the battlefield, choose a lawful action, and lead your team with confidence.
+chapters:
+  - id: quick-start
+    title: Quick Start
+    kicker: Your first command
+    introduction: |-
+      Each turn belongs to one acting hero. Follow the command deck from left to right, then confirm only when the intended targets are ready.
+    steps:
+      - title: Find the acting hero
+        text: The lower-left card names the hero whose turn is active.
+      - title: Choose an available skill
+        text: Available skill cards show Ready. Passive, unavailable, and cooling-down cards cannot be chosen.
+      - title: Choose the required target or targets
+        text: Lawful targets glow when the chosen skill can affect them. Some skills select more than one target.
+      - title: Read the preview when available
+        text: Hover or focus a target to inspect the available direct result and material effects. Some skills do not publish a preview.
+      - title: Confirm the command
+        text: Check the selected skill and targets, then use Cast Skill. Targetless actions can be confirmed without selecting a hero.
+    callout: The battle does not resolve a player command until its required selections are complete and confirmed.
+  - id: battle-formats
+    title: Battle Formats
+    kicker: One, two, or three heroes
+    introduction: |-
+      Battle size changes team capacity, available formations, and the maximum number of completed rounds. The final permitted round always finishes before a timeout is decided.
+  - id: formations
+    title: Formations & Attack Types
+    kicker: Position changes reach and power
+    introduction: |-
+      Formation position can affect legal targets and direct damage, but only for skills with an approved attack type. Target legality, position damage, and hit chance are separate questions.
+    legalTargeting: A living Front defender screens a Rear defender from Melee attacks. Ranged attacks use their own lawful target rules.
+    positionDamage: Position adjustments apply once to the initial direct hit. Periodic effects keep their own rules.
+    hitChance: Formation does not set hit chance. Evasion, immunity, and skill-specific effects are resolved separately.
+    otherEffects: Defence, resistance, shields, immunities, skill formulas, and other effects can still change the final damage.
+  - id: interface
+    title: Battle Interface
+    kicker: Know every battlefield control
+    introduction: |-
+      Select a numbered marker to learn that part of the live battle screen. The image is a current battle reference; controls can move slightly with supported viewport configurations.
+    markers:
+      - title: Team Information
+        text: Friendly and enemy cards show portraits, current HP, status icons, and a Hero Stats control.
+      - title: Round & Turn Order
+        text: The top centre shows the round, current turn, and the remaining action sequence.
+      - title: Battlefield Targets
+        text: Hero figures are the selection surface. Lawful targets gain the appropriate cursor and glow.
+      - title: Acting Hero
+        text: The lower-left card identifies the hero currently choosing an action.
+      - title: Skill Cards
+        text: Choose an available command here. Cards also show target style, cooldown state, and presentation details when available.
+      - title: Preview & Confirmation
+        text: Target previews appear on hover or focus when supported. Cast Skill confirms a complete selection.
+      - title: Battle Log
+        text: Ordered battle messages record resolved actions and effects.
+      - title: Speed & Auto Battle
+        text: Speed changes presentation timing. Auto Battle lets the computer choose legal actions for the player side.
+      - title: Resign
+        text: Resign opens a confirmation before giving up the current battle.
+  - id: turns-victory
+    title: Turns, Rounds & Victory
+    kicker: Follow the action order
+    introduction: |-
+      A turn is one hero's opportunity to act. A round contains the turns of the living heroes who are eligible to act in that round.
+    agility: Living heroes begin each round in descending Agility order. If Agility changes, living heroes who have not acted can move within the same round's remaining order.
+    victory: Elimination is decisive. At the completed-round limit, compare living hero count first, then exact average living-hero HP percentage. Exact equality is a draw.
+    example: Team Gold has one hero at 45/100 HP (45%). Team Crimson has one hero at 70/200 HP (35%). Crimson has more raw HP, but Gold has the higher average HP percentage and wins the timeout comparison.
+  - id: effects-tactics
+    title: Effects & Tactics
+    kicker: Read statuses before committing
+    introduction: |-
+      Skills can add temporary advantages, lasting harm, control, periodic effects, casting states, and cooldowns. Read the active icons and individual skill reference before choosing an action.
+    effects:
+      - id: buffs
+        title: Buffs
+        text: Helpful effects can improve attributes, healing, protection, or another skill.
+      - id: debuffs
+        title: Debuffs
+        text: Harmful effects can reduce attributes, apply wounds, or prepare later effects.
+      - id: control
+        title: Control
+        text: Control can prevent a normal action or force a restricted action while active.
+      - id: periodic
+        title: Periodic effects
+        text: Some damage and healing resolve during round-start status processing.
+      - id: casting
+        title: Casting
+        text: A non-instant cast prepares an automatic later action and may be interrupted by an appropriate effect.
+      - id: cooldowns
+        title: Cooldowns
+        text: A cooling-down skill cannot be selected until the battle makes it available again.
+    scenarios:
+      - title: Protect the Rear
+        text: A living Front defender can screen a Rear ally from Melee targeting. This is advice, not a guarantee against ranged attacks.
+      - title: Watch the next actors
+        text: Agility changes can reorder heroes who have not acted, so review the top sequence before confirming.
+      - title: Read active effects
+        text: A status can change the value or legality of a plan. Inspect its name and remaining duration before acting.

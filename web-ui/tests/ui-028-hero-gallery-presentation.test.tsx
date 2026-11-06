@@ -269,6 +269,170 @@ describe("UI-028 expanded skill reference card", () => {
     expect(aura).toHaveTextContent(statusRegistry["status.holy_aura"].glyph);
   });
 
+  it("shares Paladin Holy skill art with only its two persistent statuses", () => {
+    const definitions = [
+      ["skill.paladin.purify_healing", "Purify Healing", "Paladin_Holy_Purify_Healing_128x128.png"],
+      ["skill.paladin.holy_blast", "Holy Blast", "Paladin_Holy_Holy_Blast_128x128.png"],
+      ["skill.paladin.shield_of_protection", "Shield of Protection", "Paladin_Holy_Shield_of_Protection_128x128.png"],
+    ] as const;
+    const statuses = [
+      ["status.purify_healing", definitions[0][0]],
+      ["status.shield_of_protection", definitions[2][0]],
+    ] as const;
+    const { container } = render(<>
+      {definitions.map(([id, displayName]) => <SkillCard key={`battle-${id}`} skill={{
+        id, displayName, targetMode: id === "skill.paladin.holy_blast" ? "multipleEnemies" : "singleAlly",
+        maximumTargets: id === "skill.paladin.holy_blast" ? 2 : 1, cooldownRemaining: 0,
+        available: true, unavailableReason: null, resourceCost: null,
+      }} selected={false} legal disabled={false} onSelect={() => undefined} />)}
+      {definitions.map(([skillId, displayName]) => <SkillReferenceCard key={`gallery-${skillId}`}
+        skill={{ ...skill, skillId, displayName }} content={{ introduction: `${displayName} introduction.` }} />)}
+      {statuses.map(([id]) => <StatusIcon key={id} status={{
+        id, instanceId: `${id}.art`, kind: "buff", roundsRemaining: 2,
+        stacks: 1, sourceCombatantId: "friendly.paladin.1",
+      }} />)}
+    </>);
+
+    const paths = definitions.map(([, , filename]) => `/game-images/heroes/Paladin-Holy/skills/${filename}`);
+    expect([...container.querySelectorAll<HTMLImageElement>(".skill-glyph-art")].map((image) => image.getAttribute("src"))).toEqual(paths);
+    expect([...container.querySelectorAll<HTMLImageElement>(".skill-reference-summary-art img")].map((image) => image.getAttribute("src"))).toEqual(paths);
+    expect(container.querySelectorAll<HTMLButtonElement>(".skill-card")).toHaveLength(3);
+    expect([...container.querySelectorAll<HTMLImageElement>(".status-icon-art")].map((image) => image.getAttribute("src")))
+      .toEqual([paths[0], paths[2]]);
+    for (const [id, skillId] of statuses) {
+      expect(statusRegistry[id].asset).toBe(skillPresentation[skillId].asset);
+      expect(screen.getByLabelText(new RegExp(`${statusRegistry[id].name}.*Stack count: 1.*2 rounds remaining`)))
+        .toHaveClass("helpful");
+    }
+    expect(statusRegistry["status.holy_blast"]).toBeUndefined();
+    const shield = screen.getByLabelText(/Shield of Protection.*Stack count: 1.*2 rounds remaining/);
+    fireEvent.error(shield.querySelector<HTMLImageElement>(".status-icon-art")!);
+    expect(shield).toHaveTextContent(statusRegistry["status.shield_of_protection"].glyph);
+  });
+
+  it("keeps Warrior Defence skill art distinct from shared statuses and uses Thunder Pot for Shield Defence", () => {
+    const definitions = [
+      ["skill.warrior.devastate", "Devastate", "Warrior_Defence_Devastate_128x128.png"],
+      ["skill.warrior.shield_bash", "Shield Bash", "Warrior_Defence_Shield_Bash_128x128.png"],
+      ["skill.warrior.thunder_pot", "Thunder Pot", "Warrior_Defence_Thunder_Pot_128x128.png"],
+    ] as const;
+    const shieldDefence: StatusState = {
+      id: "status.shield_defence", instanceId: "status.shield_defence.art", kind: "buff",
+      roundsRemaining: 2, stacks: null, sourceCombatantId: "friendly.warrior.1",
+    };
+    const { container } = render(<>
+      {definitions.map(([id, displayName]) => <SkillCard key={`battle-${id}`} skill={{
+        id, displayName, targetMode: id === "skill.warrior.thunder_pot" ? "multipleEnemies" : "singleEnemy",
+        maximumTargets: id === "skill.warrior.thunder_pot" ? 2 : 1, cooldownRemaining: 0,
+        available: true, unavailableReason: null, resourceCost: null,
+      }} selected={false} legal disabled={false} onSelect={() => undefined} />)}
+      {definitions.map(([skillId, displayName]) => <SkillReferenceCard key={`gallery-${skillId}`}
+        skill={{ ...skill, skillId, displayName }} content={{ introduction: `${displayName} introduction.` }} />)}
+      <StatusIcon status={shieldDefence} />
+    </>);
+
+    const paths = definitions.map(([, , filename]) => `/game-images/heroes/Warrior-Defence/skills/${filename}`);
+    expect([...container.querySelectorAll<HTMLImageElement>(".skill-glyph-art")].map((image) => image.getAttribute("src"))).toEqual(paths);
+    expect([...container.querySelectorAll<HTMLImageElement>(".skill-reference-summary-art img")].map((image) => image.getAttribute("src"))).toEqual(paths);
+    expect(statusRegistry[shieldDefence.id].asset).toBe(paths[2]);
+    expect(statusRegistry["status.armor_breaker"].asset).toBe("/game-images/heroes/Warrior-Weapon-Master/skills/Warrior_Armor_Break_128x128.png");
+    expect(statusRegistry["status.stunned"].asset).toBeUndefined();
+    expect(statusRegistry["status.scoff"].asset).toBeUndefined();
+    const statusIcon = screen.getByLabelText(/Shield Defence.*2 rounds remaining/);
+    expect(statusIcon).toHaveClass("helpful");
+    const artwork = statusIcon.querySelector<HTMLImageElement>(".status-icon-art");
+    expect(artwork).toHaveAttribute("src", paths[2]);
+    fireEvent.error(artwork!);
+    expect(statusIcon).toHaveTextContent(statusRegistry[shieldDefence.id].glyph);
+  });
+
+  it("shares Warrior Berserker active and passive art with only its matching statuses", () => {
+    const definitions = [
+      ["skill.warrior.moon_slash", "Moon Slash", "Warrior_Berserker_Moon_Slash_128x128.png", false],
+      ["skill.warrior.warlust", "Warlust", "Warrior_Berserker_Warlust_128x128.png", false],
+      ["skill.warrior.strike_of_meteorite", "Strike of Meteorite", "Warrior_Berserker_Strike_of_Meteorite_128x128.png", false],
+      ["skill.warrior.blood_frenzy", "Blood Frenzy", "Warrior_Berserker_Blood_Frenzy_128x128.png", true],
+    ] as const;
+    const statuses = [
+      ["status.bleeding_moon_slash", definitions[0][0], "debuff"],
+      ["status.warlust", definitions[1][0], "buff"],
+      ["status.blood_frenzy", definitions[3][0], "buff"],
+    ] as const;
+    const { container } = render(<>
+      {definitions.map(([id, displayName, , isPassive]) => <SkillCard key={`battle-${id}`} skill={{
+        id, displayName, isPassive, targetMode: isPassive || id === "skill.warrior.warlust" ? "self" : "singleEnemy",
+        maximumTargets: isPassive || id === "skill.warrior.warlust" ? 0 : 1, cooldownRemaining: 0,
+        available: true, unavailableReason: null, resourceCost: null,
+      }} selected={false} legal={!isPassive} disabled={false} onSelect={() => undefined} />)}
+      {definitions.map(([skillId, displayName, , isPassive]) => <SkillReferenceCard key={`gallery-${skillId}`}
+        skill={{ ...skill, skillId, displayName, isPassive }} content={{ introduction: `${displayName} introduction.` }} />)}
+      {statuses.map(([id, , kind]) => <StatusIcon key={id} status={{
+        id, instanceId: `${id}.art`, kind, roundsRemaining: 2,
+        stacks: null, sourceCombatantId: "friendly.warrior.1",
+      }} />)}
+    </>);
+
+    const paths = definitions.map(([, , filename]) => `/game-images/heroes/Warrior-Berserker/skills/${filename}`);
+    expect([...container.querySelectorAll<HTMLImageElement>(".skill-glyph-art")].map((image) => image.getAttribute("src"))).toEqual(paths);
+    expect([...container.querySelectorAll<HTMLImageElement>(".skill-reference-summary-art img")].map((image) => image.getAttribute("src"))).toEqual(paths);
+    expect(container.querySelectorAll<HTMLButtonElement>(".skill-card:not(.passive)")).toHaveLength(3);
+    expect(container.querySelector<HTMLButtonElement>(".skill-card.passive")).toBeDisabled();
+    expect([...container.querySelectorAll<HTMLImageElement>(".status-icon-art")].map((image) => image.getAttribute("src")))
+      .toEqual([paths[0], paths[1], paths[3]]);
+    for (const [id, skillId, kind] of statuses) {
+      expect(statusRegistry[id].asset).toBe(skillPresentation[skillId].asset);
+      expect(screen.getByLabelText(new RegExp(`${statusRegistry[id].name}.*2 rounds remaining`)))
+        .toHaveClass(kind === "debuff" ? "harmful" : "helpful");
+    }
+    expect(statusRegistry["status.armor_breaker"].asset).toBe("/game-images/heroes/Warrior-Weapon-Master/skills/Warrior_Armor_Break_128x128.png");
+    const frenzy = screen.getByLabelText(/Blood Frenzy.*2 rounds remaining/);
+    fireEvent.error(frenzy.querySelector<HTMLImageElement>(".status-icon-art")!);
+    expect(frenzy).toHaveTextContent(statusRegistry["status.blood_frenzy"].glyph);
+  });
+
+  it("shows Priest Discipline active art and Gallery-only Holy Concentration without inventing a command or status", () => {
+    const definitions = [
+      ["skill.priest.penance", "Penance", "Priest_Discipline_Penance_128x128.png"],
+      ["skill.priest.holy_word_redemption", "Holy Word Redemption", "Priest_Discipline_Holy_Word_Redemption_128x128.png"],
+      ["skill.priest.holy_word_punishment", "Holy Word Punishment", "Priest_Discipline_Holy_Word_Punishment_128x128.png"],
+      ["skill.priest.holy_concentration", "Holy Concentration", "Priest_Discipline_Holy_Concentration_128x128.png"],
+    ] as const;
+    const statuses = [
+      ["status.holy_word_redemption", definitions[1][0], "buff"],
+      ["status.holy_word_punishment", definitions[2][0], "debuff"],
+    ] as const;
+    const { container } = render(<>
+      {definitions.slice(0, 3).map(([id, displayName]) => <SkillCard key={`battle-${id}`} skill={{
+        id, displayName, targetMode: id === "skill.priest.holy_word_redemption" ? "singleAlly" : "singleEnemy",
+        maximumTargets: 1, cooldownRemaining: 0, available: true,
+        unavailableReason: null, resourceCost: null,
+      }} selected={false} legal disabled={false} onSelect={() => undefined} />)}
+      {definitions.map(([skillId, displayName], index) => <SkillReferenceCard key={`gallery-${skillId}`}
+        skill={{ ...skill, skillId, displayName, isPassive: index === 3 }} content={{ introduction: `${displayName} introduction.` }} />)}
+      {statuses.map(([id, , kind]) => <StatusIcon key={id} status={{
+        id, instanceId: `${id}.art`, kind, roundsRemaining: 2,
+        stacks: 1, sourceCombatantId: "friendly.priest.1",
+      }} />)}
+    </>);
+
+    const paths = definitions.map(([, , filename]) => `/game-images/heroes/Priest-Discipline/skills/${filename}`);
+    expect([...container.querySelectorAll<HTMLImageElement>(".skill-glyph-art")].map((image) => image.getAttribute("src"))).toEqual(paths.slice(0, 3));
+    expect([...container.querySelectorAll<HTMLImageElement>(".skill-reference-summary-art img")].map((image) => image.getAttribute("src"))).toEqual(paths);
+    expect(container.querySelectorAll<HTMLButtonElement>(".skill-card")).toHaveLength(3);
+    expect([...container.querySelectorAll<HTMLImageElement>(".status-icon-art")].map((image) => image.getAttribute("src")))
+      .toEqual([paths[1], paths[2]]);
+    for (const [id, skillId, kind] of statuses) {
+      expect(statusRegistry[id].asset).toBe(skillPresentation[skillId].asset);
+      expect(screen.getByLabelText(new RegExp(`${statusRegistry[id].name}.*Stack count: 1.*2 rounds remaining`)))
+        .toHaveClass(kind === "debuff" ? "harmful" : "helpful");
+    }
+    expect(statusRegistry["status.penance"]).toBeUndefined();
+    expect(statusRegistry["status.holy_concentration"]).toBeUndefined();
+    const punishment = screen.getByLabelText(/Holy Word: Punishment.*2 rounds remaining/);
+    fireEvent.error(punishment.querySelector<HTMLImageElement>(".status-icon-art")!);
+    expect(punishment).toHaveTextContent(statusRegistry["status.holy_word_punishment"].glyph);
+  });
+
   it("places Protection healing after damage for Heroic Charge and before target for Holy Aura", () => {
     const chargeRows = buildSkillReferenceRows({
       ...skill.reference,

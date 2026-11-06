@@ -307,6 +307,14 @@ _To be documented._
   Back returns to the framed menu, where the menu × remains available. Keep
   the expanded view scrollable without
   letting it obscure or move battle HUD content behind the modal.
+- Battle Instruction uses a restrained dark-fantasy six-chapter reading surface:
+  gold-selected vertical chapter tabs at desktop widths, a labelled select at
+  compact widths, one chapter at a time, and Previous/Next controls. Use concise
+  serif headings, dark bordered cards, explicit Front/Rear diagrams, and
+  rule-bearing HTML text rather than numbers baked into artwork. The annotated
+  battle screenshot has one highlighted, keyboard-usable numbered marker at a
+  time and a labelled schematic fallback if its image fails. Chapter changes
+  scroll their reading pane to the top and never trigger external navigation.
 - A highlighted side hero card retains the soft gold halo while status icons,
   tooltips, portrait/data, and the absolute-positioned Hero Stats button stay
   in their normal positions and above the halo layer on either team.

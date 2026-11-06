@@ -355,4 +355,66 @@ Charge's Scoff status is shared with other hero skills and retains its generic
 status icon until a source-specific visual rule is approved. See
 `docs/Codex/Current_Task.md` for exact IDs and validation.
 
+**Status:** Completed on 2026-11-02. Core recorded the focused integrated and
+browser checks in `docs/Codex/Completed.md`.
+
+### UI-046 — Paladin Holy Skill and Status Artwork
+
+The owner supplied three active skill images: Purify Healing, Holy Blast, and
+Shield of Protection. Integrate all three in Battle skill cards and the Hero
+Gallery. Reuse the corresponding skill art for the lasting Purify Healing and
+Shield of Protection buffs in Battle Team Information and Hero Stats. Holy
+Blast has no lasting status to map. See `docs/Codex/Current_Task.md` for exact
+IDs, scope, and validation.
+
+**Status:** Completed on 2026-11-03. Core recorded focused integration and
+limited browser checks in `docs/Codex/Completed.md`.
+
+### UI-047 — Warrior Defence Skill and Status Artwork
+
+The owner supplied three active skill images: Devastate, Shield Bash, and
+Thunder Pot. Show all three in Battle skill cards and Hero Gallery skill
+summaries. Thunder Pot's Shield Defence buff can reuse its image if legible at
+status size. Preserve the existing dedicated Armor Breaker image and generic
+Stunned/Scoff icons because those statuses are shared across skills. See
+`docs/Codex/Current_Task.md` for exact IDs, scope, and validation.
+
+**Status:** Completed on 2026-11-03. Core recorded the focused integration and
+limited browser checks in `docs/Codex/Completed.md`.
+
+### UI-048 — Warrior Berserker Skill, Passive, and Status Artwork
+
+The owner supplied three active skill images (Moon Slash, Warlust, Strike of
+Meteorite) and a Blood Frenzy passive image. Integrate them in Battle and
+Gallery, then reuse the matching art for Moon Slash Bleeding, Warlust, and
+Blood Frenzy status icons. Keep Blood Frenzy non-commandable. Strike of
+Meteorite's Armor Breaker status retains its existing dedicated Armor Break
+image. See `docs/Codex/Current_Task.md` for exact IDs and validation.
+
+**Status:** Completed on 2026-11-03. Core recorded focused integration and
+browser checks in `docs/Codex/Completed.md`.
+
+### UI-049 — Priest Discipline Skill, Passive, and Status Artwork
+
+The owner supplied three active skill images (Penance, Holy Word Redemption,
+Holy Word Punishment) and a Holy Concentration passive image. Show the active
+images in Battle and Gallery, and the passive in the Gallery. Reuse the
+matching Redemption and Punishment images for their persistent status icons.
+Holy Concentration is Gallery-only reference metadata, not a fourth Battle
+command or a persistent status. See `docs/Codex/Current_Task.md` for exact
+IDs, scope, and validation.
+
+**Status:** Completed on 2026-11-03. Core recorded focused integration and
+browser checks in `docs/Codex/Completed.md`.
+
+### UI-050 — Battle Instruction Visual Manual
+
+Redesign the existing Battle Instruction **content** as six concise, visual,
+fact-checked chapters with responsive internal navigation, diagrams, a
+current Battle Interface illustration, and editable validated prose. Preserve
+the existing standalone and battle-embedded Manual entry/exit flow and the
+working Back to Manual action; in particular, embedded reading must not
+unmount or lose the active battle. See `docs/Codex/Current_Task.md` for the
+approved content, exact boundaries, role assignments, and validation.
+
 **Status:** Ready for Core.

@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { useRef, useState } from "react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import { describe, expect, it, vi, afterEach } from "vitest";
 import { StageSelectionScreen } from "@/components/stages/StageSelectionScreen";
 import { SoundPreferenceProvider, useSoundPreference } from "@/components/audio/SoundPreferenceProvider";
 import HeroGalleryPage from "@/app/manual/heroes/page";
@@ -215,8 +215,8 @@ describe("UI-027 Manual and Gallery", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Hero Gallery data is unavailable");
     const instruction = render(<BattleInstructionPage />);
     expect(screen.getByRole("heading", { name: "Battle Instruction" })).toBeVisible();
-    expect(screen.getByRole("heading", { name: "Victory and Formations" })).toBeVisible();
-    expect(screen.getByText(/Tips are suggestions, not extra combat rules/)).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Quick Start" })).toBeVisible();
+    expect(screen.getByText(/Targetless actions can be confirmed without selecting a hero/)).toBeVisible();
     expect(within(instruction.container).getByRole("link", { name: /Back to Manual/i })).toHaveAttribute("href", "/stages?manual=open");
     expect(within(instruction.container).queryByText("GAME MANUAL")).not.toBeInTheDocument();
   });

@@ -282,11 +282,14 @@ flow. Its return link navigates directly to `/game`.
   creates a battle session or changes progression. Sound preference is local to
   the browser and gates central UI and battle audio only.
 - During a live battle, the same Manual menu presents Hero Gallery and Battle
-  Instruction as embedded views inside the battle overlay. **Back to Game
-  Manual** returns to that menu; × or Escape closes to the same mounted battle.
+  Instruction as embedded views inside the battle overlay. **Back to Manual**
+  returns to that menu; × or Escape closes to the same mounted battle.
   No route transition, battle recreation, or stage-map detour occurs. The
   Stage Map-originated Manual continues using its existing read-only routes
-  and `/stages?manual=open` return path.
+  and `/stages?manual=open` return path. Battle Instruction's six chapter
+  tabs/select, Previous/Next controls, and interface markers only change its
+  internal reading state; the embedded Hero Gallery handoff returns through
+  the same Manual menu rather than routing out of battle.
 - `/game` and `/game?stage=arena` open the active-slot Arena Run hub.
 - `/debug` opens the full-roster Engineering Test & Debugging builder without
   a progression/save-slot request or write.

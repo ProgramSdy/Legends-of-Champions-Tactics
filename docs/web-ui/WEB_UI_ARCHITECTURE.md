@@ -265,6 +265,17 @@ retains its ×. `SoundPreferenceProvider` restores its
 browser-local setting only after mount, gates the central `AudioManager`, and
 never replays events or changes battle-event ordering.
 
+`BattleInstructionExperience` presents six internal chapters from the
+schema-validated, owner-editable `web-ui/content/battle-instruction/manual.yaml`.
+The content builder emits a typed module at build time; browser code does not
+fetch YAML or calculate combat rules. Formation diagrams, attack-position
+percentages, round caps, and the timeout example are read-only presentation
+facts verified against Python, not a second rules engine. Desktop vertical tabs,
+the compact chapter select, Previous/Next controls, and numbered markers on a
+current no-save battle screenshot change only the Instruction's internal view.
+The screenshot has a labelled schematic fallback. None of these controls
+change the surrounding Manual route, mounted battle, or Back/close behavior.
+
 `fetchHeroGalleryRoster` additionally compares every catalogue definition ID
 and its exact skill-ID set with that generated editorial registry. A phased or
 malformed API/content mismatch is rejected as recoverable Gallery data before
