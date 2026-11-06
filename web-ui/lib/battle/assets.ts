@@ -1,4 +1,4 @@
-export type AssetKind = "portrait" | "sidebarPortrait" | "figure" | "thumbnail" | "class" | "skill" | "status" | "effect";
+export type AssetKind = "portrait" | "sidebarPortrait" | "figure" | "thumbnail" | "class" | "profession" | "skill" | "status" | "effect";
 
 export interface AssetRequest {
   kind: AssetKind;
@@ -27,6 +27,15 @@ const heroClasses: Record<string, string> = {
   "friendly.arthas": "Necromancer", "friendly.black_heart": "Warlock",
   "friendly.arthas.flesh_puppet.1": "Warrior", "enemy.sashein": "Necromancer",
   "enemy.andonidas": "Mage",
+};
+
+const professionAssets: Record<string, string> = {
+  "hero.warrior.weapon_master": "/game-images/professions/icons/warrior_weapon_master_profession_v01.png",
+  "hero.warrior.defence": "/game-images/professions/icons/warrior_defence_profession_v01.png",
+  "hero.warrior.berserker": "/game-images/professions/icons/warrior_berserker_profession_v01.png",
+  "hero.paladin.retribution": "/game-images/professions/icons/paladin_retribution_profession_v01.png",
+  "hero.paladin.protection": "/game-images/professions/icons/paladin_protection_profession_v01.png",
+  "hero.paladin.holy": "/game-images/professions/icons/paladin_holy_profession_v01.png",
 };
 
 export const heroPresentation: Record<string, { className: string; tone: string; assets: Partial<Record<"portrait" | "sidebarPortrait" | "figure" | "thumbnail" | "class", string>>; placeholder: boolean; animation?: { idle: string; active: string; defeated: string } }> = {
@@ -160,6 +169,15 @@ export function resolveAsset(request: AssetRequest): ResolvedAsset {
   if (request.kind === "class") {
     const src = classAssets[request.key];
     return src ? { ...base, src, resolvedPath: src, fallback: "requested", label: request.name, status: "final" } : { ...base, src: null, resolvedPath: null, fallback: "initials", label: `${request.name} placeholder` };
+  }
+  if (request.kind === "profession") {
+    const src = professionAssets[request.key];
+    if (src) return { ...base, src, resolvedPath: src, fallback: "requested", label: `${request.name} profession icon`, status: "final" };
+    const className = request.className ?? heroPresentation[request.key]?.className;
+    const classAsset = className ? classAssets[className] : null;
+    return classAsset
+      ? { ...base, src: classAsset, resolvedPath: classAsset, fallback: "class", label: `${request.name} class placeholder` }
+      : { ...base, src: null, resolvedPath: null, fallback: "initials", label: `${request.name} placeholder` };
   }
   if (request.kind === "skill") {
     const src = skillPresentation[request.key]?.asset;

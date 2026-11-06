@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
 import { ManualDialog } from "@/components/manual/ManualDialog";
 import { usePresentationQueue } from "@/lib/battle/usePresentationQueue";
 import type { BattleEvent, BattleEventType, BattleOutcome, BattlePreviewSelf, BattlePreviewTarget, BattleProvider, CombatantState, LegalAction, PresentationScript, SideId } from "@/lib/battle/types";
@@ -55,6 +56,52 @@ function TeamPanel({ side, heroes, activeId, highlightedTargetIds, onViewStats }
       </div>
     </aside>
   );
+}
+
+function TurnOrderCard({ hero, order, isCurrent, hasActed }: { hero: CombatantState; order: number; isCurrent: boolean; hasActed: boolean }) {
+  const cardRef = useRef<HTMLSpanElement>(null);
+  const tooltipRef = useRef<HTMLSpanElement>(null);
+  const [showName, setShowName] = useState(false);
+  const [tooltipPosition, setTooltipPosition] = useState<{ left: number; top: number } | null>(null);
+
+  useLayoutEffect(() => {
+    if (!showName) return;
+    const placeTooltip = () => {
+      const card = cardRef.current?.getBoundingClientRect();
+      const tooltip = tooltipRef.current;
+      if (!card || !tooltip) return;
+      const left = Math.max(8, Math.min(card.left + card.width / 2 - tooltip.offsetWidth / 2, window.innerWidth - tooltip.offsetWidth - 8));
+      setTooltipPosition({ left, top: card.bottom + 10 });
+    };
+    placeTooltip();
+    window.addEventListener("resize", placeTooltip);
+    window.addEventListener("scroll", placeTooltip, true);
+    return () => {
+      window.removeEventListener("resize", placeTooltip);
+      window.removeEventListener("scroll", placeTooltip, true);
+    };
+  }, [showName, order]);
+
+  return <>
+    <span
+      ref={cardRef}
+      className={`${isCurrent ? "current" : ""} ${hasActed ? "acted" : ""}`}
+      role="group"
+      tabIndex={0}
+      aria-label={`${hero.displayName}, action sequence ${order}`}
+      onMouseEnter={() => setShowName(true)}
+      onMouseLeave={() => setShowName(false)}
+      onFocus={() => setShowName(true)}
+      onBlur={() => setShowName(false)}
+    >
+      <span className="turn-order-art" aria-hidden="true"><AssetImage request={{ kind: "sidebarPortrait", key: hero.definitionId, name: hero.displayName, className: hero.faculty }} /></span>
+      <b aria-hidden="true">{order}</b>
+    </span>
+    {showName && typeof document !== "undefined" && createPortal(
+      <span ref={tooltipRef} className="turn-order-name-popup" role="tooltip" style={tooltipPosition ?? { visibility: "hidden" }}>{hero.displayName}</span>,
+      document.body,
+    )}
+  </>;
 }
 
 type TargetEffect = "healing" | "priest-healing" | "paladin-healing" | "buff" | "debuff" | "damage-prevented";
@@ -627,7 +674,7 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
         <nav className="turn-order" aria-label="Turn order">
           {snapshot.turnOrder.map((turn, index) => {
             const hero = combatants[turn.combatantId];
-            return <span className={`${turn.isCurrent ? "current" : ""} ${turn.hasActed ? "acted" : ""}`} key={turn.combatantId}><AssetImage request={{ kind: "thumbnail", key: hero.definitionId, name: hero.displayName, className: hero.faculty }} /><b>{index + 1}</b><small>{hero.displayName}</small></span>;
+            return <TurnOrderCard key={turn.combatantId} hero={hero} order={index + 1} isCurrent={turn.isCurrent} hasActed={turn.hasActed} />;
           })}
         </nav>
       </header>

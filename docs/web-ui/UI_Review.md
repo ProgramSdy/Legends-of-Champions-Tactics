@@ -417,4 +417,40 @@ working Back to Manual action; in particular, embedded reading must not
 unmount or lose the active battle. See `docs/Codex/Current_Task.md` for the
 approved content, exact boundaries, role assignments, and validation.
 
+**Status:** Completed on 2026-11-06. Core recorded the content, navigation,
+validation, and browser checks in `docs/Codex/Completed.md`.
+
+### UI-051 — Portraits and Name Popups in Battle Turn Order
+
+Replace the initial-letter image in each Battle action-sequence card with its
+hero's existing `portraits_sidebar` avatar. Hovering a card shows a small
+popup beneath it containing only that combatant's runtime name. Preserve the
+sequence number, current-actor gold highlight, acted state, layout, and all
+battle behaviour. See `docs/Codex/Current_Task.md` for scope and validation.
+
+**Status:** Completed on 2026-11-06. Core recorded the focused tests and
+browser checks in `docs/Codex/Completed.md`.
+
+### UI-052 — Warrior and Paladin Profession Icons in Battle Cards
+
+The owner supplied six 128×128 PNGs in `game-images/professions/icons`: one
+for each approved Warrior and Paladin specialization. Replace the top-right
+profession badge's empty/letter artwork in friendly and enemy Battle hero
+cards using the exact hero definition ID. Preserve all existing card styling,
+placement, behaviour, and safe fallback for heroes without supplied art. See
+`docs/Codex/Current_Task.md` for exact paths and validation.
+
+**Status:** Completed on 2026-11-06. Core recorded focused tests and browser
+checks in `docs/Codex/Completed.md`.
+
+### UI-053 — Complete Profession Icons in Battle and Hero Gallery Intro
+
+The owner supplied four more 128×128 profession icons for Mage
+Comprehensiveness, Rogue Comprehensiveness, Priest Comprehensiveness, and Priest
+Discipline. Add those to the Battle hero-card badges, preserving the six
+Warrior/Paladin mappings from UI-052. Also display each of the ten approved
+heroes' matching profession icons in a restrained, responsive position beside
+the Hero Gallery intro heading. See `docs/Codex/Current_Task.md` for exact
+paths, scope, and validation.
+
 **Status:** Ready for Core.

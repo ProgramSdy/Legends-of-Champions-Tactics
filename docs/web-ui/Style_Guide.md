@@ -95,6 +95,11 @@ _To be documented._
 
 ### Battle Hero Stats Inspection
 
+- Occupied Battle team cards keep their fixed 26px, gold-bordered top-right
+  profession badge. The three Warrior and three Paladin specializations with
+  owner-supplied art use their definition-ID-specific icons on either side;
+  unprovided definitions retain the class/initial fallback, and failed art
+  remains a readable initial rather than a broken-image marker.
 - Each occupied side Team Information card has a small gold-outline bar-chart
   **View Hero Stats** button at its bottom-right, including a defeated card.
   Empty slots have no button. Its accessible name includes the runtime name,
@@ -119,6 +124,12 @@ _To be documented._
   owner is `presentationConfig.ts`, which assigns one named display mode and
   one `browserSizeRate`; components must not add independent viewport checks.
   Portrait is a contained rotate-device state, not a portrait battle layout.
+- The header turn-order strip uses each combatant's registered sidebar
+  portrait (with the shared missing-art fallback), one-based sequence badge,
+  current gold highlight, and acted treatment. Hover or keyboard focus shows
+  only that combatant's runtime name in a compact popup below the card; place
+  the popup outside the clipped header strip and keep it inside the viewport.
+  Inspecting these cards never issues a battle command.
 - The battlefield separates world background, combat actors, VFX, and
   world-anchored UI from the screen HUD. Only world responsibilities share the
   formation projection; headers, side panels, command deck, controls, and

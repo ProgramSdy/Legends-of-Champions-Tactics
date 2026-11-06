@@ -139,11 +139,16 @@ button:focus-visible, a:focus-visible, [tabindex="0"]:focus-visible { outline: 2
 .round span { font-size: 11px; color: #c5af85; letter-spacing: .14em; margin-top: 4px; }
 .turn-order { position: absolute; top: 57px; left: 50%; transform: translateX(-50%); display: flex; gap: 4px; padding: 6px 14px 8px; background: #080b11e8; border: 1px solid #5a482d; border-top: 0; clip-path: polygon(4% 0,96% 0,100% 55%,96% 100%,4% 100%,0 55%); }
 .turn-order > span { width: 38px; height: 38px; border: 1px solid #665132; position: relative; background: #15111d; }
+.turn-order > span:focus-visible { outline: 2px solid #f5bf50; outline-offset: 3px; }
+.turn-order-art { display: block; width: 100%; height: 100%; }
+.turn-order-art img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center; }
+.turn-order-art .asset-fallback { width: 100%; height: 100%; }
 .turn-order .asset-fallback { min-height: 36px; font-size: 10px; border: 0; }
 .turn-order .asset-fallback small, .turn-order small { display: none; }
 .turn-order b { position: absolute; right: 1px; bottom: 0; font-size: 9px; background: #050505; padding: 1px 3px; }
 .turn-order .current { border-color: #f5bf50; box-shadow: 0 0 12px #f2ab34; transform: translateY(2px) scale(1.12); }
 .turn-order .acted { filter: grayscale(1); opacity: .55; }
+.turn-order-name-popup { position: fixed; z-index: 1000; pointer-events: none; width: max-content; max-width: min(240px, calc(100vw - 16px)); padding: 5px 9px; border: 1px solid #8a6a36; border-radius: 3px; background: #0a0d12f2; box-shadow: 0 5px 18px #000b, 0 0 10px #b37a282e; color: #f5e8cc; font-size: 11px; line-height: 1.25; white-space: normal; overflow-wrap: anywhere; text-align: center; }
 
 .battle-layout { min-height:0; display:grid; grid-template-columns:var(--battle-side-panel-width) minmax(0,1fr) var(--battle-side-panel-width); padding-top:4px; }
 .battle-orientation-guard{position:fixed;inset:0;z-index:500;display:grid;place-items:center;align-content:center;gap:12px;padding:28px;background:#05070bf2;color:#fff0c8;text-align:center}.battle-orientation-guard strong{color:#e3b95e;font:28px Georgia,serif;letter-spacing:.14em}.battle-orientation-guard span{color:#c6c9d0;font-size:13px}

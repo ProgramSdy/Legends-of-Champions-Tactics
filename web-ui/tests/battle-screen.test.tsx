@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { BattleScreen } from "@/components/battle/BattleScreen";
 import { SoundPreferenceProvider } from "@/components/audio/SoundPreferenceProvider";
-import { MockBattleProvider } from "@/lib/battle/fixture";
+import { createFormatFixture, MockBattleProvider } from "@/lib/battle/fixture";
 import type { BattleEvent } from "@/lib/battle/types";
 
 vi.mock("next/navigation", () => ({
@@ -31,6 +31,40 @@ async function renderBattle(provider: MockBattleProvider = new MockBattleProvide
 }
 
 describe("battle screen integration", () => {
+  it.each([1, 3] as const)("shows sidebar portraits and runtime-name popups without battle commands for %i heroes per side", async (size) => {
+    const snapshot = createFormatFixture(size);
+    snapshot.combatants["enemy.nighthawk"].definitionId = "hero.warrior.weapon_master";
+    snapshot.combatants["enemy.nighthawk"].displayName = "Galahad";
+    snapshot.turnOrder[1].hasActed = true;
+    const provider = new MockBattleProvider(snapshot);
+    const submitCommand = vi.spyOn(provider, "submitCommand");
+    await renderBattle(provider);
+    const user = userEvent.setup();
+    const cards = within(screen.getByRole("navigation", { name: "Turn order" })).getAllByRole("group");
+    expect(cards).toHaveLength(size * 2);
+    expect(cards[0]).toHaveClass("current");
+    expect(cards[1]).toHaveClass("acted");
+    expect(cards[0]).toHaveTextContent("1");
+    expect(cards[1]).toHaveTextContent("2");
+    expect(cards[0].querySelector("img")).toHaveAttribute("src", "/game-images/heroes/Warrior-Weapon-Master/portraits_sidebar/Avatar_Warrior_Weapon_Master_Sidebar.png");
+    expect(cards[1].querySelector("img")).toHaveAttribute("src", "/game-images/heroes/Warrior-Weapon-Master/portraits_sidebar/Avatar_Warrior_Weapon_Master_Sidebar.png");
+
+    await user.hover(cards[0]);
+    expect(await screen.findByText("Ragnar", { selector: ".turn-order-name-popup" })).toHaveTextContent(/^Ragnar$/);
+    await user.unhover(cards[0]);
+    expect(screen.queryByText("Ragnar", { selector: ".turn-order-name-popup" })).not.toBeInTheDocument();
+    cards[1].focus();
+    expect(await screen.findByText("Galahad", { selector: ".turn-order-name-popup" })).toHaveTextContent(/^Galahad$/);
+    expect(cards[1]).toHaveAccessibleName("Galahad, action sequence 2");
+    fireEvent.blur(cards[1]);
+    await waitFor(() => expect(screen.queryByText("Galahad", { selector: ".turn-order-name-popup" })).not.toBeInTheDocument());
+    expect(submitCommand).not.toHaveBeenCalled();
+
+    fireEvent.error(cards[0].querySelector("img")!);
+    expect(cards[0].querySelector(".asset-fallback")).toBeInTheDocument();
+    expect(cards[0]).toHaveTextContent("1");
+  });
+
   it("renders core landmarks, active hero, battle log, and accessible controls", async () => {
     await renderBattle();
     expect(screen.getByRole("complementary", { name: "Your team" })).toBeVisible();
