@@ -97,7 +97,7 @@ describe("battle components", () => {
       roundsRemaining: 2, stacks: null, sourceCombatantId: "friendly.arthas",
     };
     render(<StatusIcon status={status} />);
-    const icon = screen.getByLabelText(/Stitch of Agony.*2 rounds remaining/i);
+    const icon = screen.getByLabelText(/Stitch of Agony.*Remaining rounds: 2\./i);
     expect(icon).toHaveAttribute("tabindex", "0");
     expect(screen.getByRole("tooltip")).toHaveTextContent("Suffers authoritative damage at round start.");
   });
@@ -112,7 +112,7 @@ describe("battle components", () => {
       roundsRemaining: 2, stacks: 3, sourceCombatantId: null,
     };
     const { container } = render(<StatusIcon status={status} />);
-    const icon = screen.getByLabelText(/Poisoned Dagger.*Stack count: 3.*2 rounds remaining/i);
+    const icon = screen.getByLabelText(/Poisoned Dagger.*Stack count: 3.*Remaining rounds: 2\./i);
     const artwork = container.querySelector<HTMLImageElement>(".status-icon-art");
 
     expect(icon).toHaveClass("harmful");
@@ -168,6 +168,25 @@ describe("battle components", () => {
     expect(screen.getByRole("tooltip")).toHaveTextContent("Stack count: 4.");
   });
 
+  it("uses the exact duration copy and suppresses unavailable or updating status details", () => {
+    const status: StatusState = {
+      id: "status.poisoned_dagger", instanceId: "status.duration.copy", kind: "debuff",
+      roundsRemaining: 4, stacks: 2, sourceCombatantId: null,
+    };
+    const { rerender } = render(<StatusIcon status={status} />);
+    const icon = screen.getByLabelText(/Poisoned Dagger.*Stack count: 2.*Remaining rounds: 4\./i);
+    expect(icon).toHaveAccessibleName(/Remaining rounds: 4\./i);
+    expect(screen.getByRole("tooltip")).toHaveTextContent("Remaining rounds: 4.");
+
+    rerender(<StatusIcon status={{ ...status, roundsRemaining: null }} />);
+    expect(screen.getByLabelText(/Poisoned Dagger.*Stack count: 2/i)).not.toHaveAccessibleName(/Remaining rounds:/i);
+    expect(screen.getByRole("tooltip")).not.toHaveTextContent(/Remaining rounds:/i);
+
+    rerender(<StatusIcon status={status} detailsUpdating />);
+    expect(screen.getByLabelText(/Poisoned Dagger.*Status details updating/i)).not.toHaveAccessibleName(/Stack count|Remaining rounds:/i);
+    expect(screen.getByRole("tooltip")).not.toHaveTextContent(/Stack count|Remaining rounds:/i);
+  });
+
   it.each(adapterStatusIds)("maps adapter status %s to useful tooltip metadata", (statusId) => {
     const definition = statusRegistry[statusId];
     const status: StatusState = {
@@ -179,7 +198,7 @@ describe("battle components", () => {
     expect(definition.name).not.toMatch(/unknown/i);
     expect(definition.description.trim().length).toBeGreaterThan(0);
     expect(screen.getByLabelText(
-      `${definition.name}. ${definition.description} 2 rounds remaining.`,
+      `${definition.name}. ${definition.description} Remaining rounds: 2.`,
     )).toBeVisible();
     expect(screen.getByRole("tooltip")).toHaveTextContent(definition.name);
     expect(screen.getByRole("tooltip")).toHaveTextContent(definition.description);

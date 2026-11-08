@@ -36,6 +36,10 @@ const professionAssets: Record<string, string> = {
   "hero.paladin.retribution": "/game-images/professions/icons/paladin_retribution_profession_v01.png",
   "hero.paladin.protection": "/game-images/professions/icons/paladin_protection_profession_v01.png",
   "hero.paladin.holy": "/game-images/professions/icons/paladin_holy_profession_v01.png",
+  "hero.mage.comprehensiveness": "/game-images/professions/icons/mage_comprehensiveness_profession_v01.png",
+  "hero.rogue.comprehensiveness": "/game-images/professions/icons/rogue_comprehensiveness_profession_v01.png",
+  "hero.priest.comprehensiveness": "/game-images/professions/icons/priest_comprehensiveness_profession_v01_128x128.png",
+  "hero.priest.discipline": "/game-images/professions/icons/priest_discipline_profession_v01.png",
 };
 
 export const heroPresentation: Record<string, { className: string; tone: string; assets: Partial<Record<"portrait" | "sidebarPortrait" | "figure" | "thumbnail" | "class", string>>; placeholder: boolean; animation?: { idle: string; active: string; defeated: string } }> = {

@@ -117,7 +117,7 @@ describe("BATTLE-TRANSPARENCY-003 Warrior presentation", () => {
       stacks: null,
       sourceCombatantId: "friendly.warrior_defence.1",
     }} />);
-    expect(screen.getByLabelText(/Shield Defence.*2 rounds remaining/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Shield Defence.*Remaining rounds: 2\./i)).toBeInTheDocument();
   });
 
   it("keeps the audited scope finite while covering all nine published Warrior skills", () => {

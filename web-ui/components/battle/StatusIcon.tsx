@@ -22,7 +22,7 @@ function StatusArtwork({ asset, glyph }: { asset?: string; glyph: string }) {
 
 export function StatusIcon({ status, detailsUpdating = false }: { status: StatusState; detailsUpdating?: boolean }) {
   const definition = statusRegistry[status.id] ?? { glyph: "?", name: "Unknown status", description: "Details unavailable.", harmful: status.kind === "debuff", asset: undefined };
-  const duration = detailsUpdating || status.roundsRemaining === null ? "" : ` ${status.roundsRemaining} rounds remaining.`;
+  const duration = detailsUpdating || status.roundsRemaining === null ? "" : ` Remaining rounds: ${status.roundsRemaining}.`;
   const stacks = detailsUpdating ? null : typeof status.stacks === "number" && Number.isInteger(status.stacks) && status.stacks > 0 ? status.stacks : null;
   const stackDetail = stacks === null ? "" : ` Stack count: ${stacks}.`;
   const updatingDetail = detailsUpdating ? " Status details updating." : "";

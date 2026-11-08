@@ -66,7 +66,7 @@ describe("UI-028 expanded skill reference card", () => {
 
     const statusArtwork = container.querySelector<HTMLImageElement>(".status-icon-art");
     expect(statusArtwork).toHaveAttribute("src", definitions[1][2]);
-    const statusIcon = screen.getByLabelText(/Shadow Word: Pain.*4 rounds remaining/i);
+    const statusIcon = screen.getByLabelText(/Shadow Word: Pain.*Remaining rounds: 4\./i);
     expect(statusIcon).toHaveClass("harmful");
     fireEvent.error(statusArtwork!);
     expect(statusIcon).toHaveTextContent(statusRegistry[shadowStatus.id].glyph);
@@ -105,7 +105,7 @@ describe("UI-028 expanded skill reference card", () => {
 
     const statusArtwork = container.querySelector<HTMLImageElement>(".status-icon-art");
     expect(statusArtwork).toHaveAttribute("src", definitions[2][2]);
-    const statusIcon = screen.getByLabelText(/Cold.*2 rounds remaining/i);
+    const statusIcon = screen.getByLabelText(/Cold.*Remaining rounds: 2\./i);
     expect(statusIcon).toHaveClass("harmful");
     fireEvent.error(statusArtwork!);
     expect(statusIcon).toHaveTextContent(statusRegistry[coldStatus.id].glyph);
@@ -153,9 +153,9 @@ describe("UI-028 expanded skill reference card", () => {
     expect(Object.values(skillPresentation).map((entry) => entry.asset)).not.toContain(statusDefinitions[2][1]);
     expect(Object.values(skillPresentation).map((entry) => entry.asset)).not.toContain(statusDefinitions[3][1]);
 
-    const armorBreaker = screen.getByLabelText(/Armor Breaker.*Stack count: 2.*2 rounds remaining/i);
+    const armorBreaker = screen.getByLabelText(/Armor Breaker.*Stack count: 2.*Remaining rounds: 2\./i);
     expect(armorBreaker).toHaveClass("harmful");
-    expect(screen.getByLabelText(/Antivenom Potion.*2 rounds remaining/i)).toHaveClass("helpful");
+    expect(screen.getByLabelText(/Antivenom Potion.*Remaining rounds: 2\./i)).toHaveClass("helpful");
     const armorBreakArtwork = armorBreaker.querySelector<HTMLImageElement>(".status-icon-art");
     expect(armorBreakArtwork).toHaveAttribute("src", statusDefinitions[1][1]);
     fireEvent.error(armorBreakArtwork!);
@@ -214,7 +214,7 @@ describe("UI-028 expanded skill reference card", () => {
     expect(statusRegistry["status.hammer_of_anger"]).toBeUndefined();
     expect(statusRegistry["status.flash_of_light"]).toBeUndefined();
 
-    const wrathIcon = screen.getByLabelText(/Wrath of Crusader.*Stack count: 2.*3 rounds remaining/i);
+    const wrathIcon = screen.getByLabelText(/Wrath of Crusader.*Stack count: 2.*Remaining rounds: 3\./i);
     expect(wrathIcon).toHaveClass("helpful");
     const wrathArtwork = wrathIcon.querySelector<HTMLImageElement>(".status-icon-art");
     expect(wrathArtwork).toHaveAttribute("src", passiveDefinition[2]);
@@ -260,11 +260,11 @@ describe("UI-028 expanded skill reference card", () => {
       .toEqual([paths[0], paths[1], paths[3]]);
     for (const [id, skillId, kind] of statuses) {
       expect(statusRegistry[id].asset).toBe(skillPresentation[skillId].asset);
-      expect(screen.getByLabelText(new RegExp(`${statusRegistry[id].name}.*Stack count: 1.*2 rounds remaining`)))
+      expect(screen.getByLabelText(new RegExp(`${statusRegistry[id].name}.*Stack count: 1.*Remaining rounds: 2\\.`)))
         .toHaveClass(kind === "debuff" ? "harmful" : "helpful");
     }
     expect(statusRegistry["status.scoff"].asset).toBeUndefined();
-    const aura = screen.getByLabelText(/Holy Aura.*Stack count: 1.*2 rounds remaining/);
+    const aura = screen.getByLabelText(/Holy Aura.*Stack count: 1.*Remaining rounds: 2\./);
     fireEvent.error(aura.querySelector<HTMLImageElement>(".status-icon-art")!);
     expect(aura).toHaveTextContent(statusRegistry["status.holy_aura"].glyph);
   });
@@ -301,11 +301,11 @@ describe("UI-028 expanded skill reference card", () => {
       .toEqual([paths[0], paths[2]]);
     for (const [id, skillId] of statuses) {
       expect(statusRegistry[id].asset).toBe(skillPresentation[skillId].asset);
-      expect(screen.getByLabelText(new RegExp(`${statusRegistry[id].name}.*Stack count: 1.*2 rounds remaining`)))
+      expect(screen.getByLabelText(new RegExp(`${statusRegistry[id].name}.*Stack count: 1.*Remaining rounds: 2\\.`)))
         .toHaveClass("helpful");
     }
     expect(statusRegistry["status.holy_blast"]).toBeUndefined();
-    const shield = screen.getByLabelText(/Shield of Protection.*Stack count: 1.*2 rounds remaining/);
+    const shield = screen.getByLabelText(/Shield of Protection.*Stack count: 1.*Remaining rounds: 2\./);
     fireEvent.error(shield.querySelector<HTMLImageElement>(".status-icon-art")!);
     expect(shield).toHaveTextContent(statusRegistry["status.shield_of_protection"].glyph);
   });
@@ -338,7 +338,7 @@ describe("UI-028 expanded skill reference card", () => {
     expect(statusRegistry["status.armor_breaker"].asset).toBe("/game-images/heroes/Warrior-Weapon-Master/skills/Warrior_Armor_Break_128x128.png");
     expect(statusRegistry["status.stunned"].asset).toBeUndefined();
     expect(statusRegistry["status.scoff"].asset).toBeUndefined();
-    const statusIcon = screen.getByLabelText(/Shield Defence.*2 rounds remaining/);
+    const statusIcon = screen.getByLabelText(/Shield Defence.*Remaining rounds: 2\./);
     expect(statusIcon).toHaveClass("helpful");
     const artwork = statusIcon.querySelector<HTMLImageElement>(".status-icon-art");
     expect(artwork).toHaveAttribute("src", paths[2]);
@@ -381,11 +381,11 @@ describe("UI-028 expanded skill reference card", () => {
       .toEqual([paths[0], paths[1], paths[3]]);
     for (const [id, skillId, kind] of statuses) {
       expect(statusRegistry[id].asset).toBe(skillPresentation[skillId].asset);
-      expect(screen.getByLabelText(new RegExp(`${statusRegistry[id].name}.*2 rounds remaining`)))
+      expect(screen.getByLabelText(new RegExp(`${statusRegistry[id].name}.*Remaining rounds: 2\\.`)))
         .toHaveClass(kind === "debuff" ? "harmful" : "helpful");
     }
     expect(statusRegistry["status.armor_breaker"].asset).toBe("/game-images/heroes/Warrior-Weapon-Master/skills/Warrior_Armor_Break_128x128.png");
-    const frenzy = screen.getByLabelText(/Blood Frenzy.*2 rounds remaining/);
+    const frenzy = screen.getByLabelText(/Blood Frenzy.*Remaining rounds: 2\./);
     fireEvent.error(frenzy.querySelector<HTMLImageElement>(".status-icon-art")!);
     expect(frenzy).toHaveTextContent(statusRegistry["status.blood_frenzy"].glyph);
   });
@@ -423,12 +423,12 @@ describe("UI-028 expanded skill reference card", () => {
       .toEqual([paths[1], paths[2]]);
     for (const [id, skillId, kind] of statuses) {
       expect(statusRegistry[id].asset).toBe(skillPresentation[skillId].asset);
-      expect(screen.getByLabelText(new RegExp(`${statusRegistry[id].name}.*Stack count: 1.*2 rounds remaining`)))
+      expect(screen.getByLabelText(new RegExp(`${statusRegistry[id].name}.*Stack count: 1.*Remaining rounds: 2\\.`)))
         .toHaveClass(kind === "debuff" ? "harmful" : "helpful");
     }
     expect(statusRegistry["status.penance"]).toBeUndefined();
     expect(statusRegistry["status.holy_concentration"]).toBeUndefined();
-    const punishment = screen.getByLabelText(/Holy Word: Punishment.*2 rounds remaining/);
+    const punishment = screen.getByLabelText(/Holy Word: Punishment.*Remaining rounds: 2\./);
     fireEvent.error(punishment.querySelector<HTMLImageElement>(".status-icon-art")!);
     expect(punishment).toHaveTextContent(statusRegistry["status.holy_word_punishment"].glyph);
   });

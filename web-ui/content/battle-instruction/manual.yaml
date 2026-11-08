@@ -50,7 +50,7 @@ chapters:
       - title: Skill Cards
         text: Choose an available command here. Cards also show target style, cooldown state, and presentation details when available.
       - title: Preview & Confirmation
-        text: Target previews appear on hover or focus when supported. Cast Skill confirms a complete selection.
+        text: Target previews appear on hover or focus when supported. The bottom command button changes with selection and confirms a complete action.
       - title: Battle Log
         text: Ordered battle messages record resolved actions and effects.
       - title: Speed & Auto Battle

@@ -95,10 +95,12 @@ _To be documented._
 
 ### Battle Hero Stats Inspection
 
-- Occupied Battle team cards keep their fixed 26px, gold-bordered top-right
-  profession badge. The three Warrior and three Paladin specializations with
-  owner-supplied art use their definition-ID-specific icons on either side;
-  unprovided definitions retain the class/initial fallback, and failed art
+- Occupied Battle team cards keep their fixed 26px top-right profession icon
+  with four short gold L-shaped corner accents; the middle of every side stays
+  open, and the decoration is non-interactive. All ten approved Warrior,
+  Paladin, Mage, Rogue, and Priest specializations use owner-supplied
+  definition-ID-specific icons on either side;
+  unknown definitions retain the class/initial fallback, and failed art
   remains a readable initial rather than a broken-image marker.
 - Each occupied side Team Information card has a small gold-outline bar-chart
   **View Hero Stats** button at its bottom-right, including a defeated card.
@@ -333,6 +335,15 @@ _To be documented._
   selectable roster cards on the left, selected aspect-preserving figure art
   and factual profile content on the right. Narrow layouts stack in reading
   order and use vertical, never horizontal, card-pane scrolling.
+- The selected Gallery profile intro uses the same definition-ID profession
+  registry as Battle. Its unframed, transparent icon shares the first compact
+  row with the faculty heading, vertically centred immediately to its left.
+  The icon area is 68px square on desktop, 64px on tablet, and 56px on narrow
+  screens; the horizontal gap is 14px (12px narrow). The specialization starts
+  on a second full-width line aligned with the information column, followed
+  immediately by the introduction. Use `object-fit: contain`; never crop or
+  stretch the owner's art. The icon has a specialization-specific accessible
+  label and a readable initial if artwork fails; it is not a control.
 - Gallery property values remain authoritative catalogue ranges, not combat
   predictions, while the visible section heading stays simply **Properties**.
   Active/passive skill controls use keyboard

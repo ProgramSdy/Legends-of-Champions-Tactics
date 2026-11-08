@@ -37,7 +37,7 @@ describe("UI-016 status presentation", () => {
       const icons = document.querySelectorAll<HTMLElement>(`[data-status-id='${id}']`);
       expect(icons).toHaveLength(1);
       expect(icons[0].getAttribute("aria-label")).toContain(name);
-      expect(icons[0].getAttribute("aria-label")).toContain("2 rounds remaining");
+      expect(icons[0].getAttribute("aria-label")).toContain("Remaining rounds: 2.");
       expect(icons[0].getAttribute("aria-label")).not.toContain("Unknown status");
       expect(icons[0].classList.contains(kind === "debuff" ? "harmful" : "helpful")).toBe(true);
     }

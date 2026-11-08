@@ -75,6 +75,27 @@ describe("UI-050 Battle Instruction compendium", () => {
     expect(onBack).toHaveBeenCalledTimes(1);
   });
 
+  it("keeps all nine image markers selectable and retains the failed-image schematic", async () => {
+    const user = userEvent.setup();
+    const { container } = render(<BattleInstructionExperience />);
+    await user.click(screen.getByRole("tab", { name: /Battle Interface/ }));
+    const image = screen.getByAltText("Current battle screen showing its principal controls");
+    expect(image).toHaveAttribute("src", "/game-images/manual/Battle_Instruction_Interface.png");
+    const topics = ["Team Information", "Round & Turn Order", "Battlefield Targets", "Acting Hero", "Skill Cards", "Preview & Confirmation", "Battle Log", "Speed & Auto Battle", "Resign"];
+    for (const [index, topic] of topics.entries()) {
+      const button = screen.getByRole("button", { name: `${index + 1}. ${topic}` });
+      await user.click(button);
+      expect(button).toHaveAttribute("aria-pressed", "true");
+      expect(container.querySelector(".instruction-marker-detail h3")).toHaveTextContent(topic);
+    }
+    await user.click(screen.getByRole("button", { name: "6. Preview & Confirmation" }));
+    expect(screen.getByText(/bottom command button changes with selection/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "9. Resign" }));
+    fireEvent.error(image);
+    expect(screen.getByRole("img", { name: "Battle screen layout schematic" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "9. Resign" })).toHaveAttribute("aria-pressed", "true");
+  });
+
   it("keeps the embedded Gallery handoff inside the Manual menu", async () => {
     const user = userEvent.setup();
     const onBack = vi.fn();

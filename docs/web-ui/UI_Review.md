@@ -453,4 +453,61 @@ heroes' matching profession icons in a restrained, responsive position beside
 the Hero Gallery intro heading. See `docs/Codex/Current_Task.md` for exact
 paths, scope, and validation.
 
+**Status:** Completed on 2026-11-06. Core recorded focused tests and browser
+checks in `docs/Codex/Completed.md`.
+
+### UI-054 — Vertical Profession Icon Placement in Hero Gallery Intro
+
+Move the existing Gallery profession icon from the far-right badge to a
+borderless, left-aligned 96×96px desktop area above the faculty heading.
+Keep faculty, specialization, and introduction in one vertical column with
+full-width heading lines and natural wrapping for long names. Preserve the
+hero figure, dark-fantasy typography, downstream content, and Battle badge.
+See `docs/Codex/Current_Task.md` for exact spacing and validation.
+
+**Status:** Completed on 2026-11-06. Core recorded focused checks and browser
+inspection in `docs/Codex/Completed.md`.
+
+### UI-055 — Compact Profession Icon and Faculty Row
+
+Place the Hero Gallery profession icon immediately left of the faculty heading
+in a compact first row. Put the specialization on a full-width second line
+aligned to the information column's left edge, followed by the introduction.
+Use a 64–72px desktop icon area and 12–16px row gap; preserve transparent,
+borderless artwork and responsive wrapping. Only the UI engineer is assigned;
+no separate test or review agent. See `docs/Codex/Current_Task.md`.
+
+**Status:** Completed on 2026-11-06. Core recorded focused visual and
+integration checks in `docs/Codex/Completed.md`.
+
+### UI-056 — Corner-Only Battle Profession Frames
+
+Replace the continuous gold square around the profession icon in each Battle
+hero card with four short gold L-shaped corner accents and open sides. Keep
+icon art, footprint, placement, fallback, and all other Battle/Gallery
+presentation unchanged. See `docs/Codex/Current_Task.md` for the exact scope
+and focused validation.
+
+**Status:** Completed on 2026-11-06. Core recorded focused visual checks in
+`docs/Codex/Completed.md`.
+
+### UI-057 — Status Tooltip Remaining-Rounds Wording
+
+Change the shared Battle status-icon tooltip and accessible label from
+`N rounds remaining.` to `Remaining rounds: N.`. Keep the same number, stack
+information, null/updating behaviour, icon, and presentation. This also
+updates the shared Hero Stats status tooltip. See `docs/Codex/Current_Task.md`
+for focused scope and validation.
+
+**Status:** Completed on 2026-11-07. Core recorded focused results in
+`docs/Codex/Completed.md`.
+
+### UI-058 — Replace Battle Instruction Interface Image and Markers
+
+Use the owner's new full 1913×954 battle screenshot in Battle Instruction
+chapter 04. Remove the current 16:9 `cover` crop, keep the full image
+proportional, and visually realign all nine clickable bubbles to the correct
+regions at desktop, tablet, and narrow widths. Preserve chapter/Manual
+navigation and marker accessibility. See `docs/Codex/Current_Task.md`.
+
 **Status:** Ready for Core.

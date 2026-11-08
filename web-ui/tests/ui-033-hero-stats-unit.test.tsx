@@ -67,7 +67,7 @@ describe("UI-033 Hero Stats components", () => {
     expect(within(dialog).getAllByText("Warlust")).not.toHaveLength(0);
     expect(within(dialog).queryByText("1 stack · 2 rounds")).not.toBeInTheDocument();
     expect(within(dialog).getAllByText("Updating…")).toHaveLength(11);
-    expect(within(dialog).getByLabelText(/Warlust.*Status details updating/i)).not.toHaveAccessibleName(/stack|rounds remaining/i);
+    expect(within(dialog).getByLabelText(/Warlust.*Status details updating/i)).not.toHaveAccessibleName(/stack|remaining rounds/i);
   });
 
   it("traps focus at the modal edges and starts at the close control", async () => {

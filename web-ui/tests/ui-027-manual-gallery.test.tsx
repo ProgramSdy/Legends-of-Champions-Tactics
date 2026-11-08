@@ -7,7 +7,8 @@ import { SoundPreferenceProvider, useSoundPreference } from "@/components/audio/
 import HeroGalleryPage from "@/app/manual/heroes/page";
 import BattleInstructionPage from "@/app/manual/battle-instruction/page";
 import { fetchHeroGalleryRoster } from "@/lib/battle/liveProvider";
-import { heroFigureScaleFor } from "@/lib/battle/assets";
+import { heroFigureScaleFor, resolveAsset } from "@/lib/battle/assets";
+import { heroGalleryContent } from "@/lib/manual/heroGalleryContent";
 import type { HeroGalleryDefinition } from "@/lib/battle/types";
 import { ManualDialog } from "@/components/manual/ManualDialog";
 
@@ -163,6 +164,7 @@ describe("UI-027 Manual and Gallery", () => {
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: /Hero Gallery/ }));
     await screen.findByRole("region", { name: "Approved heroes" });
+    expect(document.querySelector(".manual-page-embedded .hero-profile-profession-icon")?.getAttribute("src")).toContain("warrior_weapon_master_profession_v01.png");
     const warriorFilter = screen.getByRole("button", { name: "Warrior" });
     warriorFilter.focus();
 
@@ -207,6 +209,37 @@ describe("UI-027 Manual and Gallery", () => {
     await userEvent.setup().click(screen.getByText("Holy Concentration"));
     expect(screen.getByText("Priest concentrate on the guide from holy light. Holy Word Redemption will protect an extra hero if priest's hp is equal to or less than 75%.")).toBeVisible();
     expect(screen.getByText("Locked · No current unlock route.")).toBeVisible();
+  });
+
+  it("shows every profession icon beside faculty and keeps specialization full-width, with a readable failed-art fallback", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => String(input).endsWith("/heroes")
+      ? json({ contractVersion: "1.0", heroes: gallery })
+      : json(progression()));
+    render(<HeroGalleryPage />);
+    const cards = await screen.findByRole("region", { name: "Approved heroes" });
+    const choices = within(cards).getAllByRole("button");
+    const user = userEvent.setup();
+    for (const [index, [definitionId, , faculty, specialization]] of ids.entries()) {
+      await user.click(choices[index]);
+      const expected = resolveAsset({ kind: "profession", key: definitionId, name: `${faculty} ${specialization}`, className: faculty });
+      const icon = document.querySelector<HTMLImageElement>(".hero-profile-profession-icon");
+      expect(icon?.getAttribute("src")).toContain(expected.src);
+      expect(icon).toHaveAttribute("aria-label", `${faculty} ${specialization} profession icon`);
+      const identity = document.querySelector(".hero-profile-identity");
+      const facultyRow = identity?.firstElementChild;
+      expect(facultyRow).toHaveClass("hero-profile-faculty-row");
+      expect(facultyRow?.firstElementChild).toHaveClass("hero-profile-profession-art");
+      expect(facultyRow?.lastElementChild).toHaveTextContent(faculty);
+      expect(identity?.lastElementChild).toHaveTextContent(specialization);
+      expect(identity?.nextElementSibling).toHaveTextContent(heroGalleryContent[definitionId].introduction);
+    }
+    const failedIcon = document.querySelector<HTMLImageElement>(".hero-profile-profession-icon");
+    fireEvent.error(failedIcon!);
+    expect(document.querySelector(".hero-profile-profession-art .asset-fallback")).toHaveTextContent("RC");
+    expect(document.querySelector(".hero-profile-profession-art img")).not.toBeInTheDocument();
+
+    await user.click(choices[0]);
+    expect(document.querySelector<HTMLImageElement>(".hero-profile-profession-icon")?.getAttribute("src")).toContain("warrior_weapon_master_profession_v01.png");
   });
 
   it("shows a recoverable Gallery error and keeps the Instruction route readable", async () => {

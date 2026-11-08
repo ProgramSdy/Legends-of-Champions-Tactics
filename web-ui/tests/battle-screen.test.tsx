@@ -358,7 +358,7 @@ describe("battle screen integration", () => {
     const target = screen.getByRole("button", { name: "Sashein, selectable target" });
     const status = screen.getByRole("article", { name: /Sashein/ }).querySelector<HTMLElement>(".status-icon")!;
     expect(target).not.toContainElement(status);
-    expect(status).toHaveAccessibleName(/Stitch of Agony.*2 rounds remaining/i);
+    expect(status).toHaveAccessibleName(/Stitch of Agony.*Remaining rounds: 2\./i);
     status.focus();
     expect(status).toHaveFocus();
     expect(screen.getByRole("button", { name: "CAST SKILL" })).toBeDisabled();
@@ -532,8 +532,8 @@ describe("battle screen integration", () => {
     expect(screen.getAllByText("45/81").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("73/81").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByRole("article", { name: /Flesh Puppet, Warrior/i })).toBeVisible();
-    expect(screen.getAllByLabelText(/Stitch of Agony.*3 rounds remaining/i).length).toBeGreaterThanOrEqual(1);
-    expect(screen.queryByLabelText(/Stitch of Agony.*2 rounds remaining/i)).not.toBeInTheDocument();
+    expect(screen.getAllByLabelText(/Stitch of Agony.*Remaining rounds: 3\./i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByLabelText(/Stitch of Agony.*Remaining rounds: 2\./i)).not.toBeInTheDocument();
   });
 
   it.each([[1920, 1080], [1600, 900], [1440, 900], [1366, 768]])(

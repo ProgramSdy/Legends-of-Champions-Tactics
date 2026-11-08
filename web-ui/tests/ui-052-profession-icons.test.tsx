@@ -11,15 +11,32 @@ const professionIcons = [
   ["hero.paladin.retribution", "Paladin", "paladin_retribution_profession_v01.png"],
   ["hero.paladin.protection", "Paladin", "paladin_protection_profession_v01.png"],
   ["hero.paladin.holy", "Paladin", "paladin_holy_profession_v01.png"],
+  ["hero.mage.comprehensiveness", "Mage", "mage_comprehensiveness_profession_v01.png"],
+  ["hero.rogue.comprehensiveness", "Rogue", "rogue_comprehensiveness_profession_v01.png"],
+  ["hero.priest.comprehensiveness", "Priest", "priest_comprehensiveness_profession_v01_128x128.png"],
+  ["hero.priest.discipline", "Priest", "priest_discipline_profession_v01.png"],
 ] as const;
 
-describe("UI-052 Battle profession badges", () => {
+describe("UI-052/UI-053 Battle profession badges", () => {
   it.each(professionIcons)("maps %s to its exact owner icon", (definitionId, faculty, file) => {
     expect(resolveAsset({ kind: "profession", key: definitionId, name: faculty, className: faculty })).toMatchObject({
       src: `/game-images/professions/icons/${file}`,
       fallback: "requested",
       status: "final",
     });
+  });
+
+  it.each(professionIcons.slice(6))("renders %s on friendly and enemy cards", (definitionId, faculty, file) => {
+    const template = createFormatFixture(1).combatants["friendly.ragnar"];
+    const { container } = render(<>
+      <HeroCard hero={{ ...template, definitionId, faculty, id: "friendly.new", sideId: "friendly" }} />
+      <HeroCard hero={{ ...template, definitionId, faculty, id: "enemy.new", sideId: "enemy" }} />
+    </>);
+    const cards = [...container.querySelectorAll(".hero-card")];
+    expect(cards).toHaveLength(2);
+    for (const card of cards) {
+      expect(card.querySelector(".hero-title .class-icon")?.getAttribute("src")).toContain(file);
+    }
   });
 
   it("renders the same definition icon on friendly and enemy cards without changing the card hierarchy", () => {
@@ -44,7 +61,7 @@ describe("UI-052 Battle profession badges", () => {
     const { container, rerender } = render(<HeroCard hero={{ ...template, definitionId: "hero.warrior.unknown" }} />);
     expect(container.querySelector(".hero-title .class-icon")?.getAttribute("src")).toContain("warrior.webp");
 
-    rerender(<HeroCard hero={{ ...template, definitionId: "hero.priest.discipline", faculty: "Priest" }} />);
+    rerender(<HeroCard hero={{ ...template, definitionId: "hero.priest.unknown", faculty: "Priest" }} />);
     expect(container.querySelector(".hero-title .class-icon.asset-fallback")).toHaveTextContent("P");
 
     rerender(<HeroCard hero={{ ...template, definitionId: "hero.warrior.defence" }} />);

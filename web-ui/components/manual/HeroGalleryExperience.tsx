@@ -195,7 +195,16 @@ export function HeroGalleryExperience({ embedded = false, onBackToManual }: Hero
             <article className="hero-profile" aria-live="polite" style={{ "--hero-figure-scale": heroFigureScaleFor(hero.definitionId) } as CSSProperties}>
               <AssetImage request={{ kind: "figure", key: hero.definitionId, name: hero.displayName, className: hero.faculty }} className="hero-profile-art" />
               <div className="hero-profile-copy">
-                <small>{hero.faculty}</small><h2>{hero.specialization}</h2><p>{content.introduction}</p>
+                <div className="hero-profile-identity">
+                  <div className="hero-profile-faculty-row">
+                    <span className="hero-profile-profession-art">
+                      <AssetImage key={hero.definitionId} request={{ kind: "profession", key: hero.definitionId, name: `${hero.faculty} ${hero.specialization}`, className: hero.faculty }} className="hero-profile-profession-icon" />
+                    </span>
+                    <small>{hero.faculty}</small>
+                  </div>
+                  <h2>{hero.specialization}</h2>
+                </div>
+                <p>{content.introduction}</p>
                 <section className="battle-style"><h3>Battle Style</h3><p>{content.battleStyle}</p></section>
                 <section className="base-properties">
                   <h3>Properties</h3>

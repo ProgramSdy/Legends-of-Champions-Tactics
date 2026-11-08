@@ -78,7 +78,7 @@ export const battleInstructionContent = {
         },
         {
           "title": "Preview & Confirmation",
-          "text": "Target previews appear on hover or focus when supported. Cast Skill confirms a complete selection."
+          "text": "Target previews appear on hover or focus when supported. The bottom command button changes with selection and confirms a complete action."
         },
         {
           "title": "Battle Log",
