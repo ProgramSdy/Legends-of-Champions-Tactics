@@ -6,6 +6,8 @@ import Link from "next/link";
 import { useRef, useState, type KeyboardEvent } from "react";
 import { battleInstructionContent } from "@/lib/manual/battleInstructionContent";
 import { skillPresentation, statusRegistry } from "@/lib/battle/assets";
+import { duoFormationRegistry, trioFormationRegistry, type FormationPosition } from "@/lib/battle/formations";
+import type { SideId } from "@/lib/battle/types";
 import type { BattleInstructionChapter, BattleInstructionChapterId, BattleInstructionItem } from "@/lib/manual/battleInstructionContentTypes";
 
 type Props = { embedded?: boolean; onBackToManual?: () => void };
@@ -16,11 +18,11 @@ const FORMATS = [
   { size: "3v3", cap: 15, formations: "3 formations", slots: ["One Front, Two Rear", "Two Front, One Rear", "All Front"] },
 ] as const;
 const FORMATIONS = [
-  { label: "2v2 · Front & Rear", positions: ["Front", "Rear"] },
-  { label: "2v2 · Side by Side", positions: ["Front", "Front"] },
-  { label: "3v3 · One Front, Two Rear", positions: ["Front", "Rear", "Rear"] },
-  { label: "3v3 · Two Front, One Rear", positions: ["Front", "Front", "Rear"] },
-  { label: "3v3 · All Front", positions: ["Front", "Front", "Front"] },
+  { label: "2v2 · Front & Rear", size: "duo", layout: duoFormationRegistry["front-rear"] },
+  { label: "2v2 · Side by Side", size: "duo", layout: duoFormationRegistry["side-by-side"] },
+  { label: "3v3 · One Front, Two Rear", size: "trio", layout: trioFormationRegistry["one-front-two-rear"] },
+  { label: "3v3 · Two Front, One Rear", size: "trio", layout: trioFormationRegistry["two-front-one-rear"] },
+  { label: "3v3 · All Front", size: "trio", layout: trioFormationRegistry["all-front"] },
 ] as const;
 const ATTACK_TYPES = [
   { id: "melee", title: "Melee", lead: "A living Front defender screens a Rear defender from classified Melee damage skills.", details: ["Front attacker: 100%", "Rear attacker: 70% direct damage"] },
@@ -36,12 +38,32 @@ const EFFECT_EXAMPLES: Record<string, readonly [string, string, string]> = {
   cooldowns: ["status.shadow_evasion", "skill.rogue.shadow_evasion", "◐"],
 };
 
-function FormationDiagram({ label, positions }: { label: string; positions: readonly string[] }) {
+function diagramSlotDescription(slots: FormationPosition[]) {
+  const heights = [...new Set(slots.map((slot) => slot.y))].sort((a, b) => a - b);
+  const distances = [...new Set(slots.map((slot) => Math.abs(slot.x - 50)))].sort((a, b) => a - b);
+  return slots.map((slot, index) => {
+    const vertical = heights.length < 2 ? "" : slot.y === heights[0] ? "upper" : slot.y === heights[heights.length - 1] ? "lower" : "middle";
+    const horizontal = distances.length < 2 ? "" : Math.abs(slot.x - 50) === distances[0] ? "near centre" : "farther out";
+    const placement = [vertical, horizontal].filter(Boolean).join(", ");
+    return `Hero ${index + 1} ${slot.slot === "rear" ? "Rear" : "Front"}${placement ? ` (${placement})` : ""}`;
+  }).join(", ");
+}
+
+function FormationSlot({ side, slot, position }: { side: SideId; slot: number; position: FormationPosition }) {
+  // Spread the battle registry's x/y coordinates into a compact Manual board without changing their relative order.
+  const x = 50 + (position.x - 50) * 1.4;
+  const y = 20 + ((position.y - 52) / 38) * 60;
+  return <div className="instruction-formation-slot" data-side={side} data-slot={slot} data-position={position.slot} style={{ left: `${x}%`, top: `${y}%` }}>
+    <i className={side === "enemy" ? "enemy" : undefined} aria-hidden="true">{slot}</i><small>{position.slot === "rear" ? "Rear" : "Front"}</small>
+  </div>;
+}
+
+function FormationDiagram({ label, size, layout }: (typeof FORMATIONS)[number]) {
   return <article className="instruction-formation-card"><h3>{label}</h3>
-    <div className="instruction-formation-board" aria-label={`${label}: ${positions.join(", ")}`}>
-      {positions.map((position, index) => <span key={`${position}-${index}`} className={position.toLowerCase()}><b>{index + 1}</b><small>{position}</small></span>)}
-      <i aria-hidden="true">VS</i>
-      {[...positions].reverse().map((position, index) => <span key={`enemy-${position}-${index}`} className={`enemy ${position.toLowerCase()}`}><b>{positions.length - index}</b><small>{position}</small></span>)}
+    <div className={`instruction-formation-board instruction-team-diagram formation-map${size === "trio" ? " formation-map--trio" : ""}`} role="img" aria-label={`${label}: Friendly ${diagramSlotDescription(layout.friendly)}; Enemy ${diagramSlotDescription(layout.enemy)}`}>
+      {layout.friendly.map((position, index) => <FormationSlot key={`friendly-${index}`} side="friendly" slot={index + 1} position={position} />)}
+      <b className="instruction-formation-vs" aria-hidden="true">VS</b>
+      {layout.enemy.map((position, index) => <FormationSlot key={`enemy-${index}`} side="enemy" slot={index + 1} position={position} />)}
     </div>
   </article>;
 }

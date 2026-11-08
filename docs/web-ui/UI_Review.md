@@ -510,4 +510,37 @@ proportional, and visually realign all nine clickable bubbles to the correct
 regions at desktop, tablet, and narrow widths. Preserve chapter/Manual
 navigation and marker accessibility. See `docs/Codex/Current_Task.md`.
 
+**Status:** Completed on 2026-11-07. Core recorded focused results in
+`docs/Codex/Completed.md`.
+
+### UI-059 — Battle Formats Shapes for Chapter 03's 2v2 Diagrams
+
+Replace only Chapter 03's two 2v2 oval hero-position markers with the existing
+blue/red hero-slot silhouette from Chapter 02 Battle Formats. Keep the Front &
+Rear and Side by Side positions, labels, sides, and slot numbering clear. Leave
+Chapter 02 and Chapter 03's 3v3 diagrams unchanged. See
+`docs/Codex/Current_Task.md`.
+
+**Status:** Completed on 2026-11-08, with the owner-observed placement corrections
+tracked in UI-060 below. See `docs/Codex/Completed.md` for UI-059's original scope.
+
+### UI-060 — Correct 2v2 and Extend Formation Shapes to 3v3
+
+In Battle Instruction chapter 03, correct 2v2 Front & Rear so Front 1 is
+nearest the opposing team on both sides, and arrange Side by Side vertically.
+Check both against real Battle positions. Once correct, extend the same
+blue/red hero-slot shape to all three 3v3 formations, matching each side's
+actual slot, Front/Rear, and vertical order. Preserve Chapter 02, combat logic,
+and Manual navigation. See `docs/Codex/Current_Task.md`.
+
+**Status:** Completed on 2026-11-08. Core recorded results in
+`docs/Codex/Completed.md`.
+
+### UI-061 — Add 1v1 Duel to Chapter 03 Formation Diagrams
+
+Add one blue friendly Hero 1 and one red enemy Hero 1, both labelled Front,
+with `VS` between them and no formation choice. Match the existing Chapter 03
+hero-slot shape; preserve all 2v2 and 3v3 diagrams. See
+`docs/Codex/Current_Task.md`.
+
 **Status:** Ready for Core.
