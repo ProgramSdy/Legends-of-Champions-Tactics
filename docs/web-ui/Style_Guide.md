@@ -325,9 +325,31 @@ _To be documented._
   compact widths, one chapter at a time, and Previous/Next controls. Use concise
   serif headings, dark bordered cards, explicit Front/Rear diagrams, and
   rule-bearing HTML text rather than numbers baked into artwork. The annotated
-  battle screenshot has one highlighted, keyboard-usable numbered marker at a
-  time and a labelled schematic fallback if its image fails. Chapter changes
-  scroll their reading pane to the top and never trigger external navigation.
+  battle screenshot has eleven keyboard-usable numbered markers for distinct
+  controls and information regions, with one highlighted at a time and a
+  labelled schematic fallback if its image fails. The target-hover preview,
+  clickable Hero Stats button, Cast Skill confirmation, and Battle Speed are
+  separate topics; Auto Battle is not a marker. The header begins with the
+  Manual back control, title, and subtitle without a decorative guide kicker.
+  Chapter changes scroll their reading pane to the top and never trigger
+  external navigation.
+  Keep both pagination buttons text-width with the chapter count centred,
+  including a visible count above balanced buttons at narrow widths. Chapter
+  02 format cards place labelled Formation Options and Maximum Battle Rounds
+  rows below their slot illustrations; 3v3 options may wrap without clipping.
+- Chapter 03 presents one selectable 2v2/3v3 formation at a time. The blue
+  friendly slot selected as attacker has a gold outline and visible Attacker
+  label; red enemy slots carry distinct tick/percentage, protected, or defeated
+  badges supplied by the Python read-only rule catalogue. Keep the three attack
+  types in one shared segmented control above the diagram, under the exact
+  title `2v2 & 3v3 Battle Formation`. The optional
+  enemy-front-defeated switch only where Rear enemies exist, and a concise
+  contextual explanation below. A separate static 1v1 Duel reference says
+  there is no formation choice. Badges must not overlap silhouettes or one
+  another at narrow widths; focus, text/symbol status, and polite result
+  announcements are required. The permanent note distinguishes direct-damage
+  formation multipliers from hit chance and final damage. If the catalogue is
+  unavailable, show a clear retry state rather than a guessed rules matrix.
 - A highlighted side hero card retains the soft gold halo while status icons,
   tooltips, portrait/data, and the absolute-positioned Hero Stats button stay
   in their normal positions and above the halo layer on either team.

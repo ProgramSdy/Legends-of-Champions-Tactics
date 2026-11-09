@@ -14,6 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .adapter import CONTRACT_VERSION, BattleAdapterError, BattleRegistry
 from .attempts import BattleAttemptConflict, BattleAttemptRegistry
+from game.formation_rules import formation_demonstration_catalogue
 from .models import (
     ArenaStateResponse,
     ArenaVictoryCommitResponse,
@@ -26,6 +27,7 @@ from .models import (
     CreateDebugBattleRequest,
     CreateStageBattleRequest,
     EmptySaveSlotRequest,
+    FormationDemonstrationResponse,
     HeroRosterResponse,
     HttpErrorResponse,
     PlayerProgressionResponse,
@@ -170,6 +172,18 @@ async def list_heroes() -> dict:
             registry.adapter.roster, hero_unlock_sources()
         ),
     }
+
+
+@app.get(
+    "/api/v1/manual/formation-demonstration",
+    response_model=FormationDemonstrationResponse,
+)
+async def formation_demonstration() -> FormationDemonstrationResponse:
+    """Return exhaustive static formation facts without creating a battle."""
+
+    return FormationDemonstrationResponse.model_validate(
+        formation_demonstration_catalogue()
+    )
 
 
 @app.get(

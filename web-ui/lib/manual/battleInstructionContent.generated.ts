@@ -44,11 +44,10 @@ export const battleInstructionContent = {
       "id": "formations",
       "title": "Formations & Attack Types",
       "kicker": "Position changes reach and power",
-      "introduction": "Formation position can affect legal targets and direct damage, but only for skills with an approved attack type. Target legality, position damage, and hit chance are separate questions.",
       "legalTargeting": "A living Front defender screens a Rear defender from Melee attacks. Ranged attacks use their own lawful target rules.",
       "positionDamage": "Position adjustments apply once to the initial direct hit. Periodic effects keep their own rules.",
       "hitChance": "Formation does not set hit chance. Evasion, immunity, and skill-specific effects are resolved separately.",
-      "otherEffects": "Defence, resistance, shields, immunities, skill formulas, and other effects can still change the final damage."
+      "otherEffects": "Percentages show the formation multiplier on direct damage—not hit chance or final damage. Defence, resistance, and other skill effects still apply. This demonstration covers classified direct-damage attacks only, not healing, periodic damage, or special targeting exceptions."
     },
     {
       "id": "interface",
@@ -69,6 +68,14 @@ export const battleInstructionContent = {
           "text": "Hero figures are the selection surface. Lawful targets gain the appropriate cursor and glow."
         },
         {
+          "title": "Target Preview",
+          "text": "For supported selected skills and targets, hover or focus can show current target HP and estimates of direct damage and hit chance before confirmation. These values support a decision; they do not guarantee the resolved outcome."
+        },
+        {
+          "title": "Hero Stats",
+          "text": "Select the gold bar-chart button inside an occupied hero card to open Hero Stats and inspect that hero's current battle attributes and active effects."
+        },
+        {
           "title": "Acting Hero",
           "text": "The lower-left card identifies the hero currently choosing an action."
         },
@@ -77,16 +84,16 @@ export const battleInstructionContent = {
           "text": "Choose an available command here. Cards also show target style, cooldown state, and presentation details when available."
         },
         {
-          "title": "Preview & Confirmation",
-          "text": "Target previews appear on hover or focus when supported. The bottom command button changes with selection and confirms a complete action."
+          "title": "Command Confirmation",
+          "text": "The bottom command button changes with the current selection. Activate Cast Skill when the chosen skill and target selection form a complete action."
         },
         {
           "title": "Battle Log",
           "text": "Ordered battle messages record resolved actions and effects."
         },
         {
-          "title": "Speed & Auto Battle",
-          "text": "Speed changes presentation timing. Auto Battle lets the computer choose legal actions for the player side."
+          "title": "Battle Speed",
+          "text": "Use ×1, ×1.5, or ×2 to change battle presentation speed without changing combat results."
         },
         {
           "title": "Resign",

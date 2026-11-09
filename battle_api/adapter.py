@@ -30,6 +30,11 @@ from .models import (
     TWO_HERO_FORMATION_IDS,
     TwoHeroFormationId,
 )
+from game.formation_rules import (
+    FORMATION_POSITIONS,
+    Position,
+    direct_damage_target_is_eligible,
+)
 from game.game import Game
 from game.hero_generator import HeroGenerator
 from heroes.mage import Mage_Comprehensiveness
@@ -42,17 +47,9 @@ CONTRACT_VERSION = "1.0"
 ROOT = Path(__file__).resolve().parents[1]
 ENGINE_RANDOM_LOCK = threading.RLock()
 ANSI_ESCAPE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
-Position = Literal["front", "rear"]
 # Backward-compatible UI-018 name: this remains the two-hero set. Callers that
 # need 3v3 choices use the explicitly size-scoped constant above.
 FORMATION_IDS: tuple[TwoHeroFormationId, ...] = TWO_HERO_FORMATION_IDS
-FORMATION_POSITIONS: dict[FormationId, tuple[Position, ...]] = {
-    "front-rear": ("front", "rear"),
-    "side-by-side": ("front", "front"),
-    "one-front-two-rear": ("front", "rear", "rear"),
-    "two-front-one-rear": ("front", "front", "rear"),
-    "all-front": ("front", "front", "front"),
-}
 
 HERO_ROSTER = {
     "hero.priest.comprehensiveness": {
@@ -3909,13 +3906,17 @@ class BattleAdapter:
             pool = actor.opponents + actor.allies
         else:
             pool = actor.opponents
+        living_pool = [hero for hero in pool if hero.hp > 0]
         if skill.skill_type == "damage" and skill.attack_type == "melee":
-            alive_front = any(
-                hero.hp > 0 and hero.position == "front" for hero in pool
-            )
-            if alive_front:
-                pool = [hero for hero in pool if hero.position == "front"]
-        return [self._combatant_id(session, hero) for hero in pool if hero.hp > 0]
+            living_positions = [hero.position for hero in living_pool]
+            living_pool = [
+                hero
+                for hero in living_pool
+                if direct_damage_target_is_eligible(
+                    skill.attack_type, hero.position, living_positions
+                )
+            ]
+        return [self._combatant_id(session, hero) for hero in living_pool]
 
     def _skill_by_id(self, hero, skill_id):
         return next((s for s in hero.skills if self._skill_id(hero, s) == skill_id), None)

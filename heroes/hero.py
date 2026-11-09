@@ -2,6 +2,7 @@ import math
 import random
 from dataclasses import dataclass
 from functools import wraps
+from game.formation_rules import direct_damage_formation_multiplier
 from heroes import *
 from skills import *
 
@@ -744,16 +745,11 @@ class Hero:
               "melee", "ranged_projectile", "ranged_instant"
           }:
               return damage_dealt
-          attacker_position = getattr(attacker, "position", "front")
-          defender_position = getattr(self, "position", "front")
-          multiplier = 1.0
-          if attack_type == "melee" and attacker_position == "rear":
-              multiplier = 0.7
-          elif attack_type == "ranged_projectile":
-              if attacker_position == "rear" and defender_position == "rear":
-                  multiplier = 0.60
-              elif attacker_position != defender_position:
-                  multiplier = 0.80
+          multiplier = direct_damage_formation_multiplier(
+              getattr(attacker, "position", "front"),
+              getattr(self, "position", "front"),
+              attack_type,
+          )
           return max(0, math.floor(damage_dealt * multiplier))
 
     def _apply_void_connection_linked_damage(self, linked_hero, damage_dealt):

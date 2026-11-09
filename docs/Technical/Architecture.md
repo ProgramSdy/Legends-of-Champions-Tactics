@@ -93,6 +93,13 @@ combat.
   YAML is strictly compiled into a typed frontend module before dev/build; its
   prose cannot author mechanics or structured numerical facts. Descriptive
   numbers may appear in prose but must be audited against the engine.
+- **Manual formation demonstration (Python + Next.js):** an additive read-only
+  catalogue evaluates every approved 2v2/3v3 attacker, classified direct-
+  damage attack type, and relevant front-defeated scenario using pure Python
+  helpers shared with live melee screening and position-damage adjustment.
+  The Manual fetches it once, validates its shape, and selects supplied facts
+  for display; it never creates a battle session or derives combat rules in
+  React. The frontend formation registry supplies visual coordinates only.
 
 ## Ownership Boundaries
 
@@ -109,6 +116,7 @@ combat.
 | Profile naming/deletion, active-battle recovery, inventory/equipment, cloud/account saves | Not implemented |
 | Gallery target semantics, classifications, numeric reference availability | Python static catalogue / audited registry |
 | Gallery introductions, battle styles, skill prose, optional tips | Validated generated editorial content |
+| Manual formation eligibility, direct-damage multiplier, result reasons, contextual rule explanation | Python static formation catalogue and shared live-rule helpers |
 
 For new Gallery skills, the Python catalogue owns audited Base Damage/Healing,
 target-dependent formula text, classifications, target semantics, and initial

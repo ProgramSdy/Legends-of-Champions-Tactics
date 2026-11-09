@@ -3,31 +3,40 @@
 /* eslint-disable @next/next/no-img-element -- the manual uses audited local capture/status assets at their native paths */
 
 import Link from "next/link";
-import { useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 import { battleInstructionContent } from "@/lib/manual/battleInstructionContent";
 import { skillPresentation, statusRegistry } from "@/lib/battle/assets";
-import { duoFormationRegistry, trioFormationRegistry, type FormationPosition } from "@/lib/battle/formations";
+import { duoFormationRegistry, formationRegistry, trioFormationRegistry, type FormationPosition } from "@/lib/battle/formations";
+import {
+  fetchFormationDemonstration,
+  type FormationDemonstrationAttackType,
+  type FormationDemonstrationCatalogue,
+  type FormationDemonstrationFormation,
+  type FormationDemonstrationId,
+  type FormationDemonstrationTarget,
+} from "@/lib/manual/formationDemonstration";
 import type { SideId } from "@/lib/battle/types";
 import type { BattleInstructionChapter, BattleInstructionChapterId, BattleInstructionItem } from "@/lib/manual/battleInstructionContentTypes";
 
 type Props = { embedded?: boolean; onBackToManual?: () => void };
 
 const FORMATS = [
-  { size: "1v1", cap: 9, formations: "Duel — no formation choice", slots: ["Front"] },
-  { size: "2v2", cap: 13, formations: "2 formations", slots: ["Front & Rear", "Side by Side"] },
-  { size: "3v3", cap: 15, formations: "3 formations", slots: ["One Front, Two Rear", "Two Front, One Rear", "All Front"] },
+  { size: "1v1", cap: 9, formations: ["No formation choice", "Front"] },
+  { size: "2v2", cap: 13, formations: ["Front & Rear", "Side by Side"] },
+  { size: "3v3", cap: 15, formations: ["One Front, Two Rear", "Two Front, One Rear", "All Front"] },
 ] as const;
-const FORMATIONS = [
-  { label: "2v2 · Front & Rear", size: "duo", layout: duoFormationRegistry["front-rear"] },
-  { label: "2v2 · Side by Side", size: "duo", layout: duoFormationRegistry["side-by-side"] },
-  { label: "3v3 · One Front, Two Rear", size: "trio", layout: trioFormationRegistry["one-front-two-rear"] },
-  { label: "3v3 · Two Front, One Rear", size: "trio", layout: trioFormationRegistry["two-front-one-rear"] },
-  { label: "3v3 · All Front", size: "trio", layout: trioFormationRegistry["all-front"] },
+const DUEL_FORMATION = { label: "1v1 · Duel", size: "duel", layout: formationRegistry.duel } as const;
+const DEMONSTRATION_FORMATIONS = [
+  { id: "front-rear", label: "2v2 · Front & Rear", shortLabel: "Front & Rear", size: "duo", layout: duoFormationRegistry["front-rear"] },
+  { id: "side-by-side", label: "2v2 · Side by Side", shortLabel: "Side by Side", size: "duo", layout: duoFormationRegistry["side-by-side"] },
+  { id: "one-front-two-rear", label: "3v3 · One Front, Two Rear", shortLabel: "One Front, Two Rear", size: "trio", layout: trioFormationRegistry["one-front-two-rear"] },
+  { id: "two-front-one-rear", label: "3v3 · Two Front, One Rear", shortLabel: "Two Front, One Rear", size: "trio", layout: trioFormationRegistry["two-front-one-rear"] },
+  { id: "all-front", label: "3v3 · All Front", shortLabel: "All Front", size: "trio", layout: trioFormationRegistry["all-front"] },
 ] as const;
 const ATTACK_TYPES = [
-  { id: "melee", title: "Melee", lead: "A living Front defender screens a Rear defender from classified Melee damage skills.", details: ["Front attacker: 100%", "Rear attacker: 70% direct damage"] },
-  { id: "projectile", title: "Ranged Projectile", lead: "Can lawfully reach Front or Rear targets.", details: ["Front → Front: 100%", "Front → Rear: 80%", "Rear → Front: 80%", "Rear → Rear: 60%"] },
-  { id: "instant", title: "Ranged Instant", lead: "Can lawfully reach Front or Rear targets.", details: ["No formation damage adjustment: 100%"] },
+  { id: "melee", title: "Melee" },
+  { id: "rangedProjectile", title: "Ranged Projectile" },
+  { id: "rangedInstant", title: "Ranged Instant" },
 ] as const;
 const EFFECT_EXAMPLES: Record<string, readonly [string, string, string]> = {
   buffs: ["status.wrath_of_crusader", "skill.paladin.wrath_of_crusader", "⚔"],
@@ -58,14 +67,88 @@ function FormationSlot({ side, slot, position }: { side: SideId; slot: number; p
   </div>;
 }
 
-function FormationDiagram({ label, size, layout }: (typeof FORMATIONS)[number]) {
+function FormationDiagram({ label, layout }: typeof DUEL_FORMATION) {
   return <article className="instruction-formation-card"><h3>{label}</h3>
-    <div className={`instruction-formation-board instruction-team-diagram formation-map${size === "trio" ? " formation-map--trio" : ""}`} role="img" aria-label={`${label}: Friendly ${diagramSlotDescription(layout.friendly)}; Enemy ${diagramSlotDescription(layout.enemy)}`}>
+    <p className="instruction-formation-note">No formation choice</p>
+    <div className="instruction-formation-board instruction-team-diagram formation-map formation-map--duel" role="img" aria-label={`${label}: Friendly ${diagramSlotDescription(layout.friendly)} versus Enemy ${diagramSlotDescription(layout.enemy)}; no formation choice`}>
       {layout.friendly.map((position, index) => <FormationSlot key={`friendly-${index}`} side="friendly" slot={index + 1} position={position} />)}
       <b className="instruction-formation-vs" aria-hidden="true">VS</b>
       {layout.enemy.map((position, index) => <FormationSlot key={`enemy-${index}`} side="enemy" slot={index + 1} position={position} />)}
     </div>
   </article>;
+}
+
+function demonstrationPosition(position: FormationPosition): CSSProperties {
+  const y = 18 + ((position.y - 52) / 38) * 64;
+  return { left: `${position.x}%`, top: `${y}%` };
+}
+
+function targetResultLabel(result: FormationDemonstrationTarget) {
+  if (result.reason === "defeated") return "Defeated";
+  if (result.reason === "protectedByFrontLine") return "Protected by front line";
+  return `${result.multiplierPercent}% damage`;
+}
+
+function DemonstrationBoard({
+  formation,
+  layout,
+  attackerSlot,
+  evaluation,
+  onSelectAttacker,
+}: {
+  formation: FormationDemonstrationFormation;
+  layout: (typeof DEMONSTRATION_FORMATIONS)[number]["layout"];
+  attackerSlot: number;
+  evaluation: FormationDemonstrationFormation["evaluations"][number] | undefined;
+  onSelectAttacker: (slot: number) => void;
+}) {
+  const targets = formation.enemySlots.map((slot) => evaluation?.targets.find((target) => target.targetSlot === slot.slot)).filter((target): target is FormationDemonstrationTarget => Boolean(target));
+  return <><div className={`instruction-formation-board instruction-team-diagram instruction-demo-board${formation.battleSize === 3 ? " is-trio" : ""}`} aria-label="Interactive formation demonstration">
+    {formation.friendlySlots.map((slot) => {
+      const position = layout.friendly[slot.slot - 1];
+      if (!position) return null;
+      const selected = attackerSlot === slot.slot;
+      return <button
+        className={`instruction-demo-slot friendly${selected ? " is-attacker" : ""}`}
+        data-side="friendly"
+        data-slot={slot.slot}
+        data-position={slot.position}
+        key={`friendly-${slot.slot}`}
+        type="button"
+        aria-pressed={selected}
+        aria-label={`Friendly Hero ${slot.slot}, ${slot.position}, ${selected ? "selected attacker" : "select as attacker"}`}
+        style={demonstrationPosition(position)}
+        onClick={() => onSelectAttacker(slot.slot)}
+      >
+        <i aria-hidden="true">{slot.slot}</i>
+        <small>{slot.position === "rear" ? "Rear" : "Front"}</small>
+        <strong>{selected ? "Attacker" : "Select"}</strong>
+      </button>;
+    })}
+    <b className="instruction-formation-vs" aria-hidden="true">VS</b>
+    {formation.enemySlots.map((slot) => {
+      const position = layout.enemy[slot.slot - 1];
+      const result = evaluation?.targets.find((target) => target.targetSlot === slot.slot);
+      if (!position || !result) return null;
+      const label = targetResultLabel(result);
+      return <div
+        className={`instruction-demo-slot enemy is-${result.reason}${result.eligible && result.multiplierPercent !== 100 ? " is-reduced" : ""}`}
+        data-side="enemy"
+        data-slot={slot.slot}
+        data-position={slot.position}
+        key={`enemy-${slot.slot}`}
+        style={demonstrationPosition(position)}
+        aria-label={`Enemy Hero ${slot.slot}, ${slot.position}: ${label}`}
+      >
+        <i className="enemy" aria-hidden="true">{slot.slot}</i>
+        <small>{slot.position === "rear" ? "Rear" : "Front"}</small>
+        <strong className="instruction-demo-state-symbol" aria-hidden="true">{result.reason === "eligible" ? "✓" : result.reason === "protectedByFrontLine" ? "×" : "—"}</strong>
+      </div>;
+    })}
+  </div>
+  <div className="instruction-demo-results" aria-label="Enemy target results">{targets.map((result) => <div className={`instruction-demo-result is-${result.reason}${result.eligible && result.multiplierPercent !== 100 ? " is-reduced" : ""}`} key={result.targetSlot}>
+    <strong>Enemy Hero {result.targetSlot}</strong><small>{result.targetPosition === "rear" ? "Rear" : "Front"}</small><span><b aria-hidden="true">{result.reason === "eligible" ? "✓" : result.reason === "protectedByFrontLine" ? "×" : "—"}</b>{targetResultLabel(result)}</span>
+  </div>)}</div></>;
 }
 
 function QuickStart({ chapter }: { chapter: BattleInstructionChapter }) {
@@ -76,32 +159,67 @@ function QuickStart({ chapter }: { chapter: BattleInstructionChapter }) {
 
 function BattleFormats() {
   return <div className="instruction-format-grid">{FORMATS.map((format) => <article key={format.size}>
-    <header><strong>{format.size}</strong><span>{format.cap} completed rounds</span></header>
+    <header><strong>{format.size}</strong></header>
     <div className="instruction-team-diagram" aria-hidden="true">{Array.from({ length: Number(format.size[0]) }, (_, index) => <i key={`f-${index}`}>L</i>)}<b>VS</b>{Array.from({ length: Number(format.size[0]) }, (_, index) => <i className="enemy" key={`e-${index}`}>E</i>)}</div>
-    <p>{format.formations}</p><ul>{format.slots.map((slot) => <li key={slot}>{slot}</li>)}</ul>
+    <dl className="instruction-format-facts">
+      <div><dt>Battle Formation Options</dt><dd>{format.formations.map((formation) => <span key={formation}>{formation}</span>)}</dd></div>
+      <div><dt>Maximum Battle Rounds</dt><dd><strong>{format.cap}</strong></dd></div>
+    </dl>
   </article>)}</div>;
 }
 
 function Formations({ chapter }: { chapter: BattleInstructionChapter }) {
-  const [attackType, setAttackType] = useState<(typeof ATTACK_TYPES)[number]["id"]>("melee");
-  const selected = ATTACK_TYPES.find((item) => item.id === attackType)!;
-  function onAttackTypeKeyDown(event: KeyboardEvent<HTMLButtonElement>, tabIndex: number) {
-    const delta = event.key === "ArrowRight" || event.key === "ArrowDown" ? 1 : event.key === "ArrowLeft" || event.key === "ArrowUp" ? -1 : 0;
-    const target = event.key === "Home" ? 0 : event.key === "End" ? ATTACK_TYPES.length - 1 : delta ? (tabIndex + delta + ATTACK_TYPES.length) % ATTACK_TYPES.length : -1;
-    if (target < 0) return;
-    event.preventDefault();
-    const next = ATTACK_TYPES[target];
-    setAttackType(next.id);
-    document.querySelector<HTMLButtonElement>(`#instruction-attack-tab-${next.id}`)?.focus();
+  const [catalogue, setCatalogue] = useState<FormationDemonstrationCatalogue | null>(null);
+  const [error, setError] = useState("");
+  const [retry, setRetry] = useState(0);
+  const [formationId, setFormationId] = useState<FormationDemonstrationId>("front-rear");
+  const [attackerSlot, setAttackerSlot] = useState(1);
+  const [attackType, setAttackType] = useState<FormationDemonstrationAttackType>("melee");
+  const [enemyFrontDefeated, setEnemyFrontDefeated] = useState(false);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchFormationDemonstration(controller.signal).then(setCatalogue).catch((reason: unknown) => {
+      if (reason instanceof DOMException && reason.name === "AbortError") return;
+      setError(reason instanceof Error ? reason.message : "Formation demonstration is unavailable.");
+    });
+    return () => controller.abort();
+  }, [retry]);
+
+  const formationOption = DEMONSTRATION_FORMATIONS.find((item) => item.id === formationId)!;
+  const formation = catalogue?.formations.find((item) => item.id === formationId);
+  const evaluation = formation?.evaluations.find((item) => item.attackerSlot === attackerSlot
+    && item.attackType === attackType
+    && item.enemyFrontDefeated === enemyFrontDefeated);
+
+  function selectFormation(nextId: FormationDemonstrationId) {
+    const next = catalogue?.formations.find((item) => item.id === nextId);
+    setFormationId(nextId);
+    setEnemyFrontDefeated(false);
+    if (!next?.friendlySlots.some((slot) => slot.slot === attackerSlot)) {
+      setAttackerSlot(next?.friendlySlots.find((slot) => slot.position === "front")?.slot ?? 1);
+    }
   }
-  return <><div className="instruction-formation-grid">{FORMATIONS.map((formation) => <FormationDiagram key={formation.label} {...formation} />)}</div>
+
+  return <><section className="instruction-duel-reference" aria-label="1v1 formation reference"><FormationDiagram {...DUEL_FORMATION} /></section>
+    <section className="instruction-formation-demo" aria-labelledby="instruction-demo-title">
+      <header><div><h3 id="instruction-demo-title">2v2 &amp; 3v3 Battle Formation</h3><p>Select a blue hero, then choose an attack type.</p></div></header>
+      <fieldset className="instruction-demo-control instruction-demo-formations"><legend>Formation</legend>{DEMONSTRATION_FORMATIONS.map((item) => <button key={item.id} type="button" aria-pressed={formationId === item.id} onClick={() => selectFormation(item.id)}><span>{item.size === "duo" ? "2v2" : "3v3"}</span>{item.shortLabel}</button>)}</fieldset>
+      <fieldset className="instruction-demo-control instruction-demo-attacks"><legend>Attack type</legend>{ATTACK_TYPES.map((item) => <button key={item.id} type="button" aria-pressed={attackType === item.id} onClick={() => setAttackType(item.id)}>{item.title}</button>)}</fieldset>
+      {!catalogue && !error && <div className="instruction-demo-message" role="status">Loading authoritative formation rules…</div>}
+      {error && <div className="instruction-demo-message is-error" role="alert"><p>{error}</p><button type="button" onClick={() => { setError(""); setCatalogue(null); setRetry((value) => value + 1); }}>Retry</button></div>}
+      {formation && <>
+        <div className="instruction-demo-heading"><h3>{formationOption.label}</h3>{formation.hasRearEnemies && <label className="instruction-demo-switch"><input type="checkbox" role="switch" checked={enemyFrontDefeated} onChange={(event) => setEnemyFrontDefeated(event.target.checked)} /><span>Enemy front line defeated</span></label>}</div>
+        <DemonstrationBoard formation={formation} layout={formationOption.layout} attackerSlot={attackerSlot} evaluation={evaluation} onSelectAttacker={setAttackerSlot} />
+        <p className="sr-only" aria-live="polite">{evaluation ? evaluation.targets.map((target) => `Enemy Hero ${target.targetSlot}: ${targetResultLabel(target)}`).join(". ") : "Authoritative target results unavailable."}</p>
+        <p className="instruction-demo-explanation" aria-live="polite">{evaluation?.explanation ?? "Authoritative formation result unavailable for this selection."}</p>
+      </>}
+    </section>
     <section className="instruction-rule-separation" aria-label="Formation rule boundaries">
       <article><strong>1 · Legal target?</strong><p>{chapter.legalTargeting}</p></article>
       <article><strong>2 · Position damage?</strong><p>{chapter.positionDamage}</p></article>
       <article><strong>3 · Does it hit?</strong><p>{chapter.hitChance}</p></article>
     </section>
-    <section className="instruction-attack-types"><div role="tablist" aria-label="Attack type explanations">{ATTACK_TYPES.map((item, tabIndex) => <button id={`instruction-attack-tab-${item.id}`} key={item.id} type="button" role="tab" aria-selected={attackType === item.id} aria-controls="instruction-attack-panel" tabIndex={attackType === item.id ? 0 : -1} onClick={() => setAttackType(item.id)} onKeyDown={(event) => onAttackTypeKeyDown(event, tabIndex)}>{item.title}</button>)}</div>
-      <article id="instruction-attack-panel" role="tabpanel" aria-labelledby={`instruction-attack-tab-${selected.id}`}><h3>{selected.title}</h3><p>{selected.lead}</p><ul>{selected.details.map((detail) => <li key={detail}>{detail}</li>)}</ul></article></section>
     <p className="instruction-fine-print">{chapter.otherEffects}</p></>;
 }
 
@@ -111,7 +229,7 @@ function BattleInterface({ chapter }: { chapter: BattleInstructionChapter }) {
   const markers = chapter.markers ?? [];
   return <div className="instruction-interface-guide"><div className={`instruction-battle-reference${screenshotFailed ? " is-schematic" : ""}`}>
     {!screenshotFailed && <img src="/game-images/manual/Battle_Instruction_Interface.png" alt="Current battle screen showing its principal controls" onError={() => setScreenshotFailed(true)} />}
-    {screenshotFailed && <div className="instruction-battle-schematic" role="img" aria-label="Battle screen layout schematic"><span className="top">ROUND · TURN ORDER</span><span className="left">YOUR TEAM</span><span className="field">BATTLEFIELD TARGETS</span><span className="right">ENEMY TEAM</span><span className="acting">ACTING HERO</span><span className="skills">SKILL CARDS</span><span className="log">BATTLE LOG</span><span className="controls">SPEED · AUTO · RESIGN</span></div>}
+    {screenshotFailed && <div className="instruction-battle-schematic" role="img" aria-label="Battle screen layout schematic"><span className="top">ROUND · TURN ORDER</span><span className="left">YOUR TEAM · HERO STATS</span><span className="field">BATTLEFIELD TARGETS · TARGET PREVIEW</span><span className="right">ENEMY TEAM</span><span className="acting">ACTING HERO</span><span className="skills">SKILL CARDS</span><span className="log">BATTLE LOG</span><span className="controls">BATTLE SPEED · COMMAND · RESIGN</span></div>}
     <small>{screenshotFailed ? "Battle screen guide · layout schematic" : "Battle screen guide · current game capture"}</small>
     {markers.map((item, index) => <button key={item.title} type="button" className={`instruction-marker marker-${index + 1}`} aria-label={`${index + 1}. ${item.title}`} aria-pressed={marker === index} onClick={() => setMarker(index)}>{index + 1}</button>)}
   </div>
@@ -170,10 +288,10 @@ export function BattleInstructionExperience({ embedded = false, onBackToManual }
   }
   return <main className={`manual-page instruction-page${embedded ? " manual-page-embedded" : ""}`}>
     <header className="instruction-header">{embedded ? <button type="button" className="manual-back" data-manual-back onClick={onBackToManual}>← Back to Manual</button> : <Link className="manual-back" href="/stages?manual=open">← Back to Manual</Link>}
-      <small>FIELD GUIDE · SIX CHAPTERS</small><h1>{battleInstructionContent.title}</h1><p>{battleInstructionContent.subtitle}</p></header>
+      <h1>{battleInstructionContent.title}</h1><p>{battleInstructionContent.subtitle}</p></header>
     <div className="instruction-mobile-select"><label htmlFor="instruction-chapter-select">Chapter</label><select id="instruction-chapter-select" value={chapterId} onChange={(event) => selectChapter(event.target.value as BattleInstructionChapterId)}>{chapters.map((item, chapterIndex) => <option key={item.id} value={item.id}>{chapterIndex + 1}. {item.title}</option>)}</select></div>
     <div className="instruction-compendium"><nav className="instruction-chapters" aria-label="Battle Instruction chapters" role="tablist" aria-orientation="vertical">{chapters.map((item, chapterIndex) => <button id={`instruction-tab-${item.id}`} key={item.id} role="tab" type="button" aria-selected={chapterId === item.id} aria-controls="instruction-chapter-panel" tabIndex={chapterId === item.id ? 0 : -1} onClick={() => selectChapter(item.id)} onKeyDown={(event) => onTabKeyDown(event, chapterIndex)}><span>{String(chapterIndex + 1).padStart(2, "0")}</span>{item.title}</button>)}</nav>
-      <section className="instruction-reader" id="instruction-chapter-panel" role="tabpanel" aria-labelledby={`instruction-tab-${chapter.id}`}><div className="instruction-chapter-heading"><small>CHAPTER {String(index + 1).padStart(2, "0")} · {chapter.kicker}</small><h2 ref={headingRef} tabIndex={-1}>{chapter.title}</h2><p>{chapter.introduction}</p></div>
+      <section className="instruction-reader" id="instruction-chapter-panel" role="tabpanel" aria-labelledby={`instruction-tab-${chapter.id}`}><div className="instruction-chapter-heading"><small>CHAPTER {String(index + 1).padStart(2, "0")} · {chapter.kicker}</small><h2 ref={headingRef} tabIndex={-1}>{chapter.title}</h2>{chapter.introduction && <p>{chapter.introduction}</p>}</div>
         <ChapterBody chapter={chapter} embedded={embedded} onBackToManual={onBackToManual} />
         <footer className="instruction-pagination"><button type="button" disabled={index === 0} onClick={() => selectChapter(chapters[index - 1].id)}>← Previous Chapter</button><span>{index + 1} / {chapters.length}</span><button type="button" disabled={index === chapters.length - 1} onClick={() => selectChapter(chapters[index + 1].id)}>Next Chapter →</button></footer>
       </section></div>

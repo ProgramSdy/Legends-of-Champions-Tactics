@@ -268,9 +268,17 @@ never replays events or changes battle-event ordering.
 `BattleInstructionExperience` presents six internal chapters from the
 schema-validated, owner-editable `web-ui/content/battle-instruction/manual.yaml`.
 The content builder emits a typed module at build time; browser code does not
-fetch YAML or calculate combat rules. Formation diagrams, attack-position
-percentages, round caps, and the timeout example are read-only presentation
-facts verified against Python, not a second rules engine. Desktop vertical tabs,
+fetch YAML or calculate combat rules. Chapter 03 keeps its static 1v1 Duel
+reference, while its five selectable 2v2/3v3 diagrams fetch the exhaustive
+read-only `GET /api/v1/manual/formation-demonstration` catalogue once. A strict
+typed boundary rejects missing or malformed rule scenarios and shows an
+unavailable/retry state rather than inventing target eligibility or percentages.
+React stores only the selected formation/attacker/attack type/front-defeated
+scenario and renders the matching Python-authored target results and
+explanation. `web-ui/lib/battle/formations.ts` supplies presentation
+coordinates only; no live session, progression, or RNG state is involved.
+Round caps and the timeout example remain read-only facts verified against
+Python, not a second rules engine. Desktop vertical tabs,
 the compact chapter select, Previous/Next controls, and numbered markers on a
 current no-save battle screenshot change only the Instruction's internal view.
 The screenshot has a labelled schematic fallback. None of these controls

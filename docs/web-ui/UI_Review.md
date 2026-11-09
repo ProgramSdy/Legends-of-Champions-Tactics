@@ -543,4 +543,40 @@ with `VS` between them and no formation choice. Match the existing Chapter 03
 hero-slot shape; preserve all 2v2 and 3v3 diagrams. See
 `docs/Codex/Current_Task.md`.
 
+**Status:** Completed on 2026-11-08. Core recorded focused results in
+`docs/Codex/Completed.md`.
+
+### UI-062 — Interactive Formations & Attack Types Demonstration
+
+Replace Chapter 03's stacked 2v2/3v3 diagrams and separate attack-type table
+with one selectable formation diagram. Select a friendly attacker and attack
+type to see Python-authoritative enemy target eligibility and direct-damage
+formation multipliers. Demonstrate defeated Front defenders, preserve the
+new 1v1 Duel as a non-interactive reference, and keep Manual navigation
+unchanged. See the owner's attached brief and `docs/Codex/Current_Task.md`.
+
+**Status:** Completed on 2026-11-09. Core recorded implementation and validation
+in `docs/Codex/Completed.md`.
+
+### UI-063 — Battle Instruction Layout and Legibility Refinement
+
+Balance the Previous/Next footer widths; move Battle Formats' formation options
+and 9/13/15 maximum rounds into two labelled rows below each hero diagram;
+remove Chapter 03's specified introductory paragraph and gold demo kicker;
+rename the demo `2v2 & 3v3 Battle Formation`; enlarge the small diagram/result
+text without responsive collisions. Preserve UI-062's rule results and Manual
+navigation. See `docs/Codex/Current_Task.md`.
+
+**Status:** Completed on 2026-11-09. Core recorded focused results in
+`docs/Codex/Completed.md`.
+
+### UI-064 — Refresh Battle Interface Screenshot and Bubbles
+
+Use the owner's new Battle Interface capture, add separate bubbles for the
+target-hover information panel and clickable gold Hero Stats button, separate
+command confirmation from preview, and make the speed bubble cover Battle
+Speed only—not Auto Battle. Realign all 11 markers to the new image, and remove
+the decorative `FIELD GUIDE · SIX CHAPTERS` line from the Manual header. See
+`docs/Codex/Current_Task.md`.
+
 **Status:** Ready for Core.

@@ -14,7 +14,7 @@ export type BattleInstructionChapter = {
   id: BattleInstructionChapterId;
   title: string;
   kicker: string;
-  introduction: string;
+  introduction?: string;
   steps?: readonly BattleInstructionItem[];
   callout?: string;
   legalTargeting?: string;

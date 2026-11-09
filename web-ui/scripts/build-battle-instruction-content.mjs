@@ -19,7 +19,7 @@ const REQUIRED_TEXT_FIELDS = {
 };
 const REQUIRED_ITEM_COUNTS = {
   "quick-start": { steps: 5 },
-  interface: { markers: 9 },
+  interface: { markers: 11 },
   "effects-tactics": { effects: 6, scenarios: 3 },
 };
 
@@ -54,7 +54,9 @@ export function validateBattleInstructionContent(value, sourceName = "manual.yam
     knownKeys(chapter, CHAPTER_KEYS, location);
     const id = text(chapter.id, `${location}.id`);
     if (id !== CHAPTER_IDS[index]) throw new Error(`${location}.id: expected '${CHAPTER_IDS[index]}'.`);
-    const result = { id, title: text(chapter.title, `${location}.title`), kicker: text(chapter.kicker, `${location}.kicker`), introduction: text(chapter.introduction, `${location}.introduction`) };
+    const result = { id, title: text(chapter.title, `${location}.title`), kicker: text(chapter.kicker, `${location}.kicker`) };
+    if (chapter.introduction !== undefined) result.introduction = text(chapter.introduction, `${location}.introduction`);
+    if (id !== "formations" && result.introduction === undefined) throw new Error(`${location}.introduction: required for '${id}'.`);
     for (const key of ["callout", "legalTargeting", "positionDamage", "hitChance", "otherEffects", "agility", "victory", "example"]) {
       if (chapter[key] !== undefined) result[key] = text(chapter[key], `${location}.${key}`);
     }

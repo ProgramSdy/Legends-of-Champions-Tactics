@@ -1033,3 +1033,31 @@ targets; the client submits only actions and targets listed in `legalActions`.
 Open design decisions remain: durable session storage, cross-process locking,
 hidden-information policy, localization ownership, durable replay/audit,
 production authentication, and whether a real resource system is planned.
+
+## UI-062 read-only formation demonstration
+
+`GET /api/v1/manual/formation-demonstration` is an additive, public, read-only
+Manual catalogue with `contractVersion: "1.0"`. It does not require or create a
+battle ID, save slot, hero instance, or random seed. It publishes the five
+size-valid 2v2/3v3 formation IDs in display order, the three classified direct-
+damage attack types (`melee`, `rangedProjectile`, `rangedInstant`), and Python-
+owned Front/Rear positions for each numbered friendly/enemy slot. The 1v1 Duel
+is a static reference in the Manual, not a selectable formation here.
+
+Each formation contains an exhaustive `evaluations` set keyed by
+`attackerSlot`, `attackType`, and `enemyFrontDefeated`. The latter is available
+only when the enemy formation has Rear slots. An evaluation includes
+`attackerPosition`, a Python-authored contextual `explanation`, and one target
+result for every enemy slot: `targetSlot`, `targetPosition`, `eligible`,
+`multiplierPercent` (`60`, `70`, `80`, `100`, or `null`), and `reason`
+(`eligible`, `protectedByFrontLine`, or `defeated`). Screened and defeated
+targets have `eligible: false` and a null percentage. The defeated-front
+scenario leaves living Rear heroes in their original Rear positions.
+
+The catalogue is computed by pure Python formation helpers shared with live
+adapter melee screening and Hero direct-hit position adjustment. It describes
+formation-only eligibility and the multiplier applied to *direct damage*, not
+hit chance, final damage after defence/resistance, healing, periodic damage,
+hybrid/special targeting, or unclassified skills. The frontend validates the
+complete response and displays supplied facts; it must not infer or calculate
+fallback rules when the endpoint is unavailable or malformed.

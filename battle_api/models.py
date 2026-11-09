@@ -283,6 +283,66 @@ class HeroRosterResponse(ApiModel):
     heroes: list[HeroDefinition]
 
 
+FormationDemonstrationAttackType = Literal[
+    "melee", "rangedProjectile", "rangedInstant"
+]
+
+
+class FormationDemonstrationSlot(ApiModel):
+    slot: int = Field(ge=1, le=3)
+    position: Literal["front", "rear"]
+
+
+class FormationDemonstrationTarget(ApiModel):
+    target_slot: int = Field(alias="targetSlot", ge=1, le=3)
+    target_position: Literal["front", "rear"] = Field(alias="targetPosition")
+    eligible: bool
+    multiplier_percent: Literal[60, 70, 80, 100] | None = Field(
+        alias="multiplierPercent"
+    )
+    reason: Literal["eligible", "protectedByFrontLine", "defeated"]
+
+    @model_validator(mode="after")
+    def validate_result(self) -> "FormationDemonstrationTarget":
+        if self.eligible != (self.reason == "eligible"):
+            raise ValueError("eligible must agree with reason")
+        if self.eligible != (self.multiplier_percent is not None):
+            raise ValueError("only eligible targets have a multiplierPercent")
+        return self
+
+
+class FormationDemonstrationEvaluation(ApiModel):
+    attacker_slot: int = Field(alias="attackerSlot", ge=1, le=3)
+    attacker_position: Literal["front", "rear"] = Field(alias="attackerPosition")
+    attack_type: FormationDemonstrationAttackType = Field(alias="attackType")
+    enemy_front_defeated: bool = Field(alias="enemyFrontDefeated")
+    targets: list[FormationDemonstrationTarget] = Field(min_length=2, max_length=3)
+    explanation: str = Field(min_length=1)
+
+
+class FormationDemonstrationFormation(ApiModel):
+    id: FormationId
+    battle_size: Literal[2, 3] = Field(alias="battleSize")
+    has_rear_enemies: bool = Field(alias="hasRearEnemies")
+    friendly_slots: list[FormationDemonstrationSlot] = Field(
+        alias="friendlySlots", min_length=2, max_length=3
+    )
+    enemy_slots: list[FormationDemonstrationSlot] = Field(
+        alias="enemySlots", min_length=2, max_length=3
+    )
+    evaluations: list[FormationDemonstrationEvaluation] = Field(min_length=1)
+
+
+class FormationDemonstrationResponse(ApiModel):
+    contract_version: Literal["1.0"] = Field(default="1.0", alias="contractVersion")
+    attack_types: list[FormationDemonstrationAttackType] = Field(
+        alias="attackTypes", min_length=3, max_length=3
+    )
+    formations: list[FormationDemonstrationFormation] = Field(
+        min_length=5, max_length=5
+    )
+
+
 class CreateBattleRequest(ApiModel):
     # ``scenarioId`` remains accepted for the existing Stage 2 caller. The
     # typed team fields are the additive UI-002 creation contract.
