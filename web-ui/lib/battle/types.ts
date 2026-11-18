@@ -680,12 +680,31 @@ export interface BattleState {
   events?: BattleEvent[];
   openingSnapshot?: BattleSnapshot;
   playOpening?: boolean;
+  authority?: BattleAuthorityState;
+}
+
+export interface BattleAuthorityState {
+  serverNow: string;
+  expiresAt: string;
+  lifecycleStatus: "provisional" | "active" | "resolving" | "terminalPending" | "settled" | "abandoned" | "expired";
+  settlementStatus: "none" | "pending" | "settled";
+}
+
+export interface BattleResignResult {
+  battleId: string;
+  lifecycleStatus: "settled" | "abandoned" | "expired";
+  terminalReason?: string | null;
+  outcome?: BattleOutcome | null;
 }
 
 export interface BattleProvider {
   getState(): Promise<BattleState>;
   submitCommand(command: BattleCommand): Promise<PresentationScript>;
   previewAction?(request: BattlePreviewRequest, signal?: AbortSignal): Promise<BattlePreview>;
+  resign?(): Promise<BattleResignResult>;
+  getAuthority?(): BattleAuthorityState | null;
+  subscribeAuthority?(listener: (authority: BattleAuthorityState | null) => void): () => void;
+  retryPendingCommand?(): Promise<PresentationScript>;
 }
 
 export type ProviderErrorKind = "disconnected" | "rejected" | "stale" | "adapter";
@@ -696,6 +715,8 @@ export class BattleProviderError extends Error {
     public readonly kind: ProviderErrorKind,
     public readonly snapshot?: BattleSnapshot,
     public readonly revision?: number,
+    public readonly code?: string,
+    public readonly status?: number,
   ) {
     super(message);
     this.name = "BattleProviderError";

@@ -18,7 +18,7 @@ import secrets
 import threading
 from types import SimpleNamespace
 import uuid
-from typing import Any, Literal
+from typing import Any, Callable, Literal
 
 import pandas as pd
 
@@ -1351,7 +1351,13 @@ class BattleAdapter:
             "forcedTargetIds": [source_id] if directive.reason_id == "scoff" and source_id else [],
         }
 
-    def submit(self, session: BattleSession, command: dict[str, Any]) -> dict[str, Any]:
+    def submit(
+        self,
+        session: BattleSession,
+        command: dict[str, Any],
+        *,
+        on_accepted: Callable[[], None] | None = None,
+    ) -> dict[str, Any]:
         command_id = command.get("commandId", "")
         with session.lock:
             if command_id in session.command_results:
@@ -1363,6 +1369,9 @@ class BattleAdapter:
                 if command_id:
                     session.command_results[command_id] = deepcopy(result)
                 return result
+
+            if on_accepted is not None:
+                on_accepted()
 
             with ENGINE_RANDOM_LOCK:
                 global_state = random.getstate()
@@ -4108,6 +4117,7 @@ class BattleRegistry:
         self,
         *,
         seed: int | None = None,
+        battle_id: str | None = None,
         battle_size: int = 1,
         player_team: list[str] | None = None,
         enemy_composition_mode: str = "specified",
@@ -4125,6 +4135,7 @@ class BattleRegistry:
     ) -> tuple[BattleSession, dict[str, Any]]:
         session, envelope = self.adapter.create_battle(
             seed=seed,
+            battle_id=battle_id,
             battle_size=battle_size,
             player_team=player_team,
             enemy_composition_mode=enemy_composition_mode,
@@ -4147,3 +4158,13 @@ class BattleRegistry:
     def get(self, battle_id: str) -> BattleSession | None:
         with self._lock:
             return self._sessions.get(battle_id)
+
+    def remove(self, battle_id: str) -> BattleSession | None:
+        """Remove one process-local session after durable terminal cleanup."""
+        with self._lock:
+            return self._sessions.pop(battle_id, None)
+
+    def clear(self) -> None:
+        """Clear process-local sessions; intended for isolated tests."""
+        with self._lock:
+            self._sessions.clear()

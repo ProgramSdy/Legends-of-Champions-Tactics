@@ -1,0 +1,26 @@
+[Unit]
+Description=Legends of Champions Tactics Public Web UI
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=loct
+Group=loct
+WorkingDirectory=/opt/loct/current/web-ui
+Environment=LOCT_RELEASE_MODE=public
+Environment=WRANGLER_LOG_PATH=/var/log/loct/wrangler.log
+ExecStartPre=/usr/bin/node /opt/loct/current/web-ui/scripts/verify-public-release.mjs
+ExecStart=/opt/loct/current/web-ui/node_modules/.bin/vinext start --host 127.0.0.1 --port 3001
+Restart=on-failure
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+LogsDirectory=loct
+ReadWritePaths=/var/log/loct
+
+[Install]
+WantedBy=multi-user.target

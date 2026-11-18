@@ -13,7 +13,25 @@ make dev
 press Ctrl-C once to stop both. To run the adapter independently, use:
 
 ```bash
-uvicorn battle_api.app:app --reload --port 8001
+make backend
+```
+
+Both commands explicitly set `LOCT_RELEASE_MODE=development`, which registers
+the Engineering Test route. Start the public-safe backend with:
+
+```bash
+make backend-public
+```
+
+That target explicitly sets `LOCT_RELEASE_MODE=public`, so
+`POST /api/v1/debug/battles` is absent from routing and OpenAPI. A missing,
+empty, or unrecognized `LOCT_RELEASE_MODE` also resolves to `public`; a bare
+`uvicorn battle_api.app:app` therefore fails closed. Check the mode that a new
+adapter process would use with:
+
+```bash
+LOCT_RELEASE_MODE=development .venv/bin/python -m battle_api.release_mode
+LOCT_RELEASE_MODE=public .venv/bin/python -m battle_api.release_mode
 ```
 
 ### Same-Wi-Fi development access
@@ -45,6 +63,7 @@ comma-separated environment variable:
 
 ```bash
 BATTLE_API_CORS_ORIGINS=http://localhost:3001,http://127.0.0.1:3001 \
+  LOCT_RELEASE_MODE=development \
   uvicorn battle_api.app:app --reload --port 8001
 ```
 
@@ -171,6 +190,96 @@ and rendered as a fixed training-stage enemy. Active-slot ownership is returned
 separately by `GET /api/v1/progression` and enforced for every friendly team.
 
 ### Five-slot save APIs
+
+RELEASE-002 Batch 1 preserves these anonymous contracts in **Development**.
+In **Public**, the same paths are scoped to the authenticated Player ID and
+the player's five independent slots. The active slot is per player, never a
+global singleton. A confirmed Public session is required for save listing,
+create/load/confirmed overwrite, progression, Stage listing, and Arena
+progression reads/writes. Unsafe requests additionally require exact Origin
+and a session-bound CSRF token; no request body may supply Player ID or profile
+authority. Public writes recheck session generation, expiry, acknowledgment,
+and owned slot/profile inside their SQLite transaction. A missing or revoked
+session returns typed 401; an unacknowledged code returns typed 403. Normal
+Development callers and schema-v4 saves are unchanged.
+
+Public Batch 1 identity endpoints are:
+
+| Method and path | Request | Result |
+| --- | --- | --- |
+| `POST /api/v1/players` | `{ "playerName": "..." }` | Player ID/name, expiry, confirmation state, CSRF token, and one-time Recovery Code; session cookies. |
+| `POST /api/v1/sessions/recover` | `{ "recoveryCode": "XXXX-XXXX-XXXX-XXXX" }` | Same Player ID/name with a new session; prior device revoked. No code redisclosure. |
+| `GET /api/v1/sessions/current` | none | Current Player ID/name, expiry, confirmation state, CSRF token; never redisplays the code. |
+| `POST /api/v1/sessions/refresh` | empty object | Origin/CSRF-protected session renewal and bounded credential rotation; read-only GET does not extend expiry. |
+| `POST /api/v1/recovery-code/acknowledge` | empty object | Marks the issued code saved, enabling Public save access. |
+| `POST /api/v1/recovery-code/forgot` | empty object | Immediately replaces the old code; one-time replacement code response and renewed acknowledgment requirement. |
+| `POST /api/v1/sessions/logout` | empty object | Revokes the session and clears cookies; no content. |
+
+Player Names are case-preserving, non-unique, 3–20 ASCII
+`[A-Za-z0-9_]`, and not credentials. The Recovery Code is 16 independent
+unambiguous base-32 characters, formatted in four groups; the server stores
+only a keyed verifier. Enrollment/replacement responses and session cookies
+are `Cache-Control: no-store`. The authentication cookie is host-only,
+`Secure; HttpOnly; SameSite=Lax`; the CSRF token is not the authentication
+secret. Recovery is limited to ten failures per canonical client IP in a
+15-minute rolling window followed by a 15-minute temporary block. Public
+runtime requires an explicitly initialized, compatible, separately configured
+database and protected keys; missing configuration fails closed.
+
+**RELEASE-002 Batch 2 isolated Public battle contract.** A default Public
+process continues to omit all battle paths and OpenAPI entries. Only an
+isolated process with exact server-side `BATTLE_API_ENABLE_PUBLIC_BATTLES=1`
+registers authenticated Stage/Arena launch, shared state/command/preview,
+`POST /api/v1/battles/{battleId}/resign`, and Stage/Arena completion receipt
+paths. Generic `POST /api/v1/battles` and Engineering Debug creation remain
+unregistered in Public, even with this opt-in. This is backend test access,
+not Public-player release approval. Static hero/manual catalogues remain
+read-only and anonymous.
+
+Public battle IDs are lookup identifiers, not credentials. Every protected
+battle route requires the confirmed Player session; unsafe routes also require
+exact Origin and CSRF. The server binds Player ID, launch slot/profile,
+session generation, Stage/Arena context, and lifecycle at creation. A foreign
+battle is hidden; revoked or stale launch context cannot continue gameplay or
+redirect a reward. The server reserves a provisional SQLite lease before RAM
+construction, enforces one active battle per Player ID and an initial global
+cap of 20, then activates the same battle ID. The two-minute provisional TTL
+and 30-minute active inactivity deadline are server-owned. Only completion of
+a newly accepted player command and its automatic follow-up refreshes the
+active deadline; GET, preview, rejected/duplicate command, AI alone and UI
+playback do not. Additive response fields are `serverNow`, `expiresAt`,
+`lifecycleStatus`, optional `terminalReason`, and `settlementStatus`; later
+frontend warnings derive time from these values, not a local authority.
+
+Public Stage launch rejects a request containing `seed`, including explicit
+`null`; Arena has no caller seed. Each new attempt receives a server-generated
+effective 256-bit combat seed recorded as canonical hex in server-only
+diagnostics and never echoed to clients. Development generic/Stage/Debug
+explicit seeds remain unchanged. Terminal Stage/Arena Victory is settled
+atomically before its confirmed command response: one transaction writes the
+outcome, existing progression/reward effect, original receipt and lease
+release. Defeat/Draw grant none. A later completion call is an idempotent
+receipt read, not another reward path. Resign is owner-authenticated and
+idempotent; before a confirmed Victory it abandons without reward, while a
+settled Victory retains its original result. Storage failure leaves no
+confirmed Victory and a retryable pending state while the RAM session lives.
+There is no battle resume or full replay after process restart.
+
+**RELEASE-002 Batch 3 frontend consumption.** This batch does not change the
+`1.0` request/response schema or combat formulas. In Public, the browser calls
+the listed identity/save and Stage/Arena/battle routes on the same HTTPS
+origin with cookies; unsafe requests carry the in-memory `X-CSRF-Token` from
+the current session response. The HttpOnly session cookie is never read by
+JavaScript. `GET /api/v1/sessions/current` and battle GET/preview remain
+read-only; a near-expiry renewal uses only the explicit protected refresh
+POST. A CSRF rejection is revalidated read-only and the unsafe request is not
+automatically replayed. An uncertain battle command retains its original
+`commandId` for retry; terminal completion displays the original durable
+receipt. Resign Yes waits for the authenticated Resign response; No sends
+nothing. `serverNow`/`expiresAt` drive one-time five- and one-minute UI
+warnings but do not themselves renew a lease. Public player-facing Manual
+formation data also uses same-origin transport; Development keeps its local
+adapter URL and anonymous five-slot path.
 
 `GET /api/v1/save-slots` returns `contractVersion`, nullable `activeSlotId`,
 and exactly five ordered summaries. Each summary contains `slotId`, `occupied`,
@@ -565,7 +674,9 @@ implementations.
   adapter status/source/event mappings, matching frontend status metadata and
   effects, and cross-boundary regression tests; arbitrary Python attributes are
   never exposed.
-- The process-local registry has no persistence, authentication, expiry, quota,
-  or multi-worker consistency. Run one API worker for this milestone.
+- The process-local registry has no battle-state persistence or multi-worker
+  consistency. Run one API worker. Public identity/expiry/quota and durable
+  receipts are separate backend authorities; they do not make an unfinished
+  RAM battle resumable after restart. Development remains anonymous.
 - Rejections do not mutate engine state. Unexpected exceptions are not yet
   converted to a public adapter-error response; FastAPI returns its normal 500.

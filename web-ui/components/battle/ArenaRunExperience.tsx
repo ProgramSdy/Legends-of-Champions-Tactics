@@ -102,7 +102,13 @@ function ArenaSquadBuilder({
   );
 }
 
-export function ArenaRunExperience({ countdownStepMs = 1000 }: { countdownStepMs?: number }) {
+export function ArenaRunExperience({
+  countdownStepMs = 1000,
+  showEngineeringReadout = false,
+}: {
+  countdownStepMs?: number;
+  showEngineeringReadout?: boolean;
+}) {
   const router = useRouter();
   const [resources, setResources] = useState<ArenaResources | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -208,6 +214,18 @@ export function ArenaRunExperience({ countdownStepMs = 1000 }: { countdownStepMs
     }
   };
 
+  const resignArenaBattle = async () => {
+    if (!provider?.resign) {
+      setActiveBattle(null);
+      return;
+    }
+    const result = await provider.resign();
+    if (result.lifecycleStatus === "settled") {
+      throw new Error("This Arena battle already reached a settled result. Refresh the Arena before leaving.");
+    }
+    setActiveBattle(null);
+  };
+
   if (provider) return (
     <BattleScreen
       key={sessionKey}
@@ -219,7 +237,8 @@ export function ArenaRunExperience({ countdownStepMs = 1000 }: { countdownStepMs
         ? "CONTINUE ARENA RUN"
         : "RETRY CURRENT NODE"}
       onBattleComplete={finishBattle}
-      onResign={() => setActiveBattle(null)}
+      onResign={resignArenaBattle}
+      showEngineeringReadout={showEngineeringReadout}
     />
   );
 

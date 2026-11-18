@@ -95,10 +95,16 @@ describe("battle presentation configuration", () => {
 
 
   it("shows the live browser dimensions and active configuration in the battlefield readout", async () => {
-    render(<BattleScreen provider={new MockBattleProvider()} />);
+    render(<BattleScreen provider={new MockBattleProvider()} showEngineeringReadout />);
     const readout = await screen.findByLabelText("Battle viewport configuration");
     expect(readout).toHaveTextContent(`${window.innerWidth} × ${window.innerHeight}`);
     expect(readout).toHaveTextContent(battlePresentationConfigFor({ width: window.innerWidth, height: window.innerHeight }).mode.replaceAll("-", " ").toUpperCase());
+  });
+
+  it("hides the engineering readout by default for the public battle screen", async () => {
+    render(<BattleScreen provider={new MockBattleProvider()} />);
+    await screen.findByLabelText("Your team");
+    expect(screen.queryByLabelText("Battle viewport configuration")).not.toBeInTheDocument();
   });
 
   it("omits Team Bond from both battle team panels at every viewport", async () => {

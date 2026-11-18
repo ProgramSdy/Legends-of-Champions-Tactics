@@ -68,6 +68,7 @@ describe("fixed battle background", () => {
     });
 
     render(<BattleExperience countdownStepMs={0} />);
+    await user.click((await screen.findAllByRole("button", { name: /Assign .* to your Hero 1/i }))[0]);
     await user.click(await screen.findByRole("button", { name: "ENTER BATTLE" }));
 
     const firstBattlefield = await screen.findByRole("region", { name: "Battlefield" });
@@ -81,6 +82,7 @@ describe("fixed battle background", () => {
       .toHaveAttribute("data-background", BATTLE_BACKGROUND);
 
     await user.click(await screen.findByRole("button", { name: "RETURN TO TEAM BUILDER" }));
+    await user.click((await screen.findAllByRole("button", { name: /Assign .* to your Hero 1/i }))[0]);
     await user.click(await screen.findByRole("button", { name: "ENTER BATTLE" }));
 
     expect(await screen.findByRole("region", { name: "Battlefield" }))
@@ -99,6 +101,7 @@ describe("fixed battle background", () => {
     });
 
     render(<BattleExperience countdownStepMs={20} />);
+    await user.click((await screen.findAllByRole("button", { name: /Assign .* to your Hero 1/i }))[0]);
     await user.click(await screen.findByRole("button", { name: "ENTER BATTLE" }));
 
     expect(await screen.findByRole("status", { name: "Battle begins in 3" })).toHaveTextContent("3");

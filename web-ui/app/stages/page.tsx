@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { StageSelectionScreen } from "@/components/stages/StageSelectionScreen";
+import { isEngineeringMode } from "@/lib/releaseMode";
+import { PublicSessionGate } from "@/components/session/PublicSessionProvider";
 
 export const metadata: Metadata = {
   title: "Stage Selection · Legends of Champions Tactics",
@@ -12,8 +14,14 @@ type StagesPageProps = {
 
 export default async function StagesPage({ searchParams }: StagesPageProps) {
   const query = await searchParams;
+  const engineeringMode = isEngineeringMode();
   const debugHotspots =
-    process.env.NODE_ENV !== "production" && query.debugHotspots === "1";
+    engineeringMode && query.debugHotspots === "1";
 
-  return <StageSelectionScreen debugHotspots={debugHotspots} />;
+  return <PublicSessionGate>
+    <StageSelectionScreen
+      debugHotspots={debugHotspots}
+      showEngineeringRoute={engineeringMode}
+    />
+  </PublicSessionGate>;
 }

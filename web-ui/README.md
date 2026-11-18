@@ -7,23 +7,47 @@ remains authoritative for rules and outcomes.
 
 Requires Node.js 22.13 or newer.
 
+From the repository root, the normal local workflow explicitly starts both
+frontend and backend in Development mode:
+
+```bash
+make dev
+```
+
+To run them separately, use `make backend` from the repository root and the
+following from `web-ui/`:
+
 ```bash
 npm install
 npm run dev
 npx tsc --noEmit --incremental false
 npm run lint
-npm run build
 ```
 
 The development server defaults to `http://localhost:3001`. Open `/` for the
 cinematic title scene, `/game` for the existing Team Builder and battle
-experience, and `/assets` for the asset/fallback gallery.
+experience, `/debug` for the Engineering Battle Lab, and `/assets` for the
+asset/fallback gallery.
 
-Start the live adapter from the repository root:
+`LOCT_RELEASE_MODE` has exactly two supported values: `development` and
+`public`. Only the exact `development` value enables Engineering surfaces;
+missing, blank, or invalid values fail closed to Public behavior. The provided
+commands set the mode explicitly.
+
+Build and serve the Public frontend artifact from `web-ui/`:
 
 ```bash
-uvicorn battle_api.app:app --reload --port 8001
+npm run build
+npm start
 ```
+
+The Public build uses an isolated disposable source copy and omits `/debug`
+and `/assets` before vinext route discovery. It verifies the generated route
+and client artifacts before replacing `web-ui/dist`; `npm start` refuses an
+unverified or Development artifact. For an explicit Development production
+artifact, use `npm run build:development` followed by
+`npm run start:development`. Start the Public backend from the repository root
+with `make backend-public`.
 
 `/` defaults to live Ragnar versus Nighthawk. Override the adapter origin with
 `NEXT_PUBLIC_BATTLE_API_URL` (default `http://localhost:8001`). In development,

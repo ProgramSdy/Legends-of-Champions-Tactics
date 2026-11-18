@@ -96,10 +96,12 @@ UI-020 supersedes the preceding inactive-Altar sentence: Paladin's Altar opens
 `/game?stage=paladins-altar` through the bright upper-right altar hotspot.
 Mage's Tower, Rogue's Forest, and Priest's Cathedral remain inactive.
 
-The upper-left title control returns to `/`; the upper-right Engineering Test
-& Debugging control opens `/debug`. Both are independent of map-hotspot
-geometry. `/debug` is a save-independent free-form battle builder using the
-full registered roster and returns to Stage Map.
+The upper-left title control returns to `/`. In explicit Development mode, the
+separate bottom-right Engineering Test & Debugging control opens `/debug`;
+it is independent of map-hotspot geometry. `/debug` is a save-independent
+free-form battle builder using the full registered roster and returns to Stage
+Map. A Public Release build has no Engineering control or `/debug` route, and
+`?debugHotspots=1` cannot expose the geometry overlay.
 
 ### Arena Run
 
@@ -266,7 +268,8 @@ inferred from a log line or visual label.
 ### Asset Gallery
 
 Development/reference route at `/assets`; it is not part of the normal battle
-flow. Its return link navigates directly to `/game`.
+flow. Its return link navigates directly to `/game`. The Public Release build
+omits this route before frontend route discovery; direct `/assets` returns 404.
 
 ## Navigation Rules
 
@@ -291,8 +294,9 @@ flow. Its return link navigates directly to `/game`.
   internal reading state; the embedded Hero Gallery handoff returns through
   the same Manual menu rather than routing out of battle.
 - `/game` and `/game?stage=arena` open the active-slot Arena Run hub.
-- `/debug` opens the full-roster Engineering Test & Debugging builder without
-  a progression/save-slot request or write.
+- In explicit Development mode only, `/debug` opens the full-roster Engineering
+  Test & Debugging builder without a progression/save-slot request or write.
+  The Public Release build omits this route and the backend debug-create API.
 - `/game?stage=warriors-barrack` and `/game?stage=paladins-altar` open the
   respective persisted curriculum at its next permitted battle.
 - A successful create, load, or confirmed overwrite navigates to `/stages`.
@@ -312,8 +316,33 @@ flow. Its return link navigates directly to `/game`.
 
 - Active-battle checkpoint, Resume Battle, and Abandon Battle are not part of
   the implemented five-slot flow.
-- Profile names, rename/delete controls, accounts, cloud sync, and online
-  identity remain deferred.
+- Profile names, rename/delete controls, email/password accounts and cloud
+  sync remain deferred. The separate Public pre-alpha Player ID, code-only
+  recovery, session and player-owned five-slot flow is now implemented locally
+  but has not been deployed or opened to Public users.
+
+### Public pre-alpha entry and battle path (RELEASE-002 Batch 3)
+
+- `/` offers Create New Player or Recover Player in Public mode. Creation
+  validates the approved display-name syntax and shows the server-issued
+  Recovery Code once. Explicit saved-code confirmation calls the backend
+  before five-slot New/Load Game becomes available. Code-only recovery revokes
+  the old device session; authenticated Forgot Recovery Code issues a new
+  one-time code and repeats confirmation. Logout returns to entry. Development
+  keeps its existing anonymous entry.
+- `/stages` and `/game` require an acknowledged current Public session.
+  Reload/direct navigation rechecks it without extending expiry. Authentication
+  loss clears player-specific client state and returns to onboarding;
+  recoverable service/CSRF errors remain distinct from a revoked session.
+- Public Stage/Arena launch uses owner-bound routes and server-owned seeds.
+  Target previews and commands consume authoritative battle state. Resign No
+  leaves the battle; Yes waits for server acknowledgment before returning.
+  Network uncertainty offers same-command-ID retry or state/receipt recovery,
+  never a new reward request. Five- and one-minute inactivity warnings use
+  server timestamps and do not themselves extend the deadline.
+- A confirmed terminal response displays the original settlement/receipt.
+  Terminal-pending is not shown as Victory. Active RAM battles do not survive
+  backend restart; already committed receipts remain readable.
 
 ## Error, Empty, and Loading States
 
@@ -331,6 +360,8 @@ flow. Its return link navigates directly to `/game`.
 
 ## Change Log
 
+- 2026-11-18 — Added the local Public player/session/five-slot and
+  Stage/Arena battle flow while preserving Development entry.
 - 2026-10-27 — Added per-campaign Learner/Tactics selection, stage access,
   launch, and mode-specific return/reward behavior.
 - 2026-07-29 — Documented UI-002 Team Builder, live multi-team battle, and

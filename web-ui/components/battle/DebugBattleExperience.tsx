@@ -12,7 +12,13 @@ type DebugResourceState =
   | { status: "error"; message: string }
   | { status: "ready"; roster: HeroDefinitionSummary[] };
 
-export function DebugBattleExperience({ countdownStepMs = 1000 }: { countdownStepMs?: number }) {
+export function DebugBattleExperience({
+  countdownStepMs = 1000,
+  showEngineeringReadout = false,
+}: {
+  countdownStepMs?: number;
+  showEngineeringReadout?: boolean;
+}) {
   const [resources, setResources] = useState<DebugResourceState>({ status: "loading" });
   const [attempt, setAttempt] = useState(0);
   const [configuration, setConfiguration] = useState<BattleCreateConfiguration | null>(null);
@@ -82,6 +88,7 @@ export function DebugBattleExperience({ countdownStepMs = 1000 }: { countdownSte
       completionActionLabel={() => "RETURN TO DEBUG BUILDER"}
       onBattleComplete={closeDebugBattle}
       onResign={closeDebugBattle}
+      showEngineeringReadout={showEngineeringReadout}
     />
   );
 }

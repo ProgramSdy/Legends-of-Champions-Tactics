@@ -1,3 +1,5 @@
+import { battleApiBaseUrl, publicApiRequest } from "@/lib/publicApi";
+
 export const FORMATION_DEMONSTRATION_IDS = [
   "front-rear",
   "side-by-side",
@@ -52,8 +54,6 @@ export type FormationDemonstrationCatalogue = {
   attackTypes: FormationDemonstrationAttackType[];
   formations: FormationDemonstrationFormation[];
 };
-
-const DEFAULT_BASE_URL = process.env.NEXT_PUBLIC_BATTLE_API_URL ?? "http://localhost:8001";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -188,11 +188,15 @@ function parseCatalogue(value: unknown): FormationDemonstrationCatalogue {
 
 export async function fetchFormationDemonstration(
   signal?: AbortSignal,
-  baseUrl = DEFAULT_BASE_URL,
+  baseUrl = battleApiBaseUrl(),
 ): Promise<FormationDemonstrationCatalogue> {
   let response: Response;
   try {
-    response = await fetch(`${baseUrl}/api/v1/manual/formation-demonstration`, { signal });
+    response = await publicApiRequest(
+      "/api/v1/manual/formation-demonstration",
+      { signal },
+      baseUrl,
+    );
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") throw error;
     throw new Error("Formation demonstration is unavailable. Start the battle service and retry.");

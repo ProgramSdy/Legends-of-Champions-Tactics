@@ -212,6 +212,22 @@ describe("battle screen integration", () => {
     expect(snapshot.legalActions).toHaveLength(3);
   });
 
+  it("shows Discipline's Holy Concentration as a non-commandable fourth card without changing active actions", async () => {
+    const snapshot = (await new MockBattleProvider().getState()).snapshot;
+    snapshot.combatants["friendly.arthas"].definitionId = "hero.priest.discipline";
+    await renderBattle(new MockBattleProvider(snapshot));
+
+    const deck = screen.getByLabelText("Skills");
+    expect(within(deck).getAllByRole("button")).toHaveLength(3);
+    expect(within(deck).queryByRole("article", { name: /No Fourth Skill/i })).not.toBeInTheDocument();
+    const passive = within(deck).getByRole("article", { name: /Holy Concentration.*not selectable/i });
+    expect(passive).toHaveClass("passive-display");
+    expect(passive).toHaveTextContent("PASSIVE");
+    expect(passive.querySelector("img")).toHaveAttribute("src", "/game-images/heroes/Priest-Discipline/skills/Priest_Discipline_Holy_Concentration_128x128.png");
+    expect(within(deck).queryByRole("button", { name: /Holy Concentration/i })).not.toBeInTheDocument();
+    expect(snapshot.legalActions).toHaveLength(3);
+  });
+
   it("does not truncate future real skills when the deck exceeds four", async () => {
     const snapshot = (await new MockBattleProvider().getState()).snapshot;
     const actor = snapshot.combatants["friendly.arthas"];

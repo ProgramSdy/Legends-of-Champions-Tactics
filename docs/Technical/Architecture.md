@@ -101,6 +101,50 @@ combat.
   for display; it never creates a battle session or derives combat rules in
   React. The frontend formation registry supplies visual coordinates only.
 
+### Development and public release boundary
+
+`LOCT_RELEASE_MODE` accepts exact `development` or `public`; missing or invalid
+values are public-safe. Local startup explicitly chooses Development. A public
+frontend build uses a disposable source copy that omits the `/debug` Engineering
+Test and `/assets` Asset Diagnostics pages before vinext discovers routes; the
+shared Team Builder, Battle Screen, asset registry, engine, and adapter remain
+in the main source and normal game. Stage Map Engineering navigation, hotspot
+outlines, and the Battle viewport readout are Development-only presentation.
+The backend registers `POST /api/v1/debug/battles` only in explicit Development;
+public routing and OpenAPI omit it. This is a deployment-surface boundary, not
+an alternate combat rule or save model.
+
+### RELEASE-002 Batch 1 Public identity and save boundary
+
+Development retains its anonymous schema-v4 progression database and battle
+workflow. Public selects an explicit, separate schema-v5 SQLite database
+outside the repository; it refuses missing, incompatible, or wrong-role
+storage instead of creating or importing a replacement at runtime. An explicit
+initialization step is required for a clean Public database. Public stores a
+server-generated Player ID, non-unique case-preserving Player Name, keyed
+Recovery Code verifier, one active revocable device session, rate-limit state,
+five slots per player, and a player-specific active slot. Existing unlocks,
+Stage progress, rewards, and Arena records remain profile-keyed, but Public
+profile access is resolved through the authenticated player's owned slot.
+Writes recheck the live session generation and ownership inside their SQLite
+transaction. The browser never authors a Player ID or profile authority.
+
+Public identity endpoints issue or recover a session and require explicit
+saved-code acknowledgment before ordinary player access. Unsafe Public
+mutations require exact configured Origin and session-bound CSRF verification;
+the opaque authentication cookie is host-only, Secure, HttpOnly, SameSite=Lax.
+The code is disclosed only at enrollment or authenticated replacement and is
+not stored as plaintext. Final onboarding UI and verified HTTPS/proxy
+deployment are later work, so this backend foundation is not a Public launch.
+
+Batch 1 deliberately removes **all** Public battle create, state, command,
+preview, and completion routes from routing and OpenAPI. Generic
+`POST /api/v1/battles` is absent in Public; Development retains its existing
+generic, Stage, Arena, and Debug battle APIs. Schema-only battle lease,
+diagnostic, and settlement tables do not activate those later lifecycle
+features. Batch 2 must add battle ownership, capacity, expiry, Resign, seed
+policy, and durable settlement before any Public battle route can reopen.
+
 ## Ownership Boundaries
 
 | Concern | Authoritative owner |
@@ -156,6 +200,12 @@ combat authority remain unchanged.
 
 ## Data Flow
 
+The ordinary live-battle path remains available in Development. RELEASE-002
+Batch 2 adds owner-bound Public Stage/Arena routes for isolated testing only;
+they are absent from a default Public process unless the server explicitly
+sets `BATTLE_API_ENABLE_PUBLIC_BATTLES=1`. This is not Public-player launch
+approval. Public never registers generic or Engineering Debug battle creation.
+
 ```text
 Team Builder configuration
   → POST /api/v1/battles
@@ -175,7 +225,12 @@ attaches stage, launch-profile, and immutable mode context to the session.
 After an ended, authoritative friendly victory, a completion route performs
 the active-profile SQLite transaction: Learner updates the sequential step
 and any one-time reward; Tactics records only its separate battle completion.
-A slot switch invalidates completion of the old session. No slot/stage/profile/reward field is added to
+A slot switch invalidates completion of the old session. This paragraph
+describes the Development compatibility path; the isolated Public Batch 2
+path binds Player ID, launch slot/profile, session generation, and route
+context at creation, then commits terminal outcome and any Stage/Arena effect
+before confirming Victory. Later completion calls read the original durable
+receipt rather than grant again. No slot/stage/profile/reward field is added to
 `BattleCreateConfiguration`.
 
 Arena Run uses separate state, create, node-launch, and completion routes. The
@@ -198,6 +253,59 @@ they are `one-front-two-rear`, `two-front-one-rear`, and `all-front`. The
 friendly formation is required for either size. A player-controlled enemy
 supplies a matching-size formation; a computer enemy omits it and receives the
 adapter's seeded selection. 1v1 has no formation fields.
+
+### Isolated Public battle lifecycle (RELEASE-002 Batch 2)
+
+The single-worker Public coordinator uses a per-player lock, then the battle
+session lock, then a short SQLite transaction. SQLite is the reservation and
+global-capacity authority: a provisional lease is inserted before RAM
+construction, activated only after a fixed-ID session exists, and compensated
+on construction/activation failure. One Player ID may have one active or
+provisional battle; the initial global cap is 20 and the provisional TTL is
+two minutes. The active inactivity deadline is 30 minutes from activation or
+the completion of a newly accepted player action. State reads, previews,
+rejected/duplicate commands, AI processing and presentation playback do not
+extend it. A resolving marker prevents another request's lazy cleanup from
+expiring an already accepted action. Resign, expiry and command resolution
+share the owner-bound lifecycle; no browser-close signal is authoritative.
+
+The engine session remains RAM-only and cannot resume after restart. Durable
+diagnostics retain the effective 256-bit server combat seed as canonical hex,
+immutable owner/launch context, lifecycle/outcome and receipt reference;
+they do not store credentials or a full action replay. At terminal resolution,
+one SQLite transaction verifies the launch binding, applies an authoritative
+friendly Stage/Arena Victory effect (or none for Defeat/Draw), records the
+original receipt, and releases the lease before confirmation. A failed
+transaction does not confirm Victory and remains retryable while RAM survives.
+An uncommitted engine result lost in a simultaneous storage failure and
+process crash is not a confirmed Victory. The Public battle surface remains
+default-off until later frontend and release gates are completed.
+The expanded battle tables have an explicit Public battle-schema revision
+marker; a Batch 1-shaped v5 database fails closed pending an approved offline
+upgrade on a verified backup, never a silent runtime rewrite.
+
+### Public client and operations boundary (RELEASE-002 Batch 3)
+
+The Public frontend now resolves every player-facing API call on the same
+origin, sends browser credentials, and holds the server-issued CSRF token and
+one-time Recovery Code only in memory. `PublicSessionProvider` gates Stage Map
+and Game routes on an acknowledged session; direct reload reads current
+session without renewing it. A bounded explicit protected POST refreshes a
+near-expiry session. Authentication failure clears the in-memory player view;
+CSRF rejection revalidates read-only and does not replay an unsafe command.
+Development preserves its anonymous local adapter path. Public Stage/Arena
+battle launch, preview, command, Resign and receipt consume the Batch 2
+owner-bound routes; a network-uncertain command retains its original command
+ID. The battle gate remains default-off outside isolated local validation.
+
+Offline `public_db_ops` uses SQLite online backup plus integrity/schema
+checks, isolated no-overwrite restore, seven-daily and separate release
+retention, and a narrowly verified backup-first marker upgrade. It is not
+imported by the running API. `deploy/public/` provides single-worker
+Nginx/systemd/GCS templates, not a deployed environment. Public health and
+identity fail closed on missing exact HTTPS Origin, Public DB/schema, trusted
+proxy, or independent strong identity/rate keys. Real GCE, TLS, proxy, GCS and
+resource behavior remain launch-blocking deployment checks.
 
 ## Architectural Decisions
 
@@ -236,6 +344,14 @@ adapter's seeded selection. 1v1 has no formation fields.
 
 ## Change Log
 
+- 2026-11-18 — Documented RELEASE-002 Batch 3 Public client authority and
+  offline/deployment-template boundaries; no live deployment was made.
+- 2026-11-17 — Documented RELEASE-002 Batch 2's default-off isolated Public
+  battle lifecycle, SQLite lease/terminal settlement boundary, and retained
+  RAM-only engine sessions.
+- 2026-11-10 — Documented explicit Development/Public Release Engineering
+  isolation at frontend route discovery and backend route registration, while
+  retaining one shared gameplay implementation.
 - 2026-10-27 — Added immutable structured Learner/Tactics mode ownership,
   legal random enemy AI boundary, mode-specific persistence, and mode-bound
   attempt identity.

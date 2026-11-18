@@ -1,0 +1,24 @@
+[Unit]
+Description=Legends of Champions Tactics Public API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=loct
+Group=loct
+WorkingDirectory=/opt/loct/current
+EnvironmentFile=/etc/loct/public.env
+ExecStartPre=/opt/loct/current/.venv/bin/python -m battle_api.public_config
+ExecStart=/opt/loct/current/.venv/bin/uvicorn battle_api.app:app --host 127.0.0.1 --port 8001 --workers 1 --no-proxy-headers
+Restart=on-failure
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/loct/public /var/log/loct
+
+[Install]
+WantedBy=multi-user.target

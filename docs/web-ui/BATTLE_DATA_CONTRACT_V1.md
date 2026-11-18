@@ -1,5 +1,13 @@
 # Web UI Battle Data Contract v1
 
+> RELEASE-002 Batch 2 boundary: existing version-1 battle envelopes and
+> commands remain available in explicit Development mode. A default Public
+> process still has no battle routes. Isolated Public-mode test processes may
+> opt in with `BATTLE_API_ENABLE_PUBLIC_BATTLES=1` to the owner-bound Stage/
+> Arena lifecycle and receipt paths described below. This does not authorize
+> Public player access or change combat snapshot/event rules. Public generic
+> and Engineering Debug creation remain absent even with the test opt-in.
+
 Status: Frozen v1 contract, implemented by both the Stage 1 mock provider and
 the Stage 2 Python adapter. The existing engine remains authoritative.
 
@@ -46,6 +54,14 @@ The Stage 1 mock provider implements this shape locally. The Stage 2 Python
 adapter now exposes it over JSON HTTP. Future transports may also expose the
 same versioned envelope over WebSocket, IPC, or an in-process bridge without
 changing component props.
+
+For isolated Public Stage/Arena battles, the server adds authoritative
+`serverNow`, `expiresAt`, `lifecycleStatus`, optional `terminalReason`, and
+`settlementStatus` alongside the envelope. A terminal command may also add a
+durable `settlement` result. These are additive backend facts, not client
+countdowns or a change to `contractVersion`. The current Development client
+does not yet implement session transport, warning timers, or server Resign;
+that is a later Batch 3 UI task.
 
 `POST /api/v1/battles` uses this additive v1 creation payload:
 
@@ -150,6 +166,53 @@ completed run only when that new squad creation is accepted.
 but is a separate no-save-data boundary: it bypasses player-roster ownership
 only for Engineering Test & Debugging, while retaining adapter battle
 validation and never reading or writing progression.
+The endpoint is registered only under explicit server-side
+`LOCT_RELEASE_MODE=development`. Public, missing, or invalid mode has no debug
+route or OpenAPI entry and direct POST receives 404. This deployment-mode
+availability change does not alter the v1 payload, normal battle endpoints,
+combat legality, or progression contract. Public player control of optional
+seed fields is resolved by the isolated Batch 2 override below.
+
+### Isolated Public Stage/Arena battle override (RELEASE-002 Batch 2)
+
+The Development descriptions above remain compatible. In an opt-in isolated
+Public process, `POST /api/v1/stages/{stageId}/battles/{battleIndex}` and the
+Arena node launch require a confirmed Player session and unsafe-request
+Origin/CSRF. A Public Stage request must **omit** `seed`; both numeric values
+and explicit `null` are rejected. Each new Public Stage/Arena attempt uses a
+secure server-generated 256-bit effective combat seed. The Arena node's
+persisted schedule seed is not that combat seed. No Public response contains
+the effective seed.
+
+The Public battle ID binds an immutable Player ID, launch slot/profile,
+session generation and Stage/Arena context. It is not a bearer credential.
+State, command, preview, Resign and completion/receipt routes recheck the
+authenticated owner and lifecycle. A provisional lease occupies capacity
+before RAM construction; activation is durable before the launch response.
+The server permits one active battle per Player ID and initially 20 globally.
+Unfinished battles expire 30 minutes after activation or completion of a
+newly accepted player command, including automatic follow-up. Polling,
+preview, rejected or duplicate command IDs and playback do not refresh it.
+An action accepted before the deadline may finish. Server fields support
+future 5-/1-minute UI warnings; the current UI does not show them.
+
+`POST /api/v1/battles/{battleId}/resign` is an authenticated, idempotent
+server operation. Resign before confirmed Victory records abandonment and no
+reward; it cannot undo a settled Victory. The existing frontend Yes/No modal
+is unchanged in Batch 2 and does not yet call this route. A terminal Stage/
+Arena command confirms Victory only after the server atomically records the
+outcome, existing progression/reward effect, original receipt and lease
+release. Defeat/Draw settle without reward. The existing completion endpoints
+become receipt/acknowledgment reads in Public, returning the original newly
+granted reward/progression or Arena result rather than granting a second time.
+A failed settlement produces no confirmed Victory response and is retryable
+while the process-local engine state survives. Already committed receipts
+survive browser loss and process restart; unfinished battles do not resume.
+
+The Public generic `POST /api/v1/battles` and Development Debug creation are
+absent from Public routing/OpenAPI regardless of the test opt-in. A default
+Public process additionally omits all player battle routes until the later
+frontend/deployment gates.
 
 ## Stable identifiers
 
@@ -665,7 +728,10 @@ Priest Discipline's `skill.priest.holy_concentration` is also an additive
 `effect`, and numeric/classification references `notApplicable`. Unlike the
 Blood Frenzy marker, this is catalogue-only: the existing low-HP Redemption
 branch executes without a separate runtime Skill or battle command. The v1
-response shape and combat authority are unchanged.
+response shape and combat authority are unchanged. The Battle UI may render
+that known catalogue-only item as a disabled presentation card after the
+Priest's active skills; it is not serialized as a runtime `SkillState`, legal
+action, target, or status solely because the card is visible.
 
 Paladin Retribution also publishes `skill.paladin.wrath_of_crusader` as a
 fourth, catalogue-only `isPassive: true` item. It has a self/effect reference
@@ -1061,3 +1127,22 @@ hit chance, final damage after defence/resistance, healing, periodic damage,
 hybrid/special targeting, or unclassified skills. The frontend validates the
 complete response and displays supplied facts; it must not infer or calculate
 fallback rules when the endpoint is unavailable or malformed.
+
+## RELEASE-002 Batch 3 Public client consumption
+
+No combat snapshot, event, legal-action, formation or preview formula changed
+in Batch 3. Public frontend requests use same-origin credentialed transport;
+unsafe requests include the backend-issued CSRF token held only in memory.
+Protected routes require the acknowledged Player session and the immutable
+server-owned battle launch binding. The client never supplies a Public seed or
+uses generic/Debug battle creation as fallback. A lost command response may
+be retried only with its original `commandId`; a terminal receipt is read from
+the existing idempotent completion boundary, never fabricated client-side.
+
+The additive `serverNow` and `expiresAt` fields are presentation inputs for
+one-time five-/one-minute inactivity warnings. Same-deadline preview updates
+must not reset a visible warning, and warning render/polling does not renew
+the server deadline. Server terminal/expiry state takes precedence. Resign No
+sends no request; Resign Yes waits for the owner-authenticated server response
+before navigation. The Public route gate remains default-off; isolated local
+test opt-in is not deployment authorization.

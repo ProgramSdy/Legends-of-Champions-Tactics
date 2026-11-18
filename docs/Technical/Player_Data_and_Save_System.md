@@ -4,8 +4,10 @@
 
 Authoritative technical design for persistent player data, local storage,
 save/load behaviour, active-battle recovery, and abandonment in **Legends of
-Champions Tactics**. UI-023 implements exactly five local save slots around
-training progression and the limited Arena Run; the broader design remains deferred.
+Champions Tactics**. Development retains the UI-023 five local save slots;
+RELEASE-002 Batch 1 adds a separate Public player-owned save foundation;
+Batch 2 adds an isolated, default-off Public battle lifecycle and durable
+terminal receipts without making live battles resumable.
 
 The battle/session registry remains process-local and non-persistent. SQLite
 persists each occupied slot's stable profile identity, timestamps, unlocks,
@@ -21,15 +23,20 @@ checkpoint live battles.
 - The preferred initial local persistence direction is SQLite. The data model
   must allow a future migration to online accounts, server storage, and PvP
   without redefining player-progression concepts.
-- The implemented store uses SQLite schema version 3 and stable slots 1–5. The
-  backend alone owns the active slot. Fresh databases start with five empty
-  slots and no active profile.
+- The Development store uses SQLite schema version 4 and stable anonymous slots
+  1–5. Public uses a separate schema-v5 database with five slots **per Player
+  ID** and a player-scoped active slot. Both start with empty slots and no
+  active profile; neither imports the other's data.
 - Schema-v1 `profile.local.default` data migrates transactionally into slot 1,
   retaining its profile ID and exact earned state. The schema marker changes in
   the same `BEGIN IMMEDIATE` transaction, so restart cannot duplicate it. An
   impossible/failed migration is retryable and never resets the legacy record.
-- Profile names/settings/deletion, authentication, cloud sync, PvP, active
-  battle checkpoints, and migration between account systems remain deferred.
+- Public Player Name, Recovery Code, and backend device-session authentication
+  are implemented in Batch 1. Profile rename/deletion, cloud sync, PvP,
+  active-battle checkpoints, and migration between account systems remain
+  deferred. Public Stage/Arena battle operations are implemented for isolated
+  testing behind the default-off `BATTLE_API_ENABLE_PUBLIC_BATTLES` server
+  gate; player-facing onboarding and Public launch remain pending later gates.
 
 ## Data Domains
 
@@ -232,7 +239,7 @@ out of scope and requires a separate design.
   schedule/squad/node persistence and idempotent node advancement.
 
 
-## Online Pre-Alpha Identity and Persistence Extension — 12 September 2026
+## Online Pre-Alpha Identity and Persistence Extension
 
 The first small external online pre-alpha test will continue using the existing **SQLite** persistence model on a single backend VM. This is an extension of the implemented local persistence direction, not a declaration that SQLite is the final production online database.
 
@@ -240,59 +247,86 @@ The initial backend hosting direction is **Google Compute Engine e2-micro**, run
 
 Because server-side SQLite creates dependence on the VM's persistent disk, the online deployment must establish an appropriate database backup procedure. A later migration to PostgreSQL/Supabase remains expected when multi-instance deployment, stronger cloud recovery, larger-scale telemetry, mature online accounts, or serious PvP requirements justify it.
 
-### Online Player Identity
+### Online Player Identity — RELEASE-002 Batch 1
 
-For online pre-alpha, a player is represented by one stable backend player UUID independent of the player's display name and independent of any individual device.
+The 12 September proposal of a unique name plus name-and-code recovery was
+superseded by the approved RELEASE-002 policy. A Player ID is a permanent
+server-generated UUID. Player Names are case-preserving, **not unique**, 3–20
+ASCII letters, digits, or underscores; they are display-only, never a
+credential. Recovery requires the code **alone**.
 
-The agreed lightweight authentication/recovery model is **Player Name + Recovery Code**, combined with hidden per-device authentication tokens.
+At enrollment the backend generates 16 independent characters from the exact
+32-symbol alphabet `23456789ABCDEFGHJKLMNPQRSTUVWXYZ`, formatted in four
+groups of four. The 80-bit code is disclosed only in the initial no-store
+response. A keyed, domain-separated HMAC-SHA-256 verifier and key version are
+stored; plaintext is not. The player must explicitly acknowledge saving the
+code before ordinary Public save access. An authenticated Forgot Recovery Code
+action immediately replaces the prior code and requires a fresh acknowledgment.
+There is no ordinary regeneration, and losing both session and code has no
+self-service recovery.
 
-On initial creation:
+The backend issues one active device session per Player ID. A new-device
+code-only recovery revokes the previous session and increments its generation.
+Sessions have 30-day sliding expiry, bounded credential rotation and brief
+same-device token overlap. The opaque session secret is in a host-only
+`Secure; HttpOnly; SameSite=Lax` cookie; the database keeps only a verifier.
+Unsafe Public requests require exact Origin and session-bound CSRF checks.
+Recovery failures are counted in SQLite under a keyed IP digest: the tenth
+failure within 15 minutes triggers a 15-minute block, without a permanent
+account lock. Only a trusted configured proxy can supply the client-IP header.
 
-1. The player chooses a unique player/display name.
-2. The backend creates the stable player UUID.
-3. The backend generates a secure recovery code and presents it to the player for safekeeping.
-4. The backend issues the current browser/device a random secret authentication token.
-5. Normal future visits from that device use the stored device token automatically.
+Public schema v5 owns `players`, `player_sessions`, recovery-attempt/block
+tables, five `(player_id, slot_id)` positions, and a player-specific active
+slot. A saved profile and its unlocks, Stage progress, rewards, and Arena run
+belong to its slot owner. Reads resolve that owner's active profile; writes
+also revalidate the live session inside the same SQLite transaction. Public
+initialization is explicit on a clean database outside the repository and
+fails closed if the runtime database is missing or incompatible. Development
+schema v4 and existing saves stay isolated and unchanged.
 
-On a new device/browser:
+Batch 2 retains the Public v5 identity/save format and adds an explicit
+`public_battle_schema_revision=2` marker for its expanded battle lease and
+diagnostic foundation. A database initialized by the earlier Batch 1 shape
+fails closed with an offline-upgrade requirement; runtime does not silently
+alter, reinitialize, or discard it. Before any later Public launch, an
+owner-approved offline migration must be rehearsed on a verified backup if
+such a database contains data. This batch does not operate on a real save DB.
 
-1. The player chooses the returning-player/recovery flow.
-2. The player enters Player Name + Recovery Code.
-3. The backend verifies the recovery credentials.
-4. The backend issues that device a new secret authentication token.
-5. The same stable player UUID and persistent progression are loaded.
+Batch 1 created the battle lease, diagnostic, and settlement schema foundations.
+Batch 2 uses them for isolated Public Stage/Arena testing only. A normal Public
+process still omits all battle routes unless the server explicitly enables the
+Batch 2 test gate; even then generic and Debug creation are absent. The live
+engine is still RAM-only: startup reconciles unfinished leases rather than
+resuming battles. Diagnostics and original terminal receipts survive cleanup
+and restart. A confirmed friendly Victory commits Stage/Arena progression and
+the receipt before its response; a later completion call reads the receipt,
+not a second grant. Resign or 30-minute inactivity before confirmed Victory
+releases capacity without a reward. Batch 2 does not add onboarding, deploy
+Public access, configure backups, or approve Public release. The older local/
+Development completion flow above remains a Development compatibility path.
 
-This allows a laptop, iPad, and phone to access the same server-side player identity and progression without requiring full email/password registration.
+### Public client and backup integration — RELEASE-002 Batch 3
 
-Conceptually, persistence should distinguish:
+The Public client now presents Create New Player, code-only recovery, the
+one-time Recovery Code and explicit backend acknowledgment, then that player's
+five server-owned slots. An authenticated Forgot Recovery Code action replaces
+the code and requires another acknowledgment. The frontend never persists the
+code or session token in local/session storage; the host-only HttpOnly cookie
+remains session authority, with an in-memory CSRF token. Direct protected-page
+reload checks the current session read-only. Near-expiry refresh is a separate
+protected POST. Authentication loss clears player-specific client views and
+cross-tab notification carries no secret. A CSRF rejection revalidates without
+replaying an unsafe action.
 
-    Player Identity
-    ---------------
-    player_id
-    display_name
-    normalized_name
-    recovery_code_hash / secure verifier
-    created_at
-    last_seen
-    build_version
-
-    Device Authentication
-    ---------------------
-    player_id
-    device_token_hash / authentication reference
-    created_at
-    last_seen
-    revoked_at (optional)
-
-    Player Progress
-    ---------------
-    existing backend-authoritative unlocks,
-    stage/training progress,
-    rewards,
-    Arena Run state,
-    settings/preferences as implemented or later authorized
-
-The display name is not an authentication credential. Recovery codes and device tokens must be securely generated. Persistent storage should retain secure verification material rather than ordinary readable secret credentials.
+`battle_api.public_db_ops` supplies an operator-invoked online backup,
+integrity/schema inspection, seven-daily and separate release retention, and
+isolated no-overwrite restore validation. It also has a confirmation-gated,
+backup-first offline upgrade for one exact modeled Batch 1 Public-v5
+foundation shape. No actual legacy deployed DB has been inspected; a real
+legacy upgrade remains blocked pending an authorized disposable fixture.
+Systemd/GCS templates and local HTTPS tests do not establish deployment
+readiness on GCE. Public battle access stays default-off until separate owner
+launch authorization and all host/backup/capacity checks pass.
 
 ### Scope Boundary
 
@@ -316,4 +350,15 @@ The online pre-alpha implementation should preserve the existing domain separati
 
 ## Change Log Addition
 
-- 2026-09-12 — Agreed first online pre-alpha persistence/identity extension: retain SQLite on the initial single Google e2-micro backend with an appropriate backup strategy; introduce a stable online player UUID, unique player name, secure recovery code, and per-device hidden authentication tokens so the same player can recover/access shared server-side progress from laptop, iPad, phone, or another browser. Full accounts, PostgreSQL/Supabase migration, Redis, and live-battle recovery remain deferred.
+- 2026-11-18 — Added Batch 3 client recovery/session integration and
+  operator-only backup/restore boundary; live deployment remains unverified.
+- 2026-11-17 — RELEASE-002 Batch 2 documents default-off isolated Public
+  Stage/Arena battle leases, inactivity/Resign and durable terminal receipts;
+  Public player access and live-battle resume remain closed/deferred.
+- 2026-11-16 — RELEASE-002 Batch 1 adds the isolated Public schema-v5
+  player/session/Recovery Code and per-player five-slot backend foundation.
+  Corrected the superseded name-and-code/unique-name proposal; Public battles
+  and onboarding remain gated for later batches.
+- 2026-09-12 — Historical first online pre-alpha proposal: retain SQLite on
+  the initial single Google e2-micro backend and add player identity/recovery.
+  Its unique-name/name-plus-code details were superseded on 2026-11-16.

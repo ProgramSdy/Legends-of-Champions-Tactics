@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { StartupScreen } from "@/components/startup/StartupScreen";
 import {
   createSaveSlot,
@@ -24,6 +24,8 @@ const fetchSlots = vi.mocked(fetchSaveSlots);
 const createSlot = vi.mocked(createSaveSlot);
 const loadSlot = vi.mocked(loadSaveSlot);
 const overwriteSlot = vi.mocked(overwriteSaveSlot);
+
+beforeEach(() => vi.stubEnv("LOCT_RELEASE_MODE", "development"));
 
 function slots(occupied: readonly number[] = [], activeSlotId: number | null = null): SaveSlotSummary[] {
   return [1, 2, 3, 4, 5].map((slotId) => {
@@ -66,6 +68,7 @@ async function openMenu(slotEntries: SaveSlotSummary[]) {
 
 afterEach(() => {
   vi.clearAllMocks();
+  vi.unstubAllEnvs();
 });
 
 describe("UI-021 startup save-slot flow", () => {

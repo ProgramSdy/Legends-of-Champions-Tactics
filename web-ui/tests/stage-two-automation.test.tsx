@@ -81,9 +81,12 @@ describe("independent live battle UI coverage", () => {
     load.resolve({ revision: 0, snapshot: structuredClone(initial) });
 
     expect(await screen.findByRole("main")).toHaveAttribute("data-format", "duel");
-    expect(screen.getAllByText("Ragnar").length).toBeGreaterThan(1);
-    expect(screen.getAllByText("Nighthawk").length).toBeGreaterThan(1);
+    // Names are rendered as text in the side cards; battlefield figures expose
+    // their names through accessible labels rather than duplicate text nodes.
+    expect(screen.getAllByText("Ragnar").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Nighthawk").length).toBeGreaterThan(0);
     expect(screen.getByRole("article", { name: /Ragnar, Warrior · Weapon Master, active hero/i })).toBeVisible();
+    expect(screen.getByRole("article", { name: /Nighthawk, Rogue · Comprehensiveness/i })).toBeVisible();
     expect(screen.getByRole("region", { name: "Battlefield" }).querySelectorAll(".battle-figure")).toHaveLength(2);
   });
 

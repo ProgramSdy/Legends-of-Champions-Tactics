@@ -1,5 +1,6 @@
 import vinext from "vinext";
 import { defineConfig } from "vite";
+import { readFileSync } from "node:fs";
 import hostingConfig from "./.openai/hosting.json";
 import { sites } from "./build/sites-vite-plugin";
 
@@ -34,6 +35,15 @@ const localBindingConfig = {
 };
 
 export default defineConfig(async () => {
+  const releaseMode = process.env.LOCT_RELEASE_MODE === "development"
+    ? "development"
+    : "public";
+  const localApiProxyTarget = process.env.LOCT_LOCAL_API_PROXY_TARGET;
+  const localHttpsCert = process.env.LOCT_LOCAL_HTTPS_CERT;
+  const localHttpsKey = process.env.LOCT_LOCAL_HTTPS_KEY;
+  if ((localHttpsCert && !localHttpsKey) || (!localHttpsCert && localHttpsKey)) {
+    throw new Error("LOCT_LOCAL_HTTPS_CERT and LOCT_LOCAL_HTTPS_KEY must be provided together.");
+  }
   // Keep Wrangler and Miniflare state project-local. These are non-secret tool
   // settings; application environment belongs in ignored `.env*` files.
   process.env.WRANGLER_WRITE_LOGS ??= "false";
@@ -44,9 +54,20 @@ export default defineConfig(async () => {
   const { cloudflare } = await import("@cloudflare/vite-plugin");
 
   return {
-    server: isCodexSeatbeltSandbox
-      ? { watch: { useFsEvents: false, usePolling: true } }
-      : undefined,
+    define: {
+      "process.env.LOCT_RELEASE_MODE": JSON.stringify(releaseMode),
+    },
+    server: {
+      ...(localHttpsCert && localHttpsKey
+        ? { https: { cert: readFileSync(localHttpsCert), key: readFileSync(localHttpsKey) } }
+        : {}),
+      ...(isCodexSeatbeltSandbox
+        ? { watch: { useFsEvents: false, usePolling: true } }
+        : {}),
+      ...(localApiProxyTarget
+        ? { proxy: { "/api": { target: localApiProxyTarget, changeOrigin: false } } }
+        : {}),
+    },
     plugins: [
       vinext(),
       sites(),

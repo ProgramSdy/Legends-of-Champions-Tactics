@@ -3,20 +3,25 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 import json
 from pathlib import Path
 import random
 import secrets
 import sqlite3
 import threading
-from typing import Any, Literal
+from typing import Any, Callable, Literal
 from urllib.parse import quote
 import uuid
 
 
 DEFAULT_PROFILE_ID = "profile.local.default"
 SCHEMA_VERSION = 4
+PUBLIC_SCHEMA_VERSION = 5
+PUBLIC_BATTLE_SCHEMA_REVISION = 2
+PUBLIC_BATTLE_PROVISIONAL_TTL_SECONDS = 120
+PUBLIC_BATTLE_INACTIVITY_SECONDS = 30 * 60
+PUBLIC_BATTLE_CAPACITY = 20
 ARENA_RUN_SCHEMA_VERSION = 1
 ARENA_NODE_COUNT = 12
 ARENA_REQUIRED_HERO_COUNT = 6
@@ -224,11 +229,30 @@ class ArenaAccessError(ValueError):
         self.message = message
 
 
+class PublicBattleAccessError(ValueError):
+    """A Public battle lifecycle request is unauthorized or conflicts."""
+
+    def __init__(self, code: str, message: str):
+        super().__init__(message)
+        self.code = code
+        self.message = message
+
+
 class ProgressionStore:
     """Transaction-scoped SQLite store for five local save slots."""
 
-    def __init__(self, database_path: Path) -> None:
+    def __init__(
+        self,
+        database_path: Path,
+        *,
+        public_mode: bool = False,
+        allow_public_initialize: bool = False,
+        now: Callable[[], datetime] | None = None,
+    ) -> None:
         self.database_path = database_path
+        self.public_mode = public_mode
+        self.allow_public_initialize = allow_public_initialize
+        self._now = now or (lambda: datetime.now(UTC))
         self._initialize_lock = threading.Lock()
         self._initialized = False
 
@@ -243,9 +267,15 @@ class ProgressionStore:
         with self._initialize_lock:
             if self._initialized:
                 return
+            created = False
             try:
                 created = not self.database_path.exists()
                 if created:
+                    if self.public_mode and not self.allow_public_initialize:
+                        raise ProgressionStoreError(
+                            "The Public progression database is missing. Run the explicit "
+                            "Public database initialization step before starting the API."
+                        )
                     if not self.database_path.parent.is_dir():
                         raise ProgressionStoreError(
                             "The progression database directory is unavailable."
@@ -255,13 +285,19 @@ class ProgressionStore:
                     connection.execute("PRAGMA foreign_keys = ON")
                     try:
                         self._create_schema(connection)
+                        if self.public_mode:
+                            self._upgrade_empty_v4_to_public_v5(connection)
                     finally:
                         connection.close()
                 self._upgrade_and_validate_store()
                 self._initialized = True
             except ProgressionStoreError:
+                if created and self.public_mode:
+                    self.database_path.unlink(missing_ok=True)
                 raise
             except (OSError, sqlite3.Error) as exc:
+                if created and self.public_mode:
+                    self.database_path.unlink(missing_ok=True)
                 raise ProgressionStoreError(
                     "Persistent progression is unavailable or corrupt. Retry later."
                 ) from exc
@@ -388,6 +424,14 @@ class ProgressionStore:
                 raise ProgressionStoreError(
                     "Persistent progression has an unsupported schema. Retry later."
                 )
+            if self.public_mode:
+                if row["value"] != str(PUBLIC_SCHEMA_VERSION):
+                    raise ProgressionStoreError(
+                        "The Public progression database has an unsupported schema. "
+                        "Refusing to migrate or replace it automatically."
+                    )
+                self._validate_public_v5(connection)
+                return
             if row["value"] == "1":
                 self._migrate_v1(connection)
                 row = {"value": "2"}
@@ -403,6 +447,326 @@ class ProgressionStore:
             self._validate_v4(connection)
         finally:
             connection.close()
+
+    def _upgrade_empty_v4_to_public_v5(
+        self, connection: sqlite3.Connection
+    ) -> None:
+        """Create the clean Public-only ownership/authentication foundation.
+
+        This path is used only while explicitly initializing a brand-new empty
+        database. Existing Development v4 files are never passed through it.
+        """
+
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            if connection.execute("SELECT 1 FROM profiles LIMIT 1").fetchone():
+                raise ProgressionStoreError(
+                    "A non-empty database cannot be converted into a Public store."
+                )
+            statements = (
+                """CREATE TABLE players (
+                    player_id TEXT PRIMARY KEY,
+                    display_name TEXT NOT NULL
+                        CHECK (length(display_name) BETWEEN 3 AND 20)
+                        CHECK (display_name NOT GLOB '*[^A-Za-z0-9_]*'),
+                    recovery_mac BLOB NOT NULL UNIQUE,
+                    recovery_key_version INTEGER NOT NULL CHECK (recovery_key_version > 0),
+                    recovery_issued_at TEXT NOT NULL,
+                    recovery_confirmed_at TEXT,
+                    session_generation INTEGER NOT NULL DEFAULT 1
+                        CHECK (session_generation >= 1),
+                    created_at TEXT NOT NULL
+                )""",
+                """CREATE TABLE player_sessions (
+                    session_id TEXT PRIMARY KEY,
+                    player_id TEXT NOT NULL REFERENCES players(player_id) ON DELETE CASCADE,
+                    token_mac BLOB NOT NULL UNIQUE,
+                    previous_token_mac BLOB UNIQUE,
+                    previous_token_valid_until TEXT,
+                    generation INTEGER NOT NULL CHECK (generation >= 1),
+                    csrf_mac BLOB NOT NULL,
+                    issued_at TEXT NOT NULL,
+                    last_seen_at TEXT NOT NULL,
+                    expires_at TEXT NOT NULL,
+                    revoked_at TEXT
+                )""",
+                """CREATE UNIQUE INDEX one_active_session_per_player
+                    ON player_sessions(player_id) WHERE revoked_at IS NULL""",
+                "CREATE INDEX player_sessions_expiry ON player_sessions(expires_at)",
+                """CREATE TABLE recovery_ip_attempts (
+                    attempt_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    ip_mac BLOB NOT NULL,
+                    attempted_at TEXT NOT NULL
+                )""",
+                """CREATE INDEX recovery_ip_attempts_window
+                    ON recovery_ip_attempts(ip_mac, attempted_at)""",
+                """CREATE TABLE recovery_ip_blocks (
+                    ip_mac BLOB PRIMARY KEY,
+                    blocked_until TEXT NOT NULL
+                )""",
+                """CREATE TABLE player_save_slots (
+                    player_id TEXT NOT NULL REFERENCES players(player_id) ON DELETE CASCADE,
+                    slot_id INTEGER NOT NULL CHECK (slot_id BETWEEN 1 AND 5),
+                    profile_id TEXT UNIQUE REFERENCES profiles(profile_id) ON DELETE SET NULL,
+                    created_at TEXT,
+                    last_played_at TEXT,
+                    PRIMARY KEY (player_id, slot_id),
+                    CHECK ((profile_id IS NULL) = (created_at IS NULL)),
+                    CHECK ((profile_id IS NULL) = (last_played_at IS NULL))
+                )""",
+                """CREATE TABLE player_active_slots (
+                    player_id TEXT PRIMARY KEY REFERENCES players(player_id) ON DELETE CASCADE,
+                    slot_id INTEGER,
+                    FOREIGN KEY (player_id, slot_id)
+                        REFERENCES player_save_slots(player_id, slot_id)
+                )""",
+                """CREATE TABLE active_battle_leases (
+                    player_id TEXT PRIMARY KEY REFERENCES players(player_id) ON DELETE CASCADE,
+                    battle_id TEXT NOT NULL UNIQUE,
+                    profile_id TEXT NOT NULL REFERENCES profiles(profile_id),
+                    slot_id INTEGER CHECK (slot_id BETWEEN 1 AND 5),
+                    launch_session_id TEXT NOT NULL,
+                    session_generation INTEGER NOT NULL CHECK (session_generation >= 1),
+                    status TEXT NOT NULL CHECK (status IN ('provisional', 'active')),
+                    reserved_at TEXT NOT NULL,
+                    expires_at TEXT NOT NULL
+                )""",
+                """CREATE TABLE battle_diagnostics (
+                    battle_id TEXT PRIMARY KEY,
+                    player_id TEXT NOT NULL REFERENCES players(player_id),
+                    slot_id INTEGER CHECK (slot_id BETWEEN 1 AND 5),
+                    profile_id TEXT,
+                    launch_session_id TEXT NOT NULL,
+                    session_generation INTEGER NOT NULL CHECK (session_generation >= 1),
+                    seed_hex TEXT NOT NULL,
+                    build_version TEXT NOT NULL,
+                    started_at TEXT NOT NULL,
+                    battle_type TEXT NOT NULL,
+                    context_json TEXT NOT NULL,
+                    last_accepted_action_at TEXT,
+                    expires_at TEXT,
+                    outcome TEXT,
+                    outcome_at TEXT,
+                    lifecycle_status TEXT NOT NULL,
+                    terminal_reason TEXT,
+                    settlement_at TEXT,
+                    receipt_key TEXT
+                )""",
+                """CREATE INDEX battle_diagnostics_player_started
+                    ON battle_diagnostics(player_id, started_at)""",
+                """CREATE TABLE battle_settlements (
+                    battle_id TEXT PRIMARY KEY,
+                    outcome TEXT NOT NULL,
+                    settled_at TEXT NOT NULL,
+                    original_result_json TEXT NOT NULL,
+                    receipt_key TEXT UNIQUE
+                )""",
+            )
+            for statement in statements:
+                connection.execute(statement)
+            connection.execute("DELETE FROM save_slots")
+            connection.execute("DELETE FROM active_slot")
+            connection.execute(
+                "INSERT INTO metadata(key, value) VALUES ('database_role', 'public')"
+            )
+            connection.execute(
+                "INSERT INTO metadata(key, value) "
+                "VALUES ('public_battle_schema_revision', ?)",
+                (str(PUBLIC_BATTLE_SCHEMA_REVISION),),
+            )
+            connection.execute(
+                "UPDATE metadata SET value = ? WHERE key = 'schema_version'",
+                (str(PUBLIC_SCHEMA_VERSION),),
+            )
+            connection.commit()
+        except (ProgressionStoreError, sqlite3.Error):
+            connection.rollback()
+            raise
+
+    def _validate_public_v5(self, connection: sqlite3.Connection) -> None:
+        role = connection.execute(
+            "SELECT value FROM metadata WHERE key = 'database_role'"
+        ).fetchone()
+        if role is None or role["value"] != "public":
+            raise ProgressionStoreError(
+                "The configured Public database is not marked for Public use."
+            )
+        battle_revision = connection.execute(
+            "SELECT value FROM metadata "
+            "WHERE key = 'public_battle_schema_revision'"
+        ).fetchone()
+        if (
+            battle_revision is None
+            or battle_revision["value"] != str(PUBLIC_BATTLE_SCHEMA_REVISION)
+        ):
+            raise ProgressionStoreError(
+                "This Public v5 database predates the Batch 2 battle schema. "
+                "An explicit offline upgrade or approved disposable-database "
+                "reinitialization is required; runtime migration is refused."
+            )
+        required = {
+            "players", "player_sessions", "recovery_ip_attempts",
+            "recovery_ip_blocks", "player_save_slots", "player_active_slots",
+            "active_battle_leases", "battle_diagnostics", "battle_settlements",
+        }
+        actual = {
+            row["name"]
+            for row in connection.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'table'"
+            )
+        }
+        if not required.issubset(actual):
+            raise ProgressionStoreError(
+                "The Public progression schema is incomplete or corrupt."
+            )
+        player_columns = {
+            row["name"] for row in connection.execute("PRAGMA table_info(players)")
+        }
+        if not {
+            "player_id", "display_name", "recovery_mac", "recovery_key_version",
+            "recovery_confirmed_at", "session_generation",
+        }.issubset(player_columns):
+            raise ProgressionStoreError(
+                "The Public player schema is incomplete or corrupt."
+            )
+        session_columns = {
+            row["name"]
+            for row in connection.execute("PRAGMA table_info(player_sessions)")
+        }
+        if not {
+            "session_id", "player_id", "token_mac", "previous_token_mac",
+            "generation", "csrf_mac", "issued_at", "last_seen_at",
+            "expires_at", "revoked_at",
+        }.issubset(session_columns):
+            raise ProgressionStoreError(
+                "The Public session schema is incomplete or corrupt."
+            )
+        lease_columns = {
+            row["name"]
+            for row in connection.execute("PRAGMA table_info(active_battle_leases)")
+        }
+        if not {
+            "player_id", "battle_id", "profile_id", "slot_id",
+            "launch_session_id", "session_generation", "status",
+            "reserved_at", "expires_at",
+        }.issubset(lease_columns):
+            raise ProgressionStoreError(
+                "The Public battle lease schema is incomplete or corrupt."
+            )
+        diagnostic_columns = {
+            row["name"]
+            for row in connection.execute("PRAGMA table_info(battle_diagnostics)")
+        }
+        if not {
+            "battle_id", "player_id", "slot_id", "profile_id",
+            "launch_session_id", "session_generation", "seed_hex",
+            "build_version", "started_at", "battle_type", "context_json",
+            "last_accepted_action_at", "expires_at", "outcome", "outcome_at",
+            "lifecycle_status", "terminal_reason", "settlement_at", "receipt_key",
+        }.issubset(diagnostic_columns):
+            raise ProgressionStoreError(
+                "The Public battle diagnostic schema is incomplete or corrupt."
+            )
+        slot_info = connection.execute(
+            "PRAGMA table_info(player_save_slots)"
+        ).fetchall()
+        slot_primary_key = [
+            row["name"]
+            for row in sorted(slot_info, key=lambda item: item["pk"])
+            if row["pk"]
+        ]
+        if slot_primary_key != ["player_id", "slot_id"]:
+            raise ProgressionStoreError(
+                "The Public save-slot ownership key is missing or corrupt."
+            )
+        slot_foreign_keys = connection.execute(
+            "PRAGMA foreign_key_list(player_save_slots)"
+        ).fetchall()
+        if not any(
+            row["table"] == "players"
+            and row["from"] == "player_id"
+            and row["to"] == "player_id"
+            and row["on_delete"].upper() == "CASCADE"
+            for row in slot_foreign_keys
+        ):
+            raise ProgressionStoreError(
+                "The Public save-slot player ownership constraint is missing or corrupt."
+            )
+        active_info = connection.execute(
+            "PRAGMA table_info(player_active_slots)"
+        ).fetchall()
+        active_primary_key = [
+            row["name"]
+            for row in sorted(active_info, key=lambda item: item["pk"])
+            if row["pk"]
+        ]
+        if active_primary_key != ["player_id"]:
+            raise ProgressionStoreError(
+                "The Public active-slot player key is missing or corrupt."
+            )
+        active_foreign_keys = connection.execute(
+            "PRAGMA foreign_key_list(player_active_slots)"
+        ).fetchall()
+        grouped: dict[int, list[tuple[int, str, str]]] = {}
+        targets: dict[int, tuple[str, str]] = {}
+        for row in active_foreign_keys:
+            grouped.setdefault(row["id"], []).append(
+                (row["seq"], row["from"], row["to"])
+            )
+            targets[row["id"]] = (row["table"], row["on_delete"].upper())
+        if not any(
+            targets[key] == ("player_save_slots", "NO ACTION")
+            and sorted(columns) == [
+                (0, "player_id", "player_id"), (1, "slot_id", "slot_id")
+            ]
+            for key, columns in grouped.items()
+        ):
+            raise ProgressionStoreError(
+                "The Public active-slot ownership constraint is missing or corrupt."
+            )
+        if not any(
+            row["table"] == "players"
+            and row["from"] == "player_id"
+            and row["to"] == "player_id"
+            and row["on_delete"].upper() == "CASCADE"
+            for row in active_foreign_keys
+        ):
+            raise ProgressionStoreError(
+                "The Public active-slot player constraint is missing or corrupt."
+            )
+        active_session_index = connection.execute(
+            """SELECT sql FROM sqlite_master
+               WHERE type = 'index' AND name = 'one_active_session_per_player'"""
+        ).fetchone()
+        normalized_index = (
+            " ".join(active_session_index["sql"].lower().split())
+            if active_session_index is not None and active_session_index["sql"]
+            else ""
+        )
+        if (
+            "unique index" not in normalized_index
+            or "player_sessions" not in normalized_index
+            or "player_id" not in normalized_index
+            or "where revoked_at is null" not in normalized_index
+        ):
+            raise ProgressionStoreError(
+                "The Public single-session constraint is missing or corrupt."
+            )
+        index_columns = [
+            row["name"]
+            for row in connection.execute(
+                "PRAGMA index_info(one_active_session_per_player)"
+            )
+        ]
+        if index_columns != ["player_id"]:
+            raise ProgressionStoreError(
+                "The Public single-session constraint is missing or corrupt."
+            )
+        foreign_key_failures = connection.execute("PRAGMA foreign_key_check").fetchall()
+        if foreign_key_failures:
+            raise ProgressionStoreError(
+                "The Public progression database failed its foreign-key check."
+            )
 
     def _migrate_v1(self, connection: sqlite3.Connection) -> None:
         """Atomically place the UI-020 default profile into slot 1 exactly once."""
@@ -591,9 +955,1149 @@ class ProgressionStore:
             self._read_progression(connection, profile_id)
             self._read_arena_run(connection, profile_id)
 
+    def _timestamp(self) -> str:
+        value = self._now()
+        if value.tzinfo is None:
+            raise ValueError("The progression clock must return a timezone-aware value.")
+        return value.astimezone(UTC).isoformat(timespec="milliseconds").replace(
+            "+00:00", "Z"
+        )
+
+    def _timestamp_after(self, seconds: int) -> str:
+        value = self._now()
+        if value.tzinfo is None:
+            raise ValueError("The progression clock must return a timezone-aware value.")
+        return (value.astimezone(UTC) + timedelta(seconds=seconds)).isoformat(
+            timespec="milliseconds"
+        ).replace("+00:00", "Z")
+
     @staticmethod
-    def _timestamp() -> str:
-        return datetime.now(UTC).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+    def _public_battle_payload(row: sqlite3.Row) -> dict[str, Any]:
+        return {
+            "battleId": row["battle_id"],
+            "playerId": row["player_id"],
+            "slotId": row["slot_id"],
+            "profileId": row["profile_id"],
+            "launchSessionId": row["launch_session_id"],
+            "sessionGeneration": row["session_generation"],
+            "seedHex": row["seed_hex"],
+            "battleType": row["battle_type"],
+            "context": json.loads(row["context_json"]),
+            "startedAt": row["started_at"],
+            "lastAcceptedActionAt": row["last_accepted_action_at"],
+            "expiresAt": row["expires_at"],
+            "outcome": json.loads(row["outcome"]) if row["outcome"] else None,
+            "outcomeAt": row["outcome_at"],
+            "lifecycleStatus": row["lifecycle_status"],
+            "terminalReason": row["terminal_reason"],
+            "settlementAt": row["settlement_at"],
+            "receiptKey": row["receipt_key"],
+        }
+
+    def _expire_public_battles_tx(
+        self, connection: sqlite3.Connection, *, now: str
+    ) -> list[str]:
+        rows = connection.execute(
+            """SELECT l.battle_id
+               FROM active_battle_leases l
+               JOIN battle_diagnostics d ON d.battle_id = l.battle_id
+               WHERE l.expires_at <= ?
+                 AND d.lifecycle_status NOT IN ('resolving', 'terminalPending', 'settled')""",
+            (now,),
+        ).fetchall()
+        battle_ids = [row["battle_id"] for row in rows]
+        if battle_ids:
+            connection.executemany(
+                """UPDATE battle_diagnostics
+                   SET lifecycle_status = 'expired', terminal_reason = 'inactivity',
+                       outcome = ?, outcome_at = ?, expires_at = ?
+                   WHERE battle_id = ?""",
+                (
+                    (
+                        json.dumps({"kind": "abandoned", "reason": "expired"},
+                                   sort_keys=True, separators=(",", ":")),
+                        now, now, battle_id,
+                    )
+                    for battle_id in battle_ids
+                ),
+            )
+            connection.executemany(
+                "DELETE FROM active_battle_leases WHERE battle_id = ?",
+                ((battle_id,) for battle_id in battle_ids),
+            )
+        return battle_ids
+
+    def reserve_public_battle(
+        self,
+        *,
+        battle_id: str,
+        player_id: str,
+        session_id: str,
+        session_generation: int,
+        seed_hex: str,
+        battle_type: Literal["stage", "arena"],
+        context: dict[str, Any],
+        build_version: str,
+        capacity: int = PUBLIC_BATTLE_CAPACITY,
+        provisional_ttl_seconds: int = PUBLIC_BATTLE_PROVISIONAL_TTL_SECONDS,
+    ) -> dict[str, Any]:
+        """Atomically reserve one Public battle slot before RAM construction."""
+        if not self.public_mode:
+            raise ProgressionStoreError("Public battle reservations require Public mode.")
+        if capacity < 1 or provisional_ttl_seconds < 1:
+            raise ValueError("Battle capacity and provisional TTL must be positive.")
+        if len(seed_hex) != 64 or any(value not in "0123456789abcdef" for value in seed_hex):
+            raise ValueError("seed_hex must be canonical 256-bit lowercase hexadecimal.")
+        connection = self._connection()
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            self._assert_public_session(
+                connection, player_id=player_id, session_id=session_id,
+                generation=session_generation,
+            )
+            now = self._timestamp()
+            expired = self._expire_public_battles_tx(connection, now=now)
+            binding = connection.execute(
+                """SELECT a.slot_id, s.profile_id
+                   FROM player_active_slots a
+                   JOIN player_save_slots s
+                     ON s.player_id = a.player_id AND s.slot_id = a.slot_id
+                   WHERE a.player_id = ? AND s.profile_id IS NOT NULL""",
+                (player_id,),
+            ).fetchone()
+            if binding is None:
+                connection.commit()
+                raise SaveSlotAccessError(
+                    "noActiveSaveSlot",
+                    "Create or load a save slot before starting a battle.",
+                )
+            if connection.execute(
+                "SELECT 1 FROM active_battle_leases WHERE player_id = ?",
+                (player_id,),
+            ).fetchone() is not None:
+                connection.commit()
+                raise PublicBattleAccessError(
+                    "activeBattleExists", "This player already has an active battle."
+                )
+            count = connection.execute(
+                "SELECT COUNT(*) FROM active_battle_leases"
+            ).fetchone()[0]
+            if count >= capacity:
+                connection.commit()
+                raise PublicBattleAccessError(
+                    "battleCapacityReached",
+                    "Battle capacity is currently full. Retry later.",
+                )
+            expires_at = self._timestamp_after(provisional_ttl_seconds)
+            connection.execute(
+                """INSERT INTO active_battle_leases(
+                       player_id, battle_id, profile_id, slot_id,
+                       launch_session_id, session_generation, status,
+                       reserved_at, expires_at
+                   ) VALUES (?, ?, ?, ?, ?, ?, 'provisional', ?, ?)""",
+                (
+                    player_id, battle_id, binding["profile_id"], binding["slot_id"],
+                    session_id, session_generation, now, expires_at,
+                ),
+            )
+            connection.execute(
+                """INSERT INTO battle_diagnostics(
+                       battle_id, player_id, slot_id, profile_id,
+                       launch_session_id, session_generation, seed_hex,
+                       build_version, started_at, battle_type, context_json,
+                       last_accepted_action_at, expires_at, lifecycle_status
+                   ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, 'provisional')""",
+                (
+                    battle_id, player_id, binding["slot_id"], binding["profile_id"],
+                    session_id, session_generation, seed_hex, build_version, now,
+                    battle_type,
+                    json.dumps(context, sort_keys=True, separators=(",", ":")),
+                    expires_at,
+                ),
+            )
+            connection.commit()
+            return {
+                "battleId": battle_id,
+                "slotId": binding["slot_id"],
+                "profileId": binding["profile_id"],
+                "expiresAt": expires_at,
+                "expiredBattleIds": expired,
+            }
+        except (ProgressionStoreError, SaveSlotAccessError, PublicBattleAccessError):
+            if connection.in_transaction:
+                connection.rollback()
+            raise
+        except sqlite3.Error as exc:
+            connection.rollback()
+            raise ProgressionStoreError(
+                "The Public battle reservation could not be created. Retry later."
+            ) from exc
+        except Exception:
+            connection.rollback()
+            raise
+        finally:
+            connection.close()
+
+    def activate_public_battle(
+        self,
+        *,
+        battle_id: str,
+        player_id: str,
+        session_id: str,
+        session_generation: int,
+        inactivity_seconds: int = PUBLIC_BATTLE_INACTIVITY_SECONDS,
+    ) -> dict[str, Any]:
+        """Durably activate a still-owned provisional lease after RAM construction."""
+        connection = self._connection()
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            self._assert_public_session(
+                connection, player_id=player_id, session_id=session_id,
+                generation=session_generation,
+            )
+            now = self._timestamp()
+            self._expire_public_battles_tx(connection, now=now)
+            row = connection.execute(
+                """SELECT l.*, s.profile_id AS current_profile_id,
+                          a.slot_id AS current_slot_id
+                   FROM active_battle_leases l
+                   LEFT JOIN player_active_slots a ON a.player_id = l.player_id
+                   LEFT JOIN player_save_slots s
+                     ON s.player_id = a.player_id AND s.slot_id = a.slot_id
+                   WHERE l.battle_id = ? AND l.player_id = ?""",
+                (battle_id, player_id),
+            ).fetchone()
+            if row is None or row["status"] != "provisional":
+                raise PublicBattleAccessError(
+                    "battleReservationExpired",
+                    "The battle reservation expired before activation.",
+                )
+            if (
+                row["launch_session_id"] != session_id
+                or row["session_generation"] != session_generation
+                or row["profile_id"] != row["current_profile_id"]
+                or row["slot_id"] != row["current_slot_id"]
+            ):
+                raise PublicBattleAccessError(
+                    "battleLaunchContextChanged",
+                    "The battle launch context changed before activation.",
+                )
+            expires_at = self._timestamp_after(inactivity_seconds)
+            connection.execute(
+                """UPDATE active_battle_leases
+                   SET status = 'active', expires_at = ? WHERE battle_id = ?""",
+                (expires_at, battle_id),
+            )
+            connection.execute(
+                """UPDATE battle_diagnostics
+                   SET lifecycle_status = 'active', expires_at = ?
+                   WHERE battle_id = ?""",
+                (expires_at, battle_id),
+            )
+            diagnostic = connection.execute(
+                "SELECT * FROM battle_diagnostics WHERE battle_id = ?", (battle_id,)
+            ).fetchone()
+            connection.commit()
+            return self._public_battle_payload(diagnostic)
+        except (ProgressionStoreError, SaveSlotAccessError, PublicBattleAccessError):
+            connection.rollback()
+            raise
+        except sqlite3.Error as exc:
+            connection.rollback()
+            raise ProgressionStoreError(
+                "The Public battle reservation could not be activated. Retry later."
+            ) from exc
+        finally:
+            connection.close()
+
+    def abandon_public_reservation(
+        self, *, battle_id: str, reason: str = "constructionFailed"
+    ) -> None:
+        """Compensate a failed RAM construction or durable activation."""
+        if not self.public_mode:
+            return
+        connection = self._connection()
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            now = self._timestamp()
+            connection.execute(
+                """UPDATE battle_diagnostics
+                   SET lifecycle_status = 'abandoned', terminal_reason = ?,
+                       outcome = ?, outcome_at = ?, expires_at = ?
+                   WHERE battle_id = ?
+                     AND lifecycle_status IN ('provisional', 'active')""",
+                (
+                    reason,
+                    json.dumps({"kind": "abandoned", "reason": reason},
+                               sort_keys=True, separators=(",", ":")),
+                    now, now, battle_id,
+                ),
+            )
+            connection.execute(
+                "DELETE FROM active_battle_leases WHERE battle_id = ?", (battle_id,)
+            )
+            connection.commit()
+        except sqlite3.Error as exc:
+            connection.rollback()
+            raise ProgressionStoreError(
+                "The failed Public battle reservation could not be released."
+            ) from exc
+        finally:
+            connection.close()
+
+    def public_launch_binding(
+        self,
+        *,
+        player_id: str,
+        session_id: str,
+        session_generation: int,
+    ) -> dict[str, Any]:
+        connection = self._connection()
+        try:
+            # This operation may synchronously expire stale leases before it
+            # reads the launch context.  Use a write transaction and commit so
+            # cleanup is not silently rolled back when the connection closes.
+            connection.execute("BEGIN IMMEDIATE")
+            self._assert_public_session(
+                connection, player_id=player_id, session_id=session_id,
+                generation=session_generation,
+            )
+            now = self._timestamp()
+            self._expire_public_battles_tx(connection, now=now)
+            row = connection.execute(
+                """SELECT a.slot_id, s.profile_id
+                   FROM player_active_slots a
+                   JOIN player_save_slots s
+                     ON s.player_id = a.player_id AND s.slot_id = a.slot_id
+                   WHERE a.player_id = ? AND s.profile_id IS NOT NULL""",
+                (player_id,),
+            ).fetchone()
+            if row is None:
+                connection.commit()
+                raise SaveSlotAccessError(
+                    "noActiveSaveSlot",
+                    "Create or load a save slot before starting a battle.",
+                )
+            result = {"slotId": row["slot_id"], "profileId": row["profile_id"]}
+            connection.commit()
+            return result
+        except (ProgressionStoreError, SaveSlotAccessError):
+            raise
+        except sqlite3.Error as exc:
+            raise ProgressionStoreError(
+                "The Public launch context could not be read. Retry later."
+            ) from exc
+        finally:
+            connection.close()
+
+    def authorize_public_battle(
+        self,
+        *,
+        battle_id: str,
+        player_id: str,
+        session_id: str,
+        session_generation: int,
+    ) -> dict[str, Any]:
+        """Authenticate ownership and current immutable launch context."""
+        connection = self._connection()
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            self._assert_public_session(
+                connection, player_id=player_id, session_id=session_id,
+                generation=session_generation,
+            )
+            now = self._timestamp()
+            expired = self._expire_public_battles_tx(connection, now=now)
+            row = connection.execute(
+                "SELECT * FROM battle_diagnostics WHERE battle_id = ?", (battle_id,)
+            ).fetchone()
+            if row is None or row["player_id"] != player_id:
+                raise PublicBattleAccessError("battleNotFound", "Battle was not found.")
+            lifecycle = row["lifecycle_status"]
+            if lifecycle in {"settled", "abandoned", "expired"}:
+                connection.commit()
+                payload = self._public_battle_payload(row)
+                payload["expiredBattleIds"] = expired
+                return payload
+            if (
+                row["launch_session_id"] != session_id
+                or row["session_generation"] != session_generation
+            ):
+                if lifecycle == "terminalPending":
+                    connection.execute(
+                        """UPDATE battle_diagnostics
+                           SET terminal_reason = 'sessionRevokedBeforeSettlement'
+                           WHERE battle_id = ?""",
+                        (battle_id,),
+                    )
+                else:
+                    connection.execute(
+                        """UPDATE battle_diagnostics
+                           SET lifecycle_status = 'abandoned',
+                               terminal_reason = 'sessionRevoked', expires_at = ?
+                           WHERE battle_id = ?""",
+                        (now, battle_id),
+                    )
+                if lifecycle != "terminalPending":
+                    connection.execute(
+                        "DELETE FROM active_battle_leases WHERE battle_id = ?", (battle_id,)
+                    )
+                connection.commit()
+                raise PublicBattleAccessError("battleNotFound", "Battle was not found.")
+            binding = connection.execute(
+                """SELECT a.slot_id, s.profile_id
+                   FROM player_active_slots a
+                   LEFT JOIN player_save_slots s
+                     ON s.player_id = a.player_id AND s.slot_id = a.slot_id
+                   WHERE a.player_id = ?""",
+                (player_id,),
+            ).fetchone()
+            if (
+                binding is None
+                or binding["slot_id"] != row["slot_id"]
+                or binding["profile_id"] != row["profile_id"]
+            ):
+                if lifecycle == "terminalPending":
+                    connection.execute(
+                        """UPDATE battle_diagnostics
+                           SET terminal_reason = 'launchContextChangedBeforeSettlement'
+                           WHERE battle_id = ?""",
+                        (battle_id,),
+                    )
+                else:
+                    connection.execute(
+                        """UPDATE battle_diagnostics
+                           SET lifecycle_status = 'abandoned',
+                               terminal_reason = 'launchContextChanged', expires_at = ?
+                           WHERE battle_id = ?""",
+                        (now, battle_id),
+                    )
+                if lifecycle != "terminalPending":
+                    connection.execute(
+                        "DELETE FROM active_battle_leases WHERE battle_id = ?", (battle_id,)
+                    )
+                connection.commit()
+                raise PublicBattleAccessError(
+                    "battleLaunchContextChanged",
+                    "The battle launch save context is no longer active.",
+                )
+            connection.commit()
+            payload = self._public_battle_payload(row)
+            payload["expiredBattleIds"] = expired
+            return payload
+        except (ProgressionStoreError, SaveSlotAccessError, PublicBattleAccessError):
+            if connection.in_transaction:
+                connection.rollback()
+            raise
+        except sqlite3.Error as exc:
+            connection.rollback()
+            raise ProgressionStoreError(
+                "The Public battle could not be authorized. Retry later."
+            ) from exc
+        finally:
+            connection.close()
+
+    def touch_public_battle_after_action(
+        self,
+        *,
+        battle_id: str,
+        player_id: str,
+        session_id: str,
+        session_generation: int,
+        inactivity_seconds: int = PUBLIC_BATTLE_INACTIVITY_SECONDS,
+    ) -> dict[str, Any]:
+        """Reset inactivity only after one newly accepted action fully resolves."""
+        connection = self._connection()
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            self._assert_public_session(
+                connection, player_id=player_id, session_id=session_id,
+                generation=session_generation,
+            )
+            row = connection.execute(
+                """SELECT l.*, d.lifecycle_status
+                   FROM active_battle_leases l
+                   JOIN battle_diagnostics d ON d.battle_id = l.battle_id
+                   WHERE l.battle_id = ? AND l.player_id = ?""",
+                (battle_id, player_id),
+            ).fetchone()
+            if (
+                row is None or row["status"] != "active"
+                or row["lifecycle_status"] != "resolving"
+                or row["launch_session_id"] != session_id
+                or row["session_generation"] != session_generation
+            ):
+                raise PublicBattleAccessError(
+                    "battleNoLongerActive", "The battle is no longer active."
+                )
+            now = self._timestamp()
+            expires_at = self._timestamp_after(inactivity_seconds)
+            connection.execute(
+                "UPDATE active_battle_leases SET expires_at = ? WHERE battle_id = ?",
+                (expires_at, battle_id),
+            )
+            connection.execute(
+                """UPDATE battle_diagnostics
+                   SET lifecycle_status = 'active', last_accepted_action_at = ?,
+                       expires_at = ?
+                   WHERE battle_id = ?""",
+                (now, expires_at, battle_id),
+            )
+            diagnostic = connection.execute(
+                "SELECT * FROM battle_diagnostics WHERE battle_id = ?", (battle_id,)
+            ).fetchone()
+            connection.commit()
+            return self._public_battle_payload(diagnostic)
+        except (ProgressionStoreError, SaveSlotAccessError, PublicBattleAccessError):
+            connection.rollback()
+            raise
+        except sqlite3.Error as exc:
+            connection.rollback()
+            raise ProgressionStoreError(
+                "The Public battle inactivity deadline could not be updated."
+            ) from exc
+        finally:
+            connection.close()
+
+    def begin_public_battle_action(
+        self,
+        *,
+        battle_id: str,
+        player_id: str,
+        session_id: str,
+        session_generation: int,
+    ) -> dict[str, Any]:
+        """Protect a newly accepted action from concurrent expiry cleanup."""
+        connection = self._connection()
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            self._assert_public_session(
+                connection, player_id=player_id, session_id=session_id,
+                generation=session_generation,
+            )
+            now = self._timestamp()
+            row = connection.execute(
+                """SELECT l.*, d.lifecycle_status
+                   FROM active_battle_leases l
+                   JOIN battle_diagnostics d ON d.battle_id = l.battle_id
+                   WHERE l.battle_id = ? AND l.player_id = ?""",
+                (battle_id, player_id),
+            ).fetchone()
+            if row is None:
+                raise PublicBattleAccessError(
+                    "battleNoLongerActive", "The battle is no longer active."
+                )
+            if row["expires_at"] <= now:
+                self._expire_public_battles_tx(connection, now=now)
+                connection.commit()
+                raise PublicBattleAccessError(
+                    "battleExpired", "The battle expired due to inactivity."
+                )
+            if (
+                row["status"] != "active"
+                or row["lifecycle_status"] != "active"
+                or row["launch_session_id"] != session_id
+                or row["session_generation"] != session_generation
+            ):
+                raise PublicBattleAccessError(
+                    "battleNoLongerActive", "The battle is no longer active."
+                )
+            connection.execute(
+                """UPDATE battle_diagnostics SET lifecycle_status = 'resolving'
+                   WHERE battle_id = ?""",
+                (battle_id,),
+            )
+            connection.commit()
+            return {"acceptedAt": now, "previousExpiresAt": row["expires_at"]}
+        except (ProgressionStoreError, SaveSlotAccessError, PublicBattleAccessError):
+            if connection.in_transaction:
+                connection.rollback()
+            raise
+        except sqlite3.Error as exc:
+            connection.rollback()
+            raise ProgressionStoreError(
+                "The Public battle action could not begin safely."
+            ) from exc
+        finally:
+            connection.close()
+
+    def cancel_public_battle_action(
+        self,
+        *,
+        battle_id: str,
+        player_id: str,
+        session_id: str,
+        session_generation: int,
+    ) -> bool:
+        """Restore the pre-action lifecycle after an unexpected engine failure."""
+        connection = self._connection()
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            current = connection.execute(
+                """SELECT p.session_generation, s_current.expires_at,
+                          EXISTS(
+                              SELECT 1 FROM player_sessions s
+                              WHERE s.session_id = ? AND s.player_id = ?
+                                AND s.generation = ? AND s.revoked_at IS NULL
+                          ) AS session_active
+                   FROM players p
+                   LEFT JOIN player_sessions s_current ON s_current.session_id = ?
+                   WHERE p.player_id = ?""",
+                (
+                    session_id, player_id, session_generation,
+                    session_id, player_id,
+                ),
+            ).fetchone()
+            session_still_active = bool(
+                current is not None
+                and current["session_generation"] == session_generation
+                and current["session_active"]
+                and current["expires_at"] is not None
+                and current["expires_at"] > self._timestamp()
+            )
+            if session_still_active:
+                connection.execute(
+                    """UPDATE battle_diagnostics SET lifecycle_status = 'active'
+                       WHERE battle_id = ? AND player_id = ?
+                         AND launch_session_id = ? AND session_generation = ?
+                         AND lifecycle_status = 'resolving'""",
+                    (battle_id, player_id, session_id, session_generation),
+                )
+            else:
+                connection.execute(
+                    """UPDATE battle_diagnostics
+                       SET lifecycle_status = 'abandoned',
+                           terminal_reason = 'sessionRevokedDuringResolution'
+                       WHERE battle_id = ? AND player_id = ?
+                         AND lifecycle_status = 'resolving'""",
+                    (battle_id, player_id),
+                )
+                connection.execute(
+                    "DELETE FROM active_battle_leases WHERE battle_id = ?",
+                    (battle_id,),
+                )
+            connection.commit()
+            return not session_still_active
+        except sqlite3.Error as exc:
+            connection.rollback()
+            raise ProgressionStoreError(
+                "The failed Public battle action could not be released."
+            ) from exc
+        finally:
+            connection.close()
+
+    def mark_public_battle_terminal_pending(
+        self,
+        *,
+        battle_id: str,
+        player_id: str,
+        session_id: str,
+        session_generation: int,
+        outcome: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Retain capacity while terminal settlement is retryable."""
+        connection = self._connection()
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            cursor = connection.execute(
+                """UPDATE battle_diagnostics
+                   SET lifecycle_status = 'terminalPending', outcome = ?, outcome_at = ?
+                   WHERE battle_id = ? AND player_id = ?
+                     AND launch_session_id = ? AND session_generation = ?
+                     AND lifecycle_status IN ('active', 'resolving', 'terminalPending')""",
+                (
+                    json.dumps(outcome, sort_keys=True, separators=(",", ":")),
+                    self._timestamp(), battle_id, player_id, session_id,
+                    session_generation,
+                ),
+            )
+            if cursor.rowcount != 1:
+                raise PublicBattleAccessError(
+                    "battleNoLongerActive", "The battle is no longer active."
+                )
+            row = connection.execute(
+                "SELECT * FROM battle_diagnostics WHERE battle_id = ?", (battle_id,)
+            ).fetchone()
+            connection.commit()
+            return self._public_battle_payload(row)
+        except (ProgressionStoreError, SaveSlotAccessError, PublicBattleAccessError):
+            connection.rollback()
+            raise
+        except sqlite3.Error as exc:
+            connection.rollback()
+            raise ProgressionStoreError(
+                "The Public terminal outcome could not be retained."
+            ) from exc
+        finally:
+            connection.close()
+
+    def resign_public_battle(
+        self,
+        *,
+        battle_id: str,
+        player_id: str,
+        session_id: str,
+        session_generation: int,
+    ) -> dict[str, Any]:
+        """Idempotently abandon an unfinished owned battle without rewards."""
+        connection = self._connection()
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            self._assert_public_session(
+                connection, player_id=player_id, session_id=session_id,
+                generation=session_generation,
+            )
+            now = self._timestamp()
+            self._expire_public_battles_tx(connection, now=now)
+            row = connection.execute(
+                "SELECT * FROM battle_diagnostics WHERE battle_id = ?", (battle_id,)
+            ).fetchone()
+            if row is None or row["player_id"] != player_id:
+                raise PublicBattleAccessError("battleNotFound", "Battle was not found.")
+            if row["lifecycle_status"] == "terminalPending":
+                raise PublicBattleAccessError(
+                    "battleSettlementPending",
+                    "The authoritative battle result is pending durable settlement.",
+                )
+            if row["lifecycle_status"] == "settled":
+                stored = connection.execute(
+                    "SELECT original_result_json FROM battle_settlements WHERE battle_id = ?",
+                    (battle_id,),
+                ).fetchone()
+                if stored is None:
+                    raise ProgressionStoreError(
+                        "The settled battle receipt is missing. Retry later."
+                    )
+                connection.commit()
+                return json.loads(stored["original_result_json"])
+            if row["lifecycle_status"] in {"abandoned", "expired"}:
+                stored = connection.execute(
+                    "SELECT original_result_json FROM battle_settlements WHERE battle_id = ?",
+                    (battle_id,),
+                ).fetchone()
+                connection.commit()
+                return (
+                    json.loads(stored["original_result_json"])
+                    if stored is not None else self._public_battle_payload(row)
+                )
+            if (
+                row["launch_session_id"] != session_id
+                or row["session_generation"] != session_generation
+            ):
+                raise PublicBattleAccessError("battleNotFound", "Battle was not found.")
+            outcome = {"kind": "abandoned", "reason": "resigned"}
+            outcome_json = json.dumps(outcome, sort_keys=True, separators=(",", ":"))
+            result = {
+                "battleId": battle_id,
+                "lifecycleStatus": "abandoned",
+                "terminalReason": "resigned",
+                "outcome": outcome,
+                "serverNow": now,
+                "expiresAt": now,
+                "settlementStatus": "settled",
+            }
+            receipt_key = f"resign:{battle_id}"
+            connection.execute(
+                """INSERT OR IGNORE INTO battle_settlements(
+                       battle_id, outcome, settled_at, original_result_json, receipt_key
+                   ) VALUES (?, ?, ?, ?, ?)""",
+                (
+                    battle_id, outcome_json, now,
+                    json.dumps(result, sort_keys=True, separators=(",", ":")),
+                    receipt_key,
+                ),
+            )
+            connection.execute(
+                """UPDATE battle_diagnostics
+                   SET lifecycle_status = 'abandoned', terminal_reason = 'resigned',
+                       outcome = ?, outcome_at = ?, expires_at = ?,
+                       settlement_at = ?, receipt_key = ?
+                   WHERE battle_id = ?""",
+                (outcome_json, now, now, now, receipt_key, battle_id),
+            )
+            connection.execute(
+                "DELETE FROM active_battle_leases WHERE battle_id = ?", (battle_id,)
+            )
+            connection.commit()
+            return result
+        except (ProgressionStoreError, SaveSlotAccessError, PublicBattleAccessError):
+            if connection.in_transaction:
+                connection.rollback()
+            raise
+        except sqlite3.Error as exc:
+            connection.rollback()
+            raise ProgressionStoreError("The battle could not be resigned. Retry later.") from exc
+        finally:
+            connection.close()
+
+    def _before_public_settlement_commit(
+        self, connection: sqlite3.Connection, battle_id: str
+    ) -> None:
+        """Test seam for fault injection immediately before durable confirmation."""
+        del connection, battle_id
+
+    def settle_public_battle(
+        self,
+        *,
+        battle_id: str,
+        player_id: str,
+        session_id: str,
+        session_generation: int,
+        outcome: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Atomically persist outcome, progression effects, receipt, and release."""
+        connection = self._connection()
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            self._assert_public_session(
+                connection, player_id=player_id, session_id=session_id,
+                generation=session_generation,
+            )
+            row = connection.execute(
+                "SELECT * FROM battle_diagnostics WHERE battle_id = ?", (battle_id,)
+            ).fetchone()
+            if row is None or row["player_id"] != player_id:
+                raise PublicBattleAccessError("battleNotFound", "Battle was not found.")
+            existing = connection.execute(
+                "SELECT original_result_json FROM battle_settlements WHERE battle_id = ?",
+                (battle_id,),
+            ).fetchone()
+            if existing is not None:
+                connection.commit()
+                return json.loads(existing["original_result_json"])
+            lease = connection.execute(
+                """SELECT * FROM active_battle_leases
+                   WHERE battle_id = ? AND player_id = ?""",
+                (battle_id, player_id),
+            ).fetchone()
+            if (
+                lease is None or lease["status"] != "active"
+                or lease["profile_id"] != row["profile_id"]
+                or lease["slot_id"] != row["slot_id"]
+                or lease["launch_session_id"] != row["launch_session_id"]
+                or lease["session_generation"] != row["session_generation"]
+            ):
+                raise PublicBattleAccessError(
+                    "battleNoLongerActive",
+                    "The battle no longer has a valid settlement lease.",
+                )
+            if row["lifecycle_status"] == "resolving" and (
+                row["launch_session_id"] != session_id
+                or row["session_generation"] != session_generation
+            ):
+                raise PublicBattleAccessError(
+                    "battleSessionRevoked",
+                    "The battle session was revoked before durable confirmation.",
+                )
+            if row["lifecycle_status"] not in {"resolving", "terminalPending"}:
+                raise PublicBattleAccessError(
+                    "battleNoLongerActive", "The battle is not awaiting settlement."
+                )
+            if row["lifecycle_status"] == "terminalPending":
+                recorded_outcome = (
+                    json.loads(row["outcome"]) if row["outcome"] else None
+                )
+                if recorded_outcome is None or outcome != recorded_outcome:
+                    raise PublicBattleAccessError(
+                        "battleOutcomeMismatch",
+                        "The pending battle outcome does not match the durable record.",
+                    )
+            binding = connection.execute(
+                """SELECT a.slot_id, s.profile_id
+                   FROM player_active_slots a
+                   LEFT JOIN player_save_slots s
+                     ON s.player_id = a.player_id AND s.slot_id = a.slot_id
+                   WHERE a.player_id = ?""",
+                (player_id,),
+            ).fetchone()
+            if (
+                binding is None or binding["slot_id"] != row["slot_id"]
+                or binding["profile_id"] != row["profile_id"]
+            ):
+                raise PublicBattleAccessError(
+                    "battleLaunchContextChanged",
+                    "The battle launch save context changed before settlement.",
+                )
+
+            result: dict[str, Any] = {"battleId": battle_id, "outcome": outcome}
+            friendly_victory = outcome == {
+                "kind": "victory", "winningSideId": "friendly"
+            }
+            context = json.loads(row["context_json"])
+            if friendly_victory and row["battle_type"] == "stage":
+                result.update(self._commit_stage_victory_tx(
+                    connection,
+                    battle_id=battle_id,
+                    stage_id=context["stageId"],
+                    battle_index=context["battleIndex"],
+                    mode=context.get("mode", "learner"),
+                    profile_id=row["profile_id"],
+                ))
+            elif friendly_victory and row["battle_type"] == "arena":
+                result.update(self._commit_arena_victory_tx(
+                    connection,
+                    run_id=context["runId"],
+                    node_index=context["nodeIndex"],
+                    battle_id=battle_id,
+                    profile_id=row["profile_id"],
+                ))
+            else:
+                result["alreadyCommitted"] = False
+
+            settled_at = self._timestamp()
+            receipt_key = f"battle:{battle_id}"
+            outcome_json = json.dumps(outcome, sort_keys=True, separators=(",", ":"))
+            result.update({
+                "lifecycleStatus": "settled",
+                "settlementStatus": "settled",
+                "settledAt": settled_at,
+            })
+            result_json = json.dumps(result, sort_keys=True, separators=(",", ":"))
+            connection.execute(
+                """INSERT INTO battle_settlements(
+                       battle_id, outcome, settled_at, original_result_json, receipt_key
+                   ) VALUES (?, ?, ?, ?, ?)""",
+                (battle_id, outcome_json, settled_at, result_json, receipt_key),
+            )
+            connection.execute(
+                """UPDATE battle_diagnostics
+                   SET lifecycle_status = 'settled', outcome = ?, outcome_at = ?,
+                       settlement_at = ?, receipt_key = ?, terminal_reason = NULL,
+                       expires_at = ? WHERE battle_id = ?""",
+                (
+                    outcome_json, settled_at, settled_at, receipt_key, settled_at,
+                    battle_id,
+                ),
+            )
+            connection.execute(
+                "DELETE FROM active_battle_leases WHERE battle_id = ?", (battle_id,)
+            )
+            self._before_public_settlement_commit(connection, battle_id)
+            connection.commit()
+            return result
+        except (
+            ProgressionStoreError, SaveSlotAccessError, StageAccessError,
+            ArenaAccessError, PublicBattleAccessError,
+        ):
+            connection.rollback()
+            raise
+        except sqlite3.Error as exc:
+            connection.rollback()
+            raise ProgressionStoreError(
+                "The authoritative battle result could not be settled. Retry later."
+            ) from exc
+        except Exception:
+            connection.rollback()
+            raise
+        finally:
+            connection.close()
+
+    def public_terminal_pending_battle(
+        self,
+        *,
+        player_id: str,
+        session_id: str,
+        session_generation: int,
+    ) -> dict[str, Any] | None:
+        """Return one immutable pending result to the current owner session.
+
+        The current session may be a recovery replacement.  The old launch
+        session is retained in diagnostics/lease binding, while this read only
+        authorizes the current owner to ask the server to finish the already
+        recorded outcome; it never grants gameplay authority.
+        """
+
+        connection = self._connection()
+        try:
+            connection.execute("BEGIN")
+            self._assert_public_session(
+                connection,
+                player_id=player_id,
+                session_id=session_id,
+                generation=session_generation,
+            )
+            row = connection.execute(
+                """SELECT d.battle_id, d.outcome
+                   FROM battle_diagnostics d
+                   JOIN active_battle_leases l ON l.battle_id = d.battle_id
+                   WHERE d.player_id = ?
+                     AND d.lifecycle_status = 'terminalPending'
+                     AND l.status = 'active'
+                   LIMIT 1""",
+                (player_id,),
+            ).fetchone()
+            if row is None:
+                return None
+            if row["outcome"] is None:
+                raise ProgressionStoreError(
+                    "The pending battle outcome is missing. Retry later."
+                )
+            return {
+                "battleId": row["battle_id"],
+                "outcome": json.loads(row["outcome"]),
+            }
+        except (ProgressionStoreError, SaveSlotAccessError):
+            raise
+        except sqlite3.Error as exc:
+            raise ProgressionStoreError(
+                "The pending battle result could not be read. Retry later."
+            ) from exc
+        finally:
+            connection.close()
+
+    def public_battle_receipt(
+        self,
+        *,
+        battle_id: str,
+        player_id: str,
+        session_id: str,
+        session_generation: int,
+    ) -> dict[str, Any] | None:
+        """Return the original durable result to the current owning player."""
+        connection = self._connection()
+        try:
+            connection.execute("BEGIN")
+            self._assert_public_session(
+                connection, player_id=player_id, session_id=session_id,
+                generation=session_generation,
+            )
+            owner = connection.execute(
+                "SELECT player_id FROM battle_diagnostics WHERE battle_id = ?",
+                (battle_id,),
+            ).fetchone()
+            if owner is None or owner["player_id"] != player_id:
+                raise PublicBattleAccessError("battleNotFound", "Battle was not found.")
+            row = connection.execute(
+                "SELECT original_result_json FROM battle_settlements WHERE battle_id = ?",
+                (battle_id,),
+            ).fetchone()
+            return json.loads(row["original_result_json"]) if row else None
+        except sqlite3.Error as exc:
+            raise ProgressionStoreError(
+                "The battle receipt could not be read. Retry later."
+            ) from exc
+        finally:
+            connection.close()
+
+    def invalidate_player_battles_after_revocation(
+        self, *, player_id: str, reason: str
+    ) -> list[str]:
+        """End non-settled battle authority after logout/recovery/context change."""
+        if not self.public_mode:
+            return []
+        connection = self._connection()
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            rows = connection.execute(
+                """SELECT l.battle_id, d.lifecycle_status
+                   FROM active_battle_leases l
+                   JOIN battle_diagnostics d ON d.battle_id = l.battle_id
+                   WHERE l.player_id = ?""",
+                (player_id,),
+            ).fetchall()
+            removable = [
+                row["battle_id"] for row in rows
+                if row["lifecycle_status"] != "terminalPending"
+            ]
+            pending = [
+                row["battle_id"] for row in rows
+                if row["lifecycle_status"] == "terminalPending"
+            ]
+            now = self._timestamp()
+            connection.executemany(
+                """UPDATE battle_diagnostics
+                   SET lifecycle_status = 'abandoned', terminal_reason = ?,
+                       expires_at = ? WHERE battle_id = ?""",
+                ((reason, now, battle_id) for battle_id in removable),
+            )
+            connection.executemany(
+                """UPDATE battle_diagnostics SET terminal_reason = ?
+                   WHERE battle_id = ?""",
+                ((f"{reason}BeforeSettlement", battle_id) for battle_id in pending),
+            )
+            connection.executemany(
+                "DELETE FROM active_battle_leases WHERE battle_id = ?",
+                ((battle_id,) for battle_id in removable),
+            )
+            connection.commit()
+            # terminalPending retains its RAM session for bounded trusted
+            # settlement retry.  Callers should evict only battles whose
+            # authority was actually ended here.
+            return removable
+        except sqlite3.Error as exc:
+            connection.rollback()
+            raise ProgressionStoreError(
+                "Revoked Public battle authority could not be invalidated."
+            ) from exc
+        finally:
+            connection.close()
+
+    def assert_public_battle_context_change_allowed(self, *, player_id: str) -> None:
+        """Block destructive context changes while settlement needs RAM retry."""
+
+        if not self.public_mode:
+            return
+        connection = self._connection()
+        try:
+            row = connection.execute(
+                """SELECT 1 FROM active_battle_leases l
+                   JOIN battle_diagnostics d ON d.battle_id = l.battle_id
+                   WHERE l.player_id = ? AND d.lifecycle_status = 'terminalPending'
+                   LIMIT 1""",
+                (player_id,),
+            ).fetchone()
+            if row is not None:
+                raise SaveSlotAccessError(
+                    "battleSettlementPending",
+                    "The current battle result is still being settled. Retry later.",
+                )
+        except sqlite3.Error as exc:
+            raise ProgressionStoreError(
+                "The Public battle context could not be checked. Retry later."
+            ) from exc
+        finally:
+            connection.close()
+
+    def reconcile_public_battles_after_restart(self) -> list[str]:
+        """Expire RAM-dependent active/provisional battles after process restart."""
+        if not self.public_mode:
+            return []
+        connection = self._connection()
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            rows = connection.execute(
+                """SELECT l.battle_id FROM active_battle_leases l
+                   JOIN battle_diagnostics d ON d.battle_id = l.battle_id
+                   WHERE d.lifecycle_status IN (
+                       'provisional', 'active', 'resolving', 'terminalPending'
+                   )"""
+            ).fetchall()
+            battle_ids = [row["battle_id"] for row in rows]
+            now = self._timestamp()
+            connection.executemany(
+                """UPDATE battle_diagnostics
+                   SET lifecycle_status = 'expired', terminal_reason = 'serverRestart',
+                       outcome = ?, outcome_at = ?, expires_at = ?
+                   WHERE battle_id = ?""",
+                (
+                    (
+                        json.dumps({"kind": "abandoned", "reason": "serverRestart"},
+                                   sort_keys=True, separators=(",", ":")),
+                        now, now, battle_id,
+                    )
+                    for battle_id in battle_ids
+                ),
+            )
+            connection.execute("DELETE FROM active_battle_leases")
+            connection.commit()
+            return battle_ids
+        except sqlite3.Error as exc:
+            connection.rollback()
+            raise ProgressionStoreError(
+                "Public battle restart reconciliation failed."
+            ) from exc
+        finally:
+            connection.close()
 
     def _connection(self) -> sqlite3.Connection:
         self.ensure_initialized()
@@ -611,12 +2115,65 @@ class ProgressionStore:
                 "invalidSaveSlot", "slotId must be an integer from 1 through 5."
             )
 
-    def _active_profile_id(self, connection: sqlite3.Connection) -> str:
+    def _assert_public_session(
+        self,
+        connection: sqlite3.Connection,
+        *,
+        player_id: str | None,
+        session_id: str | None,
+        generation: int | None,
+    ) -> None:
+        if not self.public_mode:
+            return
+        if not player_id or not session_id or generation is None:
+            raise SaveSlotAccessError("authenticationRequired", "Authentication required.")
         row = connection.execute(
-            """SELECT s.profile_id FROM active_slot a
-               LEFT JOIN save_slots s ON s.slot_id = a.slot_id
-               WHERE a.singleton_id = 1"""
+            """SELECT s.player_id, s.generation, s.revoked_at, s.expires_at,
+                      p.session_generation, p.recovery_confirmed_at
+               FROM player_sessions s
+               JOIN players p ON p.player_id = s.player_id
+               WHERE s.session_id = ?""",
+            (session_id,),
         ).fetchone()
+        if (
+            row is None
+            or row["player_id"] != player_id
+            or row["generation"] != generation
+            or row["session_generation"] != generation
+            or row["revoked_at"] is not None
+        ):
+            raise SaveSlotAccessError(
+                "sessionRevoked", "The player session is no longer active."
+            )
+        if row["expires_at"] <= self._timestamp():
+            raise SaveSlotAccessError(
+                "sessionExpired", "The player session has expired."
+            )
+        if row["recovery_confirmed_at"] is None:
+            raise SaveSlotAccessError(
+                "recoveryConfirmationRequired",
+                "Confirm that you saved your Recovery Code first.",
+            )
+
+    def _active_profile_id(
+        self, connection: sqlite3.Connection, player_id: str | None = None
+    ) -> str:
+        if self.public_mode:
+            if not player_id:
+                raise SaveSlotAccessError("authenticationRequired", "Authentication required.")
+            row = connection.execute(
+                """SELECT s.profile_id FROM player_active_slots a
+                   LEFT JOIN player_save_slots s
+                     ON s.player_id = a.player_id AND s.slot_id = a.slot_id
+                   WHERE a.player_id = ?""",
+                (player_id,),
+            ).fetchone()
+        else:
+            row = connection.execute(
+                """SELECT s.profile_id FROM active_slot a
+                   LEFT JOIN save_slots s ON s.slot_id = a.slot_id
+                   WHERE a.singleton_id = 1"""
+            ).fetchone()
         if row is None or row["profile_id"] is None:
             raise SaveSlotAccessError(
                 "noActiveSaveSlot",
@@ -624,10 +2181,10 @@ class ProgressionStore:
             )
         return row["profile_id"]
 
-    def active_profile_id(self) -> str:
+    def active_profile_id(self, player_id: str | None = None) -> str:
         connection = self._connection()
         try:
-            return self._active_profile_id(connection)
+            return self._active_profile_id(connection, player_id)
         except sqlite3.Error as exc:
             raise ProgressionStoreError(
                 "Persistent progression could not be read. Retry later."
@@ -635,17 +2192,41 @@ class ProgressionStore:
         finally:
             connection.close()
 
-    def list_save_slots(self) -> dict[str, Any]:
+    def list_save_slots(
+        self,
+        player_id: str | None = None,
+        session_id: str | None = None,
+        session_generation: int | None = None,
+    ) -> dict[str, Any]:
         connection = self._connection()
         try:
-            active = connection.execute(
-                "SELECT slot_id FROM active_slot WHERE singleton_id = 1"
-            ).fetchone()
+            if self.public_mode:
+                connection.execute("BEGIN")
+                self._assert_public_session(
+                    connection, player_id=player_id, session_id=session_id,
+                    generation=session_generation,
+                )
+            if self.public_mode:
+                if not player_id:
+                    raise SaveSlotAccessError("authenticationRequired", "Authentication required.")
+                active = connection.execute(
+                    "SELECT slot_id FROM player_active_slots WHERE player_id = ?",
+                    (player_id,),
+                ).fetchone()
+                rows = connection.execute(
+                    """SELECT slot_id, profile_id, created_at, last_played_at
+                       FROM player_save_slots WHERE player_id = ? ORDER BY slot_id""",
+                    (player_id,),
+                ).fetchall()
+            else:
+                active = connection.execute(
+                    "SELECT slot_id FROM active_slot WHERE singleton_id = 1"
+                ).fetchone()
+                rows = connection.execute(
+                    """SELECT slot_id, profile_id, created_at, last_played_at
+                       FROM save_slots ORDER BY slot_id"""
+                ).fetchall()
             active_slot_id = active["slot_id"] if active else None
-            rows = connection.execute(
-                """SELECT slot_id, profile_id, created_at, last_played_at
-                   FROM save_slots ORDER BY slot_id"""
-            ).fetchall()
             return {
                 "activeSlotId": active_slot_id,
                 "slots": [self._slot_summary(row, active_slot_id) for row in rows],
@@ -668,20 +2249,59 @@ class ProgressionStore:
             "active": row["slot_id"] == active_slot_id,
         }
 
-    def create_save_slot(self, slot_id: int) -> dict[str, Any]:
-        return self._initialize_slot(slot_id, overwrite=False)
+    def create_save_slot(
+        self,
+        slot_id: int,
+        player_id: str | None = None,
+        session_id: str | None = None,
+        session_generation: int | None = None,
+    ) -> dict[str, Any]:
+        return self._initialize_slot(
+            slot_id, overwrite=False, player_id=player_id,
+            session_id=session_id, session_generation=session_generation,
+        )
 
-    def overwrite_save_slot(self, slot_id: int) -> dict[str, Any]:
-        return self._initialize_slot(slot_id, overwrite=True)
+    def overwrite_save_slot(
+        self,
+        slot_id: int,
+        player_id: str | None = None,
+        session_id: str | None = None,
+        session_generation: int | None = None,
+    ) -> dict[str, Any]:
+        return self._initialize_slot(
+            slot_id, overwrite=True, player_id=player_id,
+            session_id=session_id, session_generation=session_generation,
+        )
 
-    def _initialize_slot(self, slot_id: int, *, overwrite: bool) -> dict[str, Any]:
+    def _initialize_slot(
+        self,
+        slot_id: int,
+        *,
+        overwrite: bool,
+        player_id: str | None = None,
+        session_id: str | None = None,
+        session_generation: int | None = None,
+    ) -> dict[str, Any]:
         self._validate_slot_id(slot_id)
         connection = self._connection()
         try:
             connection.execute("BEGIN IMMEDIATE")
-            row = connection.execute(
-                "SELECT profile_id FROM save_slots WHERE slot_id = ?", (slot_id,)
-            ).fetchone()
+            self._assert_public_session(
+                connection, player_id=player_id, session_id=session_id,
+                generation=session_generation,
+            )
+            if self.public_mode:
+                if not player_id:
+                    raise SaveSlotAccessError("authenticationRequired", "Authentication required.")
+                row = connection.execute(
+                    """SELECT profile_id FROM player_save_slots
+                       WHERE player_id = ? AND slot_id = ?""",
+                    (player_id, slot_id),
+                ).fetchone()
+            else:
+                row = connection.execute(
+                    "SELECT profile_id FROM save_slots WHERE slot_id = ?", (slot_id,)
+                ).fetchone()
             if row is None:
                 raise ProgressionStoreError(
                     "The save-slot catalogue is incomplete. Retry later."
@@ -707,15 +2327,27 @@ class ProgressionStore:
                     connection.execute(
                         f"DELETE FROM {table} WHERE profile_id = ?", (old_profile_id,)
                     )
-                connection.execute(
-                    "UPDATE save_slots SET profile_id = NULL, created_at = NULL, "
-                    "last_played_at = NULL WHERE slot_id = ?",
-                    (slot_id,),
-                )
+                if self.public_mode:
+                    connection.execute(
+                        """UPDATE player_save_slots
+                           SET profile_id = NULL, created_at = NULL, last_played_at = NULL
+                           WHERE player_id = ? AND slot_id = ?""",
+                        (player_id, slot_id),
+                    )
+                else:
+                    connection.execute(
+                        "UPDATE save_slots SET profile_id = NULL, created_at = NULL, "
+                        "last_played_at = NULL WHERE slot_id = ?",
+                        (slot_id,),
+                    )
                 connection.execute(
                     "DELETE FROM profiles WHERE profile_id = ?", (old_profile_id,)
                 )
-            profile_id = f"profile.local.slot.{slot_id}.{uuid.uuid4().hex}"
+            profile_id = (
+                f"profile.public.{player_id}.slot.{slot_id}.{uuid.uuid4().hex}"
+                if self.public_mode else
+                f"profile.local.slot.{slot_id}.{uuid.uuid4().hex}"
+            )
             now = self._timestamp()
             connection.execute(
                 "INSERT INTO profiles(profile_id) VALUES (?)", (profile_id,)
@@ -730,19 +2362,33 @@ class ProgressionStore:
                    ) VALUES (?, ?, 0, 0)""",
                 ((profile_id, stage_id) for stage_id in STAGE_BATTLES),
             )
-            connection.execute(
-                """UPDATE save_slots SET profile_id = ?, created_at = ?,
-                       last_played_at = ? WHERE slot_id = ?""",
-                (profile_id, now, now, slot_id),
-            )
-            connection.execute(
-                "UPDATE active_slot SET slot_id = ? WHERE singleton_id = 1", (slot_id,)
-            )
+            if self.public_mode:
+                connection.execute(
+                    """UPDATE player_save_slots SET profile_id = ?, created_at = ?,
+                           last_played_at = ? WHERE player_id = ? AND slot_id = ?""",
+                    (profile_id, now, now, player_id, slot_id),
+                )
+                connection.execute(
+                    "UPDATE player_active_slots SET slot_id = ? WHERE player_id = ?",
+                    (slot_id, player_id),
+                )
+            else:
+                connection.execute(
+                    """UPDATE save_slots SET profile_id = ?, created_at = ?,
+                           last_played_at = ? WHERE slot_id = ?""",
+                    (profile_id, now, now, slot_id),
+                )
+                connection.execute(
+                    "UPDATE active_slot SET slot_id = ? WHERE singleton_id = 1", (slot_id,)
+                )
             progression = self._read_progression(connection, profile_id)
             slot = connection.execute(
-                """SELECT slot_id, profile_id, created_at, last_played_at
-                   FROM save_slots WHERE slot_id = ?""",
-                (slot_id,),
+                ("""SELECT slot_id, profile_id, created_at, last_played_at
+                    FROM player_save_slots WHERE player_id = ? AND slot_id = ?"""
+                 if self.public_mode else
+                 """SELECT slot_id, profile_id, created_at, last_played_at
+                    FROM save_slots WHERE slot_id = ?"""),
+                ((player_id, slot_id) if self.public_mode else (slot_id,)),
             ).fetchone()
             connection.commit()
             return {
@@ -761,33 +2407,66 @@ class ProgressionStore:
         finally:
             connection.close()
 
-    def load_save_slot(self, slot_id: int) -> dict[str, Any]:
+    def load_save_slot(
+        self,
+        slot_id: int,
+        player_id: str | None = None,
+        session_id: str | None = None,
+        session_generation: int | None = None,
+    ) -> dict[str, Any]:
         self._validate_slot_id(slot_id)
         connection = self._connection()
         try:
             connection.execute("BEGIN IMMEDIATE")
-            row = connection.execute(
-                """SELECT slot_id, profile_id, created_at, last_played_at
-                   FROM save_slots WHERE slot_id = ?""",
-                (slot_id,),
-            ).fetchone()
+            self._assert_public_session(
+                connection, player_id=player_id, session_id=session_id,
+                generation=session_generation,
+            )
+            if self.public_mode:
+                if not player_id:
+                    raise SaveSlotAccessError("authenticationRequired", "Authentication required.")
+                row = connection.execute(
+                    """SELECT slot_id, profile_id, created_at, last_played_at
+                       FROM player_save_slots WHERE player_id = ? AND slot_id = ?""",
+                    (player_id, slot_id),
+                ).fetchone()
+            else:
+                row = connection.execute(
+                    """SELECT slot_id, profile_id, created_at, last_played_at
+                       FROM save_slots WHERE slot_id = ?""",
+                    (slot_id,),
+                ).fetchone()
             if row is None or row["profile_id"] is None:
                 raise SaveSlotAccessError(
                     "loadEmptySlot", f"Save slot {slot_id} is empty."
                 )
             now = self._timestamp()
-            connection.execute(
-                "UPDATE save_slots SET last_played_at = ? WHERE slot_id = ?",
-                (now, slot_id),
-            )
-            connection.execute(
-                "UPDATE active_slot SET slot_id = ? WHERE singleton_id = 1", (slot_id,)
-            )
+            if self.public_mode:
+                connection.execute(
+                    """UPDATE player_save_slots SET last_played_at = ?
+                       WHERE player_id = ? AND slot_id = ?""",
+                    (now, player_id, slot_id),
+                )
+                connection.execute(
+                    "UPDATE player_active_slots SET slot_id = ? WHERE player_id = ?",
+                    (slot_id, player_id),
+                )
+            else:
+                connection.execute(
+                    "UPDATE save_slots SET last_played_at = ? WHERE slot_id = ?",
+                    (now, slot_id),
+                )
+                connection.execute(
+                    "UPDATE active_slot SET slot_id = ? WHERE singleton_id = 1", (slot_id,)
+                )
             progression = self._read_progression(connection, row["profile_id"])
             updated = connection.execute(
-                """SELECT slot_id, profile_id, created_at, last_played_at
-                   FROM save_slots WHERE slot_id = ?""",
-                (slot_id,),
+                ("""SELECT slot_id, profile_id, created_at, last_played_at
+                    FROM player_save_slots WHERE player_id = ? AND slot_id = ?"""
+                 if self.public_mode else
+                 """SELECT slot_id, profile_id, created_at, last_played_at
+                    FROM save_slots WHERE slot_id = ?"""),
+                ((player_id, slot_id) if self.public_mode else (slot_id,)),
             ).fetchone()
             connection.commit()
             return {
@@ -806,11 +2485,24 @@ class ProgressionStore:
         finally:
             connection.close()
 
-    def read_progression(self) -> dict[str, Any]:
+    def read_progression(
+        self,
+        player_id: str | None = None,
+        session_id: str | None = None,
+        session_generation: int | None = None,
+    ) -> dict[str, Any]:
         connection: sqlite3.Connection | None = None
         try:
             connection = self._connection()
-            return self._read_progression(connection, self._active_profile_id(connection))
+            if self.public_mode:
+                connection.execute("BEGIN")
+                self._assert_public_session(
+                    connection, player_id=player_id, session_id=session_id,
+                    generation=session_generation,
+                )
+            return self._read_progression(
+                connection, self._active_profile_id(connection, player_id)
+            )
         except (ProgressionStoreError, SaveSlotAccessError):
             raise
         except sqlite3.Error as exc:
@@ -961,24 +2653,49 @@ class ProgressionStore:
         }
 
     def assert_player_team_unlocked(
-        self, definition_ids: list[str], expected_profile_id: str | None = None
+        self,
+        definition_ids: list[str],
+        expected_profile_id: str | None = None,
+        *,
+        player_id: str | None = None,
+        session_id: str | None = None,
+        session_generation: int | None = None,
     ) -> None:
-        progression = self.read_progression()
-        if (
-            expected_profile_id is not None
-            and progression["profileId"] != expected_profile_id
-        ):
-            raise SaveSlotAccessError(
-                "activeSaveSlotChanged",
-                "The active save slot changed; start the battle again.",
-            )
-        unlocked = set(progression["unlockedHeroDefinitionIds"])
-        locked = sorted(set(definition_ids) - unlocked)
-        if locked:
-            raise StageAccessError(
-                "heroLocked",
-                f"The player profile has not unlocked: {', '.join(locked)}.",
-            )
+        connection = self._connection()
+        try:
+            if self.public_mode:
+                connection.execute("BEGIN")
+                self._assert_public_session(
+                    connection, player_id=player_id, session_id=session_id,
+                    generation=session_generation,
+                )
+            profile_id = self._active_profile_id(connection, player_id)
+            if expected_profile_id is not None and profile_id != expected_profile_id:
+                raise SaveSlotAccessError(
+                    "activeSaveSlotChanged",
+                    "The active save slot changed; start the battle again.",
+                )
+            unlocked = {
+                row["definition_id"]
+                for row in connection.execute(
+                    "SELECT definition_id FROM unlocked_heroes WHERE profile_id = ?",
+                    (profile_id,),
+                )
+            }
+            locked = sorted(set(definition_ids) - unlocked)
+            if locked:
+                raise StageAccessError(
+                    "heroLocked",
+                    f"The player profile has not unlocked: {', '.join(locked)}.",
+                )
+        except (ProgressionStoreError, SaveSlotAccessError, StageAccessError):
+            raise
+        except sqlite3.Error as exc:
+            raise ProgressionStoreError(
+                "Player roster access could not be checked. Retry later."
+            ) from exc
+        finally:
+            connection.close()
 
     @staticmethod
     def _decode_hero_ids(value: str, *, expected_count: int) -> list[str]:
@@ -1120,10 +2837,23 @@ class ProgressionStore:
             "run": self._read_arena_run(connection, profile_id),
         }
 
-    def read_arena_state(self) -> dict[str, Any]:
+    def read_arena_state(
+        self,
+        player_id: str | None = None,
+        session_id: str | None = None,
+        session_generation: int | None = None,
+    ) -> dict[str, Any]:
         connection = self._connection()
         try:
-            return self._arena_state(connection, self._active_profile_id(connection))
+            if self.public_mode:
+                connection.execute("BEGIN")
+                self._assert_public_session(
+                    connection, player_id=player_id, session_id=session_id,
+                    generation=session_generation,
+                )
+            return self._arena_state(
+                connection, self._active_profile_id(connection, player_id)
+            )
         except (ProgressionStoreError, SaveSlotAccessError):
             raise
         except sqlite3.Error as exc:
@@ -1173,12 +2903,22 @@ class ProgressionStore:
         return nodes
 
     def create_arena_run(
-        self, squad_definition_ids: list[str], *, schedule_seed: int | None = None
+        self,
+        squad_definition_ids: list[str],
+        *,
+        schedule_seed: int | None = None,
+        player_id: str | None = None,
+        session_id: str | None = None,
+        session_generation: int | None = None,
     ) -> dict[str, Any]:
         connection = self._connection()
         try:
             connection.execute("BEGIN IMMEDIATE")
-            profile_id = self._active_profile_id(connection)
+            self._assert_public_session(
+                connection, player_id=player_id, session_id=session_id,
+                generation=session_generation,
+            )
+            profile_id = self._active_profile_id(connection, player_id)
             unlocked = {
                 row["definition_id"]
                 for row in connection.execute(
@@ -1269,12 +3009,23 @@ class ProgressionStore:
         finally:
             connection.close()
 
-    def abandon_arena_run(self, *, run_id: str) -> dict[str, Any]:
+    def abandon_arena_run(
+        self,
+        *,
+        run_id: str,
+        player_id: str | None = None,
+        session_id: str | None = None,
+        session_generation: int | None = None,
+    ) -> dict[str, Any]:
         """Delete only the active profile's current Arena Run after confirmation."""
         connection = self._connection()
         try:
             connection.execute("BEGIN IMMEDIATE")
-            profile_id = self._active_profile_id(connection)
+            self._assert_public_session(
+                connection, player_id=player_id, session_id=session_id,
+                generation=session_generation,
+            )
+            profile_id = self._active_profile_id(connection, player_id)
             run = self._read_arena_run(connection, profile_id)
             if run is None or run["runId"] != run_id:
                 raise ArenaAccessError("arenaRunNotFound", "The Arena Run was not found.")
@@ -1298,10 +3049,19 @@ class ProgressionStore:
         node_index: int,
         player_team: list[str],
         player_formation: str | None,
+        player_id: str | None = None,
+        session_id: str | None = None,
+        session_generation: int | None = None,
     ) -> dict[str, Any]:
         connection = self._connection()
         try:
-            profile_id = self._active_profile_id(connection)
+            if self.public_mode:
+                connection.execute("BEGIN")
+                self._assert_public_session(
+                    connection, player_id=player_id, session_id=session_id,
+                    generation=session_generation,
+                )
+            profile_id = self._active_profile_id(connection, player_id)
             run = self._read_arena_run(connection, profile_id)
             if run is None or run["runId"] != run_id:
                 raise ArenaAccessError("arenaRunNotFound", "The Arena Run was not found.")
@@ -1343,6 +3103,50 @@ class ProgressionStore:
         finally:
             connection.close()
 
+    def _commit_arena_victory_tx(
+        self,
+        connection: sqlite3.Connection,
+        *,
+        run_id: str,
+        node_index: int,
+        battle_id: str,
+        profile_id: str,
+    ) -> dict[str, Any]:
+        run = self._read_arena_run(connection, profile_id)
+        if run is None or run["runId"] != run_id:
+            raise ArenaAccessError("arenaRunNotFound", "The Arena Run was not found.")
+        node = run["nodes"][node_index - 1] if 1 <= node_index <= 12 else None
+        if node is None:
+            raise ArenaAccessError("arenaNodeNotFound", "The Arena node was not found.")
+        if node["completionBattleId"] == battle_id:
+            return {"alreadyCommitted": True, "arena": self._arena_state(connection, profile_id)}
+        if run["status"] != "active" or run["currentNodeIndex"] != node_index:
+            raise ArenaAccessError(
+                "arenaNodeOutOfOrder", "Only the current Arena node can advance."
+            )
+        if node["completed"]:
+            raise ArenaAccessError(
+                "arenaNodeAlreadyCompleted", "This Arena node is already complete."
+            )
+        connection.execute(
+            """UPDATE arena_nodes SET completed = 1, completion_battle_id = ?
+               WHERE run_id = ? AND node_index = ?""",
+            (battle_id, run_id, node_index),
+        )
+        if node_index == ARENA_NODE_COUNT:
+            connection.execute(
+                """UPDATE arena_runs SET status = 'completed',
+                       current_node_index = NULL, completed_at = ?
+                   WHERE run_id = ?""",
+                (self._timestamp(), run_id),
+            )
+        else:
+            connection.execute(
+                "UPDATE arena_runs SET current_node_index = ? WHERE run_id = ?",
+                (node_index + 1, run_id),
+            )
+        return {"alreadyCommitted": False, "arena": self._arena_state(connection, profile_id)}
+
     def commit_arena_victory(
         self,
         *,
@@ -1360,44 +3164,15 @@ class ProgressionStore:
                     "activeSaveSlotChanged",
                     "The active save slot changed; start the Arena battle again.",
                 )
-            run = self._read_arena_run(connection, profile_id)
-            if run is None or run["runId"] != run_id:
-                raise ArenaAccessError("arenaRunNotFound", "The Arena Run was not found.")
-            node = run["nodes"][node_index - 1] if 1 <= node_index <= 12 else None
-            if node is None:
-                raise ArenaAccessError("arenaNodeNotFound", "The Arena node was not found.")
-            if node["completionBattleId"] == battle_id:
-                state = self._arena_state(connection, profile_id)
-                connection.commit()
-                return {"alreadyCommitted": True, "arena": state}
-            if run["status"] != "active" or run["currentNodeIndex"] != node_index:
-                raise ArenaAccessError(
-                    "arenaNodeOutOfOrder", "Only the current Arena node can advance."
-                )
-            if node["completed"]:
-                raise ArenaAccessError(
-                    "arenaNodeAlreadyCompleted", "This Arena node is already complete."
-                )
-            connection.execute(
-                """UPDATE arena_nodes SET completed = 1, completion_battle_id = ?
-                   WHERE run_id = ? AND node_index = ?""",
-                (battle_id, run_id, node_index),
+            result = self._commit_arena_victory_tx(
+                connection,
+                run_id=run_id,
+                node_index=node_index,
+                battle_id=battle_id,
+                profile_id=profile_id,
             )
-            if node_index == ARENA_NODE_COUNT:
-                connection.execute(
-                    """UPDATE arena_runs SET status = 'completed',
-                           current_node_index = NULL, completed_at = ?
-                       WHERE run_id = ?""",
-                    (self._timestamp(), run_id),
-                )
-            else:
-                connection.execute(
-                    "UPDATE arena_runs SET current_node_index = ? WHERE run_id = ?",
-                    (node_index + 1, run_id),
-                )
-            state = self._arena_state(connection, profile_id)
             connection.commit()
-            return {"alreadyCommitted": False, "arena": state}
+            return result
         except (ProgressionStoreError, SaveSlotAccessError, ArenaAccessError):
             connection.rollback()
             raise
@@ -1418,6 +3193,10 @@ class ProgressionStore:
         battle_index: int,
         expected_profile_id: str | None = None,
         mode: StageMode = "learner",
+        *,
+        player_id: str | None = None,
+        session_id: str | None = None,
+        session_generation: int | None = None,
     ) -> StageBattle:
         if mode not in {"learner", "tactics"}:
             raise StageAccessError("invalidStageMode", "Unknown structured-stage mode.")
@@ -1425,7 +3204,13 @@ class ProgressionStore:
         connection: sqlite3.Connection | None = None
         try:
             connection = self._connection()
-            profile_id = self._active_profile_id(connection)
+            if self.public_mode:
+                connection.execute("BEGIN")
+                self._assert_public_session(
+                    connection, player_id=player_id, session_id=session_id,
+                    generation=session_generation,
+                )
+            profile_id = self._active_profile_id(connection, player_id)
             if expected_profile_id is not None and profile_id != expected_profile_id:
                 raise SaveSlotAccessError(
                     "activeSaveSlotChanged",
@@ -1463,6 +3248,120 @@ class ProgressionStore:
         finally:
             if connection is not None:
                 connection.close()
+
+    def _commit_stage_victory_tx(
+        self,
+        connection: sqlite3.Connection,
+        *,
+        battle_id: str,
+        stage_id: str,
+        battle_index: int,
+        mode: StageMode,
+        profile_id: str,
+    ) -> dict[str, Any]:
+        battle = stage_battle(stage_id, battle_index)
+        duplicate = connection.execute(
+            (
+                """SELECT 1 FROM battle_completions
+                   WHERE profile_id = ? AND battle_id = ?"""
+                if mode == "learner"
+                else """SELECT 1 FROM stage_mode_completions
+                   WHERE profile_id = ? AND completion_battle_id = ?"""
+            ),
+            (profile_id, battle_id),
+        ).fetchone()
+        if duplicate is not None:
+            return {
+                "alreadyCommitted": True,
+                "newlyGrantedRewards": [],
+                "progression": self._read_progression(connection, profile_id),
+            }
+        row = connection.execute(
+            """SELECT highest_completed_battle FROM stage_progress
+               WHERE profile_id = ? AND stage_id = ?""",
+            (profile_id, stage_id),
+        ).fetchone()
+        if row is None:
+            raise ProgressionStoreError(
+                "The stored stage progression is incomplete. Retry later."
+            )
+        highest = row["highest_completed_battle"]
+        required_count = len(STAGE_BATTLES[battle.stage_id])
+        if mode == "tactics" and highest != required_count:
+            raise StageAccessError(
+                "stageModeLocked",
+                "Complete this campaign in Learner mode before committing Tactics.",
+            )
+        if mode == "learner" and battle_index > min(highest + 1, required_count):
+            raise StageAccessError(
+                "stageBattleLocked",
+                "Complete the preceding battle before committing this victory.",
+            )
+        if mode == "tactics":
+            existing = connection.execute(
+                """SELECT 1 FROM stage_mode_completions
+                   WHERE profile_id = ? AND stage_id = ?
+                     AND battle_index = ? AND mode = 'tactics'""",
+                (profile_id, stage_id, battle_index),
+            ).fetchone()
+            if existing is not None:
+                return {
+                    "alreadyCommitted": True,
+                    "newlyGrantedRewards": [],
+                    "progression": self._read_progression(connection, profile_id),
+                }
+            connection.execute(
+                """INSERT INTO stage_mode_completions(
+                       profile_id, stage_id, battle_index, mode,
+                       completion_battle_id, completed_at
+                   ) VALUES (?, ?, ?, 'tactics', ?, ?)""",
+                (profile_id, stage_id, battle_index, battle_id, self._timestamp()),
+            )
+        else:
+            connection.execute(
+                """INSERT INTO battle_completions(
+                       profile_id, battle_id, stage_id, battle_index
+                   ) VALUES (?, ?, ?, ?)""",
+                (profile_id, battle_id, stage_id, battle_index),
+            )
+            connection.execute(
+                """INSERT OR IGNORE INTO stage_mode_completions(
+                       profile_id, stage_id, battle_index, mode,
+                       completion_battle_id, completed_at
+                   ) VALUES (?, ?, ?, 'learner', ?, ?)""",
+                (profile_id, stage_id, battle_index, battle_id, self._timestamp()),
+            )
+            if battle_index == highest + 1:
+                connection.execute(
+                    """UPDATE stage_progress SET highest_completed_battle = ?,
+                           completed = ? WHERE profile_id = ? AND stage_id = ?""",
+                    (
+                        battle_index, int(battle_index == required_count),
+                        profile_id, stage_id,
+                    ),
+                )
+        newly_granted: list[dict[str, Any]] = []
+        reward = battle.reward if mode == "learner" else None
+        if reward is not None:
+            cursor = connection.execute(
+                """INSERT OR IGNORE INTO granted_rewards(profile_id, reward_id, count)
+                   VALUES (?, ?, 1)""",
+                (profile_id, reward.reward_id),
+            )
+            if cursor.rowcount == 1:
+                if reward.hero_definition_id is not None:
+                    connection.execute(
+                        """INSERT OR IGNORE INTO unlocked_heroes(
+                               profile_id, definition_id
+                           ) VALUES (?, ?)""",
+                        (profile_id, reward.hero_definition_id),
+                    )
+                newly_granted.append(reward_dict(reward))
+        return {
+            "alreadyCommitted": False,
+            "newlyGrantedRewards": newly_granted,
+            "progression": self._read_progression(connection, profile_id),
+        }
 
     def commit_victory(
         self,

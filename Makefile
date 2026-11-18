@@ -1,4 +1,4 @@
-.PHONY: dev backend frontend lan
+.PHONY: dev backend backend-public frontend lan
 
 # Override this when Wi-Fi is not en0, for example:
 # make lan LAN_HOST=192.168.1.42
@@ -14,12 +14,15 @@ dev:
 		[ -z "$$frontend_pid" ] || kill "$$frontend_pid" 2>/dev/null || true; \
 	}; \
 	trap cleanup INT TERM EXIT; \
-	.venv/bin/uvicorn battle_api.app:app --reload --port 8001 & backend_pid=$$!; \
+	LOCT_RELEASE_MODE=development .venv/bin/uvicorn battle_api.app:app --reload --port 8001 & backend_pid=$$!; \
 	(cd web-ui && npm run dev) & frontend_pid=$$!; \
 	wait $$backend_pid $$frontend_pid
 
 backend:
-	.venv/bin/uvicorn battle_api.app:app --reload --port 8001
+	LOCT_RELEASE_MODE=development .venv/bin/uvicorn battle_api.app:app --reload --port 8001
+
+backend-public:
+	LOCT_RELEASE_MODE=public .venv/bin/uvicorn battle_api.app:app --port 8001
 
 frontend:
 	cd web-ui && npm run dev
@@ -36,6 +39,6 @@ lan:
 		[ -z "$$frontend_pid" ] || kill "$$frontend_pid" 2>/dev/null || true; \
 	}; \
 	trap cleanup INT TERM EXIT; \
-	BATTLE_API_CORS_ORIGINS="http://localhost:3001,http://127.0.0.1:3001,http://$(LAN_HOST):3001" .venv/bin/uvicorn battle_api.app:app --reload --host "$(LAN_HOST)" --port 8001 & backend_pid=$$!; \
+	LOCT_RELEASE_MODE=development BATTLE_API_CORS_ORIGINS="http://localhost:3001,http://127.0.0.1:3001,http://$(LAN_HOST):3001" .venv/bin/uvicorn battle_api.app:app --reload --host "$(LAN_HOST)" --port 8001 & backend_pid=$$!; \
 	(cd web-ui && NEXT_PUBLIC_BATTLE_API_URL="http://$(LAN_HOST):8001" npm run dev -- --hostname "$(LAN_HOST)") & frontend_pid=$$!; \
 	wait $$backend_pid $$frontend_pid

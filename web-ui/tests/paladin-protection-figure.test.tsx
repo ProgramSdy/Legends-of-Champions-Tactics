@@ -36,8 +36,10 @@ describe("final registered battlefield figures", () => {
 
     render(<BattleScreen provider={new MockBattleProvider(snapshot)} mode="live" />);
 
-    const friendlyImage = await screen.findByLabelText("Friendly Figure figure");
-    const enemyImage = screen.getByLabelText("Enemy Figure figure");
+    const friendlyImage = (await screen.findAllByLabelText("Friendly Figure figure")).find((node) => node.tagName === "IMG");
+    const enemyImage = screen.getAllByLabelText("Enemy Figure figure").find((node) => node.tagName === "IMG");
+    expect(friendlyImage).toBeDefined();
+    expect(enemyImage).toBeDefined();
     for (const image of [friendlyImage, enemyImage]) {
       expect(image.tagName).toBe("IMG");
       expect(image).toHaveClass("figure-art", "fallback-requested");

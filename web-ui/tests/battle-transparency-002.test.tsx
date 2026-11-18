@@ -55,7 +55,7 @@ describe("BATTLE-TRANSPARENCY-002 healer presentation", () => {
     const { provider, targetId } = await makeProvider(skillId, displayName, targetMode);
     render(<BattleScreen provider={provider} mode="live" />);
     fireEvent.click(await screen.findByRole("button", { name: new RegExp(displayName, "i") }));
-    fireEvent.mouseEnter(screen.getByRole("button", { name: new RegExp(targetId.includes("black") ? "Black Heart" : "Sashein") }));
+    fireEvent.mouseEnter(screen.getByRole("button", { name: new RegExp(targetId.includes("black") ? "Black Heart, selectable target" : "Sashein, selectable target") }));
 
     const card = await waitFor(() => {
       const result = document.querySelector(".target-preview-card.ready");
@@ -75,7 +75,7 @@ describe("BATTLE-TRANSPARENCY-002 healer presentation", () => {
     const { provider, targetId } = await makeProvider("skill.paladin.flash_of_light", "Flash of Light", "singleAlly");
     render(<BattleScreen provider={provider} mode="live" />);
     fireEvent.click(await screen.findByRole("button", { name: /Flash of Light/i }));
-    const target = screen.getByRole("button", { name: /Black Heart/ });
+    const target = screen.getByRole("button", { name: /Black Heart, selectable target/ });
     fireEvent.mouseEnter(target);
     await waitFor(() => expect(provider.previewAction).toHaveBeenCalledWith(
       expect.objectContaining({ targetIds: [targetId] }), expect.any(AbortSignal),

@@ -3,11 +3,13 @@ from __future__ import annotations
 from pathlib import Path
 import sqlite3
 
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 import pytest
 
 from battle_api.adapter import HERO_ROSTER
 from battle_api.app import app, get_progression_store, registry
+from battle_api.debug_routes import create_debug_router
 from battle_api.progression import (
     ALL_HERO_IDS,
     ARENA_FRONT_HERO_IDS,
@@ -163,9 +165,10 @@ def test_arena_size_pool_is_fixed_shuffled_and_seeded():
 
 def test_debug_creation_uses_full_roster_without_save_or_persistence(tmp_path: Path):
     store = ProgressionStore(tmp_path / "debug.sqlite3")
-    app.dependency_overrides[get_progression_store] = lambda: store
-    with TestClient(app) as client:
-        before = client.get("/api/v1/save-slots").json()
+    debug_app = FastAPI()
+    debug_app.include_router(create_debug_router(registry))
+    before = store.list_save_slots()
+    with TestClient(debug_app) as client:
         created = client.post(
             "/api/v1/debug/battles",
             json={
@@ -183,8 +186,7 @@ def test_debug_creation_uses_full_roster_without_save_or_persistence(tmp_path: P
                 "seed": 23,
             },
         )
-        after = client.get("/api/v1/save-slots").json()
-    app.dependency_overrides.clear()
+    after = store.list_save_slots()
 
     assert created.status_code == 200
     assert before == after
@@ -377,11 +379,10 @@ def test_arena_commit_failure_rolls_back_node_and_progress(tmp_path: Path):
     assert unchanged["nodes"][0]["completed"] is False
 
 
-def test_openapi_exposes_strict_arena_and_debug_boundaries():
+def test_openapi_exposes_strict_arena_boundaries():
     schema = app.openapi()
     paths = schema["paths"]
 
-    assert "/api/v1/debug/battles" in paths
     assert "/api/v1/arena" in paths
     assert "/api/v1/arena/runs" in paths
     assert "/api/v1/arena/runs/{run_id}/nodes/{node_index}/battles" in paths

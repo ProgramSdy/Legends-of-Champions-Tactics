@@ -15,11 +15,13 @@ import {
   useState,
   type KeyboardEvent,
 } from "react";
+import { usePublicSession } from "@/components/session/PublicSessionProvider";
+import { isEngineeringMode } from "@/lib/releaseMode";
 
 const STARTUP_BACKGROUND = "/game-images/Game_Startup/Game_Startup_01.png";
 const GAME_LOGO = "/game-images/Game_Logo/Game_Logo_01.png";
 
-type StartupView = "closed" | "choices" | "new" | "load" | "overwrite";
+type StartupView = "closed" | "public-entry" | "enroll" | "recover" | "recovery-code" | "choices" | "new" | "load" | "overwrite";
 
 function timestampLabel(value: string | null): string {
   if (!value) return "Not played";
@@ -70,6 +72,8 @@ function SaveSlotButton({
 
 export function StartupScreen() {
   const router = useRouter();
+  const engineeringMode = isEngineeringMode();
+  const publicSession = usePublicSession();
   const startRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLElement>(null);
   const newGameRef = useRef<HTMLButtonElement>(null);
@@ -80,6 +84,10 @@ export function StartupScreen() {
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [playerName, setPlayerName] = useState("");
+  const [recoveryInput, setRecoveryInput] = useState("");
+  const [savedRecoveryConfirmed, setSavedRecoveryConfirmed] = useState(false);
+  const [copiedRecovery, setCopiedRecovery] = useState(false);
 
   const occupiedSlots = slots?.filter((slot) => slot.occupied) ?? [];
   const loadUnavailable = !loadingSlots && slots !== null && occupiedSlots.length === 0;
@@ -99,6 +107,17 @@ export function StartupScreen() {
   };
 
   const openStartupMenu = () => {
+    if (!engineeringMode) {
+      if (publicSession.phase === "authenticated") {
+        setView("choices");
+        void refreshSlots();
+      } else if (publicSession.phase === "unconfirmed") {
+        setView("recovery-code");
+      } else {
+        setView("public-entry");
+      }
+      return;
+    }
     setView("choices");
     setSelectedSlot(null);
     void refreshSlots();
@@ -124,7 +143,9 @@ export function StartupScreen() {
       } else if (view === "overwrite") {
         overwriteConfirmRef.current?.focus();
       } else {
-        dialogRef.current?.querySelector<HTMLButtonElement>(".save-slot-card:not(:disabled)")?.focus();
+        dialogRef.current?.querySelector<HTMLElement>(
+          ".save-slot-card:not(:disabled), input:not(:disabled), button:not(:disabled)",
+        )?.focus();
       }
     });
   }, [actionLoading, loadingSlots, view]);
@@ -188,6 +209,56 @@ export function StartupScreen() {
     void finishSlotAction(slot.slotId, "create");
   };
 
+  const runPublicAction = async (action: () => Promise<void>, successView?: StartupView) => {
+    setActionLoading(true);
+    setError(null);
+    try {
+      await action();
+      if (successView) setView(successView);
+    } catch (reason: unknown) {
+      setError(reason instanceof Error ? reason.message : "The player request failed.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const submitEnrollment = () => {
+    if (!/^[A-Za-z0-9_]{3,20}$/.test(playerName)) {
+      setError("Player Name must be 3–20 ASCII letters, numbers, or underscores.");
+      return;
+    }
+    setSavedRecoveryConfirmed(false);
+    setCopiedRecovery(false);
+    void runPublicAction(() => publicSession.enroll(playerName), "recovery-code");
+  };
+
+  const submitRecovery = () => {
+    const normalized = recoveryInput.trim().toUpperCase();
+    void runPublicAction(async () => {
+      await publicSession.recover(normalized);
+      await refreshSlots();
+    }, "choices");
+  };
+
+  const copyRecoveryCode = async () => {
+    const code = publicSession.disclosedRecoveryCode;
+    if (!code) return;
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopiedRecovery(true);
+    } catch {
+      setError("Copy is unavailable. Select the Recovery Code and copy it manually.");
+    }
+  };
+
+  const acknowledgeRecovery = () => {
+    if (!savedRecoveryConfirmed) return;
+    void runPublicAction(async () => {
+      await publicSession.acknowledgeRecoveryCode();
+      await refreshSlots();
+    }, "choices");
+  };
+
   return (
     <main className="startup-screen">
       <Image
@@ -228,9 +299,65 @@ export function StartupScreen() {
             aria-describedby="startup-dialog-description"
             onKeyDown={handleDialogKeyDown}
           >
-            {view === "choices" ? (
+            {view === "public-entry" ? (
               <>
-                <small>LOCAL ADVENTURE</small>
+                <small>PUBLIC PRE-ALPHA</small>
+                <h2 id="startup-dialog-title">Enter the Valley</h2>
+                <p id="startup-dialog-description">Create a player or recover an existing player with its Recovery Code.</p>
+                {publicSession.error || error ? <p className="startup-dialog-error compact" role="alert">{error ?? publicSession.error}</p> : null}
+                <div className="startup-choice-actions">
+                  <button type="button" onClick={() => { setError(null); setView("enroll"); }}><strong>CREATE NEW PLAYER</strong><span>Receive a one-time Recovery Code</span></button>
+                  <button type="button" onClick={() => { setError(null); setView("recover"); }}><strong>RECOVER PLAYER</strong><span>Use an existing Recovery Code</span></button>
+                </div>
+                <button className="startup-dialog-cancel" type="button" onClick={closeStartupMenu}>CANCEL</button>
+              </>
+            ) : view === "enroll" ? (
+              <>
+                <small>CREATE NEW PLAYER</small>
+                <h2 id="startup-dialog-title">Choose a Player Name</h2>
+                <p id="startup-dialog-description">Use 3–20 ASCII letters, numbers, or underscores. Names preserve case and do not authenticate your account.</p>
+                <label className="startup-field">PLAYER NAME
+                  <input autoFocus autoComplete="off" maxLength={20} value={playerName} onChange={(event) => setPlayerName(event.target.value)} />
+                </label>
+                {error ? <p className="startup-dialog-error compact" role="alert">{error}</p> : null}
+                <div className="overwrite-actions">
+                  <button type="button" disabled={actionLoading} onClick={() => setView("public-entry")}>BACK</button>
+                  <button type="button" disabled={actionLoading} onClick={submitEnrollment}>{actionLoading ? "CREATING…" : "CREATE PLAYER"}</button>
+                </div>
+              </>
+            ) : view === "recover" ? (
+              <>
+                <small>RECOVER PLAYER</small>
+                <h2 id="startup-dialog-title">Enter Recovery Code</h2>
+                <p id="startup-dialog-description">Recovery replaces the previous device session. Player Name is not required.</p>
+                <label className="startup-field">RECOVERY CODE
+                  <input autoFocus autoCapitalize="characters" autoComplete="off" spellCheck={false} value={recoveryInput} onChange={(event) => setRecoveryInput(event.target.value)} placeholder="XXXX-XXXX-XXXX-XXXX" />
+                </label>
+                {error ? <p className="startup-dialog-error compact" role="alert">{error}</p> : null}
+                <div className="overwrite-actions">
+                  <button type="button" disabled={actionLoading} onClick={() => setView("public-entry")}>BACK</button>
+                  <button type="button" disabled={actionLoading || recoveryInput.trim().length < 16} onClick={submitRecovery}>{actionLoading ? "RECOVERING…" : "RECOVER PLAYER"}</button>
+                </div>
+              </>
+            ) : view === "recovery-code" ? (
+              <>
+                <small>ACCOUNT RECOVERY</small>
+                <h2 id="startup-dialog-title">Save your Recovery Code</h2>
+                <p id="startup-dialog-description">This code is shown only now. Losing both your active session and this code means the account cannot be self-recovered.</p>
+                <output className="recovery-code" aria-label="Recovery Code">{publicSession.disclosedRecoveryCode ?? "Recovery Code is no longer available"}</output>
+                <button type="button" disabled={!publicSession.disclosedRecoveryCode} onClick={() => void copyRecoveryCode()}>{copiedRecovery ? "COPIED" : "COPY RECOVERY CODE"}</button>
+                {!publicSession.disclosedRecoveryCode ? <button type="button" disabled={actionLoading} onClick={() => {
+                  setSavedRecoveryConfirmed(false);
+                  setCopiedRecovery(false);
+                  void runPublicAction(() => publicSession.replaceRecoveryCode(), "recovery-code");
+                }}>ISSUE REPLACEMENT CODE</button> : null}
+                <label className="recovery-confirmation"><input type="checkbox" checked={savedRecoveryConfirmed} onChange={(event) => setSavedRecoveryConfirmed(event.target.checked)} /> I have saved my Recovery Code somewhere safe.</label>
+                {error ? <p className="startup-dialog-error compact" role="alert">{error}</p> : null}
+                <button type="button" disabled={!savedRecoveryConfirmed || actionLoading || !publicSession.disclosedRecoveryCode} onClick={acknowledgeRecovery}>{actionLoading ? "CONFIRMING…" : "CONFIRM & CONTINUE"}</button>
+              </>
+            ) : view === "choices" ? (
+              <>
+                <small>{engineeringMode ? "LOCAL ADVENTURE" : `PLAYER · ${publicSession.session?.playerName ?? "UNKNOWN"}`}</small>
                 <h2 id="startup-dialog-title">Choose your journey</h2>
                 <p id="startup-dialog-description">Begin in an empty save slot or continue an occupied one.</p>
                 {loadingSlots ? <p className="startup-dialog-status" aria-live="polite">Loading save slots…</p> : null}
@@ -261,6 +388,18 @@ export function StartupScreen() {
                     <span>Continue saved progression</span>
                   </button>
                 </div>
+                {!engineeringMode ? <div className="public-account-actions">
+                  <button type="button" disabled={actionLoading} onClick={() => {
+                    setSavedRecoveryConfirmed(false);
+                    setCopiedRecovery(false);
+                    void runPublicAction(() => publicSession.replaceRecoveryCode(), "recovery-code");
+                  }}>FORGOT RECOVERY CODE</button>
+                  <button type="button" disabled={actionLoading} onClick={() => void runPublicAction(async () => {
+                    await publicSession.logout();
+                    setSlots(null);
+                    setView("public-entry");
+                  })}>LOG OUT</button>
+                </div> : null}
                 {loadUnavailable ? <p id="load-game-unavailable" className="load-game-unavailable">No saved games. Create a New Game first.</p> : null}
                 <button className="startup-dialog-cancel" type="button" disabled={actionLoading} onClick={closeStartupMenu}>CANCEL</button>
               </>

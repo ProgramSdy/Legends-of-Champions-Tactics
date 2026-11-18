@@ -97,7 +97,7 @@ afterEach(() => {
 
 describe("UI-023 Stage Map and debug boundary", () => {
   it("adds keyboard-reachable Game Start and Engineering routes without changing hotspots", () => {
-    render(<StageSelectionScreen />);
+    render(<StageSelectionScreen showEngineeringRoute />);
     expect(screen.getByRole("link", { name: "Return to Game Start" })).toHaveAttribute("href", "/");
     expect(screen.getByRole("link", { name: "Open Engineering Test and Debugging" })).toHaveAttribute("href", "/debug");
     expect(screen.getAllByRole("button")).toHaveLength(4);

@@ -15,6 +15,7 @@ const STAGE_MAP = "/game-images/Stage_Map/valley_of_champions.png";
 
 type StageSelectionScreenProps = {
   debugHotspots?: boolean;
+  showEngineeringRoute?: boolean;
 };
 
 type HotspotStyle = CSSProperties & {
@@ -33,7 +34,10 @@ function hotspotStyle(geometry: PercentageGeometry): HotspotStyle {
   };
 }
 
-export function StageSelectionScreen({ debugHotspots = false }: StageSelectionScreenProps) {
+export function StageSelectionScreen({
+  debugHotspots = false,
+  showEngineeringRoute = false,
+}: StageSelectionScreenProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [activeStageId, setActiveStageId] = useState<string | null>(null);
@@ -87,14 +91,16 @@ export function StageSelectionScreen({ debugHotspots = false }: StageSelectionSc
             <strong>Manual</strong>
           </button>
         </nav>
-        <Link
-          className="stage-map-route debug-route"
-          href="/debug"
-          aria-label="Open Engineering Test and Debugging"
-        >
-          <strong>Engineering Test &amp; Debugging</strong>
-          <span aria-hidden="true">⚒</span>
-        </Link>
+        {showEngineeringRoute ? (
+          <Link
+            className="stage-map-route debug-route"
+            href="/debug"
+            aria-label="Open Engineering Test and Debugging"
+          >
+            <strong>Engineering Test &amp; Debugging</strong>
+            <span aria-hidden="true">⚒</span>
+          </Link>
+        ) : null}
         <ManualDialog open={manualOpen} onClose={() => setManualOpen(false)} triggerRef={manualTriggerRef} />
         <div className="stage-map-canvas" data-coordinate-system="map-percent">
           <Image

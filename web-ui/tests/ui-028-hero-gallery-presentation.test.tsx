@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { SkillReferenceCard } from "@/components/manual/HeroGalleryExperience";
-import { SkillCard } from "@/components/battle/SkillCard";
+import { PresentationOnlyPassiveCard, SkillCard } from "@/components/battle/SkillCard";
 import { StatusIcon } from "@/components/battle/StatusIcon";
 import { skillPresentation, statusRegistry } from "@/lib/battle/assets";
 import { fetchHeroGalleryRoster } from "@/lib/battle/liveProvider";
@@ -296,7 +296,7 @@ describe("UI-028 expanded skill reference card", () => {
     const paths = definitions.map(([, , filename]) => `/game-images/heroes/Paladin-Holy/skills/${filename}`);
     expect([...container.querySelectorAll<HTMLImageElement>(".skill-glyph-art")].map((image) => image.getAttribute("src"))).toEqual(paths);
     expect([...container.querySelectorAll<HTMLImageElement>(".skill-reference-summary-art img")].map((image) => image.getAttribute("src"))).toEqual(paths);
-    expect(container.querySelectorAll<HTMLButtonElement>(".skill-card")).toHaveLength(3);
+    expect(container.querySelectorAll<HTMLButtonElement>("button.skill-card")).toHaveLength(3);
     expect([...container.querySelectorAll<HTMLImageElement>(".status-icon-art")].map((image) => image.getAttribute("src")))
       .toEqual([paths[0], paths[2]]);
     for (const [id, skillId] of statuses) {
@@ -390,7 +390,7 @@ describe("UI-028 expanded skill reference card", () => {
     expect(frenzy).toHaveTextContent(statusRegistry["status.blood_frenzy"].glyph);
   });
 
-  it("shows Priest Discipline active art and Gallery-only Holy Concentration without inventing a command or status", () => {
+  it("shows Priest Discipline active art and presentation-only Holy Concentration without inventing a command or status", () => {
     const definitions = [
       ["skill.priest.penance", "Penance", "Priest_Discipline_Penance_128x128.png"],
       ["skill.priest.holy_word_redemption", "Holy Word Redemption", "Priest_Discipline_Holy_Word_Redemption_128x128.png"],
@@ -407,6 +407,7 @@ describe("UI-028 expanded skill reference card", () => {
         maximumTargets: 1, cooldownRemaining: 0, available: true,
         unavailableReason: null, resourceCost: null,
       }} selected={false} legal disabled={false} onSelect={() => undefined} />)}
+      <PresentationOnlyPassiveCard skillId="skill.priest.holy_concentration" />
       {definitions.map(([skillId, displayName], index) => <SkillReferenceCard key={`gallery-${skillId}`}
         skill={{ ...skill, skillId, displayName, isPassive: index === 3 }} content={{ introduction: `${displayName} introduction.` }} />)}
       {statuses.map(([id, , kind]) => <StatusIcon key={id} status={{
@@ -416,9 +417,11 @@ describe("UI-028 expanded skill reference card", () => {
     </>);
 
     const paths = definitions.map(([, , filename]) => `/game-images/heroes/Priest-Discipline/skills/${filename}`);
-    expect([...container.querySelectorAll<HTMLImageElement>(".skill-glyph-art")].map((image) => image.getAttribute("src"))).toEqual(paths.slice(0, 3));
+    expect([...container.querySelectorAll<HTMLImageElement>(".skill-glyph-art")].map((image) => image.getAttribute("src"))).toEqual(paths);
     expect([...container.querySelectorAll<HTMLImageElement>(".skill-reference-summary-art img")].map((image) => image.getAttribute("src"))).toEqual(paths);
-    expect(container.querySelectorAll<HTMLButtonElement>(".skill-card")).toHaveLength(3);
+    expect(container.querySelectorAll<HTMLButtonElement>("button.skill-card")).toHaveLength(3);
+    expect(screen.getByRole("article", { name: /Holy Concentration.*not selectable/i })).toHaveClass("passive-display");
+    expect(screen.queryByRole("button", { name: /Holy Concentration/i })).not.toBeInTheDocument();
     expect([...container.querySelectorAll<HTMLImageElement>(".status-icon-art")].map((image) => image.getAttribute("src")))
       .toEqual([paths[1], paths[2]]);
     for (const [id, skillId, kind] of statuses) {
@@ -828,7 +831,18 @@ describe("UI-028 expanded skill reference card", () => {
   it("keeps responsive facts two-column on wide cards and one-column on narrow cards", () => {
     const css = readFileSync("app/globals.css", "utf8");
     expect(css).toMatch(/\.hero-profile \.skill-reference-grid\{[^}]*grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
-    expect(css).toMatch(/@media\(max-width:620px\)\{[^}]*\.hero-profile \.skill-reference-grid\{grid-template-columns:1fr\}/s);
+    const mediaBlocks = [...css.matchAll(/@media\(max-width:620px\)\{/g)].map((match) => {
+      const start = match.index! + match[0].length;
+      let depth = 1;
+      let end = start;
+      while (depth > 0 && end < css.length) {
+        if (css[end] === "{") depth += 1;
+        if (css[end] === "}") depth -= 1;
+        end += 1;
+      }
+      return css.slice(start, end - 1);
+    });
+    expect(mediaBlocks.some((rules) => rules.includes(".hero-profile .skill-reference-grid{grid-template-columns:1fr}"))).toBe(true);
   });
 
   it("preserves authored line breaks and indentation in a skill introduction", async () => {

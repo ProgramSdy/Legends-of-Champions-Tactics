@@ -1,0 +1,14 @@
+#!/bin/sh
+set -eu
+
+# Template only; remote GCS transfer is NOT VERIFIED by local Batch 3 work.
+# The VM service account must have write-only/minimal access to the required bucket.
+: "${LOCT_GCS_BACKUP_URI:?Set LOCT_GCS_BACKUP_URI to a protected gs:// destination}"
+: "${1:?Pass the verified .sqlite3 backup path}"
+
+backup_path=$1
+manifest_path="${backup_path}.manifest.json"
+test -f "$backup_path"
+test -f "$manifest_path"
+
+gcloud storage cp --no-clobber "$backup_path" "$manifest_path" "$LOCT_GCS_BACKUP_URI/"

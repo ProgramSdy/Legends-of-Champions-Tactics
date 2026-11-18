@@ -68,11 +68,13 @@ _To be documented._
 - Inactive locations remain unlabelled and visually untouched: no control,
   lock, desaturation, glow, cursor, or completion/progression treatment.
 - Development-only hotspot debug may expose enabled-stage boundaries for
-  geometry tuning. It is off by default and unavailable in production.
+  geometry tuning through `?debugHotspots=1`. It is unavailable in the Public
+  Release build even when that query is supplied.
 - Stage Map navigation controls sit above map art without changing hotspot
   geometry: a restrained home/title icon at upper left and a semi-transparent
-  spanner icon for Engineering Test & Debugging at upper right. Both retain
-  visible focus and dark-fantasy forged-metal styling.
+  Development-only spanner control for Engineering Test & Debugging at bottom
+  right. Visible controls retain focus styling and dark-fantasy forged-metal
+  treatment; the Engineering control is absent in Public Release.
 
 ### Battlefield HP HUD
 
@@ -491,8 +493,32 @@ _To be documented._
   `newlyGrantedRewards` opens the focus-contained reward
   notification, which announces the backend message and focuses Continue.
 
+## Public pre-alpha feedback (RELEASE-002 Batch 3)
+
+- The Startup modal retains the dark-fantasy visual language for Create,
+  Recover, one-time Recovery Code, explicit saved-code checkbox, five slots,
+  replacement and logout. Names are display labels, not authentication.
+  Recovery Code is readable/copyable only at issue or authenticated replacement;
+  its confirmation button is disabled until the checkbox is checked. Never
+  echo the code in later slot, Stage or Battle views.
+- A protected-route gate gives a clear return to Game Start during anonymous
+  or unconfirmed states; it does not show stale player content underneath.
+  Session/CSRF/network failures use distinct, retryable messaging without
+  claiming that a failed action succeeded.
+- Battle Resign keeps the existing Yes/No modal and waits for server
+  acknowledgment. Non-intrusive five/one-minute warnings use server time,
+  appear once per deadline, and remain visible through same-deadline preview
+  updates. A settled result supersedes warnings. Public Battle visuals and
+  formation layout otherwise remain the existing shared presentation.
+- Team Builder and Startup remain vertically scrollable at narrow widths.
+  The local 390px DOM check found no page-level horizontal overflow, but
+  automated screenshot capture timed out; pixel-level narrow visual approval
+  is not asserted by that check.
+
 ## Change Log
 
+- 2026-11-18 — Recorded Batch 3 Public entry, error, Resign and warning
+  presentation rules without changing battle-art or formation styling.
 - 2026-10-31 — Battle-origin Manual content stays embedded in the mounted
   battle, and highlighted side-card controls retain their normal coordinates.
   Heroic Charge and Shield of Righteous keep legal target hover/focus

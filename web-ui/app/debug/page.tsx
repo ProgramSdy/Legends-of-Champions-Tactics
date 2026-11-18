@@ -7,5 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function DebugPage() {
-  return <DebugBattleExperience />;
+  return <DebugBattleExperience showEngineeringReadout />;
 }

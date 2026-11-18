@@ -20,6 +20,11 @@ from battle_api.progression import hero_unlock_sources
 
 client = TestClient(app)
 
+CATALOGUE_ONLY_PASSIVE_IDS = {
+    "skill.priest.holy_concentration",
+    "skill.paladin.wrath_of_crusader",
+}
+
 
 def test_roster_publishes_configured_ranges_and_static_skill_inventory():
     response = client.get("/api/v1/heroes")
@@ -82,12 +87,16 @@ def test_roster_publishes_configured_ranges_and_static_skill_inventory():
     assert [skill["skillId"] for skill in berserker["skills"] if skill["isPassive"]] == [
         "skill.warrior.blood_frenzy"
     ]
-    assert all(
-        not skill["isPassive"]
-        for hero in heroes
-        if hero["definitionId"] not in {"hero.paladin.protection", "hero.warrior.berserker"}
-        for skill in hero["skills"]
-    )
+    for hero in heroes:
+        expected_passive_ids = {
+            skill_id
+            for skill_id, _, is_passive in HERO_SKILL_INVENTORY[hero["definitionId"]]
+            if is_passive
+        }
+        actual_passive_ids = {
+            skill["skillId"] for skill in hero["skills"] if skill["isPassive"]
+        }
+        assert actual_passive_ids == expected_passive_ids
 
 
 def test_roster_ranges_match_engine_workbooks_without_constructing_heroes():
@@ -148,10 +157,20 @@ def test_skill_inventory_ids_match_the_adapter_canonical_ids():
                 "Group_A",
                 True,
             )
-            assert tuple(
-                (adapter._skill_id(hero, skill), skill.name, skill.is_passive)
+            runtime_inventory = tuple(
+                (adapter._skill_id(hero, skill), skill.is_passive)
                 for skill in hero.skills
-            ) == HERO_SKILL_INVENTORY[definition_id]
+            )
+            expected_runtime_inventory = tuple(
+                (skill_id, is_passive)
+                for skill_id, _, is_passive in HERO_SKILL_INVENTORY[definition_id]
+                if skill_id not in CATALOGUE_ONLY_PASSIVE_IDS
+            )
+            assert runtime_inventory == expected_runtime_inventory
+            assert all(
+                skill_id in {item[0] for item in HERO_SKILL_INVENTORY[definition_id]}
+                for skill_id, _ in runtime_inventory
+            )
     finally:
         random.setstate(random_state)
 

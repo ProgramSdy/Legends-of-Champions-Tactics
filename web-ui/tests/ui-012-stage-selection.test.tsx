@@ -19,6 +19,12 @@ vi.mock("@/components/audio/SoundPreferenceProvider", () => ({
   SoundPreferenceProvider: ({ children }: { children: React.ReactNode }) => children,
   useSoundPreference: () => ({ enabled: true, toggle: vi.fn() }),
 }));
+// Stage-map geometry tests isolate this component from the Public session gate,
+// which has dedicated RELEASE-002 route coverage.
+vi.mock("@/components/session/PublicSessionProvider", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@/components/session/PublicSessionProvider")>(),
+  PublicSessionGate: ({ children }: { children: React.ReactNode }) => children,
+}));
 
 afterEach(() => {
   vi.unstubAllEnvs();

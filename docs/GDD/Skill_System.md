@@ -16,13 +16,28 @@ type, optional independent-effect callback, and last per-target outcome.
 
 Implemented broad types include `damage`, `healing`, `damage_healing`, `summon`,
 and `buffs`. `Skill.is_passive` explicitly distinguishes engine-triggered
-passives from selectable commands. Holy Aura and Blood Frenzy are registered
-passives in the approved web roster; their activation and lifecycle remain
-engine-owned rather than player commands. Priest Discipline's Holy
+passives from selectable commands. Passive skills are not restricted to any
+particular faculty or specialization: any hero may have one or more, and none
+is a player-selectable battle command. Keep three distinct facts when
+publishing or testing a passive: whether it is in the read-only Gallery
+catalogue, whether a runtime passive marker is present in battle snapshots,
+and whether the engine implements its effect through an existing action or
+status. A Gallery-only reference must not be assumed to exist in the runtime
+`hero.skills` list. Tests must check each approved inventory against its own
+authoritative scope, rather than assume a fixed list of heroes with passives
+or require Gallery and runtime skill inventories to be identical.
+
+Holy Aura and Blood Frenzy are registered runtime passives in the approved
+web roster; their activation and lifecycle remain engine-owned rather than
+player commands. Priest Discipline's Holy
 Concentration is a read-only Gallery passive reference for the existing Holy
 Word Redemption branch in `Skill.execute`: when the Priest's HP is at or below
 `round(0.75 × max HP)` and more than one ally exists, Redemption also protects
-another ally. It adds no selectable runtime skill or new combat rule.
+another ally. It adds no runtime passive marker, selectable skill, or new
+combat rule. The Battle UI shows one non-clickable, presentation-only Holy
+Concentration card for Priest Discipline in the existing skill deck. The card
+does not enter `hero.skills`, legal actions, target selection, or turn commands;
+it only describes the already-engine-owned Redemption branch.
 Paladin Retribution's Wrath of Crusader is likewise a read-only Gallery passive
 reference for Crusader Strike's existing self-buff. At one/two stacks, the
 engine's Hammer of Anger bonus is 3–5/6–8 damage and Flash of Light's bonus
@@ -233,5 +248,8 @@ skill damage, not a promise about target HP lost after receipt modifiers.
 
 ## Change Log
 
+- 2026-11-11 — Clarified Holy Concentration's approved Battle card as
+  presentation-only; Redemption execution and command authority remain
+  unchanged.
 - 2026-08-06 — Rebuilt from current Skill, Hero, status-manager, and adapter
   behavior; retained hit-gated and independent-benefit combat invariants.

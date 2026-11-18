@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { StageSelectionScreen } from "@/components/stages/StageSelectionScreen";
 import { TeamBuilder } from "@/components/battle/TeamBuilder";
 import { BattleScreen } from "@/components/battle/BattleScreen";
+import { SoundPreferenceProvider } from "@/components/audio/SoundPreferenceProvider";
 import { createFormatFixture, MockBattleProvider } from "@/lib/battle/fixture";
 import type { BattleOutcome, HeroDefinitionSummary } from "@/lib/battle/types";
 import { STAGE_DEFINITIONS } from "@/components/stages/stage-config";
@@ -14,7 +15,10 @@ import {
 } from "@/components/stages/structured-stage-config";
 
 const push = vi.fn();
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push, replace: vi.fn() }) }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push, replace: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
+}));
 
 const roster: HeroDefinitionSummary[] = [
   ["hero.warrior.weapon_master", "Garran", "Warrior", "Weapon Master"],
@@ -51,12 +55,12 @@ describe("structured-stage compatibility contracts", () => {
       "rogues-forest",
       "priests-cathedral",
     ]);
-    render(<StageSelectionScreen />);
+    render(<SoundPreferenceProvider><StageSelectionScreen /></SoundPreferenceProvider>);
     const altar = screen.getByRole("button", { name: "Enter Paladin's Altar" });
     await userEvent.click(altar);
     fireEvent.keyDown(altar, { key: "Enter" });
     expect(push).toHaveBeenCalledWith("/game?stage=paladins-altar");
-    expect(screen.getAllByRole("button")).toHaveLength(3);
+    expect(screen.getAllByRole("button", { name: /^Enter / })).toHaveLength(3);
   });
 
   it("defines two reusable, ordered nine-battle curricula", () => {

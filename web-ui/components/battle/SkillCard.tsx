@@ -51,13 +51,27 @@ export function NoFourthSkillCard() {
   );
 }
 
+const presentationOnlyPassives = {
+  "skill.paladin.wrath_of_crusader": {
+    displayName: "Wrath of Crusader",
+    description: "Crusader Strike builds Wrath, empowering Hammer of Anger and Flash of Light.",
+  },
+  "skill.priest.holy_concentration": {
+    displayName: "Holy Concentration",
+    description: "Holy Word Redemption can protect an extra ally while the Priest is at low health.",
+  },
+} as const;
+
+export type PresentationOnlyPassiveSkillId = keyof typeof presentationOnlyPassives;
+
 /** Presentation-only passive; it never enters the battle skill/action state. */
-export function WrathOfCrusaderCard() {
-  const visual = skillPresentation["skill.paladin.wrath_of_crusader"];
+export function PresentationOnlyPassiveCard({ skillId }: { skillId: PresentationOnlyPassiveSkillId }) {
+  const content = presentationOnlyPassives[skillId];
+  const visual = skillPresentation[skillId];
   return (
-    <article className="skill-card passive passive-display" aria-label="Wrath of Crusader. Passive skill, not selectable.">
+    <article className="skill-card passive passive-display" aria-label={`${content.displayName}. Passive skill, not selectable.`}>
       <SkillGlyph asset={visual.asset} glyph={visual.glyph} />
-      <span className="skill-copy"><strong>Wrath of Crusader</strong><span>Crusader Strike builds Wrath, empowering Hammer of Anger and Flash of Light.</span><em>Passive</em></span>
+      <span className="skill-copy"><strong>{content.displayName}</strong><span>{content.description}</span><em>Passive</em></span>
       <span className="skill-ornament" aria-hidden="true"><i /><i /><i /></span>
       <span className="skill-meta">PASSIVE</span>
     </article>

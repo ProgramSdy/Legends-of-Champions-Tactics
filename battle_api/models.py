@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 import math
+import re
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -765,6 +766,21 @@ class BattlePreviewResponse(ApiModel):
     battle_id: str = Field(alias="battleId")
     revision: int = Field(ge=0)
     data: BattlePreviewData
+    server_now: datetime | None = Field(default=None, alias="serverNow")
+    expires_at: datetime | None = Field(default=None, alias="expiresAt")
+    lifecycle_status: Literal[
+        "provisional",
+        "active",
+        "resolving",
+        "terminalPending",
+        "settled",
+        "expired",
+        "abandoned",
+    ] | None = Field(default=None, alias="lifecycleStatus")
+    settlement_status: Literal["none", "pending", "settled"] | None = Field(
+        default=None,
+        alias="settlementStatus",
+    )
 
 
 class ErrorResponse(ApiModel):
@@ -885,6 +901,42 @@ class VictoryCommitResponse(ApiModel):
 
 
 SaveSlotId = Literal[1, 2, 3, 4, 5]
+
+
+class CreatePlayerRequest(StrictApiModel):
+    player_name: str = Field(alias="playerName", min_length=3, max_length=20)
+
+    @field_validator("player_name")
+    @classmethod
+    def validate_player_name(cls, value: str) -> str:
+        if re.fullmatch(r"[A-Za-z0-9_]{3,20}", value) is None:
+            raise ValueError(
+                "playerName must contain only ASCII letters, numbers, or underscores"
+            )
+        return value
+
+
+class RecoverPlayerRequest(StrictApiModel):
+    recovery_code: str = Field(alias="recoveryCode", min_length=16, max_length=19)
+
+
+class EmptyAuthenticatedRequest(StrictApiModel):
+    """Explicitly rejects client-authored identity/session data."""
+
+
+class PlayerSessionResponse(ApiModel):
+    contract_version: Literal["1.0"] = Field(default="1.0", alias="contractVersion")
+    player_id: str = Field(alias="playerId")
+    player_name: str = Field(alias="playerName")
+    expires_at: datetime = Field(alias="expiresAt")
+    recovery_confirmed: bool = Field(alias="recoveryConfirmed")
+    csrf_token: str = Field(alias="csrfToken")
+    recovery_code: str | None = Field(default=None, alias="recoveryCode")
+
+
+class RecoveryCodeReplacementResponse(ApiModel):
+    contract_version: Literal["1.0"] = Field(default="1.0", alias="contractVersion")
+    recovery_code: str = Field(alias="recoveryCode")
 
 
 class EmptySaveSlotRequest(StrictApiModel):

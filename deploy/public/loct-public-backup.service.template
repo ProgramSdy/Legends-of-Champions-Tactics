@@ -1,0 +1,17 @@
+[Unit]
+Description=Consistent local backup of LoC Public SQLite database
+ConditionPathExists=/var/lib/loct/public/player.sqlite3
+
+[Service]
+Type=oneshot
+User=loct
+Group=loct
+WorkingDirectory=/opt/loct/current
+EnvironmentFile=/etc/loct/public.env
+ExecStart=/opt/loct/current/.venv/bin/python -m battle_api.public_db_ops backup --database /var/lib/loct/public/player.sqlite3 --backup-root /var/backups/loct --kind daily --retain-daily 7
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/backups/loct

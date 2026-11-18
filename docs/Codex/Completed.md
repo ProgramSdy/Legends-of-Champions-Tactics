@@ -7,6 +7,227 @@ the roster, change presentation wording, or audit values that an earlier task
 listed as unavailable; use the current GDD and web UI contract for current
 rules and inventory.
 
+## 2026-11-18 — RELEASE-002 Batch 3: Public Frontend Integration and Local Deployment Readiness
+
+Completed the owner-authorized local Phase 8–9 implementation only. Public
+Startup now creates and recovers server-owned players, displays a one-time
+Recovery Code with explicit backend acknowledgment, supports authenticated
+code replacement/logout, and enters the same five-slot flow under the Public
+session. A centralized same-origin credentialed transport and in-memory CSRF
+boundary gate protected Stage/Game routes, preserve Development anonymous
+behavior, and consume owner-bound Public Stage/Arena battle, preview, command,
+Resign, inactivity timing and durable receipt APIs. Uncertain command retries
+retain the original command ID; Resign navigation waits for server authority.
+No combat mechanics, schema-v1 battle contracts or Public seed policy changed.
+
+Backend/operations additions provide fail-closed Public configuration and
+independent rate-key enforcement, SQLite online backup with integrity/schema
+checks, seven-daily and release retention, isolated no-overwrite restore,
+and a narrowly guarded backup-first offline modeled-Batch-1 upgrade.
+`deploy/public/` supplies uninstalled GCE/Nginx/systemd/GCS templates and a
+runbook. Public battle routes remain default-off. The directly affected
+Technical, UI architecture, style, screen-flow and API/contract documents were
+updated; the GDD needed no change because gameplay rules were not revised.
+Full file inventory and evidence are in
+`docs/Codex/Task_B_Batch_3_Implementation_Report.md`; launch blockers are in
+`docs/Codex/RELEASE_002_Public_Launch_Readiness_Checklist.md`.
+
+**Roles and review:** PM `/root/batch3_pm` mapped A→B→C dependencies/stop
+gates; UI `/root/batch3_ui` owned Phase 8 client integration; engine
+`/root/batch3_engine` owned fail-closed config/offline ops/templates; test
+automator `/root/batch3_tests` owned independent operations/load/frontend
+coverage and test-only stale-harness repair; Core integrated, documented and
+ran isolated browser/final checks. Reviewer `/root/batch3_reviewer` found
+and confirmed fixes for the independent rate-key, Manual localhost transport,
+same-deadline warning persistence and missing concurrent SQLite reservation
+coverage, then **approved local Batch 3 closeout only**, with no remaining
+P0/P1 code or documentation-claim issue. All five required roles were
+actually dispatched; no role is credited for work it did not perform.
+
+**Validation:** Focused Public/RELEASE-001 backend suites passed **96/96**;
+separate explicit-Development backend regression passed **572/572**; focused
+frontend groups passed **103/103**; the full frontend suite passed **58 files,
+553/553 tests**. One intervening full run had a single intermittent UI-033
+timing failure; its isolated 6/6 and the next full 553/553 run passed, so the
+harness observation remains disclosed. Frontend typecheck, lint (zero errors,
+one existing `_signal` warning), Public and Development builds, Public artifact
+verification, Python compilation and diff check passed. Disposable local load
+created 20 real 3v3 sessions/leases, rejected the 21st, executed commands,
+released leases, and completed 20 concurrent SQLite reservations without
+observed busy failures; these local values are not e2-micro proof. A
+self-signed local HTTPS browser check covered player creation, code
+acknowledgment/replacement/recovery, five slots, protected reload/logout,
+Secure-cookie attributes, Public 2v2 preview/command, and server-acknowledged
+Resign. At 390px, DOM widths fit, but screenshot capture timed out twice, so
+pixel-level narrow visual approval is not claimed. The disposable browser,
+servers, database and certificate were closed/removed.
+
+**Stop boundary:** Real GCE/Nginx/TLS/systemd/GCS capacity, backup/restore,
+proxy, rollback and secret-recovery checks remain Public-launch blockers.
+Any real legacy Public DB upgrade needs an authorized disposable schema/backup
+rehearsal; no real DB was migrated. The owner has not authorized deployment,
+Public battle enablement, launch, commit, push or release. Batch 3 completion
+does not imply RELEASE-002 is publicly launched.
+
+## 2026-11-17 — RELEASE-002 Batch 2: Public Battle Security, Lifecycle, Settlement and RNG
+
+Completed only approved Phases 4–7, checkpoints A–D, of `Task_B_Implementation_Plan.md`. Default-off Public Stage/Arena battles now have immutable authenticated Player/session/profile/launch binding, SQLite provisional/active leases (one per player, initial global cap 20), explicit expiry/Resign/cleanup, server-owned 30-minute inactivity, and short fault-safe construction. The final allowed accepted command resolves before deadline refresh; GET, preview, duplicate/rejected commands and automatic processing do not refresh it. Authoritative terminal Stage/Arena outcomes and their original receipts/rewards settle atomically before a confirmed response. A fault leaves a persisted terminal-pending outcome retryable by the current authenticated owner, including after session recovery; old-session authority remains revoked. Public combat uses a recorded secure 256-bit server seed; supplied seeds are rejected and generic/Debug battle routes remain absent in Public. Development mode and combat rules remain unchanged. The Public route gate is off by default and was enabled only in disposable test processes.
+
+**Files and authority:** `battle_api/{app,adapter,attempts,models,progression}.py` implement the backend boundary; `tests/test_release002_batch2.py` supplies isolated concurrency, fault, ownership, timing, route and seed regressions. `docs/Technical/{Architecture,Networking,Player_Data_and_Save_System}.md` and `docs/web-ui/{BATTLE_DATA_CONTRACT_V1,PYTHON_ADAPTER_API}.md` document implemented authority/contract. `docs/Codex/Task_B_Batch_2_Implementation_Report.md` contains the full file inventory, A–D evidence, review resolution and remaining release gates. Screen Flow, Style Guide and GDD needed no Batch 2 change because no new player-facing UI, visual rule or combat formula was introduced. Existing unrelated dirty and owner files were preserved; `UI_Review_Human.md` was untouched.
+
+**Roles/review:** The project manager mapped checkpoint dependencies and risks; game-engine developer owned backend lifecycle/settlement/RNG; test automator owned disposable Public concurrency/fault/HTTP recovery tests; UI developer supplied read-only Batch 3 contract compatibility findings without implementing UI; Core integrated, corrected the recovery test, documented and ran final validation. The independent reviewer found lifecycle/terminal-pending gaps, verified their fixes, reproduced the 78-test Public result and approved the final code and documentation with no remaining blocker.
+
+**Validation:** `pytest -q tests/test_release002_batch2.py tests/test_release002_batch1_security.py tests/test_release001_isolation.py` passed **78/78** (Batch 2 alone **53/53**); broader explicit-Development backend suite passed **572/572**. Targeted frontend release-artifact tests passed **7/7**; frontend typecheck, lint, Development and Public builds, changed Python module compilation, and `git diff --check` passed. Lint had zero errors and one existing `_signal` warning; Python emitted one existing Starlette/httpx deprecation warning. Public build verification excluded `/debug` and `/assets`. All Public databases in tests were disposable; no real save was modified or migrated. No browser HTTPS/proxy or e2-micro load/deployment test was claimed. A process crash before durable terminal confirmation remains unconfirmed and cannot replay combat without a journal; older Batch 1-shaped Public v5 databases fail closed pending owner-approved offline migration. Batch 3 onboarding/Resign UI, backup/deployment and Public player launch remain gated. No commit or push was performed for Batch 2.
+
+## 2026-11-16 — RELEASE-002 Batch 1: Public Identity, Authentication, and Save Isolation
+
+Completed only approved Phases 1–3 of `Task_B_Implementation_Plan.md`. A clean, explicitly initialized Public schema-v5 database now holds server-owned Player IDs, case-preserving non-unique Player Names, keyed Recovery Code verifiers, one active revocable session, recovery-abuse limits, and five independently owned save slots per player. Public save, progression, Stage listing, and Arena state/run operations require a confirmed authenticated session and recheck ownership inside SQLite transactions. Read-only GET does not extend sessions; protected refresh/unsafe activity does. Public battle routes—including generic, Stage/Arena launch, state, command, preview, and completion—are absent from routing/OpenAPI pending later lifecycle and settlement work. The existing anonymous Development schema-v4 saves and battle workflow remain separate and compatible. No Batch 2/3, deploy, commit, push, or real-save migration was performed.
+
+**Files and evidence:** Backend changes are in `battle_api/{app,models,progression,public_identity,init_public_db}.py`; tests are `tests/test_release002_batch1_security.py` and adjusted `tests/test_release001_isolation.py`. Directly affected Architecture, Networking, Player Data/Save System, Python Adapter API, and Battle Data Contract documents were updated. The complete implementation/validation report is `docs/Codex/Task_B_Batch_1_Implementation_Report.md`.
+
+**Roles/review:** Project manager sequenced A→B→C gates; game-engine developer implemented backend schema/auth/store/routes; test automator added disposable database/security/race coverage; UI developer performed a read-only frontend compatibility audit; independent reviewer found and confirmed fixes for GET session mutation and incomplete Public-v5 schema validation, then approved with no remaining Batch 1 blocker. Core coordinated integration, documentation, and final checks.
+
+**Validation:** Public/RELEASE-001 isolated suite 25/25; broad explicit-Development backend suite 572/572 (including the focused 44/44 progression/Arena/mode/attempt regressions); targeted RELEASE-001 frontend tests 7/7; frontend typecheck and Development build passed; lint passed with zero errors and one pre-existing `_signal` warning; changed Python modules compiled; `git diff --check` passed. Backend tests emitted one pre-existing Starlette/httpx deprecation warning. Public HTTPS/proxy/secrets/backup/load operations and Public client onboarding remain unverified and deferred. Batch 1 completion is **not** RELEASE-002 completion or Public deployment approval.
+
+## 2026-11-11 — RELEASE-002-PLAN / Task B implementation planning
+
+Core completed the source-verified, planning-only report at `docs/Codex/Task_B_Implementation_Plan.md`. The project manager mapped nine phases and coupled security gates; the game-engine developer covered schema, ownership, battle lifecycle, settlement, and seeds; the UI developer covered onboarding, same-origin transport, Resign, and warning contracts; and an independent reviewer approved the corrected security/race design without a remaining blocker. Test automation was omitted because no tests or implementation were authorized. The A–K structure and documentation diff/whitespace were checked. No application code, tests, configuration, database, save, deployment, commit, or push changed for the planning task. The owner's subsequent Batch 1 authorization covers Phases 1–3 only; this entry does not mark RELEASE-002 implemented or Public-ready.
+
+---
+
+## 2026-11-11 — RELEASE-002-FDV / Task B: Final Dependency Verification
+
+Core completed the read-only report at `docs/Codex/Task_B_Final_Dependency_Verification.md`. The UI developer traced Public/Debug launch call chains and Resign/navigation behavior; the game-engine developer traced route registration, registries, expiry/capacity gaps, and reward settlement. Core checked and consolidated the evidence. PM, test automator, and separate reviewer were omitted for this focused audit. The normal Public Stage and Arena paths do not need generic `POST /api/v1/battles`, although it remains registered today; Resign currently closes only the frontend. The report identifies missing battle limits/expiry and the future ownership/settlement changes. Its four required sections and diff check passed. No app/test/config/database change, runtime test, commit, push, or deployment was made. The audit is complete; RELEASE-002 implementation is not authorized by this entry.
+
+---
+
+## 2026-11-11 — RELEASE-002 / Task B: Public identity, save isolation, and seed audit
+
+Core completed the source-verified, read-only report at
+`docs/Codex/Public_Player_Identity_Save_Isolation_Audit.md`. The backend and UI
+specialists traced their respective ownership/session/RNG and client/release
+paths; an independent reviewer checked the evidence and security severity
+without a blocking finding. A separate PM was omitted because Core coordinated
+the bounded audit; test automation was omitted because implementation and new
+test coverage were not authorized.
+
+The report finds the normal Public API still has no player authentication,
+uses globally shared save slots and one active slot, stores process-local
+battles, and accepts caller-supplied seeds on some routes. Current SQLite
+schema version is 4. It proposes phased implementation and lists owner
+decisions; it does not claim Public multi-player readiness. All 15 requested
+sections and a documentation/diff check were completed. No tests, live API or
+database operations, application/config changes, commit, push, or deployment
+were performed. A focused final dependency verification is a subsequent task.
+
+---
+
+## 2026-11-11 — UI-065 / Holy Concentration Battle passive and stale-test corrections
+
+Priest Discipline now shows a fourth Holy Concentration card after its three
+active Battle skills using the existing presentation-only passive pattern. The
+card uses the registered art, is an `<article>` rather than a button, and
+replaces the misleading fourth-slot placeholder. It never enters runtime
+`hero.skills`, selectable `SkillState`, `legalActions`, targeting, audio, or
+turn-command flow. Holy Word Redemption's threshold, extra-recipient behavior,
+randomness, and status/events remain unchanged; Wrath of Crusader and existing
+runtime passive cards retain their prior behavior.
+
+Core dispatched `ui-developer` (`/root/ui065_ui`) for the bounded Battle card
+and three stale frontend tests, and `test-automator` (`/root/ui065_tests`) for
+the two backend catalogue/runtime inventory assertion corrections and focused
+integrated validation. A separate PM, engine developer, and reviewer were
+omitted because no engine/API/contract behavior changed and Core performed the
+targeted source review. The initial integrated frontend run exposed three
+test-fixture/assertion gaps; the UI owner corrected them and the focused suites
+were rerun successfully.
+
+Changed implementation/tests:
+`web-ui/components/battle/{BattleScreen,SkillCard}.tsx`,
+`web-ui/tests/{battle-screen,ui-017-stage-and-structured-config,ui-021-save-slots-and-previews,ui-028-hero-gallery-presentation}.test.tsx`, and
+`tests/test_ui027_gallery_metadata.py`. Updated current truth in
+`docs/GDD/Skill_System.md`,
+`docs/web-ui/{WEB_UI_ARCHITECTURE,BATTLE_DATA_CONTRACT_V1}.md`, and appended a
+dated resolution note to
+`docs/Codex/Engineering_Test_Production_Isolation_Implementation.md` while
+preserving RELEASE-001's original test numbers.
+
+Validation: `LOCT_RELEASE_MODE=public .venv/bin/pytest -q
+tests/test_ui027_gallery_metadata.py` **7/7 passed** (one pre-existing
+Starlette/httpx warning). Focused frontend Stage/Gallery/presentation suites
+**59/59 passed**; the UI owner's four-file Battle/Stage/Gallery suite **72/72
+passed**, including the non-interactive card and no-placeholder regression.
+Frontend typecheck, targeted ESLint, and `git diff --check` passed. All five
+previous RELEASE-001-era assertions are cleared. Paladin Altar hotspot values
+were checked against current `stage-config.ts` source (`74.5, 11.5, 15, 18`),
+not manually verified in a browser; no production geometry or CSS was changed.
+No owner-controlled review file, unrelated dirty work, commit, push, or
+deployment was changed. No separate UI-065 unresolved issue was found.
+
+---
+
+## 2026-11-10 — RELEASE-001 / Task A: Engineering Test Production Isolation
+
+Implemented explicit `LOCT_RELEASE_MODE=development|public` with public-safe
+missing/invalid defaults. Public frontend build now copies source into an
+ignored disposable staging tree without `/debug` and `/assets` before vinext
+route discovery, verifies no excluded route/page-specific client bundle, and
+marks the artifact. Public `npm start` rechecks the artifact and rejects a
+Development or unsafe build. Development retains both pages, Stage Engineering
+link/hotspots, and Battle viewport readout; Public hides the diagnostics.
+FastAPI conditionally registers the debug creation router only in Development,
+leaving ordinary gameplay/engine/progression routes unchanged.
+
+Core selected and dispatched `ui-developer` (`/root/release001_ui`) for frontend
+mode/build/presentation and live browser checks, `game-engine-developer`
+(`/root/release001_engine`) for backend mode/router/Makefile/startup docs,
+`test-automator` (`/root/release001_tests`) for two-mode and artifact regression
+tests plus isolated-data gameplay checks, and `reviewer`
+(`/root/release001_review`) for an independent release-boundary review. This
+Medium-risk cross-boundary task required all four distinct owners. A separate
+PM was omitted because Core coordinated the bounded sequence. Initial agent
+turns hit a usage limit; the same roles resumed after reset and completed.
+
+Changed implementation: `battle_api/{app,debug_routes,release_mode}.py`,
+`Makefile`, `web-ui/{package.json,.gitignore,vite.config.ts,README.md}`,
+`web-ui/lib/releaseMode.ts`, the five `web-ui/scripts/*release*.mjs`/
+development-artifact helpers, `web-ui/app/{stages,game,debug}/page.tsx`,
+`web-ui/components/stages/StageSelectionScreen.tsx`, and the shared Battle,
+Arena, and Debug presentation components. Focused tests changed/added:
+`tests/{test_release001_isolation,test_ui023_arena}.py` and the frontend
+release-mode, artifact, readout, and UI-023 suites. Documentation updated:
+`docs/Technical/{Architecture,Networking}.md`,
+`docs/web-ui/{WEB_UI_ARCHITECTURE,BATTLE_DATA_CONTRACT_V1,PYTHON_ADAPTER_API,Screen_Flow,Style_Guide}.md`,
+`docs/Codex/Current_Task.md`, and the detailed
+`docs/Codex/Engineering_Test_Production_Isolation_Implementation.md`.
+The completed audit was preserved unchanged; no owner-controlled
+`UI_Review_Human.md`, real save, combat rule, seed policy, commit, or push was
+changed.
+
+Validation: focused backend isolation **4/4**, explicit Development Arena/debug
+**12/12**, focused frontend mode/readout/debug **33/33**, artifact-policy
+**7/7**, frontend typecheck and Public build passed; lint had zero errors and
+one existing warning. Public artifact marker/scanner confirmed no Engineering
+routes or `DebugBattleExperience` chunk. Live Public HTTP returned 200 for
+normal pages and 404 for `/debug` and `/assets`; the hotspot query exposed no
+Engineering state. Ego-browser at 1613×838 confirmed no Stage link/hotspots or
+hydration warning, working client navigation, direct Not Found pages, and an
+isolated Public-backend 2v2 Warrior battle with no viewport readout. Development
+HTTP retained both pages/link/hotspots. Python compilation and `git diff
+--check` passed. The independent reviewer approved with no Task A blocker.
+
+Broader representative suites were not fully green: backend **256 passed, 2
+pre-existing Priest Holy Concentration Gallery-inventory failures**; frontend
+had three unrelated stale test expectations (a `useSearchParams` mock,
+Paladin Altar geometry, and responsive CSS regex). Manual browser validation
+was desktop-only and did not play every 1v1/3v3/Arena path; those paths were
+covered by existing automated suites. GCE/deployed-host behavior was not
+tested. Separate public-release blockers remain: identity/save ownership,
+ingress/TLS, abuse controls, and prohibition of public player-selected seeds.
+See the implementation report for exact commands, evidence, and limitations.
+
+---
+
 ## 2026-10-19 — Hero Gallery skill-reference documentation standard
 
 Consulted Core Project Team for a read-only handoff and consolidated the

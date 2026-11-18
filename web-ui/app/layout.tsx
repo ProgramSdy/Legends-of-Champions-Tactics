@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { UiAudioBoundary } from "@/components/audio/UiAudioBoundary";
 import { SoundPreferenceProvider } from "@/components/audio/SoundPreferenceProvider";
+import { PublicSessionProvider } from "@/components/session/PublicSessionProvider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -31,9 +32,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
-        <SoundPreferenceProvider>
-          <UiAudioBoundary>{children}</UiAudioBoundary>
-        </SoundPreferenceProvider>
+        <PublicSessionProvider>
+          <SoundPreferenceProvider>
+            <UiAudioBoundary>{children}</UiAudioBoundary>
+          </SoundPreferenceProvider>
+        </PublicSessionProvider>
       </body>
     </html>
   );

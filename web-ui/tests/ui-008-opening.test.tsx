@@ -81,7 +81,9 @@ describe("UI-008 opening presentation lifecycle", () => {
     expect(screen.getByRole("status", { name: "Battle begins in 3" })).toHaveClass("entry-countdown-value", "numeric");
     expect(screen.getByRole("list", { name: "Battle events" })).toBeEmptyDOMElement();
     expect(screen.getAllByText("102/102").length).toBeGreaterThan(0);
-    expect([...document.querySelectorAll<HTMLButtonElement>(".skill-card")].every((button) => button.disabled)).toBe(true);
+    // Passive and placeholder slots are display-only articles, so only
+    // selectable skill buttons participate in the countdown gate assertion.
+    expect([...document.querySelectorAll<HTMLButtonElement>("button.skill-card")].every((button) => button.disabled)).toBe(true);
     expect(provider.submitCommand).not.toHaveBeenCalled();
 
     await act(async () => { await vi.advanceTimersByTimeAsync(20); });
@@ -104,7 +106,8 @@ describe("UI-008 opening presentation lifecycle", () => {
     expect(screen.getAllByText("102/102").length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "OPENING BATTLE…" })).toBeDisabled();
 
-    await advanceTimerSteps(620, 2);
+    // Damage HUDs intentionally lead the authoritative HP update by 300ms.
+    await advanceTimerSteps(620, 3);
     expect(screen.getByText("Ragnar takes 32 opening damage.")).toBeVisible();
     expect(screen.getAllByText("70/102").length).toBeGreaterThan(0);
 

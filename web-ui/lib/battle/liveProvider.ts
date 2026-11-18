@@ -11,6 +11,8 @@ import {
   type BattleProvider,
   type BattleSnapshot,
   type BattleState,
+  type BattleAuthorityState,
+  type BattleResignResult,
   type HeroDefinitionSummary,
   type HeroGalleryDefinition,
   type PlayerProgressionResponse,
@@ -24,12 +26,18 @@ import {
   type VictoryCommitResponse,
 } from "./types";
 import { heroGalleryContent } from "@/lib/manual/heroGalleryContent";
+import { battleApiBaseUrl, publicApiRequest, PublicApiError } from "@/lib/publicApi";
 
 interface Envelope<T> {
   contractVersion: "1.0";
   battleId: string;
   revision: number;
   data: T;
+  serverNow?: string;
+  expiresAt?: string;
+  lifecycleStatus?: BattleAuthorityState["lifecycleStatus"];
+  settlementStatus?: BattleAuthorityState["settlementStatus"];
+  settlement?: unknown;
 }
 
 interface CreateData {
@@ -56,7 +64,7 @@ interface CommandRejected {
   snapshot: BattleSnapshot;
 }
 
-const DEFAULT_BASE_URL = process.env.NEXT_PUBLIC_BATTLE_API_URL ?? "http://localhost:8001";
+const DEFAULT_BASE_URL = battleApiBaseUrl();
 
 export function createBattleAttemptId(): string | null {
   const secureCrypto = globalThis.crypto;
@@ -88,23 +96,21 @@ async function requestAdapterJson(
 ): Promise<unknown> {
   let response: Response;
   try {
-    response = await fetch(`${baseUrl}${path}`, {
-      ...init,
-      headers: { "Content-Type": "application/json", ...init?.headers },
-    });
-  } catch {
+    response = await publicApiRequest(path, init, baseUrl);
+  } catch (reason: unknown) {
+    if (reason instanceof PublicApiError) {
+      throw new BattleProviderError(
+        reason.message,
+        reason.kind === "network" ? "disconnected" : "adapter",
+        undefined,
+        undefined,
+        reason.code,
+        reason.status,
+      );
+    }
     throw new BattleProviderError(
       "Battle service is disconnected. Start the Python adapter and retry.",
       "disconnected",
-    );
-  }
-  if (!response.ok) {
-    const body = await response.json().catch(() => null) as {
-      detail?: { message?: string };
-    } | null;
-    throw new BattleProviderError(
-      body?.detail?.message ?? `Battle adapter returned HTTP ${response.status}.`,
-      "adapter",
     );
   }
   try {
@@ -845,6 +851,9 @@ export class LiveBattleProvider implements BattleProvider {
   private battleId: string | null = null;
   private state: BattleState | null = null;
   private creationPromise: Promise<BattleState> | null = null;
+  private authority: BattleAuthorityState | null = null;
+  private pendingCommand: BattleCommand | null = null;
+  private readonly authorityListeners = new Set<(authority: BattleAuthorityState | null) => void>();
 
   constructor(
     private readonly baseUrl = DEFAULT_BASE_URL,
@@ -859,11 +868,34 @@ export class LiveBattleProvider implements BattleProvider {
     private readonly attemptId?: string | null,
   ) {}
 
+  getAuthority(): BattleAuthorityState | null {
+    return this.authority ? structuredClone(this.authority) : null;
+  }
+
+  subscribeAuthority(listener: (authority: BattleAuthorityState | null) => void): () => void {
+    this.authorityListeners.add(listener);
+    listener(this.getAuthority());
+    return () => this.authorityListeners.delete(listener);
+  }
+
+  private updateAuthority(envelope: Envelope<unknown>): void {
+    if (!envelope.serverNow || !envelope.expiresAt || !envelope.lifecycleStatus || !envelope.settlementStatus) return;
+    this.authority = {
+      serverNow: envelope.serverNow,
+      expiresAt: envelope.expiresAt,
+      lifecycleStatus: envelope.lifecycleStatus,
+      settlementStatus: envelope.settlementStatus,
+    };
+    const current = this.getAuthority();
+    for (const listener of this.authorityListeners) listener(current);
+  }
+
   private async request<T>(path: string, init?: RequestInit): Promise<Envelope<T>> {
     const envelope = await requestAdapterJson(this.baseUrl, path, init) as Envelope<T>;
     if (envelope.contractVersion !== "1.0") {
       throw new BattleProviderError(`Unsupported battle contract ${envelope.contractVersion}.`, "adapter");
     }
+    this.updateAuthority(envelope as Envelope<unknown>);
     return envelope;
   }
 
@@ -892,6 +924,7 @@ export class LiveBattleProvider implements BattleProvider {
         ...(envelope.data.playOpening === true && envelope.data.openingSnapshot
           ? { openingSnapshot: envelope.data.openingSnapshot, playOpening: true }
           : {}),
+        ...(this.authority ? { authority: structuredClone(this.authority) } : {}),
       };
       return this.state;
     });
@@ -954,11 +987,44 @@ export class LiveBattleProvider implements BattleProvider {
 
   async submitCommand(command: BattleCommand): Promise<PresentationScript> {
     if (!this.battleId) throw new BattleProviderError("The live battle session has not initialized.", "adapter");
-    const envelope = await this.request<CommandAccepted | CommandRejected>(
-      `/api/v1/battles/${encodeURIComponent(this.battleId)}/commands`,
-      { method: "POST", body: JSON.stringify(command) },
-    );
+    this.pendingCommand = command;
+    let envelope: Envelope<CommandAccepted | CommandRejected | null>;
+    try {
+      envelope = await this.request<CommandAccepted | CommandRejected | null>(
+        `/api/v1/battles/${encodeURIComponent(this.battleId)}/commands`,
+        { method: "POST", body: JSON.stringify(command) },
+      );
+    } catch (reason) {
+      if (!(reason instanceof BattleProviderError) || reason.kind !== "disconnected") {
+        this.pendingCommand = null;
+      }
+      throw reason;
+    }
     const result = envelope.data;
+    if (result === null && isRecord(envelope.settlement) && this.state) {
+      const outcome = envelope.settlement.outcome;
+      if (!isRecord(outcome) || typeof outcome.kind !== "string") {
+        this.pendingCommand = null;
+        throw new BattleProviderError("The settled battle receipt is invalid.", "adapter");
+      }
+      const snapshot = structuredClone(this.state.snapshot);
+      snapshot.phase = "ended";
+      snapshot.outcome = outcome as BattleSnapshot["outcome"];
+      this.state = { revision: envelope.revision, snapshot };
+      this.pendingCommand = null;
+      return {
+        id: command.commandId,
+        label: "Battle result recovered",
+        eventType: "magic",
+        events: [],
+        snapshot,
+        revision: envelope.revision,
+      };
+    }
+    if (result === null) {
+      this.pendingCommand = null;
+      throw new BattleProviderError("The battle service returned no command result.", "adapter");
+    }
     if (this.state && result.accepted && result.revision <= this.state.revision) {
       return {
         id: command.commandId,
@@ -979,6 +1045,7 @@ export class LiveBattleProvider implements BattleProvider {
     }
     this.state = { revision: result.revision, snapshot: result.snapshot };
     if (!result.accepted) {
+      this.pendingCommand = null;
       throw new BattleProviderError(
         result.message,
         result.code === "staleRevision" ? "stale" : "rejected",
@@ -986,6 +1053,7 @@ export class LiveBattleProvider implements BattleProvider {
         result.revision,
       );
     }
+    this.pendingCommand = null;
     return {
       id: command.commandId,
       label: result.events.at(0)?.message ?? "Battle action",
@@ -994,6 +1062,31 @@ export class LiveBattleProvider implements BattleProvider {
       snapshot: result.snapshot,
       revision: result.revision,
     };
+  }
+
+  retryPendingCommand(): Promise<PresentationScript> {
+    if (!this.pendingCommand) {
+      throw new BattleProviderError("There is no uncertain battle command to retry.", "adapter");
+    }
+    return this.submitCommand(structuredClone(this.pendingCommand));
+  }
+
+  async resign(): Promise<BattleResignResult> {
+    if (!this.battleId) {
+      throw new BattleProviderError("The live battle session has not initialized.", "adapter");
+    }
+    const body = await requestAdapterJson(
+      this.baseUrl,
+      `/api/v1/battles/${encodeURIComponent(this.battleId)}/resign`,
+      { method: "POST", body: "{}" },
+    );
+    if (!isRecord(body)
+      || body.contractVersion !== "1.0"
+      || body.battleId !== this.battleId
+      || !["settled", "abandoned", "expired"].includes(String(body.lifecycleStatus))) {
+      throw new BattleProviderError("The battle service returned an unsupported Resign result.", "adapter");
+    }
+    return body as unknown as BattleResignResult;
   }
 
   async previewAction(request: BattlePreviewRequest, signal?: AbortSignal): Promise<BattlePreview> {

@@ -299,5 +299,10 @@ export function usePresentationQueue(provider: BattleProvider, options: Presenta
     setLoadAttempt((attempt) => attempt + 1);
   }, []);
 
-  return { snapshot: visibleSnapshot, revision, activeEvent, activeHpEvent, activeHealingCasterEvent, log, setLog, speed, setSpeed, isPlaying, isOpening, hasPendingOpening, canSkip, error, errorKind, present, playOpening, skip, retry };
+  const retryPendingCommand = useCallback(() => {
+    if (!provider.retryPendingCommand) return Promise.resolve();
+    return runPresentation(() => provider.retryPendingCommand!(), false);
+  }, [provider, runPresentation]);
+
+  return { snapshot: visibleSnapshot, revision, activeEvent, activeHpEvent, activeHealingCasterEvent, log, setLog, speed, setSpeed, isPlaying, isOpening, hasPendingOpening, canSkip, error, errorKind, present, playOpening, skip, retry, retryPendingCommand };
 }

@@ -34,6 +34,7 @@ import {
 type BattleExperienceProps = {
   countdownStepMs?: number;
   selectedStageId?: string;
+  showEngineeringReadout?: boolean;
 };
 
 type ResourceState = {
@@ -51,7 +52,12 @@ type ActiveLaunch = {
 export function BattleExperience(props: BattleExperienceProps) {
   const structuredStage = resolveStructuredStage(props.selectedStageId);
   if (props.selectedStageId === "arena") {
-    return <ArenaRunExperience countdownStepMs={props.countdownStepMs} />;
+    return (
+      <ArenaRunExperience
+        countdownStepMs={props.countdownStepMs}
+        showEngineeringReadout={props.showEngineeringReadout}
+      />
+    );
   }
   return structuredStage
     ? <StructuredBattleExperience {...props} structuredStage={structuredStage} />
@@ -113,6 +119,7 @@ function RewardNotification({
 function BattleSession({
   countdownStepMs = 1000,
   selectedStageId,
+  showEngineeringReadout = false,
   structuredStage,
   onStructuredStageComplete,
 }: BattleExperienceProps & {
@@ -204,6 +211,18 @@ function BattleSession({
   const closeLiveBattle = () => {
     setActiveLaunch(null);
     setBattleBackground(null);
+  };
+
+  const resignLiveBattle = async () => {
+    if (!provider?.resign) {
+      closeLiveBattle();
+      return;
+    }
+    const result = await provider.resign();
+    if (result.lifecycleStatus === "settled") {
+      throw new Error("This battle already reached a settled result. Refresh its authoritative outcome instead of resigning.");
+    }
+    closeLiveBattle();
   };
 
   const continueAfterCommit = (
@@ -411,7 +430,8 @@ function BattleSession({
       entryCountdownStepMs={countdownStepMs}
       completionActionLabel={completionLabel}
       onBattleComplete={completeBattle}
-      onResign={closeLiveBattle}
+      onResign={resignLiveBattle}
+      showEngineeringReadout={showEngineeringReadout}
     />
   );
 }

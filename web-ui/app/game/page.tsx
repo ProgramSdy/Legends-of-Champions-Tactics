@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { BattleExperience } from "@/components/battle/BattleExperience";
 import { resolveEnabledStage } from "@/components/stages/stage-config";
+import { isEngineeringMode } from "@/lib/releaseMode";
+import { PublicSessionGate } from "@/components/session/PublicSessionProvider";
 
 export const metadata: Metadata = {
   title: "Team Builder · Legends of Champions Tactics",
@@ -15,5 +17,11 @@ export default async function GamePage({ searchParams }: GamePageProps) {
   const query = await searchParams;
   const requestedStageId = typeof query.stage === "string" ? query.stage : null;
   const selectedStage = resolveEnabledStage(requestedStageId);
-  return <BattleExperience key={selectedStage.id} selectedStageId={selectedStage.id} />;
+  return <PublicSessionGate>
+    <BattleExperience
+      key={selectedStage.id}
+      selectedStageId={selectedStage.id}
+      showEngineeringReadout={isEngineeringMode()}
+    />
+  </PublicSessionGate>;
 }

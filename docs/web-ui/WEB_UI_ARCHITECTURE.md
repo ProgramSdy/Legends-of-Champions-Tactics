@@ -79,11 +79,18 @@ the thin Python adapter. Python remains the sole gameplay authority.
   stage response remains authoritative for access, completion, and rewards.
 - `components/stages/StageSelectionScreen.tsx` owns the map-bound Arena,
   Warrior's Barrack, and Paladin's Altar interactions at `/stages`, plus the
-  title and Engineering Test & Debugging route controls. Hotspots, labels,
+  title and Development-only Engineering Test & Debugging route control. Hotspots, labels,
   glows, and optional debug outlines share one intrinsic `1672 / 941`
   positioning parent without route controls changing hotspot geometry.
 - `components/battle/DebugBattleExperience.tsx` owns `/debug`: it fetches only
   the static roster and creates sessions through the dedicated debug route.
+  Explicit Development mode retains this page and the `/assets` diagnostics
+  page. Public `npm run build` uses a disposable source copy without either
+  filesystem route before vinext route discovery; the original source and
+  shared gameplay/asset modules remain intact. `LOCT_RELEASE_MODE` accepts
+  exact `development` or `public`, with missing/invalid values public-safe.
+  Server-rendered mode props hide the Stage Engineering link, hotspot overlay,
+  and Battle viewport readout publicly without client-side inference.
   `components/battle/ArenaRunExperience.tsx` owns active-slot Arena Run state,
   squad/node UI, and the dedicated launch/completion routes; it never authors
   enemy configuration, node progress, or run randomness locally. It presents a
@@ -344,9 +351,13 @@ comes from the Berserker YAML, while the typed adapter reference supplies
 only self/effect and inapplicable numeric states. No Gallery formula or
 activation probability is calculated in React.
 Priest Discipline likewise shows Holy Concentration under Passive from the
-read-only catalogue and its editorial YAML. That Gallery-only marker describes
+read-only catalogue and its editorial YAML. That catalogue-only reference describes
 the existing low-HP Holy Word Redemption extra-recipient behavior; it does not
-add a selectable battle action or a frontend activation calculation.
+add a selectable battle action or a frontend activation calculation. The
+Battle skill deck also renders the approved Holy Concentration artwork as a
+presentation-only passive card after the three active skills, using the same
+non-interactive card boundary as Wrath of Crusader. It does not create a
+`SkillState`, legal action, target, status icon, or additional Redemption rule.
 Paladin Retribution likewise shows Wrath of Crusader in the Passive tab from
 the read-only catalogue and editorial YAML. Its buff and Hammer/Flash bonuses
 remain in the existing Python skills; the Gallery does not add an action or
@@ -540,19 +551,38 @@ self-preview card.
 
 ## Runtime Caveat
 
-The browser adapter defaults to `http://localhost:8001`; override it with
-`NEXT_PUBLIC_BATTLE_API_URL`. A separately hosted frontend requires adapter
-CORS configuration or a same-origin proxy. The process-local Python registry
-has no persistence or multi-worker consistency, so this milestone uses one API
-worker.
+Explicit Development mode keeps the local adapter default
+`http://localhost:8001`, overridable with `NEXT_PUBLIC_BATTLE_API_URL`.
+Public mode compiles to a same-origin API base, uses credentialed requests and
+an in-memory CSRF token, and does not include the Development adapter URL in
+the verified Public artifact. The shared `PublicSessionProvider` loads the
+current backend session read-only, exposes the one-time code only during
+issuance/replacement, gates protected pages until code acknowledgment, and
+clears player state on authentication loss. CSRF rejection triggers read-only
+revalidation, not mutation replay. Near expiry, a bounded explicit POST may
+refresh the session. BroadcastChannel communicates invalidation/changes
+between tabs without broadcasting secrets.
 
-Five-slot training progression and active-slot choice are persisted separately
-by the backend. The browser retains only fetched presentation state; battle
-sessions still have no reload recovery and the API remains a single-worker
-deployment boundary.
+The five Public slots and active profile are backend-owned. Public Stage/Arena
+battle launch, state, preview, command, Resign, and durable receipt all use
+owner-bound routes. Resign navigation waits for server confirmation; an
+uncertain command keeps its original command ID. The 5/1-minute warnings use
+`serverNow`/`expiresAt` and retain their display across same-deadline preview
+updates. Battle sessions remain RAM-only without restart resume; durable
+settlement receipts can be re-read. The API remains single-worker. Optional
+Vite HTTPS certificate and API proxy settings exist only for isolated local
+validation and are off by default; deployed Nginx/TLS is not verified here.
 
 ## Change Log
 
+- 2026-11-18 — Documented RELEASE-002 Batch 3 Public session, transport,
+  battle and local HTTPS testing boundaries.
+- 2026-11-11 — UI-065 added the approved non-interactive Holy Concentration
+  Battle card from catalogue-known presentation metadata while retaining
+  runtime skill and legal-action authority.
+- 2026-11-10 — Documented explicit Development/Public Release mode,
+  pre-discovery Engineering route exclusion, and server-provided diagnostic
+  presentation gates without changing shared Battle/Team Builder behavior.
 - 2026-10-27 — Added structured-only Learner/Tactics mode state, backend-owned
   availability, immutable launch identity, and mode-specific return flow.
 - 2026-09-15 — Expanded Battle Information Transparency through the typed

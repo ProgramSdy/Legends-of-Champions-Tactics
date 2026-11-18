@@ -4,11 +4,16 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from
 import { createPortal } from "react-dom";
 import { ManualDialog } from "@/components/manual/ManualDialog";
 import { usePresentationQueue } from "@/lib/battle/usePresentationQueue";
-import type { BattleEvent, BattleEventType, BattleOutcome, BattlePreviewSelf, BattlePreviewTarget, BattleProvider, CombatantState, LegalAction, PresentationScript, SideId } from "@/lib/battle/types";
+import type { BattleAuthorityState, BattleEvent, BattleEventType, BattleOutcome, BattlePreviewSelf, BattlePreviewTarget, BattleProvider, CombatantState, LegalAction, PresentationScript, SideId } from "@/lib/battle/types";
 import { AssetImage } from "./AssetImage";
 import { HeroCard, Meter } from "./HeroCard";
 import { HeroStatsDialog } from "./HeroStatsDialog";
-import { NoFourthSkillCard, SkillCard, WrathOfCrusaderCard } from "./SkillCard";
+import {
+  NoFourthSkillCard,
+  PresentationOnlyPassiveCard,
+  SkillCard,
+  type PresentationOnlyPassiveSkillId,
+} from "./SkillCard";
 import { formationFor, getBattleFormat } from "@/lib/battle/formations";
 import { BATTLE_BACKGROUND } from "@/lib/battle/battleBackgrounds";
 import { heroFigureScaleFor, statusRegistry } from "@/lib/battle/assets";
@@ -23,6 +28,57 @@ const logGlyph: Record<BattleEventType, string> = {
   characterSummoned: "♟", characterDefeated: "☠", turnEnded: "■", battleEnded: "★",
   battleLog: "›",
 };
+
+function useBattleInactivityWarning(provider: BattleProvider) {
+  const [authority, setAuthority] = useState<BattleAuthorityState | null>(() => provider.getAuthority?.() ?? null);
+  const [warning, setWarning] = useState<string | null>(null);
+  const clockRef = useRef({ deadline: "", remainingAtSync: 0, syncedAt: 0 });
+  const warnedRef = useRef(new Set<string>());
+
+  useEffect(() => provider.subscribeAuthority?.((next) => {
+    setAuthority(next);
+    if (!next || next.lifecycleStatus !== "active") {
+      setWarning(null);
+      return;
+    }
+    const serverNow = Date.parse(next.serverNow);
+    const expiresAt = Date.parse(next.expiresAt);
+    if (!Number.isFinite(serverNow) || !Number.isFinite(expiresAt)) return;
+    const deadlineChanged = clockRef.current.deadline !== next.expiresAt;
+    clockRef.current = {
+      deadline: next.expiresAt,
+      remainingAtSync: Math.max(0, expiresAt - serverNow),
+      syncedAt: Date.now(),
+    };
+    // Preview and command envelopes may update serverNow repeatedly while the
+    // authoritative deadline is unchanged. Preserve an already-issued warning
+    // for that deadline; otherwise the once-only guard would suppress it after
+    // the next harmless envelope refresh.
+    if (deadlineChanged) setWarning(null);
+  }) ?? (() => {}), [provider]);
+
+  useEffect(() => {
+    if (!authority || authority.lifecycleStatus !== "active") return;
+    const tick = () => {
+      const clock = clockRef.current;
+      if (!clock.deadline) return;
+      const remaining = Math.max(0, clock.remainingAtSync - (Date.now() - clock.syncedAt));
+      const threshold = remaining <= 60_000 ? 1 : remaining <= 300_000 ? 5 : null;
+      if (threshold === null) return;
+      const key = `${clock.deadline}.${threshold}`;
+      if (warnedRef.current.has(key)) return;
+      warnedRef.current.add(key);
+      setWarning(threshold === 1
+        ? "Battle expires after one more minute without an accepted action."
+        : "Battle expires after five more minutes without an accepted action.");
+    };
+    tick();
+    const timer = window.setInterval(tick, 1000);
+    return () => window.clearInterval(timer);
+  }, [authority]);
+
+  return warning;
+}
 
 function createCommandId(): string {
   const cryptoApi = globalThis.crypto;
@@ -441,16 +497,17 @@ interface BattleScreenProps {
   onBattleComplete?: (outcome: BattleOutcome) => void | Promise<void>;
   completionActionLabel?: (outcome: BattleOutcome) => string;
   onReturnToBuilder?: () => void;
-  onResign?: () => void;
+  onResign?: () => void | Promise<void>;
+  showEngineeringReadout?: boolean;
 }
 
 type EntryCountdown = 3 | 2 | 1 | "start" | null;
 
-export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundImage, entryCountdownStepMs, onBattleComplete, completionActionLabel, onReturnToBuilder, onResign }: BattleScreenProps) {
+export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundImage, entryCountdownStepMs, onBattleComplete, completionActionLabel, onReturnToBuilder, onResign, showEngineeringReadout = false }: BattleScreenProps) {
   const mountedBackground = backgroundImage ?? BATTLE_BACKGROUND;
   const presentationConfig = useBattlePresentationConfig();
   const battleAudio = useBattleAudio();
-  const { snapshot, revision, activeEvent, activeHpEvent, activeHealingCasterEvent, log, setLog, speed, setSpeed, isPlaying, isOpening, hasPendingOpening, canSkip, error, errorKind, present, playOpening, skip, retry } = usePresentationQueue(provider, { onActiveEvent: battleAudio.onActiveEvent });
+  const { snapshot, revision, activeEvent, activeHpEvent, activeHealingCasterEvent, log, setLog, speed, setSpeed, isPlaying, isOpening, hasPendingOpening, canSkip, error, errorKind, present, playOpening, skip, retry, retryPendingCommand } = usePresentationQueue(provider, { onActiveEvent: battleAudio.onActiveEvent });
   const [entryCountdown, setEntryCountdown] = useState<EntryCountdown>(entryCountdownStepMs === undefined ? null : 3);
   const [selectedSkill, setSelectedSkill] = useState<string | null>(null);
   const [selectedTargets, setSelectedTargets] = useState<string[]>([]);
@@ -462,12 +519,15 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
   const [completionPending, setCompletionPending] = useState(false);
   const [completionError, setCompletionError] = useState<string | null>(null);
   const [resignConfirmationOpen, setResignConfirmationOpen] = useState(false);
+  const [resignPending, setResignPending] = useState(false);
+  const [resignError, setResignError] = useState<string | null>(null);
   const [manualOpen, setManualOpen] = useState(false);
   const [statsCombatantId, setStatsCombatantId] = useState<string | null>(null);
   const statsTriggerRef = useRef<HTMLButtonElement | null>(null);
   const logListRef = useRef<HTMLOListElement>(null);
   const completionButtonRef = useRef<HTMLButtonElement>(null);
   const manualTriggerRef = useRef<HTMLButtonElement>(null);
+  const inactivityWarning = useBattleInactivityWarning(provider);
 
   useEffect(() => {
     if (!snapshot || entryCountdown === null || entryCountdownStepMs === undefined) return;
@@ -518,12 +578,17 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
     ? active.skills.filter((skill) => !skill.isPassive)
     : [];
   const passiveSkills = active?.skills.filter((skill) => skill.isPassive) ?? [];
-  const showWrathOfCrusader = active?.definitionId === "hero.paladin.retribution"
-    && !active.skills.some((skill) => skill.id === "skill.paladin.wrath_of_crusader");
+  const presentationOnlyPassiveId: PresentationOnlyPassiveSkillId | null = active?.definitionId === "hero.paladin.retribution"
+    ? "skill.paladin.wrath_of_crusader"
+    : active?.definitionId === "hero.priest.discipline"
+      ? "skill.priest.holy_concentration"
+      : null;
+  const showPresentationOnlyPassive = presentationOnlyPassiveId !== null
+    && !active?.skills.some((skill) => skill.id === presentationOnlyPassiveId);
   // Placeholders carry no fabricated ID or action state. Keep real passive
   // skills at the far right, as requested, while future real skills remain
   // visible even if the total exceeds the four-column baseline.
-  const placeholderCount = Math.max(0, 4 - orderedActiveSkills.length - passiveSkills.length - Number(showWrathOfCrusader));
+  const placeholderCount = Math.max(0, 4 - orderedActiveSkills.length - passiveSkills.length - Number(showPresentationOnlyPassive));
   // Mouse departure intentionally clears the panel, even if clicking left the
   // button focused. Keyboard focus remains an accessible non-pointer fallback.
   const previewAnchorId = hoveredTargetId ?? (targetInputMode === "keyboard" ? focusedTargetId : null);
@@ -624,6 +689,18 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
     onReturnToBuilder?.();
   };
 
+  const confirmResign = async () => {
+    if (!onResign || resignPending) return;
+    setResignPending(true);
+    setResignError(null);
+    try {
+      await onResign();
+    } catch (reason: unknown) {
+      setResignError(reason instanceof Error ? reason.message : "The server could not confirm Resign. Retry safely.");
+      setResignPending(false);
+    }
+  };
+
   const triggerSkill = () => {
     if (!acceptsCommands || !selectedSkill || !legal || !snapshot.activeCombatantId) return;
     void present(() => provider.submitCommand({
@@ -688,11 +765,13 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
           data-background={mountedBackground}
           style={{ "--battle-background-image": `url("${mountedBackground}")` } as CSSProperties}
         >
-          <aside className="battle-viewport-readout" aria-label="Battle viewport configuration">
-            <small>VIEWPORT</small>
-            <strong>{presentationConfig.viewport.width} × {presentationConfig.viewport.height}</strong>
-            <span>{presentationConfig.mode.replaceAll("-", " ").toUpperCase()}</span>
-          </aside>
+          {showEngineeringReadout ? (
+            <aside className="battle-viewport-readout" aria-label="Battle viewport configuration">
+              <small>VIEWPORT</small>
+              <strong>{presentationConfig.viewport.width} × {presentationConfig.viewport.height}</strong>
+              <span>{presentationConfig.mode.replaceAll("-", " ").toUpperCase()}</span>
+            </aside>
+          ) : null}
           {(activeEvent?.effectHint === "magic" || activeEvent?.effectHint === "summon")
             && <div className={`effect-layer ${activeEvent.effectHint}`} data-battle-layer="combat-vfx" aria-hidden="true"><span /></div>}
           {battlefield.map((hero) => {
@@ -782,7 +861,7 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
           {passiveSkills.map((item) => (
             <SkillCard key={item.id} skill={item} selected={false} legal={false} disabled onSelect={() => undefined} />
           ))}
-          {showWrathOfCrusader && <WrathOfCrusaderCard />}
+          {showPresentationOnlyPassive && presentationOnlyPassiveId && <PresentationOnlyPassiveCard skillId={presentationOnlyPassiveId} />}
         </div>
         <div className="battle-log">
           <header><strong>BATTLE LOG</strong><button data-audio-feedback="interactive" disabled={entryLocked} onClick={() => setLog([])}>Clear</button></header>
@@ -802,7 +881,7 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
         {onResign ? <button data-audio-feedback="interactive" type="button" className="resign-battle" onClick={() => setResignConfirmationOpen(true)}>RESIGN</button> : null}
       </footer>
       {manualOpen ? <ManualDialog open onClose={() => setManualOpen(false)} triggerRef={manualTriggerRef} navigationMode="embedded" /> : null}
-      {(error || fullscreenError) && <div className={`ui-error ${errorKind ?? ""}`} role="alert"><strong>{errorKind === "stale" ? "STATE RECONCILED" : errorKind === "rejected" ? "COMMAND REJECTED" : "BATTLE NOTICE"}</strong><span>{error ?? fullscreenError}</span></div>}
+      {(error || fullscreenError) && <div className={`ui-error ${errorKind ?? ""}`} role="alert"><strong>{errorKind === "stale" ? "STATE RECONCILED" : errorKind === "rejected" ? "COMMAND REJECTED" : "BATTLE NOTICE"}</strong><span>{error ?? fullscreenError}</span>{errorKind === "disconnected" && provider.retryPendingCommand ? <button type="button" onClick={() => void retryPendingCommand()}>RETRY SAME COMMAND</button> : null}</div>}
       {entryCountdown !== null && (
         <div className="battle-entry-countdown" data-countdown-step={entryCountdown}>
           <section
@@ -842,14 +921,16 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
           <section className="battle-resign-dialog" role="dialog" aria-modal="true" aria-labelledby="battle-resign-heading">
             <small>RESIGN BATTLE</small>
             <h2 id="battle-resign-heading">Give up this battle?</h2>
-            <p>You will return to the Team Builder. This battle will not count as a victory.</p>
+            <p>The server must confirm Resign before you leave this battle.</p>
+            {resignError ? <p className="completion-error" role="alert">{resignError}</p> : null}
             <div>
-              <button data-audio-feedback="interactive" type="button" onClick={onResign}>YES</button>
-              <button data-audio-feedback="interactive" type="button" onClick={() => setResignConfirmationOpen(false)}>NO</button>
+              <button data-audio-feedback="interactive" type="button" disabled={resignPending} onClick={() => void confirmResign()}>{resignPending ? "WAITING…" : resignError ? "RETRY" : "YES"}</button>
+              <button data-audio-feedback="interactive" type="button" disabled={resignPending} onClick={() => { setResignConfirmationOpen(false); setResignError(null); }}>NO</button>
             </div>
           </section>
         </div>
       ) : null}
+      {inactivityWarning ? <aside className="battle-inactivity-warning" role="status">{inactivityWarning}</aside> : null}
       {inspectedHero ? <HeroStatsDialog hero={inspectedHero} updating={isPlaying} onClose={closeHeroStats} /> : null}
       {mode === "mock" && <p className="fixture-note">FIXTURE PREVIEW · Outcomes are scripted; Python remains gameplay authority.</p>}
     </main>

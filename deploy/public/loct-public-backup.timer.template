@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily LoC Public SQLite backup schedule
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+RandomizedDelaySec=15m
+Unit=loct-public-backup.service
+
+[Install]
+WantedBy=timers.target

@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { StartupScreen } from "@/components/startup/StartupScreen";
 import { TeamBuilder } from "@/components/battle/TeamBuilder";
 import { STAGE_DEFINITIONS } from "@/components/stages/stage-config";
@@ -14,6 +14,8 @@ import type {
 
 const push = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
+
+beforeEach(() => vi.stubEnv("LOCT_RELEASE_MODE", "development"));
 
 const roster: HeroDefinitionSummary[] = [
   { definitionId: "hero.warrior.weapon_master", displayName: "Garran", faculty: "Warrior", specialization: "Weapon Master" },
@@ -80,6 +82,7 @@ function actionResponse(slotId: SaveSlotId) {
 afterEach(() => {
   push.mockReset();
   vi.restoreAllMocks();
+  vi.unstubAllEnvs();
 });
 
 describe("UI-021 startup save-slot flow", () => {
@@ -111,7 +114,7 @@ describe("UI-021 startup save-slot flow", () => {
 
     await user.click(screen.getByRole("button", { name: "START GAME" }));
     const retry = await screen.findByRole("button", { name: "RETRY" });
-    expect(screen.getByRole("alert")).toHaveTextContent("Battle service is disconnected.");
+    expect(screen.getByRole("alert")).toHaveTextContent("The game service is unreachable.");
     expect(screen.getByRole("button", { name: /NEW GAME/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: /LOAD GAME/i })).toBeDisabled();
     await waitFor(() => expect(retry).toHaveFocus());
@@ -199,7 +202,7 @@ describe("UI-021 stage-preview focus boundary", () => {
     const barrack = enabled.find((stage) => stage.id === "warriors-barrack")!;
     const altar = enabled.find((stage) => stage.id === "paladins-altar")!;
     expect(barrack.geometry).toEqual({ leftPercent: 11.5, topPercent: 13.2, widthPercent: 22.6, heightPercent: 21.8 });
-    expect(altar.geometry).toEqual({ leftPercent: 70.5, topPercent: 8.5, widthPercent: 20, heightPercent: 24 });
+    expect(altar.geometry).toEqual({ leftPercent: 74.5, topPercent: 11.5, widthPercent: 15, heightPercent: 18 });
     expect(barrack.previewFocus).not.toEqual(arena.previewFocus);
     expect(altar.previewFocus).not.toEqual(arena.previewFocus);
     expect(barrack.previewFocus).not.toEqual(altar.previewFocus);

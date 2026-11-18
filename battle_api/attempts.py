@@ -29,6 +29,8 @@ class _BattleAttempt:
     fingerprint: Hashable
     session: Any
     envelope: dict[str, Any]
+    player_id: str | None = None
+    session_generation: int | None = None
 
 
 class BattleAttemptRegistry:
@@ -78,3 +80,69 @@ class BattleAttemptRegistry:
 
         with self._lock:
             self._attempts.clear()
+
+    def get(
+        self,
+        *,
+        attempt_id: str,
+        profile_id: str,
+        fingerprint: Hashable,
+        player_id: str | None = None,
+        session_generation: int | None = None,
+    ) -> LaunchResult[Any] | None:
+        """Read a binding without running battle construction under this lock."""
+        with self._lock:
+            existing = self._attempts.get(attempt_id)
+            if existing is None:
+                return None
+            if existing.profile_id != profile_id or existing.player_id != player_id:
+                raise BattleAttemptConflict(
+                    "attemptId is already bound to a different battle owner."
+                )
+            if existing.fingerprint != fingerprint:
+                raise BattleAttemptConflict(
+                    "attemptId is already bound to a different battle launch configuration."
+                )
+            if (
+                existing.session_generation is not None
+                and existing.session_generation != session_generation
+            ):
+                raise BattleAttemptConflict(
+                    "attemptId belongs to a revoked player session."
+                )
+            return existing.session, deepcopy(existing.envelope)
+
+    def bind(
+        self,
+        *,
+        attempt_id: str | None,
+        profile_id: str,
+        fingerprint: Hashable,
+        session: Any,
+        envelope: dict[str, Any],
+        player_id: str | None = None,
+        session_generation: int | None = None,
+    ) -> LaunchResult[Any]:
+        """Bind only after successful durable activation."""
+        if attempt_id is None:
+            return session, deepcopy(envelope)
+        with self._lock:
+            if attempt_id in self._attempts:
+                raise BattleAttemptConflict("attemptId is already bound.")
+            self._attempts[attempt_id] = _BattleAttempt(
+                profile_id=profile_id,
+                fingerprint=fingerprint,
+                session=session,
+                envelope=deepcopy(envelope),
+                player_id=player_id,
+                session_generation=session_generation,
+            )
+            return session, deepcopy(envelope)
+
+    def remove_battle(self, battle_id: str) -> None:
+        with self._lock:
+            self._attempts = {
+                attempt_id: attempt
+                for attempt_id, attempt in self._attempts.items()
+                if getattr(attempt.session, "battle_id", None) != battle_id
+            }
