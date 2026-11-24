@@ -71,6 +71,25 @@ of combat state, legality, randomness, AI, damage, and outcomes. The browser
 submits intent and renders authoritative snapshots/events; it does not simulate
 combat.
 
+### First public HTTPS deployment (19 November 2026)
+
+The owner-reported `RELEASE-003-db7f3395` deployment runs on a GCE
+`us-central1-a` e2-micro VM. Browser HTTPS to
+`loc-tactics.duckdns.org:443` enters Nginx, which proxies `/api/*` to the
+single FastAPI/Uvicorn service on `127.0.0.1:8001` and other paths to Vinext
+on `127.0.0.1:3001`; both application services are systemd-managed and
+loopback-only. Public SQLite lives outside the release tree at
+`/var/lib/loct/public/player.sqlite3`. The Owner first verified external HTTPS
+API health and browser rendering, then separately authorized Public Battle
+activation and reported a passed manual journey through player/Save Slot
+setup, two structured battles and progress available after normal exit/reload.
+**Core gameplay passed for that tested path;** capacity, backup/restore,
+restart persistence and final Public Alpha readiness remain unverified. The
+source default is fail-closed, while the installed VM has the explicit battle
+opt-in. See `Public_Deployment_Runbook.md` and
+`docs/Codex/Public_Core_Gameplay_Acceptance_2026-11-19.md`; this update did
+not inspect the live VM.
+
 ## Major Components
 
 - **Team Builder (Next.js):** gathers ordered teams, battle size, control and
@@ -134,8 +153,10 @@ saved-code acknowledgment before ordinary player access. Unsafe Public
 mutations require exact configured Origin and session-bound CSRF verification;
 the opaque authentication cookie is host-only, Secure, HttpOnly, SameSite=Lax.
 The code is disclosed only at enrollment or authenticated replacement and is
-not stored as plaintext. Final onboarding UI and verified HTTPS/proxy
-deployment are later work, so this backend foundation is not a Public launch.
+not stored as plaintext. This paragraph describes Batch 1's foundation at
+the time it was built; Batch 3 subsequently added onboarding, and the
+2026-11-19 deployment established HTTPS ingress and start-screen rendering.
+Neither milestone alone establishes Public Alpha acceptance.
 
 Batch 1 deliberately removes **all** Public battle create, state, command,
 preview, and completion routes from routing and OpenAPI. Generic
@@ -278,8 +299,10 @@ friendly Stage/Arena Victory effect (or none for Defeat/Draw), records the
 original receipt, and releases the lease before confirmation. A failed
 transaction does not confirm Victory and remains retryable while RAM survives.
 An uncommitted engine result lost in a simultaneous storage failure and
-process crash is not a confirmed Victory. The Public battle surface remains
-default-off until later frontend and release gates are completed.
+process crash is not a confirmed Victory. The Public battle surface is
+default-off in source when the explicit gate is absent. The Owner later
+authorized and enabled it on the installed VM for core-gameplay acceptance;
+remaining release gates stay open.
 The expanded battle tables have an explicit Public battle-schema revision
 marker; a Batch 1-shaped v5 database fails closed pending an approved offline
 upgrade on a verified backup, never a silent runtime rewrite.
@@ -296,16 +319,36 @@ CSRF rejection revalidates read-only and does not replay an unsafe command.
 Development preserves its anonymous local adapter path. Public Stage/Arena
 battle launch, preview, command, Resign and receipt consume the Batch 2
 owner-bound routes; a network-uncertain command retains its original command
-ID. The battle gate remains default-off outside isolated local validation.
+ID. The source-level battle gate remains default-off without explicit opt-in;
+the installed VM was separately opted in on 2026-11-19 after Owner authorization.
 
 Offline `public_db_ops` uses SQLite online backup plus integrity/schema
 checks, isolated no-overwrite restore, seven-daily and separate release
-retention, and a narrowly verified backup-first marker upgrade. It is not
-imported by the running API. `deploy/public/` provides single-worker
-Nginx/systemd/GCS templates, not a deployed environment. Public health and
-identity fail closed on missing exact HTTPS Origin, Public DB/schema, trusted
-proxy, or independent strong identity/rate keys. Real GCE, TLS, proxy, GCS and
-resource behavior remain launch-blocking deployment checks.
+retention, and a narrowly verified backup-first marker upgrade in repository
+tooling; it is not imported by the running API. The installed VM instead uses
+`/usr/local/bin/loct-db-backup` with `loct-db-backup` systemd units. On
+2026-11-20 the Owner reported a successful local snapshot and isolated
+database-level restore, completing Stage 1 Database Protection within the
+approved Alpha scope. Local backups share the VM/system disk with production
+data; the Owner deferred GCS and accepted that correlated-loss risk for Alpha.
+`deploy/public/` remains a template set, not an exact installed configuration.
+Public health and identity fail closed on missing exact HTTPS Origin, Public
+DB/schema, trusted proxy, or independent strong identity/rate keys. The Owner
+reported Stage 2 Operational Stability complete for its defined resource,
+controlled API/Web restart and logging checks. The Owner then accepted Stage 3
+Nginx hardening, tested rate limiting and a Certbot renewal dry-run for Public
+Alpha, selecting a Single-Release Strategy. Public SSH, local-only backups and
+untested actual rollback are accepted residual risks. Unattended backup,
+actual renewal/reload, VM reboot and in-progress battle recovery remain open;
+Stage 4 was Owner-accepted and closed on 2026-11-23 after bounded production
+10/20/30-player 2v2 tests at about 3 global RPS. The final 30-player run
+settled 30/30 battles and a server snapshot observed 30 simultaneous active
+leases. The installed battle-capacity setting changed from 20 to 200, but 200
+is an operational ceiling, **not** proven sustainable capacity. Sustained
+resource/SQLite stress and 50/100-player performance remain unmeasured. The
+next gate is a separate Final Public Alpha Launch Readiness Review and Owner
+go/no-go decision. See `Public_Deployment_Runbook.md` for canonical evidence
+and limits.
 
 ## Architectural Decisions
 

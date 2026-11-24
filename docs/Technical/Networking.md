@@ -9,6 +9,13 @@ Authoritative networking design and constraints.
 Implemented local-development HTTP boundary: a Next.js client communicates
 with the FastAPI battle adapter. This is a request/response battle-session
 transport, not a multiplayer, WebSocket, or persistent-session network design.
+On 2026-11-19 the Owner verified external HTTPS API health and start-screen
+rendering through GCE/Nginx, then separately authorized Public Battle and
+reported two complete public structured battles with progress available after
+normal exit/reload. This passes the tested core player journey, not final
+Alpha security or operations. See `Public_Deployment_Runbook.md` and
+`docs/Codex/Public_Core_Gameplay_Acceptance_2026-11-19.md`. The source gate
+defaults off; the installed VM has explicit battle opt-in.
 
 ## Network Model
 
@@ -131,22 +138,42 @@ refresh POST may renew a near-expiry session; ordinary GET/preview/playback
 does not. A 401 invalidates local player views, whereas CSRF 403 revalidates
 the session read-only and never replays the rejected mutation. Player-facing
 Manual formation data uses this same-origin boundary. Development retains
-its localhost adapter URL. Normal Public battle access stays closed by
-default. The isolated Public Stage/Arena launch
+its localhost adapter URL. Public battle access remains closed by default in
+source; the Owner explicitly enabled the installed VM's gate on 2026-11-19.
+The Public Stage/Arena launch
 contract rejects a `seed` field even when its value is `null`; the server
 generates the effective 256-bit combat seed and retains it only in diagnostics.
-Development generic/Stage/Debug explicit seeds remain supported. A healthy
-isolated backend test does not verify the future HTTPS/proxy/player UX gates.
+Development generic/Stage/Debug explicit seeds remain supported. The Owner's
+public core-gameplay test verifies one player journey, not the remaining
+proxy-security, multi-player, fault or operations gates.
 
 Public deployment templates require one Nginx ingress, one FastAPI worker,
 loopback services, Uvicorn `--no-proxy-headers`, and one Nginx-overwritten
 `X-Forwarded-For` address from an exact trusted peer. Local self-signed HTTPS
-and a development proxy do not verify real certificate, firewall or Nginx
-behavior. Public health and identity fail closed if the configured DB/schema,
+and a development proxy did not verify real certificate, firewall or Nginx
+behavior. The Owner's 2026-11-19 health/gameplay checks established the public
+routing and tested player journey. Stage 3 subsequently completed Nginx
+hardening, tested rate limiting, passed a Certbot renewal dry-run and accepted
+public SSH TCP 22 with key authentication for Alpha. Exact deployed rate
+thresholds and cookie/CSRF/proxy test details were not supplied in that
+Stage 3 handover; actual renewal/reload and reboot recovery remain separate
+checks. Stage 4's bounded 10/20/30-player production runs were later accepted;
+the server observed 30 simultaneous active leases after the configured battle
+ceiling changed from 20 to 200. The 200 setting is not a demonstrated
+sustainable capacity; see `Public_Deployment_Runbook.md`. Public health and
+identity fail closed if the configured DB/schema,
 exact HTTPS Origin, trusted proxy or distinct strong HMAC keys are absent.
 
 ## Change Log
 
+- 2026-11-23 — Recorded Owner-accepted Stage 4 bounded production load and
+  distinguished 30 observed leases from the configured 200-lease ceiling.
+- 2026-11-20 — Recorded Owner-accepted Stage 3 edge/TLS and SSH exposure
+  decisions without inferring unreported rules or final Alpha launch approval.
+- 2026-11-19 — Recorded separately authorized VM battle opt-in and Owner's
+  passed public core-gameplay test; final Alpha gates remain open.
+- 2026-11-19 — Recorded owner-reported GCE/Nginx HTTPS ingress milestone and
+  bounded it from functional and operational acceptance.
 - 2026-11-18 — Added Batch 3 same-origin Public frontend, read-only session
   revalidation, explicit refresh, and deployment-only proxy caveat.
 - 2026-11-17 — Documented the RELEASE-002 Batch 2 default-off Public battle

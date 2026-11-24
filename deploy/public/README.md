@@ -1,9 +1,21 @@
 # Public deployment templates (not deployment authorization)
 
-These files are reviewed templates for a future single-VM Pre-Alpha deployment.
-They have not been installed on GCE, exercised with a real domain/certificate,
-or used to expose Public players. `BATTLE_API_ENABLE_PUBLIC_BATTLES` is
-deliberately absent so battle access remains default-off.
+These are repository-managed templates and proposed procedures, **not an exact
+copy of the live VM configuration**. The owner reported the first public HTTPS
+deployment on 2026-11-19, with the start screen and API health reachable at
+<https://loc-tactics.duckdns.org/>. The Owner subsequently authorized
+`BATTLE_API_ENABLE_PUBLIC_BATTLES=1` on the installed VM and passed a manual
+public core-gameplay journey with two complete battles. The repository template
+still omits that flag and remains fail-closed by default; do not confuse the
+template with the installed configuration. This is not final Public Alpha
+acceptance. The canonical topology and acceptance record are
+`docs/Technical/Public_Deployment_Runbook.md` and
+`docs/Codex/Public_Core_Gameplay_Acceptance_2026-11-19.md`.
+On 2026-11-20 the Owner also verified a **different installed backup setup**
+and an isolated SQLite restore. Stage 1 Database Protection is complete within
+the accepted local-backup Alpha scope. The installed `loct-db-backup` units,
+script and schedule are documented in the canonical runbook; the templates
+below are not a transcript of what runs on the VM.
 
 ## Required layout and permissions
 
@@ -63,9 +75,11 @@ separately authorized deployment.
 
 ## Backups and isolated restore drill
 
-The systemd timer runs SQLite's online backup API daily and retains the newest
-seven files in `daily/`. A release backup is separately named and is never
-removed by daily retention:
+The **repository template** runs SQLite's online backup API daily and retains
+the newest seven files in `daily/`. A release backup is separately named and
+is never removed by daily retention. These are not the installed VM unit names
+or backup-script invocation; see the canonical runbook before operating on the
+live server:
 
 ```sh
 sudo -u loct /opt/loct/current/.venv/bin/python -m battle_api.public_db_ops \
@@ -86,13 +100,26 @@ The tool refuses to overwrite a destination. Delete the isolated drill copy
 only after evidence is recorded. Do not replace the live database during a
 drill and do not use raw file copying while WAL/writes may be active.
 
-Off-VM GCS transfer uses `upload-backup-to-gcs.sh.template` only after local
-verification (copy it to an operator-only path and set mode `0700` first).
-Bucket name, service-account permissions, encryption, lifecycle,
-upload/download, and restore from GCS are **NOT VERIFIED** here and block Public
-launch until tested on the real deployment environment.
+Off-VM GCS transfer would use `upload-backup-to-gcs.sh.template` only after
+separate authorization and local verification. The Owner has **deferred GCS
+for Pre-Alpha/Public Alpha to limit cost**; bucket setup, IAM, lifecycle,
+upload/download and restore from GCS are **NOT IMPLEMENTED or verified**.
+The accepted Alpha policy is local daily backups with seven-backup retention,
+with the explicit residual risk that database and backups may be lost together
+on the same VM/system disk. This is not a claim of full disaster recovery.
 
-## Release and rollback sequence
+## Historical template release/rollback sequence — not the installed strategy
+
+Stage 3 selected a **Single-Release Strategy** for Public Alpha: only one
+deployed release is retained. The sequence below was a repository proposal
+written before that decision and assumes a prior immutable release is
+available for a symlink switch. **Do not apply it as the current VM rollback
+procedure.** The Owner reports only basic rollback-readiness checks; no actual
+rollback was performed. The first rollback test is deferred to a later release.
+Before that release, document its actual upgrade/backup/recovery procedure
+under the selected strategy and obtain the required authorization. See
+`docs/Technical/Public_Deployment_Runbook.md` for the current decision and
+accepted risks.
 
 1. Confirm separate owner launch/deployment authorization.
 2. Record health, schema inspection and current release identifier.
@@ -109,6 +136,20 @@ launch until tested on the real deployment environment.
    after that backup cannot be preserved automatically.
 
 The supplied Nginx, systemd, TLS paths, domain and GCS values are templates.
+The reported live Web unit uses Vinext `--hostname`, while this repository's
+`loct-web.service.template` still says `--host`; do not use it unchanged for a
+fresh installation. The live VM has separate HTTPS and ACME Nginx files; this
+repository's Nginx template includes an HTTP redirect whose live behavior is
+not yet verified. The release-switch and rollback sequence above is historical
+template material, not a tested VM rollback. Preserve these differences until separately
+authorized configuration work reconciles them.
+The installed database backup uses `/usr/local/bin/loct-db-backup` and
+`loct-db-backup.service`/`.timer`, scheduled at 03:00 UTC with no randomized
+delay. The repository backup templates instead use `loct-public-backup` unit
+names, `public_db_ops`, and a 15-minute randomized delay. The installed backup
+service has passed a manual systemd run and isolated SQLite restore, but
+unattended execution, seven-file pruning and full application recovery remain
+unverified.
 The web unit verifies the Public artifact before launch and directs Wrangler's
 log to systemd's writable `/var/log/loct` while keeping the release tree
 read-only. Whether Vinext/Cloudflare needs any additional runtime-writable

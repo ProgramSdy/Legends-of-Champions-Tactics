@@ -7,6 +7,179 @@ the roster, change presentation wording, or audit values that an earlier task
 listed as unavailable; use the current GDD and web UI contract for current
 rules and inventory.
 
+## 2026-11-23 — Stage 4 Performance & Load Testing formally closed
+
+The Owner **accepted and closed Stage 4** for Public Alpha. Recorded bounded
+production tests covered 10, 20 and 30 dedicated players at about 3 global
+RPS. The final Stage C run achieved 30/30 player participation and battle
+settlement, with 30 simultaneous active leases independently observed on the
+server. Its 291 battle-phase requests over 97.83 seconds achieved 2.97 RPS,
+925.91 ms average and 1,089.96 ms P95 battle API latency, with zero unexpected
+HTTP 429, API/tool errors, timeouts or unfinished battles. A prior 30-selected
+attempt had only 20 participants and remains recorded as an unsuccessful
+attempt. Stage A/B results remain in the [implementation report](Stage_4_2_1_Implementation_Report.md).
+
+The Owner separately authorized a production environment-only battle-capacity
+change from 20 to 200; `loct-api` recovered after restart and the final
+health/service checks passed. All 30 dedicated accounts were ready/eligible
+after the run, and zero active battle leases remained. **200 is a configured
+ceiling, not demonstrated sustainable capacity:** only 30 simultaneous leases
+were observed. The final battle phase lasted less than the 300-second window;
+continuous CPU/RAM/SQLite/I/O endurance testing was not performed, 50/100-player
+figures are estimates only, and the e2-micro remains resource-constrained.
+These are accepted Stage 4 limits, not new automatic launch blockers. No
+further Stage 4 production testing is authorized by this closure.
+
+Planner Codex alone reconciled the status, readiness checklist, report and
+deployment/architecture notes at the Owner's request; Core and specialist
+agents were not dispatched for this documentation-only archive. Validation:
+focused documentation consistency and diff checks against the existing report
+and Owner closure brief. No application code, production data/configuration,
+live server or load test was changed or run during this archive. **Next gate:**
+Final Public Alpha Launch Readiness Review and explicit Owner go/no-go; neither
+that review nor the launch is approved or completed here.
+
+## 2026-11-20 — Stage 3 Security & Release Management (Public Alpha acceptance)
+
+The Owner accepted Stage 3 for Public Alpha: Nginx hardening completed; rate
+limiting completed and tested; HTTPS/TLS completed with a passed Certbot
+renewal dry-run; SSH/firewall exposure reviewed; existing deployment procedure
+reviewed and a **Single-Release Strategy** selected; basic rollback-readiness
+checks completed; security acceptance granted for this stage. These are
+Owner-reported results, not live-server checks rerun by this documentation
+task. No exact Nginx directives, rate thresholds or test transcript were
+provided in the handover, so none are claimed here. An actual certificate
+renewal/reload and actual rollback were **not** reported as performed.
+
+The Owner explicitly accepted three residual Public Alpha risks: public SSH
+TCP 22 remains accessible with key authentication; only one deployed release
+is retained and the first rollback test is deferred to a later release; and
+SQLite has local daily backups with seven retained copies but no off-server
+backup. Stage 3 acceptance does not declare final Alpha launch readiness.
+Next is Stage 4 performance/load testing at planned 2, 5, 10 and 20
+concurrent players, observing CPU/RAM, API latency, battle execution, SQLite
+concurrency/integrity and e2-micro stability. No Stage 4 load test was run.
+
+Planner Codex alone updated the canonical runbook, deployment-template caveat,
+readiness checklist and current status at the Owner's request. Core and
+specialists were not dispatched for this documentation-only task. Validation
+was a focused documentation consistency/diff check; no application code,
+deployment configuration or live server was changed.
+
+## 2026-11-20 — Stage 2 Operational Stability (defined Alpha checks)
+
+The Owner reported completion of Stage 2 VM checks for
+`RELEASE-003-db7f3395`: 953 MiB RAM, no OOM found in the inspected 48-hour
+journal, and root disk reduced from 84% (~1.5 GB free) to 69% (~2.8 GB free)
+through removal of single-link Snap-cache files only. API/Web/Nginx/HTTPS
+remained operational. Enabled API/Web systemd services (`Restart=on-failure`,
+`RestartSec=5`) each recovered after a controlled SIGKILL; browser refresh
+restored normal access without restarting Nginx. Persistent journald limits
+were installed and verified, reducing journal usage from ~295.9 MB to 74.7 MB
+without manual vacuum while preserving access to service logs.
+
+Vinext's 05:49 UTC `server reference not found 'x'` correlated with an external
+`POST /` HTTP 500; root cause is unproven. Its 07:19 UTC static-file
+`Premature close` errors correlated with requests from a client identifying as
+`ClaudeBot`; actual identity and cause are unverified. Nginx upstream errors
+at ~08:10 and ~08:14 UTC matched the deliberate termination tests. Among
+2,859 logged requests, two IPs contributed ~92%; common sensitive-path probes
+strongly suggest generic scanning. Five direct sensitive-file requests
+returned 404, but this is not a full security audit; no IP blocking or rate
+limiting was added.
+
+Stage 2 is complete **only for its defined operational checks**. The first
+unattended backup, Stage 3 Nginx security/rate limits, certificate renewal,
+rollback, sustained concurrency, VM reboot, in-progress battle recovery,
+automatic browser reconnection and final Alpha approval remain open. Planner
+Codex alone updated the runbook, readiness checklist and current status at
+the Owner's request; Core and specialists were not dispatched for this
+documentation-only archival task. Verification was a focused documentation
+diff check against the Owner's handover; no live VM test or configuration
+change was performed by this task.
+
+## 2026-11-20 — Stage 1 Database Protection (Alpha Scope)
+
+The Owner reported completion of local database-protection work on the GCE VM.
+`/var/lib/loct/public/player.sqlite3` was `loct:loct`, mode `0600`, SQLite
+`delete` journal mode, and returned `ok` on integrity check. The installed
+`loct-db-backup.service` ran successfully through systemd, using SQLite
+`.backup` and candidate integrity checking. Four mode-`0600` snapshots were
+observed; an isolated copy of the latest returned integrity `ok` and two
+player records. The temporary restore copy was removed without overwriting
+production data. The enabled timer targets daily 03:00 UTC with persistent
+catch-up; actual unattended execution and seven-file pruning were not yet
+observed. VM Deletion Protection and Keep disk were enabled/confirmed.
+
+**Decision:** The Owner accepts local seven-backup retention for Pre-Alpha/
+Public Alpha and defers GCS to limit cost. The database and backups remain on
+one VM/system disk and could be lost together. Database-level restore is not
+full application disaster recovery. Stage 1 is complete **within this Alpha
+scope**; Stage 2 is Operational Stability, with monitoring, restart recovery,
+capacity, security and release procedures still open.
+
+Planner Codex alone synchronized the canonical deployment runbook, template
+drift notes, readiness checklist and current status at the Owner's request.
+Core and specialist agents were not dispatched because this was documentation
+and planning only. Verification was a focused documentation/diff check against
+the Owner's handover and repository templates; no live VM test was performed
+by this task. No application code, database, scripts, units or infrastructure
+were changed.
+
+## 2026-11-19 — First Successful Public End-to-End Gameplay Test
+
+**Public Deployment Core Gameplay Acceptance: PASSED** on the Owner's manual
+Chrome test against `https://loc-tactics.duckdns.org/` (`RELEASE-003-db7f3395`).
+After the Owner separately authorized Public Battle activation, the VM's
+`/etc/loct/public.env` was set to `BATTLE_API_ENABLE_PUBLIC_BATTLES=1`, backed
+up to `/etc/loct/public.env.pre-battle.bak`, and the API restarted. The
+initial structured Stage launch 404 was the expected fail-closed route gate;
+enabled battle routes then appeared in live OpenAPI. No application-code fix
+was needed.
+
+The Owner reports successful player creation, Recovery Code handling, Save
+Slot creation/reload, World Map navigation, structured formation and battle
+loading, skill/status displays, two complete battles, and progress available
+after normal exit/reload. The tested journey looked consistent with the Mac
+mini Development version. These are Owner-reported observations, not an
+independent browser or server test by this documentation task. They do not
+prove persistence after restart/restore, multi-player concurrency, host
+capacity, backup, rollback, security acceptance, or final Alpha readiness.
+
+This documentation-only task created
+`docs/Codex/Public_Core_Gameplay_Acceptance_2026-11-19.md` and synchronized
+the runbook, launch checklist and current project status. Planner Codex alone
+handled this low-risk archival update at the Owner's request; Core and the
+implementation/test/review agents were not dispatched because no application
+or infrastructure change was authorized. Validation was a focused repository
+route-gate inspection and documentation diff check; no live services were
+contacted or changed. Outstanding operational and release gates remain in the
+readiness checklist.
+
+## 2026-11-19 — First Public HTTPS Deployment milestone and documentation synchronization
+
+The owner reported that `RELEASE-003-db7f3395` (commit `db7f3395`) was
+deployed to a Google Compute Engine e2-micro VM and became reachable at
+<https://loc-tactics.duckdns.org/>. Reported checks: API and Web systemd
+services plus Nginx active; Duck DNS, Let's Encrypt TLS and TCP 80/443 ingress
+configured; `/api/v1/health` returned HTTP 200 internally and from an external
+Mac mini; Chrome on that Mac mini rendered the game start screen. These are
+owner-handover results, not a live-server inspection by this documentation
+task. At this earlier infrastructure-only stage, Public Battle remained
+intentionally disabled; the later, separately authorized activation and
+core-gameplay test are recorded in the entry above. This milestone does not
+certify player onboarding, persistence, battle, backup/restore, rollback,
+certificate renewal or Public Alpha acceptance.
+
+Documentation-only synchronization created the canonical
+`docs/Technical/Public_Deployment_Runbook.md` and updated deployment-template
+notes, architecture/networking/UI summaries, the current project status and
+the Public launch checklist. Repository-managed templates differ from the
+reported installed Web CLI and split Nginx configuration; this drift is
+recorded, not fixed here. No application code, deployment script, runtime
+configuration, live service, cloud resource or save data was changed. The next
+proposed milestone is Public Alpha Functional and Operational Acceptance.
+
 ## 2026-11-18 — RELEASE-002 Batch 3: Public Frontend Integration and Local Deployment Readiness
 
 Completed the owner-authorized local Phase 8–9 implementation only. Public
@@ -6040,3 +6213,31 @@ Replaced the Battle Instruction Chapter 04 reference image with the owner's exac
 **Roles:** Core assessed a single low-to-moderate UI/asset/content workstream and dispatched only `ui-developer` (`/root/ui064_ui`) for implementation, focused tests, and responsive visual checks. Core checked the screenshot checksum and final scope, then closed documentation. PM, engine, separate test automator, and reviewer had no distinct proportionate workstream.
 
 **Validation:** The public PNG SHA-256 exactly matches the owner attachment (`5bd6437e283a34479ae4ea5a56875b548ba13703ad94cf1eb3bacb9be53387be`). Focused Manual/content/UI-062 frontend tests passed 17/17; generated-content check, frontend typecheck, targeted ESLint, and `git diff --check` passed. Browser checks at 1613px, 820px, and 320px found no horizontal overflow, marker overlap, or out-of-bounds markers. All eleven image markers opened their matching detail at desktop; all eleven marker-list controls worked at 320px. The failed-image schematic retained all eleven markers and the current selection. At 320px, screenshot-native details are small after proportional scaling; the numbered list and detail panel remain readable and usable. No broad suite, separate reviewer, commit, or push for UI-064.
+
+## 2026-11-22 — Stage 4.2.1: Concurrent Battle Load Tester, local-only
+
+Added `tests/tools/public_battle_load.py`, a guarded standard-library Python CLI for independent Public-player Stage journeys through legal 2v2 → 1v1 → 3v3 battles. It defaults to zero requests, uses separate authenticated sessions/owned slots, follows server-published legal actions, enforces global request/rate/time/error bounds, blocks redirects and ambient proxies, requires extra non-loopback opt-in flags, and emits credential-free metrics/optional exclusive-create CSV. `tests/test_stage421_load_tester.py` adds 16 focused guard, classifier, legal-action, metrics and redaction tests. `docs/Codex/Current_Task.md` records the pre-code selection and local closeout; `docs/Codex/Stage_4_2_1_Implementation_Report.md` contains the exact workflow, production-command **proposal only**, isolation/retention analysis and evidence. No application, frontend, API contract, deployment configuration or owner-controlled UI review file changed for this task.
+
+**Roles and rationale:** PM `/root/load_pm` owned safety sequencing and permanent-record analysis; Python-tool worker `/root/load_engine` owned the CLI; test automator `/root/load_tests` owned focused tests; independent reviewer `/root/load_review` owned safety/contract review. Core owned contract integration, disposable local HTTPS execution, cleanup, documentation and final validation. UI was omitted because the task has no UI work. The reviewer found a real mismatch between classified and published battle-rule rejection codes; it was fixed and covered by tests. Final review approved **local-only** closeout with no remaining P0/P1 finding.
+
+**Validation:** Final focused command `.venv/bin/python -m pytest -q tests/test_stage421_load_tester.py tests/test_release002_batch3_load.py` passed **19/19** (16 new, 3 existing); Python compile and `git diff --check` passed. Default dry-run printed `DRY_RUN_ZERO_REQUESTS`. A disposable loopback HTTPS Public server and Public-v5 SQLite database were used for two two-player samples: first 62/62 HTTP successes but only 1/2 complete 3v3 wins under three Stage attempts; second 143/143 HTTP successes and 2/2 complete 3v3 wins under six attempts, with 0 API/rule/rate-limit/capacity/timeout/tool errors, 13.89 ms average and 19.29 ms P95 request latency, 15 settled battles and 0 unfinished. The isolated DB passed integrity check and had 0 active leases; its four test players and 21 diagnostic/settlement records, temporary TLS files and server were removed with the disposable fixture. No production endpoint or real account was used; no commit or push.
+
+**Remaining gate:** Local figures do not prove GCE/Nginx capacity. The installed Nginx rate threshold is undocumented here. On a durable Public database, test accounts, profiles, diagnostics, settlements and progression have no supported deletion API and would be permanent. The report's cautious first two-player production command is **not executed or authorized**; it requires separate Owner approval, acceptance of permanent dedicated test records, and confirmation of deployed rate limits. Higher concurrency and the final Alpha launch decision remain pending.
+
+## 2026-11-22 — Reusable Dedicated Load-Test Player Pool (Stage 4.2.1 follow-up)
+
+`tests/tools/public_battle_load.py` now explicitly separates create, reuse and reconcile. A private origin-bound `0600` Recovery-Code manifest outside Git, protected by a process lock and atomic writes, preserves dedicated test identities. Create mode resumes provisioning accounts before expanding toward 2/10/30/50/100 at an independently bounded concurrency; reuse recovers the same players, verifies owned slots and stage-3 access, loads rather than creates slots, and uses fresh attempt IDs. Pending battles or uncertain enrollment block silent replacement. An explicit reconciliation mode revokes an interrupted test session/battle and rechecks ownership/access; unrecoverable or missing-code entries remain blocked for operator direction. Existing production opt-ins, dry-run, rate/timeout/request ceilings, no-redirect/TLS policy and credential-free output remain intact. No application/API/GCE configuration or player-owned production data changed. `docs/Codex/Stage_4_2_1_Implementation_Report.md` and `Current_Task.md` record commands, security limits and evidence.
+
+**Ownership:** Core handled the single Python-tool workstream, focused tests, isolated integration and documentation. No sub-agent was dispatched for this direct follow-up; UI and game-engine implementation roles were unnecessary because no application code or interface contract changed. Core performed a focused self-review of secret handling, local exclusivity, recovery effects, interrupted markers and permanent-data boundaries.
+
+**Validation:** Focused `test_stage421_load_tester.py` plus the prior `test_release002_batch3_load.py` passed **27/27**; Python compilation and diff check passed. A disposable Public HTTPS/SQLite fixture first created two accounts (142 successful requests), then recovered/reused those same two accounts for 3v3 victories (84 successful requests, zero additional players). The first local recovery attempt failed 400 because the direct-Uvicorn fixture incorrectly declared its own peer a trusted proxy without `X-Forwarded-For`; correcting the disposable proxy setting allowed explicit reconciliation (10/10 successful requests) and reuse. Incremental local expansion 2→3 and 3→4 added exactly one account each, with 71/71 and 37/37 successful requests. The final isolated DB had integrity `ok`, four players/four occupied slots and zero active leases; the private Recovery-Code pool, test DB, certificate/key and server were removed. Test-only mock coverage exercises 2→10→30→50→100 pool targets without touching production.
+
+**Limits:** The local lock does not coordinate copied pools on different hosts; recovery revokes a prior session and can invalidate an unfinished battle, so only one canonical private pool may be operated and interrupted accounts require explicit reconciliation. An uncertain enrollment before the one-time code is persisted cannot be automatically repaired; it blocks replacement pending operator investigation. No production request, commit or push was made. Production test records would be permanent; separate Owner approval, installed-rate-limit confirmation and load-level authorization remain required.
+
+## 2026-11-24 — Pre-Stage 5.1 local Development environment recovery
+
+The Mac mini's LAN frontend and API were long-lived processes started on 1 November before the current explicit Development-mode startup settings took effect. The browser showed the Public `Enter the Valley` dialog and requested `http://10.0.0.137:3001/api/v1/sessions/current`, which direct Vinext returned as HTTP 404; the LAN API health check separately returned HTTP 503 `publicStoreNotConfigured`. This was a stale runtime/configuration problem, not a missing Development route or damaged save. Both old LAN and loopback process pairs were stopped by their verified local PIDs, with no database deletion or reset. The current `make lan LAN_HOST=10.0.0.137` was started as a user-level background job so it survives Codex command-session termination. The running API and frontend now both have `LOCT_RELEASE_MODE=development`; the frontend has `NEXT_PUBLIC_BATTLE_API_URL=http://10.0.0.137:8001`. The API has no Public DB or Development DB override, so its existing repository-local `data/player_progression.sqlite3` remains the Development store. `docs/web-ui/PYTHON_ADAPTER_API.md` now documents the stale-process 404 symptom, exact restart/verification path, and Development/Public isolation warning. No application source, Production server, Production database, deployment, account, or gameplay rule was changed.
+
+**Ownership:** Core handled runtime diagnosis, local process recovery, browser/API verification and the documentation note directly. No sub-agent or independent reviewer was dispatched; there was no separate implementation workstream, and the minimum fix was a local service restart rather than application code.
+
+**Validation:** The restarted local API returned HTTP 200 from `/api/v1/health` and its OpenAPI included Development battle/debug routes. The browser at `http://10.0.0.137:3001` showed `LOCAL ADVENTURE`, loaded all five existing occupied slots, and sent `/api/v1/save-slots` to port 8001 with HTTP 200. Slot 1 loaded into Stage Map and Warrior's Barrack; the previously completed Battle 1 replay launched, accepted legal Mage/Paladin commands, and reached an authoritative round-5 enemy victory with a battle-complete dialog. Reloading Slot 1 showed its updated last-played timestamp and all nine previously completed Warrior battles still complete; Heroes, Progression and Stages requests returned HTTP 200, with no observed post-restart 404. A new reward/progression increment was intentionally not attempted because every local slot was occupied and preserving existing saves took priority. Focused release-isolation tests passed **6/6** with one existing Starlette/httpx deprecation warning; no application-code regression suite was needed. Production was not accessed or modified. The first transient Codex-owned server session ended when that command session was lost, so the final local services were moved to the persistent user-level background job and reverified. An unrelated observation is that the Battle Auto Battle checkbox did not issue player actions during this smoke test; no gameplay/UI change was made under this recovery task. No commit or push.

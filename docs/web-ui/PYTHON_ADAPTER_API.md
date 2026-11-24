@@ -57,6 +57,23 @@ This is an unauthenticated development mode, not an Internet-facing deployment:
 do not use it on untrusted/shared networks or forward these ports through a
 router.
 
+If the LAN start screen opens **Enter the Valley** instead of **Local
+Adventure**, or player entry reports HTTP 404 for
+`/api/v1/sessions/current`, check for old frontend/backend processes still
+listening on ports 3001 and 8001. A process started before the explicit
+Development-mode startup change does not inherit later Makefile or npm-script
+edits. The Public-safe frontend calls same-origin `/api/`, which direct Vinext
+development on port 3001 does not proxy; a bare backend may also report
+`publicStoreNotConfigured`. Stop the stale local pair, then start a fresh
+`make lan LAN_HOST=<your-LAN-IP>` from the repository root and leave it
+running. That target explicitly sets `LOCT_RELEASE_MODE=development` for both
+processes and `NEXT_PUBLIC_BATTLE_API_URL=http://<LAN-IP>:8001` for the web
+client. Verify `http://<LAN-IP>:8001/api/v1/health` returns 200 and that the
+browser's player-entry request goes to port 8001. Restart **both** processes
+after changing release mode or API origin; backend routes and frontend runtime
+configuration are chosen at process startup. Do not point local Development
+at the Public database or server to work around a local 404.
+
 Development CORS allows exactly `http://localhost:3001` and
 `http://127.0.0.1:3001` by default. Override the exact allowlist with a
 comma-separated environment variable:

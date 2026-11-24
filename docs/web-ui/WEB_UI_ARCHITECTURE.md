@@ -571,10 +571,21 @@ uncertain command keeps its original command ID. The 5/1-minute warnings use
 updates. Battle sessions remain RAM-only without restart resume; durable
 settlement receipts can be re-read. The API remains single-worker. Optional
 Vite HTTPS certificate and API proxy settings exist only for isolated local
-validation and are off by default; deployed Nginx/TLS is not verified here.
+validation and are off by default. On 2026-11-19 the Owner first verified
+external HTTPS health and start-screen rendering through GCE/Nginx, then
+separately authorized the installed VM's Public Battle gate. The Owner's
+public Chrome test passed player/Save Slot flow, structured-battle UI, two
+complete battles and progress availability after normal exit/reload. This
+does not verify all screens, browser/device combinations, session-security
+attributes or final Alpha readiness. See
+`docs/Codex/Public_Core_Gameplay_Acceptance_2026-11-19.md`.
 
 ## Change Log
 
+- 2026-11-19 — Added Owner-reported public core-gameplay acceptance following
+  separate battle activation; broader frontend and release checks remain open.
+- 2026-11-19 — Recorded the public HTTPS start-screen milestone without
+  treating it as full Public frontend acceptance.
 - 2026-11-18 — Documented RELEASE-002 Batch 3 Public session, transport,
   battle and local HTTPS testing boundaries.
 - 2026-11-11 — UI-065 added the approved non-interactive Holy Concentration

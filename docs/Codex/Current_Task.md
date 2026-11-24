@@ -1,8 +1,48 @@
 # Current Task
 
+**Active assignment (2026-11-24): Stage 5.1 — Bug Fix Release & Rollback Validation.** The Owner has authorized Core to proceed with **Batches A–D** of `docs/Codex/Stage_5_1_Bug_Fix_Release_and_Rollback_Validation.md`: fix the three confirmed bugs, verify them, and prepare a reviewed release candidate. **Batch E — production deployment and actual rollback validation — still requires separate Owner approval after candidate review.** Do not deploy, change the live GCE server, or treat release-candidate preparation as Public Alpha launch authorization. BUG-002 must cover every `battlePresentationConfigFor` viewport mode—monitor, laptop-large, laptop-medium, pad, pad-mini, phone and portrait—with actual browser visual evidence, not just desktop/mobile testing. Core must resolve or escalate any product-level BUG-003 Tactics Level ambiguity before changing gameplay policy. Preserve existing player data and the installed capacity setting of 200. Stage 4 remains Owner-accepted/closed; final Alpha launch approval remains pending.
+
+## Historical status — Stage 4 closure and earlier assignments
+
+**Current status (2026-11-23): Stage 4 — Performance & Load Testing is OWNER-ACCEPTED / CLOSED.** Stages 1 and 2 are complete for their defined Alpha scope; Stage 3 is Owner-accepted. The final Stage 4.3 production run had 30/30 selected players start and settle a battle, and a read-only server observation found 30 simultaneous active leases. The installed battle-capacity setting is now 200, but only 30 concurrent leases were demonstrated. The authoritative measurements, prior 10/20-player runs, unsuccessful earlier 30-player participation attempt, and limits are in `docs/Codex/Stage_4_2_1_Implementation_Report.md`. **No further Stage 4 production load testing is currently authorized.**
+
+**Next gate: Final Public Alpha Launch Readiness Review — not yet approved or completed.** Review remaining launch requirements and accepted residual risks, then seek an explicit Owner go/no-go decision. Stage 4 closure does not authorize launch, a new implementation stage, 50/100-player tests, or production changes. See `docs/Codex/RELEASE_002_Public_Launch_Readiness_Checklist.md`.
+
+## Historical Stage 4.2.1 assignment and local closeout
+
+**Original assignment (2026-11-22): Stage 4.2.1 — Concurrent Battle Load Tester.** Core was initially authorized to implement a guarded Python load-testing tool and verify it only against a local or isolated environment. The original brief is `docs/Codex/Stage_4_2_1_Concurrent_Battle_Load_Tester.md`. At that point, no production load test, production write, live GCE change, or use of real player accounts was authorized. Later production trials and the capacity-only change had separate Owner approvals; see the implementation report. Tool support for 10/30/50/100 players did not itself authorize a live escalation.
+
+**Local implementation completed 2026-11-22; production trial not authorized.** The guarded CLI, 16 focused new tests, disposable two-player HTTPS Public API run, data-isolation/retention analysis and independent local-only review are recorded in `docs/Codex/Stage_4_2_1_Implementation_Report.md`. The successful second local sample was 2/2 complete 3v3 friendly victories with 143/143 requests succeeding; this does not establish deployed GCE or Nginx capacity. The proposed first production command is **only a proposal** in that report and still requires separate Owner approval, confirmation of installed rate limits, and acceptance of permanent dedicated test-player records. No further Stage 4 load level was started.
+
+**Reusable-pool follow-up completed locally 2026-11-22.** At the Owner's direct request, the tester now has explicit protected create/reuse/reconcile modes and incremental pool-size targets. The dated follow-up in `Stage_4_2_1_Implementation_Report.md` records the additional focused tests, disposable HTTPS creation/recovery/reuse, privacy controls and interrupted-run procedure. The current test file has 24 focused cases; no production run, production data change or higher-concurrency load level occurred. The initial Stage 4.2.1 validation above remains its historical evidence.
+
+## Stage 4.2.1 pre-code coordination gate — Core, 2026-11-22
+
+This is a security- and data-sensitive external test tool, not a game or UI
+feature. Selected: project-manager (safe sequence, data/production gates),
+Python/API implementation specialist (guarded CLI and actual Public contract),
+test-automator (independent deterministic guard/metrics/local integration tests),
+and reviewer (final independent security and correctness review). The first
+three were dispatched before implementation; reviewer is reserved for the
+post-validation wave. UI-developer is omitted because no frontend work is
+authorized. Core owns documentation, integration and final handoff.
+
+Sequence: verify Public authentication, slot, Stage launch, command and receipt
+contracts plus installed-rate-limit unknowns; implement default no-write and
+strict non-production targeting; exercise two independent disposable local
+players; run focused tests; obtain independent review; record permanent-data
+implications and a proposed, **unexecuted**, two-player production command.
+Main risks are accidentally hitting the known public host (including redirects),
+retaining secrets in output/CSV, unsafe account creation on a durable database,
+and mistaking a battle-rule rejection or expired session for performance loss.
+
+## Historical completed assignment — RELEASE-002 Batch 3
+
 **Task:** RELEASE-002 — Batch 3 Implementation: Public Frontend Integration, Deployment Readiness & Final Release Validation
 
-**Status:** Completed for local implementation and validation only; independently reviewed. Public deployment/launch remains unauthorized.
+**Status:** Historical Batch 3 implementation completed and independently reviewed. Public HTTPS and core-gameplay milestones passed on 2026-11-19. Stages 1–2 passed their defined checks, and Stage 3 Security & Release Management was Owner-accepted for Public Alpha with residual risks on 2026-11-20. Final Alpha launch readiness remains pending.
+
+**Historical planning snapshot (2026-11-20, superseded):** This earlier documentation update assigned no new Core task. At that date Stages 1–2 were complete for their defined checks, Stage 3 was Owner-accepted, and Stage 4 had not yet started. The Owner reported Nginx hardening, tested rate limiting, HTTPS/TLS with a passed Certbot renewal dry-run, and reviewed SSH/firewall exposure. The selected Single-Release Strategy retained one deployed release; actual rollback was deferred to the next release. Public SSH port 22 with key authentication and local-only seven-backup SQLite protection were accepted Alpha risks. The then-planned Stage 4 sequence was 2, 5, 10 and 20 concurrent players; the actual later production runs and closure are recorded at the top of this file. Do not infer final Alpha launch approval or a tested rollback from Stage 3 or Stage 4. The historical Batch 3 prohibitions below describe its original 2026-11-18 scope, not later separately authorized deployment, battle activation or operations work.
 
 **Owner authorization date:** 2026-11-17
 
