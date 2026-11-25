@@ -41,7 +41,11 @@ step in its own stage.
 
 Engineering Test & Debugging is a separate full-roster, no-save-data route. It
 retains free-form battle size, enemy, control, formation, and seed tools for
-testing, but is not player Arena progress and cannot alter a save slot.
+testing, but is not player Arena progress and cannot alter a save slot. Its
+Development-only Auto Battle control lets player-side heroes use their existing
+specialization AI one authoritative action at a time; it does not introduce a
+new Tactics Level or change Stage/Arena control, enemy decisions, or combat
+rules.
 
 ## Supported Playable Scope
 
@@ -200,6 +204,8 @@ branches, elites, bosses, or difficulty changes.
 
 ## Change Log
 
+- 2026-11-25 — Recorded Stage 5.1's Debug-only player Auto Battle policy:
+  existing specialization AI, with no new Tactics Level or save effect.
 - 2026-10-27 — Added campaign-specific Learner/Tactics decision modes and
   separate completion, while retaining identical combat rules and Learner-only
   rewards.

@@ -166,9 +166,24 @@ completed run only when that new squad creation is accepted.
 but is a separate no-save-data boundary: it bypasses player-roster ownership
 only for Engineering Test & Debugging, while retaining adapter battle
 validation and never reading or writing progression.
-The endpoint is registered only under explicit server-side
+For all player-authored launch paths (Development generic and Debug, Stage, and
+Arena), `playerTeam` cannot repeat a stable Hero Profession definition ID. A
+duplicate returns HTTP 422 with typed detail code `duplicatePlayerProfession`;
+same-faculty/different-specialization choices and cross-side overlap remain
+legal. The rule does not rewrite a saved selection or restrict enemy teams.
+
+The Development-only `POST /api/v1/debug/battles/{battleId}/auto-actions` accepts
+`{ "expectedRevision": number }` and resolves at most one current friendly
+player turn through that hero's existing specialization AI and the engine's
+normal legal-action boundary. It returns the ordinary authoritative battle
+envelope and ordered events. The revision guard rejects stale requests; the
+server does not persist an Auto Battle toggle. Disabling the Debug UI control
+stops further requests after an already accepted action finishes. No new
+Tactics Level, client-authored AI decision, or Public auto-action capability is
+introduced.
+Both Debug endpoints are registered only under explicit server-side
 `LOCT_RELEASE_MODE=development`. Public, missing, or invalid mode has no debug
-route or OpenAPI entry and direct POST receives 404. This deployment-mode
+routes or OpenAPI entries and direct POST receives 404. This deployment-mode
 availability change does not alter the v1 payload, normal battle endpoints,
 combat legality, or progression contract. Public player control of optional
 seed fields is resolved by the isolated Batch 2 override below.

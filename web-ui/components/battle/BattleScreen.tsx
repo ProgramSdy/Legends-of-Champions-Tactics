@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { ManualDialog } from "@/components/manual/ManualDialog";
 import { usePresentationQueue } from "@/lib/battle/usePresentationQueue";
@@ -20,6 +20,7 @@ import { heroFigureScaleFor, statusRegistry } from "@/lib/battle/assets";
 import { useBattlePresentationConfig } from "@/lib/battle/presentationConfig";
 import { isAuditedPreviewSkill, useBattlePreview } from "@/lib/battle/useBattlePreview";
 import { useBattleAudio } from "@/lib/audio/battleAudio";
+import { ViewportBoundOverlay } from "./ViewportBoundOverlay";
 
 const logGlyph: Record<BattleEventType, string> = {
   battleStarted: "◆", roundStarted: "◎", turnStarted: "▶", skillStarted: "✦",
@@ -360,7 +361,7 @@ function PreviewConsequenceRows({ consequences, omitSecondaryHealing = false, sk
   });
 }
 
-function TargetPreviewCard({ id, phase, targetName, target, skillId, selfPreview, recipientNameFor }: {
+function TargetPreviewCard({ id, phase, targetName, target, skillId, selfPreview, recipientNameFor, anchorRef }: {
   id: string;
   phase: TargetPreviewPhase;
   targetName: string;
@@ -368,11 +369,12 @@ function TargetPreviewCard({ id, phase, targetName, target, skillId, selfPreview
   skillId?: string | null;
   selfPreview?: BattlePreviewSelf | null;
   recipientNameFor?: (recipientId: string) => string;
+  anchorRef?: RefObject<HTMLElement | null>;
 }) {
   const targetSideBuffs = skillId === "skill.warrior.thunder_pot"
     ? selfPreview?.consequences.filter((consequence) => consequence.kind === "resistanceBoost") ?? []
     : [];
-  return <section className={`target-preview-card ${phase}`} id={id} data-battle-layer="world-ui">
+  const card = <section className={`target-preview-card ${phase}`} id={anchorRef ? undefined : id} data-battle-layer="world-ui">
     <strong><span className="target-preview-arrow" aria-hidden="true">→</span> {targetName}</strong>
     {phase === "loading" ? <p>Checking outcome…</p>
       : phase === "unavailable" || !target ? <p>Preview unavailable</p>
@@ -384,6 +386,9 @@ function TargetPreviewCard({ id, phase, targetName, target, skillId, selfPreview
           <PreviewConsequenceRows consequences={targetSideBuffs} skillId={skillId} />
         </dl>}
   </section>;
+  return anchorRef
+    ? <ViewportBoundOverlay anchorRef={anchorRef} id={id} role="status" className="target-preview-overlay">{card}</ViewportBoundOverlay>
+    : card;
 }
 
 function SelfPreviewCard({ id, phase, recipientName, skillName, skillId, preview }: {
@@ -423,6 +428,7 @@ function BattlefieldFigure({ hero, active, event, hpEvent, healingCasterEvent, e
   previewPhase: TargetPreviewPhase; previewTarget: BattlePreviewTarget | null; previewDescriptionId?: string; skillId?: string | null; selfPreview?: BattlePreviewSelf | null; previewRecipientNameFor?: (recipientId: string) => string;
 }) {
   const [figureFrameHeight, setFigureFrameHeight] = useState(FALLBACK_FIGURE_FRAME_HEIGHT);
+  const targetControlRef = useRef<HTMLButtonElement>(null);
   const eventTarget = event?.targetId === hero.id;
   const moved = event?.type === "characterMoved" && event.sourceId === hero.id;
   const effect = eventTarget || moved ? event?.type ?? null : null;
@@ -453,7 +459,7 @@ function BattlefieldFigure({ hero, active, event, hpEvent, healingCasterEvent, e
           <Meter value={hero.hp.current} maximum={hero.hp.maximum} kind="hp" label={`${hero.displayName} health`} />
         </div>
       </div>}
-      <button className={`battle-target-control target-cursor-${targetCursorIntent} ${targetSelectionPending ? "target-selection-pending" : ""}`} data-battle-layer="world-ui" data-audio-feedback="interactive" type="button" disabled={!selectable} onClick={onSelect}
+      <button ref={targetControlRef} className={`battle-target-control target-cursor-${targetCursorIntent} ${targetSelectionPending ? "target-selection-pending" : ""}`} data-battle-layer="world-ui" data-audio-feedback="interactive" type="button" disabled={!selectable} onClick={onSelect}
         onMouseEnter={() => { if (selectable) onTargetHover(hero.id); }}
         onMouseLeave={() => onTargetHover(null)}
         onFocus={(event) => { if (selectable) onTargetFocus(hero.id, event.currentTarget.matches(":focus-visible")); }}
@@ -482,7 +488,7 @@ function BattlefieldFigure({ hero, active, event, hpEvent, healingCasterEvent, e
         {effect === "attackEvaded" && <span className="combat-text evade">EVADE</span>}
       </button>
       {previewPhase !== "idle" && previewDescriptionId
-        ? <TargetPreviewCard id={previewDescriptionId} phase={previewPhase} targetName={hero.displayName} target={previewTarget} skillId={skillId} selfPreview={selfPreview} recipientNameFor={previewRecipientNameFor} />
+        ? <TargetPreviewCard id={previewDescriptionId} phase={previewPhase} targetName={hero.displayName} target={previewTarget} skillId={skillId} selfPreview={selfPreview} recipientNameFor={previewRecipientNameFor} anchorRef={targetControlRef} />
         : null}
     </div>
   );
@@ -499,11 +505,12 @@ interface BattleScreenProps {
   onReturnToBuilder?: () => void;
   onResign?: () => void | Promise<void>;
   showEngineeringReadout?: boolean;
+  enableDebugAutoBattle?: boolean;
 }
 
 type EntryCountdown = 3 | 2 | 1 | "start" | null;
 
-export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundImage, entryCountdownStepMs, onBattleComplete, completionActionLabel, onReturnToBuilder, onResign, showEngineeringReadout = false }: BattleScreenProps) {
+export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundImage, entryCountdownStepMs, onBattleComplete, completionActionLabel, onReturnToBuilder, onResign, showEngineeringReadout = false, enableDebugAutoBattle = false }: BattleScreenProps) {
   const mountedBackground = backgroundImage ?? BATTLE_BACKGROUND;
   const presentationConfig = useBattlePresentationConfig();
   const battleAudio = useBattleAudio();
@@ -527,6 +534,8 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
   const logListRef = useRef<HTMLOListElement>(null);
   const completionButtonRef = useRef<HTMLButtonElement>(null);
   const manualTriggerRef = useRef<HTMLButtonElement>(null);
+  const autoRequestRevisionRef = useRef<number | null>(null);
+  const autoRequestInFlightRef = useRef(false);
   const inactivityWarning = useBattleInactivityWarning(provider);
 
   useEffect(() => {
@@ -561,6 +570,25 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
     && snapshot.turnControl.acceptsCommands
     && snapshot.turnControl.actorCombatantId === snapshot.activeCombatantId,
   );
+
+  useEffect(() => {
+    if (!enableDebugAutoBattle || !autoBattle || !acceptsCommands || !provider.submitAutoAction || error) return;
+    if (autoRequestInFlightRef.current || autoRequestRevisionRef.current === revision) return;
+    autoRequestRevisionRef.current = revision;
+    autoRequestInFlightRef.current = true;
+    void present(async () => {
+      try {
+        const script = await provider.submitAutoAction!(revision);
+        if (script.snapshot.phase === "ended") setAutoBattle(false);
+        return script;
+      } catch (reason) {
+        setAutoBattle(false);
+        throw reason;
+      } finally {
+        autoRequestInFlightRef.current = false;
+      }
+    });
+  }, [acceptsCommands, autoBattle, enableDebugAutoBattle, error, present, provider, revision]);
   const legal = acceptsCommands
     ? snapshot?.legalActions.find((action) => action.skillId === selectedSkill)
     : undefined;
@@ -876,7 +904,7 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
         {mockDemos && <div className="demo-controls" aria-label="Mock presentation demos">
           <span>MOCK EVENT DEMOS</span>{mockDemos.map((demo) => <button data-audio-feedback="interactive" key={demo.id} disabled={isPlaying || entryLocked} onClick={() => void present(demo.run)}>{demo.label}</button>)}
         </div>}
-        <label className="toggle" data-audio-feedback="interactive" aria-disabled={entryLocked || isPlaying}>AUTO BATTLE <input type="checkbox" checked={autoBattle} disabled={entryLocked || isPlaying} onChange={(event) => { setAutoBattle(event.target.checked); setHoveredTargetId(null); setFocusedTargetId(null); setTargetInputMode(null); }} /><span /></label>
+        {enableDebugAutoBattle ? <label className="toggle" data-audio-feedback="interactive" aria-disabled={entryLocked}>AUTO BATTLE <input type="checkbox" checked={autoBattle} disabled={entryLocked} onChange={(event) => { if (event.target.checked && !autoRequestInFlightRef.current && !isPlaying) autoRequestRevisionRef.current = null; setAutoBattle(event.target.checked); setSelectedSkill(null); setSelectedTargets([]); setHoveredTargetId(null); setFocusedTargetId(null); setTargetInputMode(null); }} /><span /></label> : null}
         {!active ? <button className="end-turn" disabled>BATTLE ENDED</button> : isPlaying ? <button data-audio-feedback="interactive" className="end-turn" onClick={skip} disabled={!canSkip || isOpening}>{isOpening ? "OPENING BATTLE…" : canSkip ? "SKIP EFFECT" : "RESOLVING…"}</button> : !acceptsCommands ? <button className="end-turn" disabled>{entryLocked ? "BATTLE OPENING" : "AUTOMATIC TURN"}</button> : <button data-audio-feedback="interactive" className="end-turn" aria-describedby={selfPreviewDescriptionId} onClick={triggerSkill} disabled={!selectedSkill || !legal || selectedTargets.length < legal.minimumTargets || selectedTargets.length > legal.maximumTargets}>{selectedSkill ? "CAST SKILL" : "SELECT SKILL"}</button>}
         {onResign ? <button data-audio-feedback="interactive" type="button" className="resign-battle" onClick={() => setResignConfirmationOpen(true)}>RESIGN</button> : null}
       </footer>

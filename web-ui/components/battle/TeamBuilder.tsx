@@ -300,6 +300,7 @@ export function TeamBuilder(props: TeamBuilderProps) {
   const parsedSeed = seedText === "" ? undefined : Number(seedText);
   const validation = useMemo(() => {
     if (playerTeam.length !== battleSize || playerTeam.some((id) => !id)) return "Fill every player-team slot.";
+    if (new Set(playerTeam).size !== playerTeam.length) return "Choose a different Hero Profession for each player-team slot.";
     if (playerTeam.some((id) => !builderRoster.some((hero) => hero.definitionId === id))) {
       return "Choose every player hero from your available roster.";
     }
@@ -316,6 +317,7 @@ export function TeamBuilder(props: TeamBuilderProps) {
   const assignMatrixHero = (definitionId: string) => {
     if (activeTeamSide === "player") {
       const filledSlot = activePlayerSlot;
+      if (playerTeam.some((assignedId, index) => assignedId === definitionId && index !== filledSlot)) return;
       const wasEmpty = !playerTeam[filledSlot];
       const nextTeam = updateSlot(playerTeam, filledSlot, definitionId);
       setPlayerTeam(nextTeam);
@@ -666,18 +668,18 @@ export function TeamBuilder(props: TeamBuilderProps) {
         <div className="hero-matrix-grid">
           {visibleMatrixHeroes.map((hero) => {
             const assigned = hero.definitionId === activeHeroId;
-            const reservedByAnotherArenaSlot = props.mode === "arena-run"
-              && activeTeamSide === "player"
+            const reservedByAnotherPlayerSlot = activeTeamSide === "player"
               && playerTeam.some((definitionId, index) => definitionId === hero.definitionId && index !== activePlayerSlot);
+            const assignmentLabel = `Assign ${professionLabel(hero)} to ${activeTeamSide === "player" ? "your" : "enemy"} Hero ${(activeTeamSide === "player" ? activePlayerSlot : activeEnemySlot) + 1}`;
             return (
               <button
                 key={hero.definitionId}
                 type="button"
-                className={`matrix-hero-card${assigned ? " assigned" : ""}`}
+                className={`matrix-hero-card${assigned ? " assigned" : ""}${reservedByAnotherPlayerSlot ? " reserved" : ""}`}
                 data-hero-id={hero.definitionId}
-                aria-label={`Assign ${professionLabel(hero)} to ${activeTeamSide === "player" ? "your" : "enemy"} Hero ${(activeTeamSide === "player" ? activePlayerSlot : activeEnemySlot) + 1}`}
+                aria-label={reservedByAnotherPlayerSlot ? `${assignmentLabel}, already selected in another player slot` : assignmentLabel}
                 aria-pressed={assigned}
-                disabled={reservedByAnotherArenaSlot}
+                aria-disabled={reservedByAnotherPlayerSlot}
                 onClick={() => assignMatrixHero(hero.definitionId)}
               >
                 <span className="builder-hero-media">

@@ -10,9 +10,11 @@ implemented baseline; detailed formulas remain specialization-specific.
 
 The web API accepts two sides of one to three heroes. It supports specified or
 random enemy composition and player or computer enemy control. The legacy
-engine accepts hero lists more generally. Duplicates and cross-team duplicate
-definitions are valid for player and specified-enemy selections; random enemy
-composition samples the approved roster without replacement.
+engine accepts hero lists more generally. The web battle launch requires each
+player-team Hero Profession definition ID to be unique. The same faculty with
+different specializations is allowed; specified enemies may repeat definitions,
+and a definition may appear on both sides. Random enemy composition samples
+the approved roster without replacement.
 
 Two-versus-two and three-versus-three battles use size-specific formations.
 For 2v2, `front-rear` assigns the ordered slots to front/rear and

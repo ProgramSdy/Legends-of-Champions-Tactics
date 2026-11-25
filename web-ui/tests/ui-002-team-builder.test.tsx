@@ -63,26 +63,16 @@ describe("UI-002 Team Builder", () => {
     });
   });
 
-  it("sends no enemy team in random mode and supports duplicate selections", () => {
+  it("sends no enemy team in random mode and rejects duplicate player professions", () => {
     const onStart = vi.fn();
     render(<TeamBuilder roster={roster} onStart={onStart} />);
     fireEvent.click(screen.getByRole("radio", { name: "2v2" }));
     fireEvent.click(screen.getByRole("button", { name: /Assign Paladin · Retribution to your Hero 1/i }));
     fireEvent.click(screen.getByRole("button", { name: /Select your Hero 2/i }));
-    fireEvent.click(screen.getByRole("button", { name: /Assign Paladin · Retribution to your Hero 2/i }));
-    fireEvent.click(document.querySelector<HTMLElement>('[data-player-slot="0"]')!);
-    fireEvent.click(document.querySelector<HTMLElement>('[data-hero-id="hero.paladin.retribution"]')!);
-    fireEvent.click(document.querySelector<HTMLElement>('[data-player-slot="1"]')!);
-    fireEvent.click(document.querySelector<HTMLElement>('[data-hero-id="hero.paladin.retribution"]')!);
-    fireEvent.click(screen.getByRole("button", { name: "ENTER BATTLE" }));
-
-    expect(onStart).toHaveBeenCalledWith({
-      battleSize: 2,
-      playerTeam: ["hero.paladin.retribution", "hero.paladin.retribution"],
-      playerFormation: "front-rear",
-      enemyCompositionMode: "random",
-      enemyControlMode: "computer",
-    });
+    const duplicateCard = document.querySelector<HTMLElement>('[data-hero-id="hero.paladin.retribution"]');
+    expect(duplicateCard).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByRole("button", { name: "ENTER BATTLE" })).toBeDisabled();
+    expect(onStart).not.toHaveBeenCalled();
   });
 
   it("prevents launch when a required team slot or seed is invalid", () => {

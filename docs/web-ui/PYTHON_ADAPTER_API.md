@@ -564,6 +564,22 @@ applicable.
 
 ## Source and rule mapping
 
+## Stage 5.1 player-team and Development Debug authority
+
+Stage 5.1 Development Debug adds `POST /api/v1/debug/battles/{battleId}/auto-actions`
+with `{ "expectedRevision": number }`. It resolves at most one friendly player
+turn through the existing specialization AI and normal adapter legality path,
+then returns the ordinary battle envelope and ordered events. Stale revisions
+are rejected; the server does not store an Auto Battle toggle. The route is
+registered only when `LOCT_RELEASE_MODE=development`, so Public direct requests
+and OpenAPI do not expose it. This operation is separate from battle preview,
+which remains read-only and does not consume RNG or perform an action.
+
+For every player-authored team launch (Development generic/Debug, Stage, Arena),
+the adapter/API reject repeated stable Hero Profession definition IDs on the
+player side with HTTP 422 detail code `duplicatePlayerProfession`. Distinct
+specializations within a faculty and enemy-side repetition remain legal.
+
 ## BATTLE-TRANSPARENCY additive preview operation
 
 `POST /api/v1/battles/{battleId}/preview` is an additive, revision-bound

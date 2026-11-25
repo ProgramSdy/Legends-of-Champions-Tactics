@@ -380,7 +380,7 @@ def test_api_creates_live_three_hero_player_controlled_battle():
             "battleSize": 3,
             "playerTeam": [
                 "hero.priest.comprehensiveness",
-                "hero.priest.comprehensiveness",
+                "hero.priest.discipline",
                 "hero.mage.comprehensiveness",
             ],
             "enemyCompositionMode": "specified",

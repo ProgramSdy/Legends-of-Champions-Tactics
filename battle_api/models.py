@@ -453,6 +453,12 @@ class CreateDebugBattleRequest(CreateBattleRequest):
     model_config = ConfigDict(populate_by_name=True, extra="forbid")
 
 
+class DebugAutoActionRequest(StrictApiModel):
+    """Revision-bound request for one Engineering Auto Battle action."""
+
+    expected_revision: int = Field(alias="expectedRevision", ge=0)
+
+
 class UseSkillCommand(ApiModel):
     type: Literal["useSkill"] = "useSkill"
     command_id: str = Field(alias="commandId", min_length=1, max_length=128)

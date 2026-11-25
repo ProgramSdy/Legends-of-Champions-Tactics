@@ -20,12 +20,18 @@ PALADIN_CASES = [
 
 def _session(definition, *, size=1, seed=404):
     adapter = BattleAdapter()
+    player_team = [definition] + [
+        candidate for candidate in (
+            "hero.paladin.retribution",
+            "hero.paladin.protection",
+            "hero.paladin.holy",
+        ) if candidate != definition][: size - 1]
     session, _ = adapter.create_battle(
         seed=seed,
         battle_id=f"battle.preview-004.{definition}.{size}.{seed}",
         battle_size=size,
-        player_team=[definition] * size,
-        enemy_team=["hero.rogue.comprehensiveness"] * size,
+        player_team=player_team,
+        enemy_team=["hero.rogue.comprehensiveness", "hero.mage.comprehensiveness", "hero.priest.comprehensiveness"][:size],
         enemy_control_mode="player",
         player_formation="front-rear" if size == 2 else "one-front-two-rear" if size == 3 else None,
         enemy_formation="front-rear" if size == 2 else "one-front-two-rear" if size == 3 else None,

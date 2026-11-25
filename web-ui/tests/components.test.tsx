@@ -99,6 +99,7 @@ describe("battle components", () => {
     render(<StatusIcon status={status} />);
     const icon = screen.getByLabelText(/Stitch of Agony.*Remaining rounds: 2\./i);
     expect(icon).toHaveAttribute("tabindex", "0");
+    fireEvent.focus(icon);
     expect(screen.getByRole("tooltip")).toHaveTextContent("Suffers authoritative damage at round start.");
   });
 
@@ -118,6 +119,7 @@ describe("battle components", () => {
     expect(icon).toHaveClass("harmful");
     expect(artwork).toHaveAttribute("src", statusRegistry[status.id].asset);
     expect(container.querySelector(".status-stack-badge")).toHaveTextContent("3");
+    fireEvent.focus(icon);
     expect(screen.getByRole("tooltip")).toHaveTextContent("Poison from Poisoned Dagger remains active.");
 
     fireEvent.error(artwork!);
@@ -141,6 +143,7 @@ describe("battle components", () => {
     const validStack = typeof stacks === "number" && Number.isInteger(stacks) && stacks > 0;
     if (validStack) {
       expect(icon).toHaveAccessibleName(new RegExp(`Stack count: ${stacks}\\.`));
+      fireEvent.focus(icon);
       expect(screen.getByRole("tooltip")).toHaveTextContent(`Stack count: ${stacks}.`);
     } else {
       expect(icon).not.toHaveAccessibleName(/Stack count/);
@@ -165,6 +168,7 @@ describe("battle components", () => {
     const { container } = render(<StatusIcon status={status} />);
     expect(screen.getByLabelText(/Wrath of Crusader.*Stack count: 4/)).toBeInTheDocument();
     expect(container.querySelector(".status-stack-badge")).toHaveTextContent("4");
+    fireEvent.focus(screen.getByLabelText(/Wrath of Crusader.*Stack count: 4/));
     expect(screen.getByRole("tooltip")).toHaveTextContent("Stack count: 4.");
   });
 
@@ -176,6 +180,7 @@ describe("battle components", () => {
     const { rerender } = render(<StatusIcon status={status} />);
     const icon = screen.getByLabelText(/Poisoned Dagger.*Stack count: 2.*Remaining rounds: 4\./i);
     expect(icon).toHaveAccessibleName(/Remaining rounds: 4\./i);
+    fireEvent.focus(icon);
     expect(screen.getByRole("tooltip")).toHaveTextContent("Remaining rounds: 4.");
 
     rerender(<StatusIcon status={{ ...status, roundsRemaining: null }} />);
@@ -197,9 +202,11 @@ describe("battle components", () => {
 
     expect(definition.name).not.toMatch(/unknown/i);
     expect(definition.description.trim().length).toBeGreaterThan(0);
-    expect(screen.getByLabelText(
+    const icon = screen.getByLabelText(
       `${definition.name}. ${definition.description} Remaining rounds: 2.`,
-    )).toBeVisible();
+    );
+    expect(icon).toBeVisible();
+    fireEvent.focus(icon);
     expect(screen.getByRole("tooltip")).toHaveTextContent(definition.name);
     expect(screen.getByRole("tooltip")).toHaveTextContent(definition.description);
     expect(screen.queryByText("Unknown status")).not.toBeInTheDocument();

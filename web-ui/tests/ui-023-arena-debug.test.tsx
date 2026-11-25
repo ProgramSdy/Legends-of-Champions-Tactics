@@ -3,9 +3,10 @@ import { readFileSync } from "node:fs";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ArenaRunExperience } from "@/components/battle/ArenaRunExperience";
+import { BattleScreen } from "@/components/battle/BattleScreen";
 import { DebugBattleExperience } from "@/components/battle/DebugBattleExperience";
 import { StageSelectionScreen } from "@/components/stages/StageSelectionScreen";
-import { createFormatFixture } from "@/lib/battle/fixture";
+import { createFormatFixture, MockBattleProvider } from "@/lib/battle/fixture";
 import type { ArenaStateResponse, HeroDefinitionSummary, PlayerProgressionResponse } from "@/lib/battle/types";
 import { UiAudioBoundary } from "@/components/audio/UiAudioBoundary";
 import { audioManager } from "@/lib/audio/AudioManager";
@@ -96,6 +97,37 @@ afterEach(() => {
 });
 
 describe("UI-023 Stage Map and debug boundary", () => {
+  it("exposes Auto Battle only for Debug and stops its loop when disabled", async () => {
+    const snapshot = createFormatFixture(1);
+    const provider = new MockBattleProvider(snapshot) as MockBattleProvider & {
+      submitAutoAction: ReturnType<typeof vi.fn>;
+    };
+    const autoResult = {
+      id: "debug.auto.2",
+      label: "Ragnar attacks",
+      eventType: "physical" as const,
+      events: [],
+      snapshot,
+      revision: 2,
+    };
+    let resolveAuto!: (value: typeof autoResult) => void;
+    const pendingAuto = new Promise<typeof autoResult>((resolve) => { resolveAuto = resolve; });
+    provider.submitAutoAction = vi.fn(() => pendingAuto);
+    const debugView = render(<BattleScreen provider={provider} mode="live" enableDebugAutoBattle />);
+    const toggle = await screen.findByRole("checkbox", { name: /auto battle/i });
+    await userEvent.setup().click(toggle);
+    await waitFor(() => expect(provider.submitAutoAction).toHaveBeenCalledTimes(1));
+    await userEvent.setup().click(toggle);
+    expect(toggle).not.toBeChecked();
+    resolveAuto(autoResult);
+    await waitFor(() => expect(provider.submitAutoAction).toHaveBeenCalledTimes(1));
+    debugView.unmount();
+
+    const ordinary = new MockBattleProvider(createFormatFixture(1));
+    render(<BattleScreen provider={ordinary} mode="live" />);
+    expect(screen.queryByRole("checkbox", { name: /auto battle/i })).not.toBeInTheDocument();
+  });
+
   it("adds keyboard-reachable Game Start and Engineering routes without changing hotspots", () => {
     render(<StageSelectionScreen showEngineeringRoute />);
     expect(screen.getByRole("link", { name: "Return to Game Start" })).toHaveAttribute("href", "/");

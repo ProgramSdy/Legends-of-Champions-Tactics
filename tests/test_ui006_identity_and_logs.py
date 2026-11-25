@@ -73,7 +73,7 @@ def test_runtime_name_pool_overflow_allows_repetition_without_creation_failure()
     team = [
         "hero.paladin.retribution",
         "hero.paladin.protection",
-        "hero.paladin.retribution",
+        "hero.paladin.holy",
     ]
     adapter = BattleAdapter()
     pool = set(HeroGenerator(adapter.engine_data).paladin_names_list)

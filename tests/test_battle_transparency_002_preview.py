@@ -18,6 +18,20 @@ from battle_api.models import DamagePreviewTarget
 def _session(player, enemy, *, seed=211):
     adapter = BattleAdapter()
     size = len(player)
+    player = list(dict.fromkeys(player)) + [
+        "hero.priest.discipline",
+        "hero.paladin.holy",
+        "hero.mage.comprehensiveness",
+        "hero.warrior.defence",
+    ]
+    enemy = list(dict.fromkeys(enemy)) + [
+        "hero.warrior.berserker",
+        "hero.paladin.protection",
+        "hero.mage.comprehensiveness",
+        "hero.priest.discipline",
+    ]
+    player = player[:size]
+    enemy = enemy[:size]
     session, _ = adapter.create_battle(
         seed=seed,
         battle_id=f"battle.preview-002.{seed}",

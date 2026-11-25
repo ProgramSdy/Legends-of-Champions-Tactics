@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { BATTLE_BACKGROUND } from "@/lib/battle/battleBackgrounds";
-import { fetchHeroRoster, LiveBattleProvider } from "@/lib/battle/liveProvider";
+import { fetchHeroRoster } from "@/lib/battle/liveProvider";
+import { DebugBattleProvider } from "@/lib/battle/debugBattleProvider";
 import type { BattleCreateConfiguration, HeroDefinitionSummary } from "@/lib/battle/types";
 import { BattleScreen } from "./BattleScreen";
 import { TeamBuilder } from "./TeamBuilder";
@@ -42,7 +43,7 @@ export function DebugBattleExperience({
 
   const provider = useMemo(
     () => configuration
-      ? new LiveBattleProvider(undefined, configuration, "/api/v1/debug/battles")
+      ? new DebugBattleProvider(undefined, configuration, "/api/v1/debug/battles")
       : null,
     [configuration],
   );
@@ -89,6 +90,7 @@ export function DebugBattleExperience({
       onBattleComplete={closeDebugBattle}
       onResign={closeDebugBattle}
       showEngineeringReadout={showEngineeringReadout}
+      enableDebugAutoBattle
     />
   );
 }

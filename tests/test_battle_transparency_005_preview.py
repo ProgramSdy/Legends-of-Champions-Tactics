@@ -16,10 +16,8 @@ from skills.skill import Buff
 
 def _session(*, size=1, seed=5005):
     adapter = BattleAdapter()
-    friendly = ["hero.priest.discipline"] + [
-        "hero.warrior.weapon_master"
-    ] * (size - 1)
-    enemies = ["hero.rogue.comprehensiveness"] * size
+    friendly = ["hero.priest.discipline", "hero.warrior.weapon_master", "hero.paladin.holy"][:size]
+    enemies = ["hero.rogue.comprehensiveness", "hero.mage.comprehensiveness", "hero.warrior.defence"][:size]
     formation = "front-rear" if size == 2 else "one-front-two-rear" if size == 3 else None
     session, _ = adapter.create_battle(
         seed=seed,

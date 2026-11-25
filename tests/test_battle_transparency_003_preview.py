@@ -25,8 +25,13 @@ WARRIOR_SKILLS = (
 
 def _session(player_definition, *, size=1, seed=303):
     adapter = BattleAdapter()
-    player_team = [player_definition] * size
-    enemy_team = ["hero.rogue.comprehensiveness"] * size
+    player_team = [player_definition] + [
+        definition for definition in (
+            "hero.warrior.defence",
+            "hero.warrior.berserker",
+            "hero.warrior.weapon_master",
+        ) if definition != player_definition][: size - 1]
+    enemy_team = ["hero.rogue.comprehensiveness", "hero.mage.comprehensiveness", "hero.priest.discipline"][:size]
     session, _ = adapter.create_battle(
         seed=seed,
         battle_id=f"battle.preview-003.{player_definition}.{size}.{seed}",

@@ -14,7 +14,13 @@ import uuid
 from fastapi import Depends, FastAPI, HTTPException, Path as ApiPath, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
-from .adapter import CONTRACT_VERSION, BattleAdapterError, BattleRegistry
+from .adapter import (
+    CONTRACT_VERSION,
+    BattleAdapterError,
+    BattleRegistry,
+    PlayerTeamValidationError,
+    validate_distinct_player_professions,
+)
 from .attempts import BattleAttemptConflict, BattleAttemptRegistry
 from .debug_routes import create_debug_router
 from game.formation_rules import formation_demonstration_catalogue
@@ -288,6 +294,18 @@ def _battle_attempt_error(exc: BattleAttemptConflict) -> HTTPException:
         status_code=409,
         detail={"code": "battleAttemptConflict", "message": str(exc)},
     )
+
+
+def _validate_player_team(definition_ids: list[str]) -> None:
+    """Expose the authoritative player-team uniqueness rule as a typed 422."""
+
+    try:
+        validate_distinct_player_professions(definition_ids)
+    except PlayerTeamValidationError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": exc.code, "message": exc.message},
+        ) from exc
 
 
 def _public_battle_error(exc: PublicBattleAccessError) -> HTTPException:
@@ -1286,6 +1304,8 @@ async def create_arena_battle(
     ],
     store: Annotated[ProgressionStore, Depends(get_progression_store)],
 ) -> dict:
+    _validate_player_team(list(request.player_team))
+
     def create_attempt(
         profile_id: str,
         *,
@@ -1474,6 +1494,7 @@ async def create_battle(
     request: CreateBattleRequest,
     store: Annotated[ProgressionStore, Depends(get_progression_store)],
 ) -> dict:
+    _validate_player_team(list(request.player_team))
     try:
         profile_id = await asyncio.to_thread(store.active_profile_id)
         await asyncio.to_thread(
@@ -1517,6 +1538,7 @@ async def create_stage_battle(
     ],
     store: Annotated[ProgressionStore, Depends(get_progression_store)],
 ) -> dict:
+    _validate_player_team(list(request.player_team))
     if session is not None and "seed" in request.model_fields_set:
         raise HTTPException(
             status_code=422,

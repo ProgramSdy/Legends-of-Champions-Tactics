@@ -848,8 +848,8 @@ export async function fetchStructuredStages(
 }
 
 export class LiveBattleProvider implements BattleProvider {
-  private battleId: string | null = null;
-  private state: BattleState | null = null;
+  protected battleId: string | null = null;
+  protected state: BattleState | null = null;
   private creationPromise: Promise<BattleState> | null = null;
   private authority: BattleAuthorityState | null = null;
   private pendingCommand: BattleCommand | null = null;
@@ -890,7 +890,7 @@ export class LiveBattleProvider implements BattleProvider {
     for (const listener of this.authorityListeners) listener(current);
   }
 
-  private async request<T>(path: string, init?: RequestInit): Promise<Envelope<T>> {
+  protected async request<T>(path: string, init?: RequestInit): Promise<Envelope<T>> {
     const envelope = await requestAdapterJson(this.baseUrl, path, init) as Envelope<T>;
     if (envelope.contractVersion !== "1.0") {
       throw new BattleProviderError(`Unsupported battle contract ${envelope.contractVersion}.`, "adapter");

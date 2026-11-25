@@ -63,9 +63,12 @@ ordinary control for forced, automatic, casting, or restricted states.
 
 No formal tank/healer/damage/support metadata is encoded as authoritative hero
 data. Such labels may be useful design interpretation, but must not be treated
-as engine rules. Repeated selections and cross-team overlap are allowed for
-player/specified-enemy teams; random enemy construction samples without
-replacement.
+as engine rules. A player team may select each stable Hero Profession definition
+ID only once. Different specializations of one faculty are distinct professions
+and remain valid together. Specified-enemy teams may repeat a definition, and
+the same definition may appear on opposite sides; random enemy construction
+samples without replacement. Existing saved selections are not silently
+rewritten: an invalid player composition must be corrected before battle launch.
 
 ### Hero Gallery reference facts
 
@@ -129,11 +132,13 @@ profile naming/settings/deletion, accounts, and cloud sync remain unimplemented.
 
 - Canonical release roster and expansion policy.
 - Fixed versus randomized stat communication to players.
-- Formal role labels, duplicate-hero restrictions, and summon limits.
+- Formal role labels and summon limits.
 - Excel ownership, balance review process, and persistent progression design.
 
 ## Change Log
 
+- 2026-11-25 — Recorded the Stage 5.1 player-team profession uniqueness rule,
+  keeping enemy repeats and cross-side overlap legal.
 - 2026-08-15 — Added the three adapter-owned 3v3 position mappings while
   retaining the existing constructor default for legacy paths.
 - 2026-08-19 — Documented the default-profile ownership gate used by the two

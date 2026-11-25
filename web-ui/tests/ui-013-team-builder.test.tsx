@@ -53,7 +53,7 @@ describe("UI-013 Team Builder slot and matrix contracts", () => {
     expect(screen.getByRole("region", { name: /SELECT HERO/i })).toBeVisible();
   });
 
-  it("assigns matrix cards only to the active player slot, preserves duplicates, and submits ordered IDs", async () => {
+  it("assigns matrix cards only to the active player slot and rejects duplicate professions", async () => {
     const user = userEvent.setup();
     const onStart = vi.fn();
     render(<TeamBuilder roster={roster} onStart={onStart} />);
@@ -62,7 +62,9 @@ describe("UI-013 Team Builder slot and matrix contracts", () => {
     await user.click(slot(0));
     await user.click(document.querySelector<HTMLElement>('[data-hero-id="hero.paladin.retribution"]')!);
     await user.click(slot(1));
-    await user.click(document.querySelector<HTMLElement>('[data-hero-id="hero.paladin.retribution"]')!);
+    const duplicate = document.querySelector<HTMLElement>('[data-hero-id="hero.paladin.retribution"]')!;
+    expect(duplicate).toHaveAttribute("aria-disabled", "true");
+    await user.click(document.querySelector<HTMLElement>('[data-hero-id="hero.paladin.protection"]')!);
     await user.click(slot(2));
     await user.click(document.querySelector<HTMLElement>('[data-hero-id="hero.mage.comprehensiveness"]')!);
     expect(slot(0)).toHaveAttribute("aria-pressed", "false");
@@ -71,7 +73,7 @@ describe("UI-013 Team Builder slot and matrix contracts", () => {
     expect(onStart).toHaveBeenCalledWith(expect.objectContaining({
       battleSize: 3,
       playerFormation: "one-front-two-rear",
-      playerTeam: ["hero.paladin.retribution", "hero.paladin.retribution", "hero.mage.comprehensiveness"],
+      playerTeam: ["hero.paladin.retribution", "hero.paladin.protection", "hero.mage.comprehensiveness"],
       enemyCompositionMode: "random",
       enemyControlMode: "computer",
     }));

@@ -14,10 +14,25 @@ from battle_api.app import app, registry
 
 def _session(player: list[str], enemy: list[str], *, seed: int = 73):
     adapter = BattleAdapter()
+    size = len(player)
+    player = list(dict.fromkeys(player))
+    player += [candidate for candidate in [
+        "hero.mage.comprehensiveness",
+        "hero.priest.discipline",
+        "hero.warrior.defence",
+    ] if candidate not in player]
+    enemy = list(dict.fromkeys(enemy))
+    enemy += [candidate for candidate in [
+        "hero.rogue.comprehensiveness",
+        "hero.paladin.protection",
+        "hero.warrior.berserker",
+    ] if candidate not in enemy]
+    player = player[:size]
+    enemy = enemy[:size]
     session, _ = adapter.create_battle(
         seed=seed,
         battle_id=f"battle.preview.{seed}",
-        battle_size=len(player),
+        battle_size=size,
         player_team=player,
         enemy_team=enemy,
         enemy_control_mode="player",

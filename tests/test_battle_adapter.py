@@ -199,7 +199,7 @@ def test_binding_heal_does_not_emit_a_zero_delta_event_for_an_incidental_full_hp
         battle_size=2,
         player_team=[
             "hero.priest.comprehensiveness",
-            "hero.priest.comprehensiveness",
+            "hero.priest.discipline",
         ],
         enemy_team=[
             "hero.rogue.comprehensiveness",
@@ -248,7 +248,7 @@ def test_zero_delta_healing_events_cover_each_full_hp_target_but_not_damage_skil
         battle_size=2,
         player_team=[
             "hero.priest.comprehensiveness",
-            "hero.priest.comprehensiveness",
+            "hero.priest.discipline",
         ],
         enemy_team=[
             "hero.rogue.comprehensiveness",
@@ -782,24 +782,22 @@ def test_moon_slash_uses_own_duration_and_orders_tick_before_removal(monkeypatch
     assert tick_events[0]["sequence"] < removal_events[0]["sequence"]
 
 
-def test_moon_slash_named_record_tracks_latest_duplicate_berserker_source(
+def test_moon_slash_named_record_tracks_latest_source_refresh(
     monkeypatch,
 ):
     adapter = BattleAdapter()
     session, _ = adapter.create_battle(
         seed=1606,
         battle_id="battle.ui016.moon-source",
-        battle_size=2,
+        battle_size=1,
         player_team=[
-            "hero.warrior.berserker",
             "hero.warrior.berserker",
         ],
         enemy_team=[
             "hero.rogue.comprehensiveness",
-            "hero.priest.comprehensiveness",
         ],
     )
-    first_source, second_source = session.game.player_heroes
+    first_source = session.game.player_heroes[0]
     target = session.game.opponent_heroes[0]
     target.status["armor_breaker"] = True
     monkeypatch.setattr("heroes.warrior.random.randint", lambda low, _high: low)
@@ -808,7 +806,7 @@ def test_moon_slash_named_record_tracks_latest_duplicate_berserker_source(
     first = adapter._active_statuses(session, target)[
         "status.bleeding_moon_slash"
     ]
-    second_source.moon_slash(target)
+    first_source.moon_slash(target)
     second = adapter._active_statuses(session, target)[
         "status.bleeding_moon_slash"
     ]
@@ -820,11 +818,11 @@ def test_moon_slash_named_record_tracks_latest_duplicate_berserker_source(
         session, first_source
     )
     assert second["sourceCombatantId"] == adapter._combatant_id(
-        session, second_source
+        session, first_source
     )
     assert second["roundsRemaining"] == 2
     assert len(moon_records) == 1
-    assert moon_records[0].initiator is second_source
+    assert moon_records[0].initiator is first_source
 
 
 def test_purify_healing_refreshes_and_dispels_only_eligible_category(monkeypatch):
@@ -1137,6 +1135,11 @@ def test_every_approved_hero_can_submit_a_legal_live_action(definition_id):
 @pytest.mark.parametrize("battle_size", [1, 2, 3])
 def test_configured_battle_preserves_slots_duplicates_and_control_mode(battle_size):
     adapter = BattleAdapter()
+    player_team = [
+        "hero.priest.comprehensiveness",
+        "hero.priest.discipline",
+        "hero.paladin.holy",
+    ][:battle_size]
     repeated = ["hero.priest.comprehensiveness"] * battle_size
     formations = (
         {
@@ -1150,7 +1153,7 @@ def test_configured_battle_preserves_slots_duplicates_and_control_mode(battle_si
         seed=7,
         battle_id=f"battle.size.{battle_size}",
         battle_size=battle_size,
-        player_team=repeated,
+        player_team=player_team,
         enemy_team=repeated,
         enemy_control_mode="player",
         **formations,

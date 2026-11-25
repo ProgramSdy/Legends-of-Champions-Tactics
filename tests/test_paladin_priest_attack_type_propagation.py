@@ -48,9 +48,10 @@ def test_declared_attack_type_survives_adapter_execution(
     expected_targets,
 ):
     adapter = BattleAdapter()
+    partner = "hero.priest.discipline" if definition_id == "hero.priest.comprehensiveness" else "hero.priest.comprehensiveness"
     session, _ = adapter.create_battle(
         battle_size=2,
-        player_team=[definition_id, "hero.priest.comprehensiveness"],
+            player_team=[definition_id, partner],
         enemy_team=ENEMIES,
         player_formation="front-rear",
         enemy_formation="front-rear",

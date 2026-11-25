@@ -355,6 +355,22 @@ _To be documented._
 - A highlighted side hero card retains the soft gold halo while status icons,
   tooltips, portrait/data, and the absolute-positioned Hero Stats button stay
   in their normal positions and above the halo layer on either team.
+- Battle contextual overlays, including status details and target previews,
+  stay anchored to their own control or figure while opening on pointer hover
+  or keyboard focus. Position the overlay against the visible viewport with
+  an 8px edge margin: flip or shift it when the preferred side would clip,
+  constrain long content to scroll within the viewport, and recompute on
+  resize, scroll, and changing anchor/content size. Keep the underlying battle
+  target and adjacent controls operable. The portrait rotate-device guard is
+  not a normal battle layout and must not leave a stray open overlay.
+- A Hero Selection Matrix card already used by another player slot remains
+  focusable and visibly explains why it cannot be assigned twice. The rule is
+  keyed by stable profession definition ID, not faculty or display name;
+  replacement and unselection restore availability.
+- Engineering Auto Battle appears only in Development Debug battles. Its
+  control uses the existing hero specialization AI; turning it off allows an
+  accepted action to finish but starts no further automatic player action.
+  Ordinary Stage/Arena and Public Battle controls do not show it.
 - The Hero Gallery uses a cinematic two-region desktop composition: filters and
   selectable roster cards on the left, selected aspect-preserving figure art
   and factual profile content on the right. Narrow layouts stack in reading

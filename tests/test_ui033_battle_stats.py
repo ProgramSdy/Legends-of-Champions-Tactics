@@ -131,11 +131,11 @@ def test_repeated_definitions_keep_independent_instance_baselines():
         battle_size=2,
         player_team=[
             "hero.warrior.weapon_master",
-            "hero.warrior.weapon_master",
+            "hero.warrior.defence",
         ],
         enemy_team=[
             "hero.rogue.comprehensiveness",
-            "hero.rogue.comprehensiveness",
+            "hero.mage.comprehensiveness",
         ],
     )
     first, second = session.game.player_heroes

@@ -41,6 +41,10 @@ def test_public_mode_is_fail_closed_and_hides_debug_route(monkeypatch, tmp_path)
     app_module = _app_for_mode(monkeypatch, "public", tmp_path)
 
     assert "/api/v1/debug/battles" not in app_module.app.openapi()["paths"]
+    assert (
+        "/api/v1/debug/battles/{battle_id}/auto-actions"
+        not in app_module.app.openapi()["paths"]
+    )
 
     with TestClient(app_module.app) as client:
         response = client.post(
@@ -48,7 +52,13 @@ def test_public_mode_is_fail_closed_and_hides_debug_route(monkeypatch, tmp_path)
             json={"battleSize": 1, "playerTeam": ["hero.warrior.weapon_master"]},
             headers={"LOCT_RELEASE_MODE": "development"},
         )
+        auto_response = client.post(
+            "/api/v1/debug/battles/crafted/auto-actions",
+            json={"expectedRevision": 0},
+            headers={"LOCT_RELEASE_MODE": "development"},
+        )
     assert response.status_code == 404
+    assert auto_response.status_code == 404
 
 
 def test_missing_or_invalid_mode_is_public_safe(monkeypatch, tmp_path):
@@ -61,6 +71,10 @@ def test_development_mode_registers_debug_route_and_openapi(monkeypatch, tmp_pat
     app_module = _app_for_mode(monkeypatch, "development", tmp_path)
 
     assert "/api/v1/debug/battles" in app_module.app.openapi()["paths"]
+    assert (
+        "/api/v1/debug/battles/{battle_id}/auto-actions"
+        in app_module.app.openapi()["paths"]
+    )
 
     with TestClient(app_module.app) as client:
         response = client.post(

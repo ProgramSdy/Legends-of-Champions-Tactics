@@ -129,9 +129,17 @@ Test and `/assets` Asset Diagnostics pages before vinext discovers routes; the
 shared Team Builder, Battle Screen, asset registry, engine, and adapter remain
 in the main source and normal game. Stage Map Engineering navigation, hotspot
 outlines, and the Battle viewport readout are Development-only presentation.
-The backend registers `POST /api/v1/debug/battles` only in explicit Development;
-public routing and OpenAPI omit it. This is a deployment-surface boundary, not
-an alternate combat rule or save model.
+The backend registers Debug battle creation and the revision-bound
+`POST /api/v1/debug/battles/{battleId}/auto-actions` only in explicit
+Development; Public routing and OpenAPI omit both. Each auto request chooses
+at most one friendly action through the existing specialization AI and legal
+action path, then returns the normal battle envelope. The client may stop
+issuing subsequent requests at a safe boundary, while an accepted action
+finishes. No new Tactics Level or persistent Auto Battle state is introduced.
+Player-authored team launch paths validate unique stable Hero Profession
+definition IDs in the backend; enemy repeats and cross-side overlap remain
+legal. These are deployment and launch-authority boundaries, not alternate
+combat rules or save models.
 
 ### RELEASE-002 Batch 1 Public identity and save boundary
 

@@ -84,6 +84,11 @@ the thin Python adapter. Python remains the sole gameplay authority.
   positioning parent without route controls changing hotspot geometry.
 - `components/battle/DebugBattleExperience.tsx` owns `/debug`: it fetches only
   the static roster and creates sessions through the dedicated debug route.
+  Its Auto Battle control is exclusive to this Development Engineering flow:
+  the shared Battle Screen asks the Debug provider for one revision-bound
+  Python specialization-AI action at a time and stops requesting further
+  actions when turned off, unmounted, rejected, or completed. Ordinary
+  Development Stage/Arena and Public Battle screens do not expose this control.
   Explicit Development mode retains this page and the `/assets` diagnostics
   page. Public `npm run build` uses a disposable source copy without either
   filesystem route before vinext route discovery; the original source and
@@ -448,12 +453,23 @@ slots, and Hero Selection Matrix assignment. Matrix and slot imagery use
 the shared `AssetImage` requested/class/initials fallback chain in a bounded
 media frame. The battle-completion dialog moves and contains focus on its
 Return action. Effects honor reduced motion and never determine outcomes.
+The player matrix reserves a stable profession definition ID already assigned
+to another player slot, while keeping the information focusable and explaining
+why it cannot be assigned. Different specializations in one faculty and the
+same definition on opposing sides remain valid; the backend revalidates every
+player-authored launch. No saved selection is silently changed.
 
 `StatusIcon` is the shared status renderer for Team Information cards. It
 displays a supplied valid stack count in a compact lower-right badge, retaining
 the exact count in its tooltip and accessible name. The presentation queue uses an explicit event count when
 provided, preserves an existing count for legacy events that omit it, and lets
 the final Python snapshot win after playback.
+The shared viewport-bound overlay portal places status tooltips and desktop
+target previews relative to their actual trigger, preferring above, flipping
+below when needed, and clamping to the visible viewport with an edge margin.
+It recalculates on resize, scroll, size, and moving anchors; pointer hover and
+keyboard focus use the same content and association. Compact target previews
+retain their established battlefield dock, while dialogs stay viewport-sized.
 Hero Stats Active Effects uses the same `StatusIcon`. Its optional status art
 comes from `statusRegistry`, which reuses registered skill artwork for the
 three Rogue statuses; unregistered or failed images keep the status glyph.

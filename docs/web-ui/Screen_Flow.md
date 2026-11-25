@@ -297,12 +297,21 @@ omits this route before frontend route discovery; direct `/assets` returns 404.
 - In explicit Development mode only, `/debug` opens the full-roster Engineering
   Test & Debugging builder without a progression/save-slot request or write.
   The Public Release build omits this route and the backend debug-create API.
+- In a Development Debug battle only, Auto Battle requests one revision-bound
+  friendly action at a time from the backend's existing specialization AI.
+  Turning the control off stops the next request after any accepted action;
+  departure, terminal state, or request failure also stops the loop. The
+  control and operation are absent from ordinary Stage/Arena and Public play.
 - `/game?stage=warriors-barrack` and `/game?stage=paladins-altar` open the
   respective persisted curriculum at its next permitted battle.
 - A successful create, load, or confirmed overwrite navigates to `/stages`.
   Arena, both structured stages, and the Asset Gallery return link navigate
   through their documented destinations.
 - Team Builder launches only live Python-backed sessions.
+- Every player team builder marks a profession already assigned to another
+  player slot unavailable, with a readable explanation; changing or clearing
+  the slot restores it. The server rejects a crafted duplicate player team
+  without altering saved roster/progression. Enemy teams are independent.
 - Mock fixtures remain test/development data and are not the normal user entry
   flow.
 - Battle sessions are process-local and are not resumed after a browser reload.

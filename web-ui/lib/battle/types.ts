@@ -700,6 +700,8 @@ export interface BattleResignResult {
 export interface BattleProvider {
   getState(): Promise<BattleState>;
   submitCommand(command: BattleCommand): Promise<PresentationScript>;
+  /** Development Debug only: resolve one friendly turn with authoritative specialization AI. */
+  submitAutoAction?(expectedRevision: number): Promise<PresentationScript>;
   previewAction?(request: BattlePreviewRequest, signal?: AbortSignal): Promise<BattlePreview>;
   resign?(): Promise<BattleResignResult>;
   getAuthority?(): BattleAuthorityState | null;

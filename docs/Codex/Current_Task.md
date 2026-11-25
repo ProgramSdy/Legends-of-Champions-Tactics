@@ -2,6 +2,29 @@
 
 **Active assignment (2026-11-24): Stage 5.1 — Bug Fix Release & Rollback Validation.** The Owner has authorized Core to proceed with **Batches A–D** of `docs/Codex/Stage_5_1_Bug_Fix_Release_and_Rollback_Validation.md`: fix the three confirmed bugs, verify them, and prepare a reviewed release candidate. **Batch E — production deployment and actual rollback validation — still requires separate Owner approval after candidate review.** Do not deploy, change the live GCE server, or treat release-candidate preparation as Public Alpha launch authorization. BUG-002 must cover every `battlePresentationConfigFor` viewport mode—monitor, laptop-large, laptop-medium, pad, pad-mini, phone and portrait—with actual browser visual evidence, not just desktop/mobile testing. Core must resolve or escalate any product-level BUG-003 Tactics Level ambiguity before changing gameplay policy. Preserve existing player data and the installed capacity setting of 200. Stage 4 remains Owner-accepted/closed; final Alpha launch approval remains pending.
 
+## Stage 5.1 pre-code coordination gate — Core, 2026-11-24
+
+This is a cross-boundary gameplay validation, Engineering-only control, responsive UI, and release-candidate task. The Owner confirmed that Debug Auto Battle must reuse each hero's existing specialization AI (no new Tactics Level). Selected and dispatched: game-engine-developer owns authoritative duplicate-team validation and Development-only AI action boundary; ui-developer owns player selection, popup positioning, and Debug-only control/lifecycle; test-automator owns independent backend/frontend regression coverage. Reviewer is selected for a later independent integrated review wave after validation. Core owns sequencing, seven-mode browser evidence, documentation, and release-candidate handoff. Project-manager is omitted because the approved batch plan already supplies dependencies and Core is coordinating the three workstreams directly.
+
+Sequence: baseline/contract inventory → A/B implementation in parallel → C integration on the agreed API boundary → focused and broad regression, real browser matrix, Public isolation and artifact checks → independent review and candidate record. Do not begin Batch E. Principal risks: a duplicate check that uses display name/faculty instead of stable profession ID, a Public route bypass for auto actions, overlapping automatic commands, popup stacking or focus regressions, and claiming a release candidate without seven-mode visual evidence or independent review.
+
+## Stage 5.1 Batches A–D local checkpoint — Core, 2026-11-25
+
+BUG-001–003 implementation is in the shared worktree and independently reviewed
+with no P0/P1 finding. Explicit-Development backend full regression passed
+746/746; frontend full regression passed 555/555; typecheck, lint (zero errors,
+one pre-existing warning), Python compile, Development/Public builds, Public
+route/artifact isolation, and diff check passed. Real local-browser checks
+covered all seven presentation modes, status/target-preview bounds, and a
+Debug 1v1 Auto Battle action followed by safe disable. The exact evidence,
+role contributions, and manual limits are in
+`docs/Codex/Stage_5_1_Implementation_Report.md`. Lower-edge long-content and
+zoom-specific popup sign-off, an immutable candidate/hash, and rehearsed old/new
+compatibility against a protected live-data copy remain open before Batch E.
+No commit, push, Production access/deployment, actual rollback, or database
+change has been made. Stage 5.1 is **not Completed**; Batch E still requires
+separate explicit Owner approval.
+
 ## Historical status — Stage 4 closure and earlier assignments
 
 **Current status (2026-11-23): Stage 4 — Performance & Load Testing is OWNER-ACCEPTED / CLOSED.** Stages 1 and 2 are complete for their defined Alpha scope; Stage 3 is Owner-accepted. The final Stage 4.3 production run had 30/30 selected players start and settle a battle, and a read-only server observation found 30 simultaneous active leases. The installed battle-capacity setting is now 200, but only 30 concurrent leases were demonstrated. The authoritative measurements, prior 10/20-player runs, unsuccessful earlier 30-player participation attempt, and limits are in `docs/Codex/Stage_4_2_1_Implementation_Report.md`. **No further Stage 4 production load testing is currently authorized.**

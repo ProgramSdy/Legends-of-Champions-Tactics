@@ -51,6 +51,24 @@ ANSI_ESCAPE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 # need 3v3 choices use the explicitly size-scoped constant above.
 FORMATION_IDS: tuple[TwoHeroFormationId, ...] = TWO_HERO_FORMATION_IDS
 
+
+class PlayerTeamValidationError(ValueError):
+    """Stable validation failure for a player-authored team composition."""
+
+    code = "duplicatePlayerProfession"
+    message = "playerTeam must not contain the same Hero Profession more than once."
+
+    def __init__(self) -> None:
+        super().__init__(self.message)
+
+
+def validate_distinct_player_professions(player_team: list[str]) -> None:
+    """Reject duplicate stable profession definition IDs on one player team."""
+
+    if len(player_team) != len(set(player_team)):
+        raise PlayerTeamValidationError()
+
+
 HERO_ROSTER = {
     "hero.priest.comprehensiveness": {
         "class": Priest_Comprehensiveness,
@@ -475,6 +493,7 @@ class BattleSession:
     event_sequence: int = 0
     presentation_log_cursor: int = 0
     command_results: dict[str, dict[str, Any]] = field(default_factory=dict)
+    debug_auto_action_results: dict[int, dict[str, Any]] = field(default_factory=dict)
     object_ids: dict[int, str] = field(default_factory=dict)
     lock: threading.RLock = field(default_factory=threading.RLock)
 
@@ -1173,6 +1192,7 @@ class BattleAdapter:
             raise ValueError("battle_size must be 1, 2, or 3")
         if len(player_team) != battle_size:
             raise ValueError("player_team must contain battle_size heroes")
+        validate_distinct_player_professions(player_team)
         if any(hero_id not in HERO_ROSTER for hero_id in player_team):
             raise ValueError("player_team contains an unsupported hero")
         if enemy_composition_mode not in ("random", "specified"):
@@ -1387,6 +1407,106 @@ class BattleAdapter:
                 finally:
                     random.setstate(global_state)
             session.command_results[command_id] = deepcopy(result)
+            return result
+
+    def submit_player_ai_turn(
+        self,
+        session: BattleSession,
+        *,
+        expected_revision: int,
+    ) -> dict[str, Any]:
+        """Resolve one Debug-owned friendly turn through specialization AI.
+
+        This is intentionally a single-action operation.  The caller controls
+        whether another automatic friendly turn may begin, while the normal
+        automatic drain still completes forced actions and enemy turns.
+        """
+
+        command_id = f"debug.auto.{expected_revision + 1:06d}"
+        with session.lock:
+            if expected_revision in session.debug_auto_action_results:
+                return deepcopy(session.debug_auto_action_results[expected_revision])
+            if expected_revision != session.revision:
+                return self._rejection(
+                    session,
+                    command_id,
+                    BattleAdapterError(
+                        "staleRevision", "The expected revision is stale."
+                    ),
+                )
+            if self._is_ended(session.game):
+                return self._rejection(
+                    session,
+                    command_id,
+                    BattleAdapterError("battleEnded", "The battle has ended."),
+                )
+            actor = self._current_actor(session.game)
+            if (
+                actor is None
+                or actor.group != "Group_A"
+                or not actor.is_player_controlled
+            ):
+                return self._rejection(
+                    session,
+                    command_id,
+                    BattleAdapterError(
+                        "notYourTurn",
+                        "The current turn is not a player-controlled friendly turn.",
+                    ),
+                )
+            directive = actor.turn_directive(
+                actor.opponents, actor.allies, select_action=False
+            )
+            if (
+                directive.disposition != "playerCommand"
+                or not directive.accepts_commands
+            ):
+                return self._rejection(
+                    session,
+                    command_id,
+                    BattleAdapterError(
+                        "notYourTurn",
+                        "The current turn does not accept player commands.",
+                    ),
+                )
+
+            with ENGINE_RANDOM_LOCK:
+                global_state = random.getstate()
+                try:
+                    random.setstate(session.rng_state)
+                    actions = self._legal_actions(session, actor, include_computer=True)
+                    if not actions:
+                        return self._rejection(
+                            session,
+                            command_id,
+                            BattleAdapterError(
+                                "noLegalAction", "The actor has no legal action."
+                            ),
+                        )
+                    action, target_ids = self._choose_ai_action(
+                        session, actor, actions, learner=False
+                    )
+                    command = {
+                        "type": "useSkill",
+                        "commandId": command_id,
+                        "expectedRevision": session.revision,
+                        "actorId": action["actorId"],
+                        "skillId": action["skillId"],
+                        "targetIds": target_ids,
+                    }
+                    self._validate(session, command)
+                    result = self._resolve(session, command)
+                    automatic_events = self._drain_automatic_turns(session)
+                    if automatic_events:
+                        result["events"].extend(automatic_events)
+                        result["revision"] = session.revision
+                        result["snapshot"] = self.snapshot(session)
+                    session.rng_state = random.getstate()
+                except BattleAdapterError as exc:
+                    return self._rejection(session, command_id, exc)
+                finally:
+                    random.setstate(global_state)
+            session.debug_auto_action_results[expected_revision] = deepcopy(result)
             return result
 
     def preview(
@@ -3309,59 +3429,9 @@ class BattleAdapter:
             learner_enemy = (
                 session.stage_mode == "learner" and actor.group == "Group_B"
             )
-            if learner_enemy:
-                action = random.choice(actions)
-                chosen_skill = self._skill_by_id(actor, action["skillId"])
-                assert chosen_skill is not None
-            else:
-                # Tactics and all non-campaign computer turns retain the
-                # specialization's existing strategy and legality repair.
-                chosen_skill = actor.ai_choose_skill(actor.opponents, actor.allies)
-                chosen_skill_id = self._skill_id(actor, chosen_skill)
-                action = next(
-                    (
-                        candidate
-                        for candidate in actions
-                        if candidate["skillId"] == chosen_skill_id
-                    ),
-                    None,
-                )
-                if action is None:
-                    action = random.choice(actions)
-                chosen_skill = self._skill_by_id(actor, action["skillId"])
-                assert chosen_skill is not None
-            target_count = action["minimumTargets"]
-            target_ids: list[str] = []
-            if target_count:
-                if learner_enemy:
-                    target_ids = random.sample(
-                        action["validTargetIds"], target_count
-                    )
-                else:
-                    chosen_targets = actor.ai_choose_target(
-                        chosen_skill, actor.opponents, actor.allies
-                    )
-                    if not isinstance(chosen_targets, list):
-                        chosen_targets = [chosen_targets]
-                    for target in chosen_targets:
-                        if target == "none":
-                            continue
-                        target_id = self._combatant_id(session, target)
-                        if (
-                            target_id in action["validTargetIds"]
-                            and target_id not in target_ids
-                        ):
-                            target_ids.append(target_id)
-                    remaining = [
-                        target_id
-                        for target_id in action["validTargetIds"]
-                        if target_id not in target_ids
-                    ]
-                    target_ids = target_ids[:target_count]
-                    if len(target_ids) < target_count:
-                        target_ids.extend(
-                            random.sample(remaining, target_count - len(target_ids))
-                        )
+            action, target_ids = self._choose_ai_action(
+                session, actor, actions, learner=learner_enemy
+            )
             result = self._resolve(
                 session,
                 {
@@ -3376,6 +3446,71 @@ class BattleAdapter:
             events.extend(result["events"])
             turns += 1
         return events
+
+    def _choose_ai_action(
+        self,
+        session: BattleSession,
+        actor,
+        actions: list[dict[str, Any]],
+        *,
+        learner: bool,
+    ) -> tuple[dict[str, Any], list[str]]:
+        """Select one legal AI action without duplicating battle rules."""
+
+        if learner:
+            action = random.choice(actions)
+            chosen_skill = self._skill_by_id(actor, action["skillId"])
+            assert chosen_skill is not None
+        else:
+            # Tactics and Debug Auto Battle retain the specialization's
+            # existing strategy and the established legal-action repair.
+            chosen_skill = actor.ai_choose_skill(actor.opponents, actor.allies)
+            chosen_skill_id = self._skill_id(actor, chosen_skill)
+            action = next(
+                (
+                    candidate
+                    for candidate in actions
+                    if candidate["skillId"] == chosen_skill_id
+                ),
+                None,
+            )
+            if action is None:
+                action = random.choice(actions)
+            chosen_skill = self._skill_by_id(actor, action["skillId"])
+            assert chosen_skill is not None
+
+        target_count = action["minimumTargets"]
+        target_ids: list[str] = []
+        if not target_count:
+            return action, target_ids
+        if learner:
+            return action, random.sample(action["validTargetIds"], target_count)
+
+        chosen_targets = actor.ai_choose_target(
+            chosen_skill, actor.opponents, actor.allies
+        )
+        if not isinstance(chosen_targets, list):
+            chosen_targets = [chosen_targets]
+        for target in chosen_targets:
+            if target == "none":
+                continue
+            target_id = self._combatant_id(session, target)
+            if (
+                target_id in action["validTargetIds"]
+                and target_id not in target_ids
+            ):
+                target_ids.append(target_id)
+        remaining = [
+            target_id
+            for target_id in action["validTargetIds"]
+            if target_id not in target_ids
+        ]
+        target_ids = target_ids[:target_count]
+        if len(target_ids) < target_count:
+            target_ids.extend(
+                random.sample(remaining, target_count - len(target_ids))
+            )
+        return action, target_ids
 
     def _consume_directive_statuses(
         self, session: BattleSession, actor, directive
