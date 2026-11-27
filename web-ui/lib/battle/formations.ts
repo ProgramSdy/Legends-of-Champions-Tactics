@@ -76,8 +76,9 @@ export const trioFormationRegistry: Record<TrioFormationId, Record<SideId, Forma
 
 export const formationRegistry: Record<BattleFormat, Record<SideId, FormationPosition[]>> = {
   duel: {
-    friendly: [{ slot: "centre", x: 29, y: 80, scale: 1.5 }],
-    enemy: [{ slot: "centre", x: 71, y: 80, scale: 1.5 }],
+    // Slot coordinates are foot anchors. Reuse the 2v2 Front/Rear ground line.
+    friendly: [{ slot: "centre", x: 29, y: duoFormationRegistry["front-rear"].friendly[0].y, scale: 1.5 }],
+    enemy: [{ slot: "centre", x: 71, y: duoFormationRegistry["front-rear"].enemy[0].y, scale: 1.5 }],
   },
   duo: {
     friendly: duoFormationRegistry["front-rear"].friendly,

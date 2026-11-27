@@ -222,8 +222,12 @@ state without adding any Python/API field. The scene remains non-scrolling.
 The Battlefield is the common projection context for arena background, combat
 actors, combat VFX, and world-anchored UI. Screen HUD remains a distinct
 responsibility. The effective actor scale is
-`heroFigureScaleRate × formationScaleRate × browserSizeRate`; at the 1920×1080
-reference Monitor, browser size rate is exactly `1.0`. Formation percentage
+`heroFigureScaleRate × formationScaleRate × battleSceneRate`. The scene rate is
+the ratio of the current measured Battlefield background `cover` scale to its
+1897×868 windowed reference scale, multiplied by the approved reference rate
+`0.7`; it is not a fullscreen or viewport-mode override. Background source
+dimensions are registered separately and custom images are measured on load.
+Formation percentage
 coordinates, depth, hero registry values, input geometry semantics, and all
 combat authority remain unchanged.
 

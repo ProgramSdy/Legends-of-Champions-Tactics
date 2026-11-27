@@ -6,7 +6,6 @@ export type BattleDisplayMode = "monitor" | "laptop-large" | "laptop-medium" | "
 
 export type BattlePresentationConfig = {
   mode: BattleDisplayMode;
-  browserSizeRate: number;
   orientation: "landscape" | "portrait";
   viewport: BattleViewport;
 };
@@ -14,14 +13,14 @@ export type BattlePresentationConfig = {
 export type BattleViewport = { width: number; height: number };
 
 const DISPLAY_CONFIGS: Record<BattleDisplayMode, Omit<BattlePresentationConfig, "orientation" | "viewport">> = {
-  monitor: { mode: "monitor", browserSizeRate: 1 },
-  "laptop-large": { mode: "laptop-large", browserSizeRate: 0.7 },
-  "laptop-medium": { mode: "laptop-medium", browserSizeRate: 0.6 },
-  pad: { mode: "pad", browserSizeRate: 0.5 },
-  "pad-mini": { mode: "pad-mini", browserSizeRate: 0.84 },
-  phone: { mode: "phone", browserSizeRate: 0.4 },
+  monitor: { mode: "monitor" },
+  "laptop-large": { mode: "laptop-large" },
+  "laptop-medium": { mode: "laptop-medium" },
+  pad: { mode: "pad" },
+  "pad-mini": { mode: "pad-mini" },
+  phone: { mode: "phone" },
   // Portrait is intentionally a rotate-device state, not a battle layout.
-  portrait: { mode: "portrait", browserSizeRate: 1 },
+  portrait: { mode: "portrait" },
 };
 
 /**

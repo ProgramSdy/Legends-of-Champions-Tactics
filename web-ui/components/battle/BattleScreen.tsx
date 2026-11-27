@@ -15,7 +15,8 @@ import {
   type PresentationOnlyPassiveSkillId,
 } from "./SkillCard";
 import { formationFor, getBattleFormat } from "@/lib/battle/formations";
-import { BATTLE_BACKGROUND } from "@/lib/battle/battleBackgrounds";
+import { BATTLE_BACKGROUND, BATTLE_BACKGROUND_DIMENSIONS } from "@/lib/battle/battleBackgrounds";
+import { battleSceneRate, BATTLE_SCENE_REFERENCE, type SceneDimensions } from "@/lib/battle/sceneScale";
 import { heroFigureScaleFor, statusRegistry } from "@/lib/battle/assets";
 import { useBattlePresentationConfig } from "@/lib/battle/presentationConfig";
 import { isAuditedPreviewSkill, useBattlePreview } from "@/lib/battle/useBattlePreview";
@@ -513,6 +514,13 @@ type EntryCountdown = 3 | 2 | 1 | "start" | null;
 export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundImage, entryCountdownStepMs, onBattleComplete, completionActionLabel, onReturnToBuilder, onResign, showEngineeringReadout = false, enableDebugAutoBattle = false }: BattleScreenProps) {
   const mountedBackground = backgroundImage ?? BATTLE_BACKGROUND;
   const presentationConfig = useBattlePresentationConfig();
+  const battlefieldRef = useRef<HTMLElement>(null);
+  const [sceneRate, setSceneRate] = useState<number>(BATTLE_SCENE_REFERENCE.heroRate);
+  const [customBackgroundDimensions, setCustomBackgroundDimensions] = useState<{
+    path: string; dimensions: SceneDimensions;
+  } | null>(null);
+  const backgroundDimensions = BATTLE_BACKGROUND_DIMENSIONS[mountedBackground]
+    ?? (customBackgroundDimensions?.path === mountedBackground ? customBackgroundDimensions.dimensions : null);
   const battleAudio = useBattleAudio();
   const { snapshot, revision, activeEvent, activeHpEvent, activeHealingCasterEvent, log, setLog, speed, setSpeed, isPlaying, isOpening, hasPendingOpening, canSkip, error, errorKind, present, playOpening, skip, retry, retryPendingCommand } = usePresentationQueue(provider, { onActiveEvent: battleAudio.onActiveEvent });
   const [entryCountdown, setEntryCountdown] = useState<EntryCountdown>(entryCountdownStepMs === undefined ? null : 3);
@@ -537,6 +545,40 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
   const autoRequestRevisionRef = useRef<number | null>(null);
   const autoRequestInFlightRef = useRef(false);
   const inactivityWarning = useBattleInactivityWarning(provider);
+
+  useEffect(() => {
+    if (BATTLE_BACKGROUND_DIMENSIONS[mountedBackground]) return;
+    // Custom battle art is measured before using it; BG03's pixel dimensions
+    // would give a misleading scene scale for another image's cover crop.
+    const image = new Image();
+    image.onload = () => setCustomBackgroundDimensions({
+      path: mountedBackground,
+      dimensions: { width: image.naturalWidth, height: image.naturalHeight },
+    });
+    image.src = mountedBackground;
+    return () => { image.onload = null; };
+  }, [mountedBackground]);
+
+  const hasSnapshot = snapshot !== null;
+  useLayoutEffect(() => {
+    const field = battlefieldRef.current;
+    if (!field || !backgroundDimensions) return;
+    const measure = () => {
+      const bounds = field.getBoundingClientRect();
+      if (bounds.width > 0 && bounds.height > 0) {
+        const next = battleSceneRate({ width: bounds.width, height: bounds.height }, backgroundDimensions);
+        setSceneRate((previous) => Math.abs(previous - next) < 0.00001 ? previous : next);
+      }
+    };
+    measure();
+    const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
+    observer?.observe(field);
+    window.addEventListener("resize", measure);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [hasSnapshot, backgroundDimensions, presentationConfig.mode]);
 
   useEffect(() => {
     if (!snapshot || entryCountdown === null || entryCountdownStepMs === undefined) return;
@@ -768,7 +810,7 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
       data-format={getBattleFormat(snapshot)}
       data-presentation-mode={presentationConfig.mode}
       data-orientation={presentationConfig.orientation}
-      style={{ "--browser-size-rate": presentationConfig.browserSizeRate } as CSSProperties}
+      style={{ "--battle-scene-rate": sceneRate } as CSSProperties}
     >
       <header className="battle-header">
         <div className="header-tools" aria-hidden="true" />
@@ -787,6 +829,7 @@ export function BattleScreen({ provider, mockDemos, mode = "mock", backgroundIma
       <section className="battle-layout">
         <TeamPanel side="friendly" heroes={sideHeroes("friendly")} activeId={snapshot.activeCombatantId} highlightedTargetIds={highlightedTargetIds} onViewStats={openHeroStats} />
         <section
+          ref={battlefieldRef}
           className={`battlefield ${activeEvent ? "event-active" : ""}`}
           aria-label="Battlefield"
           data-battle-layer-context="world"

@@ -125,8 +125,8 @@ _To be documented._
 ### Battle Formations
 
 - The Battle Scene is a non-scrolling landscape presentation. Its responsive
-  owner is `presentationConfig.ts`, which assigns one named display mode and
-  one `browserSizeRate`; components must not add independent viewport checks.
+  owner is `presentationConfig.ts`, which assigns one named HUD display mode;
+  components must not add independent viewport-mode checks.
   Portrait is a contained rotate-device state, not a portrait battle layout.
 - The header turn-order strip uses each combatant's registered sidebar
   portrait (with the shared missing-art fallback), one-based sequence badge,
@@ -138,14 +138,20 @@ _To be documented._
   world-anchored UI from the screen HUD. Only world responsibilities share the
   formation projection; headers, side panels, command deck, controls, and
   dialogs never scale together as a full-screen canvas.
-- At the 1920×1080 Monitor reference, browser size rate is `1.0`. Final actor
-  scale is hero rate × formation rate × browser rate. Do not use that browser
-  rate to move formation X/Y anchors, retune formation depth, alter target
+- At the approved 1897×868 Laptop Large window, the 1351×560 battlefield and
+  BG03's 1536×1024 cover rendering calibrate the scene rate to `0.7`. Final
+  actor scale is hero rate × formation rate × measured scene rate. Background
+  cover scale, artwork, target region, HP clearance, and preview anchor must
+  remain coordinated. Do not use the scene rate to move formation X/Y anchors,
+  retune formation depth, alter target
   legality, or resize source-owned hero metadata.
 
 - Hero figures must read as grounded on the arena floor in every live format.
 - The formation registry is the single source for presentation coordinates.
-  Duel retains its established coordinates. The approved 2v2 pairs are
+  Duel retains X anchors 29%/71% and scale 1.5; both feet now use the 2v2
+  Front/Rear 68% ground line rather than the former 80% line. This moves the
+  whole attached figure/interaction/HUD projection, not its artwork top.
+  The approved 2v2 pairs are
   percentage anchors inside the unmodified battlefield: Front and Rear is
   friendly `(42,68)` / `(22,68)` and enemy `(59,68)` / `(78,68)` in ordered
   slots; Side by Side is friendly `(33,54)` / `(33,85)` and enemy `(68,54)` /
@@ -226,6 +232,13 @@ _To be documented._
 
 ### Command Deck
 
+- Acting Hero names wrap within their card instead of overflowing or being
+  truncated. Monitor and Laptop Large allocate moderately more of the existing
+  deck to this card and less to the four equal-width skill cards, keeping the
+  Battle Log effectively stable. The skill icon sits above its wrapped title;
+  compact modes retain the established title/target/cooldown presentation when
+  descriptive copy is hidden. Pad Mini and Phone reserve readable skill-card
+  widths ahead of extra Battle Log width; the log remains present and scrolls.
 - Skill cards stretch to the full height of the command-deck skills region.
 - Skill artwork remains square at every supported breakpoint. Placeholder
   cards use deliberate decorative treatment rather than an empty lower strip.

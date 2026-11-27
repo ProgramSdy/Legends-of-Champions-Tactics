@@ -58,7 +58,7 @@ const presentationOnlyPassives = {
   },
   "skill.priest.holy_concentration": {
     displayName: "Holy Concentration",
-    description: "Holy Word Redemption can protect an extra ally while the Priest is at low health.",
+    description: "At 75% HP or less, Redemption protects an extra ally.",
   },
 } as const;
 
@@ -69,7 +69,7 @@ export function PresentationOnlyPassiveCard({ skillId }: { skillId: Presentation
   const content = presentationOnlyPassives[skillId];
   const visual = skillPresentation[skillId];
   return (
-    <article className="skill-card passive passive-display" aria-label={`${content.displayName}. Passive skill, not selectable.`}>
+    <article className="skill-card passive passive-display" aria-label={`${content.displayName}. ${content.description} Passive skill, not selectable.`}>
       <SkillGlyph asset={visual.asset} glyph={visual.glyph} />
       <span className="skill-copy"><strong>{content.displayName}</strong><span>{content.description}</span><em>Passive</em></span>
       <span className="skill-ornament" aria-hidden="true"><i /><i /><i /></span>

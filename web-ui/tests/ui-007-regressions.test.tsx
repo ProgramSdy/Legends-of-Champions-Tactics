@@ -45,11 +45,11 @@ describe("UI-007 battlefield geometry contracts", () => {
     expect(aura).toMatch(/(?:^|;)left:50%(?:;|$)/);
     // Overhead is positioned from the measured frame, footprint baseline, and
     // the required 12px clearance in scaled formation coordinates.
-    expect(overhead).toMatch(/(?:^|;)bottom:calc\(\(var\(--figure-frame-height\)\+17px\)\*var\(--figure-scale\)\*var\(--browser-size-rate\)\+12px\)(?:;|$)/);
+    expect(overhead).toMatch(/(?:^|;)bottom:calc\(\(var\(--figure-frame-height\)\+17px\)\*var\(--figure-scale\)\*var\(--battle-scene-rate\)\+12px\)(?:;|$)/);
     expect(overhead).toMatch(/(?:^|;)left:50%(?:;|$)/);
     expect(overhead).toMatch(/(?:^|;)transform:translateX\(-50%\)(?:;|$)/);
     const duelOverhead = css.match(/\.format-duel\.overhead\{([^}]*)\}/)?.[1] ?? "";
-    expect(duelOverhead).toMatch(/(?:^|;)transform:translateX\(-50%\)scale\(calc\(1\.5\*var\(--browser-size-rate\)\)\)(?:;|$)/);
+    expect(duelOverhead).toMatch(/(?:^|;)transform:translateX\(-50%\)scale\(calc\(1\.5\*var\(--battle-scene-rate\)\)\)(?:;|$)/);
     expect(duelOverhead).toMatch(/(?:^|;)transform-origin:centerbottom(?:;|$)/);
   });
 
@@ -97,7 +97,7 @@ describe("UI-007 battlefield geometry contracts", () => {
   it("keeps overhead clearance dynamic while preserving footing and enemy mirroring", () => {
     const css = readFileSync("app/globals.css", "utf8").replace(/\s+/g, "");
     const overhead = css.match(/\.overhead\{([^}]*)\}/)?.[1] ?? "";
-    expect(overhead).toMatch(/(?:^|;)bottom:calc\(\(var\(--figure-frame-height\)\+17px\)\*var\(--figure-scale\)\*var\(--browser-size-rate\)\+12px\)(?:;|$)/);
+    expect(overhead).toMatch(/(?:^|;)bottom:calc\(\(var\(--figure-frame-height\)\+17px\)\*var\(--figure-scale\)\*var\(--battle-scene-rate\)\+12px\)(?:;|$)/);
     const targetControl = css.match(/\.battle-target-control\{([^}]*)\}/)?.[1] ?? "";
     expect(targetControl).toMatch(/(?:^|;)height:calc\(var\(--figure-frame-height\)-5px\)(?:;|$)/);
     const footprint = css.match(/\.figure-footprint\{([^}]*)\}/)?.[1] ?? "";

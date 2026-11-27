@@ -126,11 +126,12 @@ the thin Python adapter. Python remains the sole gameplay authority.
 - `components/battle/BattleScreen.tsx` and its child components are generic.
   They contain no API, hero-name, damage, healing, legality, cooldown, status
   duration, turn, summon, or victory rules.
-- `lib/battle/presentationConfig.ts` is the sole browser-viewport observer for
+- `lib/battle/presentationConfig.ts` is the sole viewport-mode classifier for
   the live Battle Scene. It classifies Monitor, Laptop Large, Laptop Medium,
   Pad, Pad Mini, landscape Phone, and a contained portrait rotate-device state.
-  It supplies the one responsive `browserSizeRate`; no component derives a
-  display mode from its own viewport check. For engineering verification, the
+  It selects HUD layout only; hero artwork instead follows measured battlefield
+  background scale. No component derives a display mode from its own viewport
+  check. For engineering verification, the
   battlefield's top-right non-interactive readout displays the current viewport
   dimensions and the resulting active configuration.
 
@@ -154,14 +155,33 @@ responsive presentation never multiplies those coordinates or recreates target
 legality.
 
 Final actor presentation is
-`heroFigureScaleRate × formationScaleRate × browserSizeRate`. Hero rates remain
-in `assets.ts`; formation rates/depth/coordinates remain in `formations.ts`;
-only the browser rate comes from `presentationConfig.ts`. At 1920×1080 Monitor,
-`browserSizeRate` is exactly `1`, preserving the approved reference result.
-The browser rate scales the actor/its bounded target control and keeps the
-figure-attached HP HUD vertically anchored; it does not alter combat positions,
-formation values, or screen-HUD geometry. Final density treatment for each
-named configuration remains deliberately deferred.
+`heroFigureScaleRate × formationScaleRate × battleSceneRate`. Hero rates remain
+in `assets.ts`; formation rates/depth/coordinates remain in `formations.ts`.
+`sceneScale.ts` measures the CSS `background-size: cover` scale from the actual
+Battlefield dimensions and the selected background's source dimensions. The
+rate is `0.7 × currentCoverScale / referenceCoverScale`, calibrated to the
+Owner's 1897×868 Laptop Large window (1351×560 battlefield, BG03 1536×1024).
+`BattleScreen` observes the Battlefield itself with `ResizeObserver`; viewport
+mode changes retain their HUD ownership. Artwork, bounded target control,
+HP clearance and target-preview anchor consume one scene rate, while formation
+X/Y coordinates, depth, combat legality and screen-HUD geometry remain as before.
+Available backgrounds have explicit dimensions; a custom image is measured on
+load rather than assuming BG03's pixel size. Per-background landmark/camera
+calibration has not been owner-approved. Existing mode-specific HUD dimensions
+still produce battlefield-size discontinuities at some breakpoints; Pad Mini
+and Phone can have very small 3v3 targets without a coordinated scene zoom.
+
+BUG-005 keeps 1v1 X and scale unchanged but binds both duel *foot* Y anchors
+to `duoFormationRegistry["front-rear"]` at 68% rather than the former 80%.
+The formation slot carries figure art, bounded hit control, ground indicator,
+overhead HP, target indicators, effects and preview anchors together; no
+separate HUD offset or combat position change is needed. The command deck is
+screen HUD, not scene-scaled: Monitor/Laptop Large Acting Hero widths and skill
+track fractions are calibrated against the available three-column grid, with
+four equal skill cards and approximately stable log width. Long names wrap in
+a min-width-zero content track. At narrow widths, icon-above-title cards and
+mode-specific skill/log fractions preserve readable controls without altering
+the battlefield projection or the BUG-004 scene-scale formula.
 
 ## Authority and Reconciliation
 
