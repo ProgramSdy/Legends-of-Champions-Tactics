@@ -1,6 +1,10 @@
 # Public HTTPS Deployment and Operations Runbook
 
+**Read-only preflight, 27 November 2026:** Owner-authorized inspection confirmed RELEASE-003 remains installed; API/web/Nginx are active; Public DB schema v5, battle revision 2 and integrity `ok`; 32 players/profiles and 160 player slot records remain present; no active battle lease; daily backup timer active with a same-day backup; environment and DB permissions 0600. The old release occupies 1.5 GiB and only 2.5 GiB was free. Recheck disk headroom before staging/extracting RELEASE-004 and stop if it cannot safely coexist with the old release and rollback backup. No deployment, service restart, database write or rollback was performed. The new release package/tag do not change the currently installed release.
+
 ## Status and evidence boundary
+
+**Stage 5.1 Batch D candidate preparation, 27 November 2026:** the frozen source passed local regression, Development/Public builds, Public isolation and focused independent review. The proposed RELEASE-004 identity, manifest and conditional Single-Release backup/deploy/actual-rollback/redeploy sequence are in `docs/Codex/Stage_5_1_Implementation_Report.md`. They are **unexecuted**; no current installed release, service configuration, Public database, backup or rollback result is changed by that preparation. The Owner must separately approve the release candidate and Batch E, and the operator must inspect the actual installed VM before using any proposed procedure below.
 
 **19 November 2026 — first public HTTPS deployment and core-gameplay acceptance achieved.** The Owner reports external API health, browser rendering, and two complete public battles at <https://loc-tactics.duckdns.org/>. The later gameplay acceptance followed explicit Owner authorization to set `BATTLE_API_ENABLE_PUBLIC_BATTLES=1` on the installed VM. **Stages 1–4 are accepted for their defined Public Alpha scope; final Alpha launch readiness remains PENDING.** The dated gameplay test record is `docs/Codex/Public_Core_Gameplay_Acceptance_2026-11-19.md`.
 
