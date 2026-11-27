@@ -2,6 +2,8 @@
 
 This folder is the shared project documentation space for the project owner, ChatGPT, and Codex.
 
+Current release/launch sequence: [Stage 5–6 Roadmap](Codex/Stage_5_and_6_Roadmap.md). Historical Stage 5.1 combined deployment/rollback plans retain their dated evidence, but the Owner now separates deployment (5.1), rollback/redeployment (5.2), final launch review (5.3), and Public Alpha launch (Stage 6).
+
 ## Start Here
 
 Codex should begin each work session in this order:

@@ -358,9 +358,12 @@ settled 30/30 battles and a server snapshot observed 30 simultaneous active
 leases. The installed battle-capacity setting changed from 20 to 200, but 200
 is an operational ceiling, **not** proven sustainable capacity. Sustained
 resource/SQLite stress and 50/100-player performance remain unmeasured. The
-next gate is a separate Final Public Alpha Launch Readiness Review and Owner
-go/no-go decision. See `Public_Deployment_Runbook.md` for canonical evidence
-and limits.
+next gate was then described as a separate Final Public Alpha Launch Readiness
+Review and Owner go/no-go decision. Under the Owner's 2026-11-27 roadmap
+restructuring, that review is **Stage 5.3**, after Stage 5.1 RELEASE-004
+deployment and Stage 5.2 actual rollback/redeployment; Stage 6 covers Public
+Alpha publication. See `../Codex/Stage_5_and_6_Roadmap.md` for current gates
+and `Public_Deployment_Runbook.md` for canonical operational evidence.
 
 ## Architectural Decisions
 

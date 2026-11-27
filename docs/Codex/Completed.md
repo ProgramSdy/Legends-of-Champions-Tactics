@@ -7,6 +7,16 @@ the roster, change presentation wording, or audit values that an earlier task
 listed as unavailable; use the current GDD and web UI contract for current
 rules and inventory.
 
+## 2026-11-28 — Stage 5.1 Bug Fix Release — Owner Accepted / Closed
+
+The Owner formally accepted the RELEASE-004 Production deployment and validation and closed Stage 5.1. `RELEASE-004-fe332708` is active; the observed API interruption was approximately 11 seconds. Public API/Web health, player entry/manual smoke, Engineering-route isolation, one successfully settled existing-test-account 2v2 battle, database integrity/foreign keys and preservation of 32 players, 32 profiles and 160 save-slot records passed. The bounded smoke settlement raised the settlement count from 325 to 326; no active leases remained. The 2026-11-28 AEDT read-only stability follow-up confirmed active services and 828,252 KiB free (91% used). Limited disk headroom and same-VM backup exposure remain residual operational risks. Both installed releases, annotated release tags and local archives are preserved. Full evidence and accepted validation limits are in the [Stage 5.1 implementation report](Stage_5_1_Implementation_Report.md) and [roadmap](Stage_5_and_6_Roadmap.md). This documentation-only closure did not rerun regressions, rebuild a release, change the application or Production, or execute Stage 5.2 rollback. Stage 5.2 actual rollback/redeployment awaits separate Owner authorization; Stage 5.3 and Stage 6 remain open.
+
+## 2026-11-27 — Stage 5–6 roadmap restructuring and RELEASE-004 deployment preparation
+
+The Owner accepted RELEASE-004 candidate preparation and the initial read-only Production preflight, then separated Stage 5 into 5.1 deployment/verification, 5.2 actual rollback/redeployment, and 5.3 final launch-readiness review. Stage 6 now contains itch.io store-page preparation, tester onboarding/feedback, and Public Alpha publication. The new [roadmap](Stage_5_and_6_Roadmap.md) controls current gates; historical Stage 5.1 combined-scope records and BUG-001–005 Owner acceptances remain preserved. Stage 5.1, Stage 5 and launch are **not** completed by this planning work.
+
+Read-only sizing found 2,542,268 KiB free with RELEASE-003 installed; streaming the already approved RELEASE-004 package and independently copying unchanged runtimes projects ~852 MiB remaining after a release backup and isolated restore copy. Retaining the compressed archive on the VM would leave ~387 MiB, so the documented approach avoids that. The installed daily backup script was inspected but not run; the distinct release-backup/compatibility procedure is documented. Local checksum files for both RELEASE-003 and RELEASE-004 archives passed verification. No application source/package rebuild, regression rerun, Production write, backup, deployment, restart, rollback, commit or push was performed. The next decision is separate Stage 5.1 Production Deployment authorization.
+
 ## 2026-11-23 — Stage 4 Performance & Load Testing formally closed
 
 The Owner **accepted and closed Stage 4** for Public Alpha. Recorded bounded
