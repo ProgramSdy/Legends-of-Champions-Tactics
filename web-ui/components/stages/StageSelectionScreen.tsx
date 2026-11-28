@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ManualDialog } from "@/components/manual/ManualDialog";
+import { useTelemetry } from "@/components/telemetry/TelemetryProvider";
 import {
   STAGE_DEFINITIONS,
   isEnabledStage,
@@ -43,7 +44,12 @@ export function StageSelectionScreen({
   const [activeStageId, setActiveStageId] = useState<string | null>(null);
   const [manualOpen, setManualOpen] = useState(() => searchParams.get("manual") === "open");
   const manualTriggerRef = useRef<HTMLButtonElement>(null);
+  const { recordHomeView } = useTelemetry();
   const enabledStages = STAGE_DEFINITIONS.filter(isEnabledStage);
+
+  useEffect(() => {
+    recordHomeView();
+  }, [recordHomeView]);
 
   useEffect(() => {
     if (searchParams.get("manual") !== "open") return;

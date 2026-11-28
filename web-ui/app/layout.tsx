@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { UiAudioBoundary } from "@/components/audio/UiAudioBoundary";
 import { SoundPreferenceProvider } from "@/components/audio/SoundPreferenceProvider";
 import { PublicSessionProvider } from "@/components/session/PublicSessionProvider";
+import { TelemetryProvider } from "@/components/telemetry/TelemetryProvider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -33,9 +34,11 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
         <PublicSessionProvider>
-          <SoundPreferenceProvider>
-            <UiAudioBoundary>{children}</UiAudioBoundary>
-          </SoundPreferenceProvider>
+          <TelemetryProvider>
+            <SoundPreferenceProvider>
+              <UiAudioBoundary>{children}</UiAudioBoundary>
+            </SoundPreferenceProvider>
+          </TelemetryProvider>
         </PublicSessionProvider>
       </body>
     </html>

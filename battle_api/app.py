@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import secrets
 import threading
+from time import perf_counter
 from typing import Annotated
 import uuid
 
@@ -16,6 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .adapter import (
     CONTRACT_VERSION,
+    HERO_DEFINITIONS,
     BattleAdapterError,
     BattleRegistry,
     PlayerTeamValidationError,
@@ -49,6 +51,8 @@ from .models import (
     SaveSlotListResponse,
     StageId,
     StructuredStagesResponse,
+    TelemetryEventRequest,
+    TelemetryEventResponse,
     UseSkillCommand,
     VictoryCommitResponse,
 )
@@ -71,6 +75,7 @@ from .public_identity import (
 )
 from .public_config import PublicConfigurationError, validate_public_configuration
 from .release_mode import engineering_enabled
+from .telemetry_store import TelemetrySchemaError, TelemetryStore
 
 app = FastAPI(title="Legends of Champions Tactics Battle API", version="1.0.0")
 
@@ -133,6 +138,71 @@ def _configured_progression_store() -> ProgressionStore | None:
 
 
 progression_store = _configured_progression_store()
+
+
+def _configured_telemetry_store() -> TelemetryStore | None:
+    """Return the explicitly enabled Public-only telemetry sidecar."""
+
+    if (
+        engineering_enabled()
+        or progression_store is None
+        or os.getenv("BATTLE_API_ENABLE_PUBLIC_TELEMETRY", "0") != "1"
+    ):
+        return None
+    return TelemetryStore(
+        progression_store,
+        enabled=True,
+        environment="public",
+        game_version=os.getenv("LOCT_BUILD_VERSION", "pre-alpha"),
+        ruleset_version=CONTRACT_VERSION,
+    )
+
+
+telemetry_store = _configured_telemetry_store()
+
+
+@app.middleware("http")
+async def collect_api_telemetry(request: Request, call_next):
+    """Observe API health without making request success depend on telemetry."""
+
+    if telemetry_store is None:
+        return await call_next(request)
+    started = perf_counter()
+    status_code: int | None = None
+    try:
+        response = await call_next(request)
+        status_code = response.status_code
+        return response
+    finally:
+        route = request.scope.get("route")
+        route_id = getattr(route, "path", None) or "unmatched"
+        latency_ms = (perf_counter() - started) * 1000
+        try:
+            await asyncio.to_thread(
+                telemetry_store.record_api_request,
+                route_id=route_id,
+                status_code=status_code,
+                latency_ms=latency_ms,
+            )
+        except Exception:
+            # Collection is post-response, bounded, and never authoritative.
+            telemetry_store.note_failure("api_metric_dispatch")
+
+
+async def _flush_telemetry_at_shutdown() -> None:
+    """Bound normal-stop metric loss without delaying service shutdown."""
+
+    if telemetry_store is None:
+        return
+    try:
+        await asyncio.wait_for(
+            asyncio.to_thread(telemetry_store.flush_api_metrics), timeout=0.75
+        )
+    except Exception:
+        telemetry_store.note_failure("api_metric_shutdown_flush")
+
+
+app.router.add_event_handler("shutdown", _flush_telemetry_at_shutdown)
 
 
 def _configured_identity_service() -> PublicIdentityService | None:
@@ -203,6 +273,7 @@ def _retry_public_terminal_pending(
     )
     if pending is None:
         return None
+    battle = registry.get(pending["battleId"])
     settlement = store.settle_public_battle(
         battle_id=pending["battleId"],
         player_id=session.player_id,
@@ -210,6 +281,8 @@ def _retry_public_terminal_pending(
         session_generation=session.generation,
         outcome=pending["outcome"],
     )
+    if battle is not None:
+        _record_public_battle_rounds(battle)
     _remove_process_battle(pending["battleId"])
     return settlement
 
@@ -247,6 +320,18 @@ def get_optional_identity_service() -> PublicIdentityService | None:
     if engineering_enabled():
         return None
     return get_identity_service()
+
+
+def get_telemetry_store() -> TelemetryStore:
+    if telemetry_store is None:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "telemetryDisabled",
+                "message": "Public telemetry collection is disabled.",
+            },
+        )
+    return telemetry_store
 
 
 def _store_unavailable(exc: ProgressionStoreError) -> HTTPException:
@@ -356,6 +441,73 @@ def _strip_public_seed_fields(envelope: dict) -> None:
         data.pop("seedHex", None)
 
 
+def _record_public_battle_telemetry(
+    *,
+    store: ProgressionStore,
+    auth: AuthenticatedSession,
+    session: object,
+    attempt_id: str | None,
+) -> None:
+    """Capture non-canonical launch facts after durable battle activation."""
+
+    if telemetry_store is None:
+        return
+    try:
+        stage_id = getattr(session, "stage_id", None)
+        stage_index = getattr(session, "stage_battle_index", None)
+        arena_run_id = getattr(session, "arena_run_id", None)
+        arena_node_index = getattr(session, "arena_node_index", None)
+        if stage_id is not None and stage_index is not None:
+            mode = getattr(session, "stage_mode", None) or "learner"
+            encounter_id = f"stage:{stage_id}:{stage_index}"
+        elif arena_run_id is not None and arena_node_index is not None:
+            mode = "arena"
+            encounter_id = f"arena:{arena_run_id}:{arena_node_index}"
+        else:
+            telemetry_store.note_failure("battle_context")
+            return
+        game = getattr(session, "game")
+        player_team = [
+            HERO_DEFINITIONS[hero.profession] for hero in game.player_heroes
+        ]
+        enemy_team = [
+            HERO_DEFINITIONS[hero.profession] for hero in game.opponent_heroes
+        ]
+        progression = store.read_progression(
+            auth.player_id, auth.session_id, auth.generation
+        )
+        telemetry_store.record_battle_started(
+            battle_id=getattr(session, "battle_id"),
+            player_id=auth.player_id,
+            mode=mode,
+            encounter_id=encounter_id,
+            stage_id=stage_id,
+            attempt_id=str(attempt_id) if attempt_id is not None else None,
+            player_team=player_team,
+            enemy_team=enemy_team,
+            player_formation=getattr(session, "player_formation", None),
+            enemy_formation=getattr(session, "enemy_formation", None),
+            available_roster=progression["unlockedHeroDefinitionIds"],
+            control_mode=getattr(session, "enemy_control_mode"),
+        )
+    except Exception:
+        telemetry_store.note_failure("battle_started_dispatch")
+
+
+def _record_public_battle_rounds(session: object) -> None:
+    """Capture terminal round count without changing settlement semantics."""
+
+    if telemetry_store is None:
+        return
+    try:
+        snapshot = registry.adapter.snapshot(session)
+        telemetry_store.record_battle_rounds(
+            getattr(session, "battle_id"), int(snapshot["round"])
+        )
+    except Exception:
+        telemetry_store.note_failure("battle_rounds_dispatch")
+
+
 def _public_launch(
     *,
     session: AuthenticatedSession,
@@ -404,6 +556,7 @@ def _public_launch(
                         session_generation=session.generation,
                         outcome=outcome,
                     )
+                    _record_public_battle_rounds(existing_session)
                     envelope["settlement"] = settlement
                     envelope.update({
                         "serverNow": settlement["settledAt"],
@@ -457,6 +610,7 @@ def _public_launch(
                         session_generation=session.generation,
                         outcome=outcome,
                     )
+                    _record_public_battle_rounds(existing_session)
                     envelope["settlement"] = settlement
                     envelope.update({
                         "serverNow": settlement["settledAt"],
@@ -513,6 +667,12 @@ def _public_launch(
                 session_generation=session.generation,
             )
             created_session, envelope = bound
+            _record_public_battle_telemetry(
+                store=store,
+                auth=session,
+                session=created_session,
+                attempt_id=attempt_id,
+            )
             snapshot = envelope.get("data", {}).get("snapshot", {})
             if snapshot.get("phase") == "ended":
                 retain_for_retry = True
@@ -531,6 +691,7 @@ def _public_launch(
                     session_generation=session.generation,
                     outcome=outcome,
                 )
+                _record_public_battle_rounds(created_session)
                 envelope["settlement"] = settlement
                 envelope.update({
                     "serverNow": settlement["settledAt"],
@@ -711,6 +872,38 @@ async def get_public_session(
         raise _identity_error(exc) from exc
 
 
+async def _optional_telemetry_player(
+    request: Request,
+    service: PublicIdentityService,
+) -> str | None:
+    """Authenticate an existing cookie without requiring anonymous visitors."""
+
+    session_token = request.cookies.get(SESSION_COOKIE)
+    if session_token is None:
+        return None
+    supplied = request.headers.get("X-CSRF-Token")
+    try:
+        session = await asyncio.to_thread(
+            service.validate_session,
+            session_token,
+            touch=False,
+            rotate=False,
+            require_confirmed=True,
+            csrf_token=supplied,
+            require_csrf=True,
+        )
+        cookie_csrf = request.cookies.get(CSRF_COOKIE)
+        if not supplied or not cookie_csrf or not secrets.compare_digest(
+            supplied, cookie_csrf
+        ):
+            raise PublicIdentityError(
+                "csrfInvalid", "The request verification token is invalid.", 403
+            )
+        return session.player_id
+    except PublicIdentityError as exc:
+        raise _identity_error(exc) from exc
+
+
 async def _unconfirmed_session(
     request: Request,
     response: Response,
@@ -791,6 +984,8 @@ async def health() -> dict[str, str]:
         try:
             await asyncio.to_thread(store.ensure_initialized)
             await asyncio.to_thread(validate_public_configuration)
+            if telemetry_store is not None:
+                await asyncio.to_thread(telemetry_store.ensure_initialized)
         except ProgressionStoreError as exc:
             raise _store_unavailable(exc) from exc
         except PublicConfigurationError as exc:
@@ -802,8 +997,48 @@ async def health() -> dict[str, str]:
                     "retryable": False,
                 },
             ) from exc
+        except TelemetrySchemaError as exc:
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "code": "telemetrySchemaUnavailable",
+                    "message": str(exc),
+                    "retryable": False,
+                },
+            ) from exc
         get_identity_service()
     return {"status": "ok", "contractVersion": "1.0"}
+
+
+@app.post(
+    "/api/v1/telemetry/events",
+    response_model=TelemetryEventResponse,
+    status_code=202,
+    responses={
+        401: {"model": HttpErrorResponse},
+        403: {"model": HttpErrorResponse},
+        404: {"model": HttpErrorResponse},
+        422: {"model": HttpErrorResponse},
+    },
+)
+async def record_telemetry_event(
+    request_body: TelemetryEventRequest,
+    request: Request,
+    response: Response,
+    telemetry: Annotated[TelemetryStore, Depends(get_telemetry_store)],
+    service: Annotated[PublicIdentityService, Depends(get_identity_service)],
+) -> dict:
+    """Accept one bounded browser event without making it gameplay authority."""
+
+    _require_public_origin(request)
+    player_id = await _optional_telemetry_player(request, service)
+    result = await asyncio.to_thread(
+        telemetry.record_client_event,
+        request_body,
+        player_id=player_id,
+    )
+    response.headers["Cache-Control"] = "no-store"
+    return {"contractVersion": "1.0", **result}
 
 
 @app.get("/api/v1/heroes", response_model=HeroRosterResponse)
@@ -1781,6 +2016,7 @@ async def submit_command(
                                 session_generation=auth.generation,
                                 outcome=outcome,
                             )
+                            _record_public_battle_rounds(battle)
                             cached = battle.command_results.get(command.command_id)
                             envelope = (
                                 registry.adapter.envelope(battle, cached)
@@ -1813,6 +2049,7 @@ async def submit_command(
                             session_generation=auth.generation,
                             outcome=outcome,
                         )
+                        _record_public_battle_rounds(battle)
                         cached = battle.command_results.get(command.command_id)
                         envelope = (
                             registry.adapter.envelope(battle, cached)
@@ -1877,6 +2114,7 @@ async def submit_command(
                                 session_generation=auth.generation,
                                 outcome=outcome,
                             )
+                            _record_public_battle_rounds(battle)
                         except Exception:
                             store.mark_public_battle_terminal_pending(
                                 battle_id=battle_id,

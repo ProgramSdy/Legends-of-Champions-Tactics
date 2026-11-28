@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSoundPreference } from "@/components/audio/SoundPreferenceProvider";
 import { HeroGalleryExperience } from "@/components/manual/HeroGalleryExperience";
 import { BattleInstructionExperience } from "@/components/manual/BattleInstructionExperience";
+import { configuredFeedbackUrl } from "@/lib/telemetry";
 
 type ManualDialogProps = {
   open: boolean;
@@ -30,6 +31,7 @@ export function ManualDialog({ open, onClose, triggerRef, navigationMode = "rout
   const onCloseRef = useRef(onClose);
   const [view, setView] = useState<ManualView>("menu");
   const { enabled, toggle } = useSoundPreference();
+  const feedbackUrl = configuredFeedbackUrl();
 
   useEffect(() => {
     onCloseRef.current = onClose;
@@ -110,6 +112,9 @@ export function ManualDialog({ open, onClose, triggerRef, navigationMode = "rout
             <button type="button" onClick={toggle} aria-pressed={enabled}>
               <span aria-hidden="true">♫</span><strong>Sound {enabled ? "On" : "Off"}</strong><small>{enabled ? "UI and battle effects enabled" : "UI and battle effects muted"}</small>
             </button>
+            {feedbackUrl ? <a href={feedbackUrl} target="_blank" rel="noopener noreferrer">
+              <span aria-hidden="true">✎</span><strong>Feedback &amp; Bug Report</strong><small>Open the external feedback page</small>
+            </a> : null}
           </div>
         </> : <>
           <div className="manual-dialog-content">

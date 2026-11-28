@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 import math
 import re
 from typing import Annotated, Literal
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -804,6 +805,86 @@ class RetryableErrorResponse(ErrorResponse):
 
 class RetryableHttpErrorResponse(ApiModel):
     detail: RetryableErrorResponse
+
+
+TelemetrySource = Literal[
+    "itch.io", "reddit", "x", "threads", "taptap", "direct", "other", "unknown"
+]
+
+
+class TelemetryEventBase(StrictApiModel):
+    """Bounded browser observation; identity and receipt facts are server-owned."""
+
+    event_id: UUID = Field(alias="eventId")
+    event_type: str = Field(alias="eventType")
+    schema_version: Literal[1] = Field(alias="schemaVersion")
+    visitor_id: UUID = Field(alias="visitorId")
+    session_id: UUID = Field(alias="sessionId")
+    occurred_at_utc: datetime | None = Field(default=None, alias="occurredAtUtc")
+
+    @field_validator("occurred_at_utc")
+    @classmethod
+    def require_aware_event_time(cls, value: datetime | None) -> datetime | None:
+        if value is None:
+            return None
+        if value.tzinfo is None:
+            raise ValueError("occurredAtUtc must include a timezone")
+        return value.astimezone(UTC)
+
+
+class LandingViewData(StrictApiModel):
+    source: TelemetrySource
+    campaign: str | None = Field(default=None, max_length=64, pattern=r"^[A-Za-z0-9._:-]+$")
+
+
+class HomeViewData(StrictApiModel):
+    """Home render carries no client-authored detail."""
+
+
+class SessionActivityData(StrictApiModel):
+    activity: Literal["navigation", "interaction", "battle"]
+
+
+class ClientErrorData(StrictApiModel):
+    code: str = Field(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9._:-]+$")
+    route_id: str = Field(
+        alias="routeId", min_length=1, max_length=64, pattern=r"^[A-Za-z0-9._:/-]+$"
+    )
+
+
+class LandingViewEvent(TelemetryEventBase):
+    event_type: Literal["landing_view"] = Field(alias="eventType")
+    event_data: LandingViewData = Field(alias="eventData")
+
+
+class HomeViewEvent(TelemetryEventBase):
+    event_type: Literal["home_view"] = Field(alias="eventType")
+    event_data: HomeViewData = Field(alias="eventData")
+
+
+class SessionActivityEvent(TelemetryEventBase):
+    event_type: Literal["session_activity"] = Field(alias="eventType")
+    event_data: SessionActivityData = Field(alias="eventData")
+
+
+class ClientErrorEvent(TelemetryEventBase):
+    event_type: Literal["client_error"] = Field(alias="eventType")
+    event_data: ClientErrorData = Field(alias="eventData")
+
+
+TelemetryEventRequest = Annotated[
+    LandingViewEvent | HomeViewEvent | SessionActivityEvent | ClientErrorEvent,
+    Field(discriminator="event_type"),
+]
+
+
+class TelemetryEventResponse(StrictApiModel):
+    contract_version: Literal["1.0"] = Field(default="1.0", alias="contractVersion")
+    accepted: bool
+    duplicate: bool
+    reason: Literal[
+        "throttled", "sessionCapReached", "sessionExpired", "unavailable"
+    ] | None = None
 
 
 StageId = Literal["paladins-altar", "warriors-barrack"]

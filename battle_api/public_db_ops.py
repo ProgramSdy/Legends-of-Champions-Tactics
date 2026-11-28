@@ -27,6 +27,12 @@ from .progression import (
     ProgressionStore,
     ProgressionStoreError,
 )
+from .telemetry_store import (
+    TELEMETRY_SCHEMA_REVISION,
+    TelemetrySchemaError,
+    create_telemetry_schema,
+    validate_telemetry_schema,
+)
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
@@ -45,6 +51,7 @@ class PublicDatabaseEvidence:
     size_bytes: int
     schema_version: int
     battle_schema_revision: int | None
+    telemetry_schema_revision: int | None
     integrity: str
 
 
@@ -60,6 +67,13 @@ class BackupEvidence:
 class UpgradeEvidence:
     database: PublicDatabaseEvidence
     pre_upgrade_backup: BackupEvidence
+
+
+@dataclass(frozen=True)
+class TelemetryUpgradeEvidence:
+    database: PublicDatabaseEvidence
+    pre_upgrade_backup: BackupEvidence | None
+    already_upgraded: bool
 
 
 def _absolute_external_path(path: Path, *, description: str) -> Path:
@@ -129,6 +143,15 @@ def inspect_public_database(
                 raise PublicDatabaseOperationError(
                     "Public battle schema revision is malformed."
                 ) from exc
+            telemetry_text = metadata.get("telemetry_schema_revision")
+            try:
+                telemetry_revision = (
+                    int(telemetry_text) if telemetry_text is not None else None
+                )
+            except ValueError as exc:
+                raise PublicDatabaseOperationError(
+                    "Telemetry schema revision is malformed."
+                ) from exc
         finally:
             connection.close()
         if require_batch2:
@@ -142,6 +165,7 @@ def inspect_public_database(
             size_bytes=resolved.stat().st_size,
             schema_version=PUBLIC_SCHEMA_VERSION,
             battle_schema_revision=revision,
+            telemetry_schema_revision=telemetry_revision,
             integrity=integrity,
         )
     except sqlite3.Error as exc:
@@ -450,6 +474,91 @@ def _before_public_upgrade_commit(connection: sqlite3.Connection) -> None:
     del connection
 
 
+def upgrade_public_telemetry_v1(
+    database_path: Path,
+    backup_root: Path,
+    *,
+    confirm: bool = False,
+    now: datetime | None = None,
+) -> TelemetryUpgradeEvidence:
+    """Backup then atomically add the optional telemetry sidecar offline.
+
+    Re-running against a valid revision-1 sidecar is a read-only success.  A
+    different or incomplete marker fails closed instead of attempting repair.
+    """
+
+    if not confirm:
+        raise PublicDatabaseOperationError(
+            "Offline telemetry upgrade requires explicit confirm=True after stopping the API."
+        )
+    database = _existing_database(database_path, description="Public database")
+    before = inspect_public_database(database)
+    if before.telemetry_schema_revision is not None:
+        connection = _connect_read_only(database)
+        try:
+            validate_telemetry_schema(connection)
+        except TelemetrySchemaError as exc:
+            raise PublicDatabaseOperationError(str(exc)) from exc
+        finally:
+            connection.close()
+        return TelemetryUpgradeEvidence(
+            database=before,
+            pre_upgrade_backup=None,
+            already_upgraded=True,
+        )
+
+    backup = backup_public_database(
+        database,
+        backup_root,
+        kind="release",
+        label="pre-telemetry-v1-upgrade",
+        now=now,
+    )
+    writable = sqlite3.connect(database, timeout=5.0)
+    writable.row_factory = sqlite3.Row
+    writable.execute("PRAGMA foreign_keys = ON")
+    try:
+        writable.execute("BEGIN IMMEDIATE")
+        metadata = {
+            row["key"]: row["value"]
+            for row in writable.execute("SELECT key, value FROM metadata")
+        }
+        if metadata.get("schema_version") != str(PUBLIC_SCHEMA_VERSION):
+            raise PublicDatabaseOperationError(
+                "Telemetry upgrade requires a Public schema-v5 database."
+            )
+        if metadata.get("public_battle_schema_revision") != str(
+            PUBLIC_BATTLE_SCHEMA_REVISION
+        ):
+            raise PublicDatabaseOperationError(
+                "Telemetry upgrade requires Public battle schema revision 2."
+            )
+        create_telemetry_schema(writable)
+        _before_telemetry_upgrade_commit(writable)
+        writable.commit()
+    except BaseException:
+        writable.rollback()
+        raise
+    finally:
+        writable.close()
+    upgraded = inspect_public_database(database)
+    if upgraded.telemetry_schema_revision != TELEMETRY_SCHEMA_REVISION:
+        raise PublicDatabaseOperationError(
+            "Telemetry upgrade did not produce the expected schema revision."
+        )
+    return TelemetryUpgradeEvidence(
+        database=upgraded,
+        pre_upgrade_backup=backup,
+        already_upgraded=False,
+    )
+
+
+def _before_telemetry_upgrade_commit(connection: sqlite3.Connection) -> None:
+    """Fault-injection seam; production intentionally performs no work here."""
+
+    del connection
+
+
 def _print_json(value: object) -> None:
     print(json.dumps(asdict(value), indent=2, sort_keys=True))
 
@@ -476,6 +585,12 @@ def main() -> None:
     upgrade_parser.add_argument(
         "--confirm-offline-upgrade", action="store_true"
     )
+    telemetry_parser = subparsers.add_parser("upgrade-telemetry-v1")
+    telemetry_parser.add_argument("--database", required=True, type=Path)
+    telemetry_parser.add_argument("--backup-root", required=True, type=Path)
+    telemetry_parser.add_argument(
+        "--confirm-offline-upgrade", action="store_true"
+    )
     arguments = parser.parse_args()
     try:
         if arguments.operation == "inspect":
@@ -496,9 +611,17 @@ def main() -> None:
                     arguments.backup, arguments.destination
                 )
             )
-        else:
+        elif arguments.operation == "upgrade-batch1-v5":
             _print_json(
                 upgrade_batch1_public_v5(
+                    arguments.database,
+                    arguments.backup_root,
+                    confirm=arguments.confirm_offline_upgrade,
+                )
+            )
+        else:
+            _print_json(
+                upgrade_public_telemetry_v1(
                     arguments.database,
                     arguments.backup_root,
                     confirm=arguments.confirm_offline_upgrade,

@@ -38,6 +38,10 @@ export default defineConfig(async () => {
   const releaseMode = process.env.LOCT_RELEASE_MODE === "development"
     ? "development"
     : "public";
+  const telemetryEnabled = process.env.NEXT_PUBLIC_TELEMETRY_ENABLED === "true"
+    ? "true"
+    : "false";
+  const feedbackUrl = process.env.NEXT_PUBLIC_FEEDBACK_URL ?? "";
   const localApiProxyTarget = process.env.LOCT_LOCAL_API_PROXY_TARGET;
   const localHttpsCert = process.env.LOCT_LOCAL_HTTPS_CERT;
   const localHttpsKey = process.env.LOCT_LOCAL_HTTPS_KEY;
@@ -56,6 +60,8 @@ export default defineConfig(async () => {
   return {
     define: {
       "process.env.LOCT_RELEASE_MODE": JSON.stringify(releaseMode),
+      "process.env.NEXT_PUBLIC_TELEMETRY_ENABLED": JSON.stringify(telemetryEnabled),
+      "process.env.NEXT_PUBLIC_FEEDBACK_URL": JSON.stringify(feedbackUrl),
     },
     server: {
       ...(localHttpsCert && localHttpsKey

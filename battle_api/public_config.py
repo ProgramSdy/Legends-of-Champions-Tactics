@@ -35,6 +35,7 @@ class PublicConfigurationEvidence:
     provisional_ttl_seconds: int
     inactivity_seconds: int
     public_battles_enabled: bool
+    public_telemetry_enabled: bool
 
 
 def _positive_integer(
@@ -130,6 +131,15 @@ def validate_public_configuration(
         raise PublicConfigurationError(
             "BATTLE_API_ENABLE_PUBLIC_BATTLES must be omitted, 0, or 1."
         )
+    telemetry_gate = env.get("BATTLE_API_ENABLE_PUBLIC_TELEMETRY", "0")
+    if telemetry_gate not in {"0", "1"}:
+        raise PublicConfigurationError(
+            "BATTLE_API_ENABLE_PUBLIC_TELEMETRY must be omitted, 0, or 1."
+        )
+    if telemetry_gate == "1" and database.telemetry_schema_revision != 1:
+        raise PublicConfigurationError(
+            "Public telemetry requires the offline telemetry schema revision 1 upgrade."
+        )
     return PublicConfigurationEvidence(
         release_mode="public",
         public_database=database.path,
@@ -146,6 +156,7 @@ def validate_public_configuration(
             env, "BATTLE_API_PUBLIC_INACTIVITY_SECONDS", "1800"
         ),
         public_battles_enabled=battle_gate == "1",
+        public_telemetry_enabled=telemetry_gate == "1",
     )
 
 

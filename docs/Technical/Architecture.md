@@ -1,5 +1,9 @@
 # Technical Architecture
 
+## Stage 5.3 telemetry implementation boundary
+
+The Owner accepted Batch A telemetry findings and approved local Batch B P0 implementation. [Pre-Alpha Telemetry Architecture](Pre_Alpha_Telemetry_Architecture.md) describes the approved boundary and local implementation; it is **not deployed RELEASE-004 behavior**. The additive sidecar reuses Public identity/battle authority, keeps 30-minute analytics sessions separate from authentication sessions, provides restricted exports, and isolates telemetry failure from gameplay transactions. Public collection stays default-off pending privacy and launch approval. Feedback is only a non-intrusive external Game Manual link; Stage 6 owns its destination and channels. No live migration, Public enablement or release is authorized by Batch B.
+
 ## Structured Computer Battle Strategies
 
 ## Battle Information Transparency

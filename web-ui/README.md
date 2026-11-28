@@ -34,6 +34,15 @@ asset/fallback gallery.
 missing, blank, or invalid values fail closed to Public behavior. The provided
 commands set the mode explicitly.
 
+Stage 5.3 telemetry is separately fail-closed. The browser creates no visitor
+or analytics-session storage, listeners, or requests unless
+`NEXT_PUBLIC_TELEMETRY_ENABLED=true`; the backend has its own independent gate.
+Local integration may opt in explicitly, but a normal Public build remains off.
+`NEXT_PUBLIC_FEEDBACK_URL` optionally adds a credential-free HTTPS **Feedback &
+Bug Report** link to the shared Game Manual/Settings menu. Missing, invalid,
+non-HTTPS, or credential-bearing values omit the link instead of rendering a
+broken placeholder. The external destination is not an in-game feedback form.
+
 Build and serve the Public frontend artifact from `web-ui/`:
 
 ```bash

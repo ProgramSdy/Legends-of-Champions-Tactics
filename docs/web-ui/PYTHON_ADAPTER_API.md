@@ -1,5 +1,32 @@
 # Python battle adapter and API
 
+## Stage 5.3 local telemetry boundary
+
+Public telemetry is **disabled by default**. It requires both backend
+`BATTLE_API_ENABLE_PUBLIC_TELEMETRY=1` on an explicitly offline-migrated Public
+schema-v5 database and frontend `NEXT_PUBLIC_TELEMETRY_ENABLED=true` in a newly
+built client. These gates are not approved for the live Public service. The
+Development API does not register this as a Development gameplay feature.
+
+When enabled, `POST /api/v1/telemetry/events` accepts one strict schema-version-1
+browser observation: UUID `eventId`, `visitorId`, `sessionId`; `eventType` of
+`landing_view`, `home_view`, `session_activity`, or `client_error`; optional
+timezone-aware `occurredAtUtc`; and type-specific bounded `eventData`.
+`landing_view` carries an allowlisted `source` and optional campaign;
+`session_activity` carries only an allowed activity label; `client_error`
+carries only a stable code and route ID, never message, URL, stack or secrets.
+The server owns receipt time, authenticated player linkage, environment and
+build. A valid request receives HTTP 202 with `{contractVersion: "1.0",
+accepted, duplicate, reason}`; duplicates and caps are explicit and never
+affect gameplay. With the backend gate off, the route is unavailable (404).
+Origin and existing session/CSRF protections apply where relevant.
+
+Authoritative battle activation is captured separately after the canonical
+commit; outcomes remain in existing battle diagnostics. The telemetry sidecar
+does not change battle actions or rewards. Restricted CSV/SQL KPI/battle exports
+and bounded raw retention are offline operator commands, not HTTP endpoints;
+see [Pre-Alpha Telemetry Architecture](../Technical/Pre_Alpha_Telemetry_Architecture.md).
+
 ## Runtime
 
 Install `requirements.txt` plus `requirements-api.txt`, then start the
